@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BuildPro — ניהול בנייה</title>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#F2F1EE;--surface:#fff;--sidebar:#18181B;
+  --accent:#E07A38;--accent-light:rgba(224,122,56,.1);
+  --success:#16A34A;--warning:#D97706;--danger:#DC2626;
+  --border:#E5E4E0;--text1:#111;--text2:#555;--text3:#999;
+  --radius:10px;--shadow:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.04);
+  --shadow-lg:0 6px 24px rgba(0,0,0,.12);
+}
+body{font-family:'Heebo',sans-serif;background:var(--bg);color:var(--text1);min-height:100vh;direction:rtl;-webkit-font-smoothing:antialiased}
+#root{display:flex;height:100vh;overflow:hidden}
+
+/* Sidebar */
+.sidebar{width:220px;min-width:220px;background:var(--sidebar);color:#fff;display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden}
+.sidebar-logo{padding:22px 18px 18px;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(255,255,255,.08)}
+.sidebar-logo-mark{width:32px;height:32px;background:var(--accent);border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;color:#fff;flex-shrink:0}
+.sidebar-logo-text{font-size:18px;font-weight:800;color:#fff;letter-spacing:-.5px}
+.sidebar-logo-text span{color:var(--accent)}
+.nav-section{padding:16px 12px 4px;font-size:10px;font-weight:700;color:rgba(255,255,255,.25);text-transform:uppercase;letter-spacing:.8px}
+.nav-item{display:flex;align-items:center;gap:9px;padding:9px 12px;cursor:pointer;border-radius:8px;margin:1px 6px;color:rgba(255,255,255,.55);font-size:13px;font-weight:500;transition:all .15s;white-space:nowrap;user-select:none}
+.nav-item:hover{background:rgba(255,255,255,.07);color:rgba(255,255,255,.9)}
+.nav-item.active{background:var(--accent);color:#fff}
+.nav-item-badge{margin-right:auto;background:rgba(255,255,255,.15);color:#fff;border-radius:10px;font-size:10px;padding:1px 6px;font-weight:700}
+.nav-item.active .nav-item-badge{background:rgba(255,255,255,.25)}
+.sidebar-footer{margin-top:auto;padding:16px 12px;border-top:1px solid rgba(255,255,255,.08)}
+.sidebar-project{display:flex;align-items:center;gap:10px}
+.sidebar-project-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);flex-shrink:0}
+.sidebar-project-name{font-size:12px;font-weight:600;color:rgba(255,255,255,.7)}
+.sidebar-project-sub{font-size:11px;color:rgba(255,255,255,.3)}
+
+/* Main */
+.main{flex:1;overflow-y:auto;display:flex;flex-direction:column;min-width:0}
+.page-header{background:var(--surface);border-bottom:1px solid var(--border);padding:15px 24px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;position:sticky;top:0;z-index:20}
+.page-title{font-size:19px;font-weight:700}
+.page-content{padding:24px;flex:1}
+
+/* Cards */
+.card{background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);box-shadow:var(--shadow)}
+.card-header{padding:14px 18px;border-bottom:1px solid var(--border);font-size:14px;font-weight:600;color:var(--text1)}
+.card-body{padding:18px}
+
+/* Badges */
+.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap}
+.badge-done{background:#D1FAE5;color:#065F46}
+.badge-active{background:#FEF3C7;color:#92400E}
+.badge-pending{background:#F3F4F6;color:#6B7280}
+.badge-problem{background:#FEE2E2;color:#991B1B}
+
+/* Tables */
+.bp-table{width:100%;border-collapse:collapse;font-size:13px}
+.bp-table th{background:#F9F8F6;padding:9px 12px;text-align:right;font-weight:600;color:var(--text2);border-bottom:1px solid var(--border);white-space:nowrap;font-size:12px}
+.bp-table td{padding:9px 12px;border-bottom:1px solid var(--border);vertical-align:middle}
+.bp-table tr:last-child td{border-bottom:none}
+.bp-table tr:hover td{background:#FAFAF8}
+
+/* Grid */
+.grid-2{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+
+/* Photo grid */
+.photo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px}
+.photo-card{border-radius:8px;overflow:hidden;cursor:pointer;border:1px solid var(--border);transition:transform .15s,box-shadow .15s;background:var(--surface)}
+.photo-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg)}
+.photo-thumb{height:128px;position:relative;display:flex;align-items:center;justify-content:center}
+.photo-info{padding:8px 10px}
+
+/* Modal */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(2px)}
+.modal-box{background:var(--surface);border-radius:14px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,.2)}
+
+/* Input */
+.bp-input{width:100%;padding:8px 11px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:'Heebo',sans-serif;background:var(--surface);color:var(--text1);outline:none;transition:border-color .15s;direction:rtl}
+.bp-input:focus{border-color:var(--accent)}
+
+/* Bottom nav */
+.bottom-nav{display:none;position:fixed;bottom:0;left:0;right:0;background:var(--sidebar);border-top:1px solid rgba(255,255,255,.08);z-index:100;padding:6px 0 max(6px,env(safe-area-inset-bottom))}
+.bottom-nav-items{display:flex;justify-content:space-around;align-items:center}
+.bottom-nav-item{display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 8px;cursor:pointer;color:rgba(255,255,255,.45);font-size:10px;font-weight:500;transition:color .15s;min-width:44px}
+.bottom-nav-item.active{color:var(--accent)}
+
+/* Tweaks */
+.tweaks-panel{position:fixed;bottom:24px;left:24px;background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow-lg);padding:16px;z-index:300;min-width:220px;display:none}
+.tweaks-panel.open{display:block}
+
+/* Misc */
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+
+@media(max-width:768px){
+  .sidebar{display:none}
+  .bottom-nav{display:block}
+  .page-content{padding:16px;padding-bottom:80px}
+  .page-header{padding:12px 16px}
+  .grid-4{grid-template-columns:repeat(2,1fr)}
+  .photo-grid{grid-template-columns:repeat(2,1fr)}
+}
+@media(max-width:480px){
+  .grid-4{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" src="bp-data.jsx"></script>
+<script type="text/babel" src="bp-components.jsx"></script>
+<script type="text/babel" src="bp-screens.jsx"></script>
+<script type="text/babel" src="bp-setup.jsx"></script>
+
+<script type="text/babel">
+const { useState, useEffect } = React;
+
+const NAV = [
+  {id:"dashboard",  label:"לוח בקרה",    icon:"home",      section:"ראשי"},
+  {id:"setup",      label:"הגדרות בית",  icon:"settings",  section:"ראשי"},
+  {id:"stages",     label:"שלבי בנייה", icon:"layers",    section:"ניהול"},
+  {id:"contractors",label:"קבלנים",     icon:"users",     section:"ניהול"},
+  {id:"boq",        label:"כתב כמויות", icon:"clipboard", section:"ניהול"},
+  {id:"boqwizard",  label:"אשף כמויות", icon:"zoom-in",   section:"ניהול"},
+  {id:"photos",     label:"תמונות",     icon:"camera",    section:"תיעוד"},
+  {id:"notes",      label:"הערות",      icon:"message",   section:"תיעוד", badge:3},
+  {id:"budget",     label:"תקציב",      icon:"chart",     section:"פיננסי"},
+  {id:"timeline",   label:"לוח זמנים", icon:"calendar",  section:"פיננסי"},
+];
+
+const BOTTOM_NAV = ["dashboard","setup","boqwizard","photos","notes"].map(id=>NAV.find(n=>n.id===id));
+
+const PAGE_TITLES = {
+  dashboard:"לוח בקרה", setup:"הגדרות בית", stages:"שלבי בנייה",
+  contractors:"ניהול קבלנים", boq:"כתב כמויות", boqwizard:"אשף כתב כמויות",
+  photos:"תמונות ותיעוד", notes:"הערות", budget:"תקציב והוצאות", timeline:"לוח זמנים",
+};
+
+const PAGE_SUBTITLES = {
+  setup:"הגדרת מבנה הבית, חדרים וצוות",
+  boqwizard:"עבור חדר-חדר ובנה רשימת כמויות לרכישה / יבוא",
+};
+
+const SCREENS = {
+  dashboard:   window.DashboardScreen,
+  setup:       window.ProjectSetupScreen,
+  stages:      window.StagesScreen,
+  contractors: window.ContractorsScreen,
+  boq:         window.BOQScreen,
+  boqwizard:   window.BOQWizardScreen,
+  photos:      window.PhotosScreen,
+  notes:       window.NotesScreen,
+  budget:      window.BudgetScreen,
+  timeline:    window.TimelineScreen,
+};
+
+// ── TWEAK DEFAULTS ────────────────────────────────────────────────────────────
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "accentColor": "#E07A38",
+  "sidebarDark": true,
+  "compactMode": false
+}/*EDITMODE-END*/;
+
+function App() {
+  const saved = localStorage.getItem("bp_page");
+  const [page, setPage] = useState(saved && SCREENS[saved] ? saved : "dashboard");
+  const [tweaks, setTweaks] = useState(TWEAK_DEFAULTS);
+  const [tweaksOpen, setTweaksOpen] = useState(false);
+
+  useEffect(()=>{ localStorage.setItem("bp_page", page); }, [page]);
+
+  useEffect(()=>{
+    document.documentElement.style.setProperty("--accent", tweaks.accentColor);
+    document.documentElement.style.setProperty("--accent-light", tweaks.accentColor+"1A");
+    document.documentElement.style.setProperty("--sidebar", tweaks.sidebarDark ? "#18181B" : "#1E3A5F");
+  }, [tweaks]);
+
+  useEffect(()=>{
+    const handler = e => {
+      if(e.data?.type==="__activate_edit_mode") setTweaksOpen(true);
+      if(e.data?.type==="__deactivate_edit_mode") setTweaksOpen(false);
+    };
+    window.addEventListener("message", handler);
+    window.parent.postMessage({type:"__edit_mode_available"},"*");
+    return ()=>window.removeEventListener("message",handler);
+  },[]);
+
+  const setTweak = (k,v) => {
+    const next = {...tweaks,[k]:v};
+    setTweaks(next);
+    window.parent.postMessage({type:"__edit_mode_set_keys", edits:{[k]:v}},"*");
+  };
+
+  const Screen = SCREENS[page] || SCREENS.dashboard;
+
+  // group nav sections
+  const sections = [...new Set(NAV.map(n=>n.section))];
+
+  return (
+    <>
+      {/* SIDEBAR */}
+      <nav className="sidebar">
+        <div className="sidebar-logo">
+          <div className="sidebar-logo-mark">B</div>
+          <div><div className="sidebar-logo-text">Build<span>Pro</span></div></div>
+        </div>
+
+        {sections.map(sec=>(
+          <div key={sec}>
+            <div className="nav-section">{sec}</div>
+            {NAV.filter(n=>n.section===sec).map(n=>(
+              <div key={n.id} className={`nav-item ${page===n.id?"active":""}`} onClick={()=>setPage(n.id)}>
+                <Icon n={n.icon} s={15}/>
+                {n.label}
+                {n.badge && <span className="nav-item-badge">{n.badge}</span>}
+              </div>
+            ))}
+          </div>
+        ))}
+
+        <div className="sidebar-footer">
+          <div className="sidebar-project">
+            <div className="sidebar-project-dot"/>
+            <div>
+              <div className="sidebar-project-name">בית רוזנברג</div>
+              <div className="sidebar-project-sub">נהריה · בביצוע</div>
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      {/* MAIN */}
+      <main className="main">
+        <div className="page-header">
+          <div style={{display:"flex",alignItems:"center",gap:12}}>
+            <div>
+              <span className="page-title">{PAGE_TITLES[page]}</span>
+              {PAGE_SUBTITLES[page] && <div style={{fontSize:12,color:"var(--text3)",marginTop:1}}>{PAGE_SUBTITLES[page]}</div>}
+            </div>
+          </div>
+          <div style={{display:"flex",alignItems:"center",gap:8}}>
+            <div style={{fontSize:12,color:"var(--text3)",display:"flex",alignItems:"center",gap:4}}>
+              <Icon n="clock" s={12} c="var(--text3)"/>
+              <span>עודכן: היום, 09:45</span>
+            </div>
+            <div style={{width:1,height:16,background:"var(--border)",margin:"0 4px"}}/>
+            <div style={{width:30,height:30,borderRadius:"50%",background:"var(--accent-light)",color:"var(--accent)",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:13,cursor:"pointer"}}>א</div>
+          </div>
+        </div>
+
+        <Screen/>
+      </main>
+
+      {/* BOTTOM NAV (mobile) */}
+      <div className="bottom-nav">
+        <div className="bottom-nav-items">
+          {BOTTOM_NAV.map(n=>(
+            <div key={n.id} className={`bottom-nav-item ${page===n.id?"active":""}`} onClick={()=>setPage(n.id)}>
+              <Icon n={n.icon} s={20}/>
+              <span>{n.label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* TWEAKS PANEL */}
+      <div className={`tweaks-panel ${tweaksOpen?"open":""}`}>
+        <div style={{fontWeight:700,fontSize:13,marginBottom:14,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <span>Tweaks</span>
+          <button onClick={()=>setTweaksOpen(false)} style={{background:"none",border:"none",cursor:"pointer",color:"var(--text3)",padding:2,display:"flex"}}><Icon n="x" s={14}/></button>
+        </div>
+
+        <div style={{marginBottom:12}}>
+          <div style={{fontSize:11,color:"var(--text2)",fontWeight:600,marginBottom:6}}>צבע ראשי</div>
+          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+            {["#E07A38","#2563EB","#16A34A","#7C3AED","#DC2626","#0891B2"].map(c=>(
+              <div key={c} onClick={()=>setTweak("accentColor",c)} style={{width:22,height:22,borderRadius:6,background:c,cursor:"pointer",border:`2px solid ${tweaks.accentColor===c?"#111":"transparent"}`,transition:"border .1s"}}/>
+            ))}
+          </div>
+        </div>
+
+        <div style={{marginBottom:12}}>
+          <div style={{fontSize:11,color:"var(--text2)",fontWeight:600,marginBottom:6}}>צבע סייד-בר</div>
+          <div style={{display:"flex",gap:8}}>
+            {[{v:true,label:"כהה",c:"#18181B"},{v:false,label:"כחול",c:"#1E3A5F"}].map(({v,label,c})=>(
+              <div key={label} onClick={()=>setTweak("sidebarDark",v)} style={{padding:"5px 10px",borderRadius:6,border:`1px solid ${tweaks.sidebarDark===v?"var(--accent)":"var(--border)"}`,cursor:"pointer",fontSize:11,background:c,color:"#fff",fontFamily:"'Heebo',sans-serif"}}>
+                {label}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <div style={{fontSize:11,color:"var(--text2)",fontWeight:600,marginBottom:6}}>מצב תצוגה</div>
+          <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",fontSize:12}}>
+            <input type="checkbox" checked={tweaks.compactMode} onChange={e=>setTweak("compactMode",e.target.checked)} style={{accentColor:"var(--accent)"}}/>
+            <span>מצב קומפקטי</span>
+          </label>
+        </div>
+      </div>
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>

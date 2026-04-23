@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc *)",
+      "Bash(npm run *)",
+      "Bash(kill %1)",
+      "Bash(pkill -f \"vite dev\")",
+      "Bash(npx convex *)",
+      "WebFetch(domain:labs.convex.dev)"
+    ]
+  }
+}
