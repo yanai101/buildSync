@@ -14,6 +14,7 @@ import { Route as StagesRouteImport } from './routes/stages'
 import { Route as SetupRouteImport } from './routes/setup'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as QuotesRouteImport } from './routes/quotes'
+import { Route as ProjectsRouteImport } from './routes/projects'
 import { Route as PhotosRouteImport } from './routes/photos'
 import { Route as NotesRouteImport } from './routes/notes'
 import { Route as LandingRouteImport } from './routes/landing'
@@ -46,6 +47,11 @@ const RegisterRoute = RegisterRouteImport.update({
 const QuotesRoute = QuotesRouteImport.update({
   id: '/quotes',
   path: '/quotes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProjectsRoute = ProjectsRouteImport.update({
+  id: '/projects',
+  path: '/projects',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PhotosRoute = PhotosRouteImport.update({
@@ -98,6 +104,7 @@ export interface FileRoutesByFullPath {
   '/landing': typeof LandingRoute
   '/notes': typeof NotesRoute
   '/photos': typeof PhotosRoute
+  '/projects': typeof ProjectsRoute
   '/quotes': typeof QuotesRoute
   '/register': typeof RegisterRoute
   '/setup': typeof SetupRoute
@@ -113,6 +120,7 @@ export interface FileRoutesByTo {
   '/landing': typeof LandingRoute
   '/notes': typeof NotesRoute
   '/photos': typeof PhotosRoute
+  '/projects': typeof ProjectsRoute
   '/quotes': typeof QuotesRoute
   '/register': typeof RegisterRoute
   '/setup': typeof SetupRoute
@@ -129,6 +137,7 @@ export interface FileRoutesById {
   '/landing': typeof LandingRoute
   '/notes': typeof NotesRoute
   '/photos': typeof PhotosRoute
+  '/projects': typeof ProjectsRoute
   '/quotes': typeof QuotesRoute
   '/register': typeof RegisterRoute
   '/setup': typeof SetupRoute
@@ -146,6 +155,7 @@ export interface FileRouteTypes {
     | '/landing'
     | '/notes'
     | '/photos'
+    | '/projects'
     | '/quotes'
     | '/register'
     | '/setup'
@@ -161,6 +171,7 @@ export interface FileRouteTypes {
     | '/landing'
     | '/notes'
     | '/photos'
+    | '/projects'
     | '/quotes'
     | '/register'
     | '/setup'
@@ -176,6 +187,7 @@ export interface FileRouteTypes {
     | '/landing'
     | '/notes'
     | '/photos'
+    | '/projects'
     | '/quotes'
     | '/register'
     | '/setup'
@@ -192,6 +204,7 @@ export interface RootRouteChildren {
   LandingRoute: typeof LandingRoute
   NotesRoute: typeof NotesRoute
   PhotosRoute: typeof PhotosRoute
+  ProjectsRoute: typeof ProjectsRoute
   QuotesRoute: typeof QuotesRoute
   RegisterRoute: typeof RegisterRoute
   SetupRoute: typeof SetupRoute
@@ -234,6 +247,13 @@ declare module '@tanstack/react-router' {
       path: '/quotes'
       fullPath: '/quotes'
       preLoaderRoute: typeof QuotesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/projects': {
+      id: '/projects'
+      path: '/projects'
+      fullPath: '/projects'
+      preLoaderRoute: typeof ProjectsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/photos': {
@@ -304,6 +324,7 @@ const rootRouteChildren: RootRouteChildren = {
   LandingRoute: LandingRoute,
   NotesRoute: NotesRoute,
   PhotosRoute: PhotosRoute,
+  ProjectsRoute: ProjectsRoute,
   QuotesRoute: QuotesRoute,
   RegisterRoute: RegisterRoute,
   SetupRoute: SetupRoute,

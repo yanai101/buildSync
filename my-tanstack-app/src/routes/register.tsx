@@ -128,7 +128,7 @@ function RegisterPage() {
           </form>
 
           <p style={{ textAlign: 'center', marginTop: 28, fontSize: 13, color: 'var(--text3)' }}>
-            יש לך כבר חשבון? <Link to="/login" style={{ color: 'var(--accent)', fontWeight: 600, textDecoration: 'none' }}>התחבר כאן</Link>
+            יש לך כבר חשבון? <Link to="/landing" style={{ color: 'var(--accent)', fontWeight: 600, textDecoration: 'none' }}>התחבר כאן</Link>
           </p>
           <p style={{ textAlign: 'center', marginTop: 12, fontSize: 12, color: 'var(--text3)' }}>
             מנהל עבודה, מפקח או קבלן? יש לבקש מבעל הפרויקט לצרף אותך.

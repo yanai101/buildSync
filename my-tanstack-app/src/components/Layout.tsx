@@ -4,9 +4,11 @@ import * as React from 'react'
 import { Link, useRouterState, Outlet } from '@tanstack/react-router'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Icon } from './Shared'
+import { useCurrentProject } from '~/hooks/useCurrentProject'
 
 export const NAV = [
   { id: "/",              label: "לוח בקרה",    icon: "home",      section: "ראשי" },
+  { id: "/projects",      label: "פרויקטים",    icon: "layers",    section: "ראשי" },
   { id: "/setup",         label: "הגדרות בית",  icon: "settings",  section: "ראשי" },
   { id: "/stages",        label: "שלבי בנייה", icon: "layers",    section: "ניהול" },
   { id: "/contractors",   label: "קבלנים",     icon: "users",     section: "ניהול" },
@@ -21,6 +23,7 @@ export const NAV = [
 
 export const PAGE_TITLES: Record<string, string> = {
   "/": "לוח בקרה",
+  "/projects": "בחירת פרויקט",
   "/setup": "הגדרות בית",
   "/stages": "שלבי בנייה",
   "/contractors": "ניהול קבלנים",
@@ -45,6 +48,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const routerState = useRouterState()
   const currentPath = routerState.location.pathname
   const [tweaksOpen, setTweaksOpen] = React.useState(false)
+  const { project, hasMultipleProjects } = useCurrentProject()
 
   // group nav sections
   const sections = Array.from(new Set(NAV.map(n => n.section)))
@@ -85,13 +89,15 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         ))}
 
         <div className="sidebar-footer">
-          <div className="sidebar-project">
+          <Link to={hasMultipleProjects ? "/projects" : "/"} className="sidebar-project" style={{ textDecoration: "none" }}>
             <div className="sidebar-project-dot" />
             <div>
-              <div className="sidebar-project-name">בית רוזנברג</div>
-              <div className="sidebar-project-sub">נהריה · בביצוע</div>
+              <div className="sidebar-project-name">{project?.name || "ללא פרויקט"}</div>
+              <div className="sidebar-project-sub">
+                {project ? `${project.address} · ${project.currentStageName || 'בביצוע'}` : 'בחר פרויקט'}
+              </div>
             </div>
-          </div>
+          </Link>
         </div>
       </nav>
 
@@ -104,6 +110,26 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             </div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            {hasMultipleProjects ? (
+              <Link
+                to="/projects"
+                style={{
+                  textDecoration: "none",
+                  border: "1px solid var(--border)",
+                  borderRadius: 10,
+                  padding: "8px 12px",
+                  fontSize: 13,
+                  color: "var(--text2)",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                  background: "var(--surface)",
+                }}
+              >
+                <Icon n="layers" s={14} />
+                <span>{project?.name || "בחירת פרויקט"}</span>
+              </Link>
+            ) : null}
             <div style={{ fontSize: 12, color: "var(--text3)", display: "flex", alignItems: "center", gap: 4 }}>
               <Icon n="clock" s={12} c="var(--text3)" />
               <span>עודכן: היום, 09:45</span>
