@@ -1,0 +1,21 @@
+{
+  "projectName": "build-flow",
+  "mode": "file-router",
+  "typescript": true,
+  "packageManager": "npm",
+  "tailwind": true,
+  "addOnOptions": {},
+  "git": true,
+  "version": 1,
+  "framework": "react-cra",
+  "chosenAddOns": [
+    "biome",
+    "netlify",
+    "convex",
+    "shadcn",
+    "t3env",
+    "better-auth",
+    "tanstack-query",
+    "events"
+  ]
+}

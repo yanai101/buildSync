@@ -1,0 +1,126 @@
+{
+	"app": {
+		"name": "BuildFlow",
+		"loading": "Loading...",
+		"offline": "You are offline"
+	},
+	"auth": {
+		"loginTitle": "Login",
+		"loginSubtitle": "Quick access to your build control center",
+		"loginCta": "Login",
+		"continueToApp": "Continue to app",
+		"signUpCta": "Sign up",
+		"switchToSignUp": "No account? Sign up",
+		"switchToLogin": "Have an account? Sign in",
+		"email": "Email",
+		"password": "Password",
+		"name": "Name",
+		"genericError": "Something went wrong, please try again",
+		"logout": "Logout"
+	},
+	"onboarding": {
+		"title": "Create New Project",
+		"subtitle": "Quick wizard to start your project",
+		"projectName": "Project name",
+		"region": "Region",
+		"buildType": "Build type",
+		"sqm": "SQM",
+		"finishLevel": "Finish level",
+		"targetBudget": "Target budget",
+		"submit": "Create project",
+		"buildTypeOptions": {
+			"singleStory": "Single story",
+			"twoStory": "Two story",
+			"renovation": "Renovation"
+		},
+		"finishLevelOptions": {
+			"basic": "Basic",
+			"standard": "Standard",
+			"high": "High"
+		},
+		"validationError": "Please fill name, region and valid sqm",
+		"createError": "Project creation failed, please try again"
+	},
+	"nav": {
+		"home": "Home",
+		"budget": "Budget",
+		"suppliers": "Suppliers",
+		"payments": "Payments",
+		"stages": "Stages",
+		"files": "Files"
+	},
+	"projects": {
+		"title": "Switch Project",
+		"subtitle": "Choose which project you want to load right now.",
+		"singleProjectHint": "This user only has one project right now.",
+		"current": "Current",
+		"activeProject": "Already selected",
+		"switchAction": "Switch to this project",
+		"switchPageAction": "All projects",
+		"sqm": "sqm"
+	},
+	"home": {
+		"title": "Dashboard",
+		"remainingBudget": "Budget remaining",
+		"overruns": "Top overruns",
+		"currentStage": "Current stage",
+		"nextPayment": "Next payment",
+		"openTasks": "Open tasks"
+	},
+	"budget": {
+		"title": "Budget",
+		"addExpense": "Add expense",
+		"planned": "Planned",
+		"actual": "Actual",
+		"status": "Status",
+		"categoryDetails": "Category details",
+		"amount": "Amount",
+		"date": "Date",
+		"note": "Note",
+		"noProject": "No active project found",
+		"createProjectFirst": "Create a project first to manage your budget"
+	},
+	"suppliers": {
+		"title": "Suppliers",
+		"searchPlaceholder": "Search supplier",
+		"profile": "Supplier profile",
+		"addSupplier": "Add supplier",
+		"removeSupplier": "Remove supplier",
+		"name": "Supplier name",
+		"trade": "Trade",
+		"phone": "Phone",
+		"email": "Email",
+		"agreedAmount": "Agreed amount",
+		"addPayment": "Add payment",
+		"filters": {
+			"all": "All",
+			"active": "Active",
+			"inactive": "Inactive"
+		}
+	},
+	"payments": {
+		"title": "Payments",
+		"markPaid": "Mark paid",
+		"reschedule": "Reschedule",
+		"addPayment": "Add payment",
+		"amount": "Amount",
+		"dueDate": "Due date",
+		"status": {
+			"planned": "Planned",
+			"paid": "Paid",
+			"overdue": "Overdue"
+		}
+	},
+	"stages": {
+		"title": "Build stages",
+		"details": "Stage details"
+	},
+	"files": {
+		"title": "Files",
+		"upload": "Upload file"
+	},
+	"common": {
+		"placeholder": "Coming soon",
+		"back": "Back"
+	}
+}

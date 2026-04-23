@@ -1,0 +1,126 @@
+{
+	"app": {
+		"name": "BuildFlow",
+		"loading": "טוען...",
+		"offline": "אין חיבור לאינטרנט"
+	},
+	"auth": {
+		"loginTitle": "התחברות",
+		"loginSubtitle": "כניסה מהירה לניהול הבנייה",
+		"loginCta": "התחברו",
+		"continueToApp": "המשך לאפליקציה",
+		"signUpCta": "הרשמה",
+		"switchToSignUp": "אין לך חשבון? הרשמה",
+		"switchToLogin": "יש לך חשבון? התחברות",
+		"email": "אימייל",
+		"password": "סיסמה",
+		"name": "שם",
+		"genericError": "אירעה שגיאה, נסו שוב",
+		"logout": "התנתקות"
+	},
+	"onboarding": {
+		"title": "פתיחת פרויקט חדש",
+		"subtitle": "אשף קצר להקמת הפרויקט",
+		"projectName": "שם פרויקט",
+		"region": "אזור",
+		"buildType": "סוג בנייה",
+		"sqm": "מ״ר",
+		"finishLevel": "רמת גמר",
+		"targetBudget": "תקציב יעד",
+		"submit": "צור פרויקט",
+		"buildTypeOptions": {
+			"singleStory": "קומה אחת",
+			"twoStory": "שתי קומות",
+			"renovation": "שיפוץ"
+		},
+		"finishLevelOptions": {
+			"basic": "בסיסי",
+			"standard": "סטנדרטי",
+			"high": "גבוה"
+		},
+		"validationError": "יש למלא שם, אזור ושטח תקין",
+		"createError": "יצירת פרויקט נכשלה, נסו שוב"
+	},
+	"nav": {
+		"home": "בית",
+		"budget": "תקציב",
+		"suppliers": "ספקים",
+		"payments": "תשלומים",
+		"stages": "שלבים",
+		"files": "קבצים"
+	},
+	"projects": {
+		"title": "החלפת פרויקט",
+		"subtitle": "בחרו איזה פרויקט לטעון כרגע.",
+		"singleProjectHint": "כרגע יש למשתמש פרויקט אחד בלבד.",
+		"current": "נוכחי",
+		"activeProject": "זה הפרויקט הפעיל",
+		"switchAction": "מעבר לפרויקט הזה",
+		"switchPageAction": "כל הפרויקטים",
+		"sqm": "מ\"ר"
+	},
+	"home": {
+		"title": "דשבורד",
+		"remainingBudget": "כמה נשאר",
+		"overruns": "חריגות מובילות",
+		"currentStage": "שלב נוכחי",
+		"nextPayment": "תשלום קרוב",
+		"openTasks": "משימות פתוחות"
+	},
+	"budget": {
+		"title": "תקציב",
+		"addExpense": "הוספת הוצאה",
+		"planned": "מתוכנן",
+		"actual": "בפועל",
+		"status": "סטטוס",
+		"categoryDetails": "פרטי קטגוריה",
+		"amount": "סכום",
+		"date": "תאריך",
+		"note": "הערה",
+		"noProject": "לא נמצא פרויקט פעיל",
+		"createProjectFirst": "פתחו פרויקט חדש כדי להתחיל לנהל תקציב"
+	},
+	"suppliers": {
+		"title": "ספקים",
+		"searchPlaceholder": "חיפוש ספק",
+		"profile": "כרטיס ספק",
+		"addSupplier": "הוספת ספק",
+		"removeSupplier": "מחיקת ספק",
+		"name": "שם ספק",
+		"trade": "תחום",
+		"phone": "טלפון",
+		"email": "אימייל",
+		"agreedAmount": "סכום מוסכם",
+		"addPayment": "הוספת תשלום",
+		"filters": {
+			"all": "הכל",
+			"active": "פעיל",
+			"inactive": "לא פעיל"
+		}
+	},
+	"payments": {
+		"title": "תשלומים",
+		"markPaid": "סמן כשולם",
+		"reschedule": "דחה תשלום",
+		"addPayment": "הוספת תשלום",
+		"amount": "סכום",
+		"dueDate": "תאריך יעד",
+		"status": {
+			"planned": "מתוכנן",
+			"paid": "שולם",
+			"overdue": "באיחור"
+		}
+	},
+	"stages": {
+		"title": "שלבי בנייה",
+		"details": "פרטי שלב"
+	},
+	"files": {
+		"title": "קבצים",
+		"upload": "העלאת קובץ"
+	},
+	"common": {
+		"placeholder": "בקרוב",
+		"back": "חזרה"
+	}
+}
