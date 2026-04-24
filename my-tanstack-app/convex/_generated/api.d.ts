@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as _lib_activity from "../_lib/activity.js";
 import type * as auth from "../auth.js";
 import type * as budget from "../budget.js";
 import type * as dashboard from "../dashboard.js";
@@ -30,6 +31,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  "_lib/activity": typeof _lib_activity;
   auth: typeof auth;
   budget: typeof budget;
   dashboard: typeof dashboard;

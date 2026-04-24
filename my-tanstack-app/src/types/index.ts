@@ -4,6 +4,8 @@ export interface Task {
   done: boolean;
   assignee: string;
   required?: boolean;
+  paymentRequired?: boolean;
+  paymentAmount?: number;
 }
 
 export interface Milestone {
@@ -13,15 +15,18 @@ export interface Milestone {
   taskIds: number[];
   amount: number;
   status: string;
+  triggerText?: string;
+  paid?: boolean;
   supervisorApproval?: { by: string; at: string } | null;
-  extraProofPhotos?: number;
   paidAt?: string | null;
+  receipts?: string[];
 }
 
 export interface Payment {
   amount: number;
   status: string;
   paidAt: string | null;
+  receipts?: string[];
   milestones?: Milestone[];
 }
 
@@ -37,7 +42,6 @@ export interface Stage {
   tasks: Task[];
   supervisorApproval?: { by: string; at: string } | null;
   payment?: Payment;
-  extraProofPhotos?: number;
 }
 
 export interface Project {
@@ -56,7 +60,8 @@ export interface Project {
 }
 
 export interface Contractor {
-  id: number;
+  id: number | string;
+  _id?: string;
   name: string;
   company: string;
   role: string;
@@ -68,6 +73,9 @@ export interface Contractor {
   paid: number;
   avatar: string;
   color: string;
+  avatarLetter?: string;
+  avatarColor?: string;
+  milestones?: Milestone[];
 }
 
 export interface Room {

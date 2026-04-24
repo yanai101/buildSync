@@ -6,6 +6,10 @@ import { useDataSource } from '../hooks/useDataSource';
 import { useDataMutation } from '../hooks/useDataMutation';
 import { ScreenBoundary } from '../components/ScreenBoundary';
 import { Project, Room } from '../types';
+import { useCurrentProject } from '../hooks/useCurrentProject';
+import { DEFAULT_ROOMS } from '../utils/mockData';
+import html2pdf from 'html2pdf.js';
+import { BOQPrintTemplate } from '../components/BOQPrintTemplate';
 
 // ── CONSTANTS & CATALOG ───────────────────────────────────────────────────────
 
@@ -112,13 +116,17 @@ const AddItemWidget = ({roomUid, roomType, existingItems, onAdd}: {roomUid: stri
 // ── BOQ WIZARD SCREEN ───────────────────────────────────────────────────────
 
 export const BOQWizardScreen = () => {
-  const { data: project, loading, error, refetch } = useDataSource<Project>('project');
+  const { project: currentProject } = useCurrentProject();
+  const projectWithRooms = currentProject ? { ...currentProject, rooms: (currentProject as any).rooms || DEFAULT_ROOMS } : null;
+  const { data: project, loading, error, refetch } = useDataSource<Project>('project', { db: projectWithRooms as any });
   const { mutate } = useDataMutation('boq');
   
   const [step, setStep] = React.useState(0);
   const [allItems, setAllItems] = React.useState<any>({});
   const [view, setView] = React.useState<'wizard' | 'summary'>('wizard');
   const [saving, setSaving] = React.useState(false);
+  const [exporting, setExporting] = React.useState(false);
+  const printRef = React.useRef<HTMLDivElement>(null);
   const [feedback, setFeedback] = React.useState<{ title: string; message: string; type: 'success' | 'error'; redirect?: string } | null>(null);
 
   React.useEffect(() => {
@@ -179,6 +187,26 @@ export const BOQWizardScreen = () => {
     if (redirect) window.location.href = redirect;
   };
 
+  const handleExportPDF = async () => {
+    if (!printRef.current) return;
+    setExporting(true);
+    try {
+      const element = printRef.current;
+      const opt = {
+        margin: 0,
+        filename: `BOQ_Summary_${project?.name || 'project'}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true, logging: false },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      };
+      await html2pdf().set(opt).from(element).save();
+    } catch (err) {
+      console.error('PDF Export Error:', err);
+    } finally {
+      setExporting(false);
+    }
+  };
+
   if (!project) return <ScreenBoundary loading={loading} error={error} onRetry={refetch}><div/></ScreenBoundary>;
 
   if (view === 'summary') {
@@ -219,6 +247,9 @@ export const BOQWizardScreen = () => {
               <div style={{color:"var(--text3)",fontSize:14,marginTop:4}}>כל הכמויות המאוחדות לפי קטגוריה — מוכן לרכישה</div>
             </div>
             <div style={{display:"flex",gap:12}}>
+              <Btn variant="ghost" onClick={handleExportPDF} disabled={exporting} style={{borderRadius:12,padding:"10px 20px",fontWeight:700,border:"1px solid var(--border)"}}>
+                <Icon n={exporting ? "loader" : "download"} s={16} style={{marginLeft:8}}/> {exporting ? "מייצא..." : "ייצוא PDF"}
+              </Btn>
               <Btn variant="ghost" onClick={() => setView('wizard')} style={{borderRadius:12,padding:"10px 20px",fontWeight:700}}>
                 <Icon n="arrow-right" s={16} style={{marginLeft:8}}/> חזרה לאשף
               </Btn>
@@ -290,6 +321,15 @@ export const BOQWizardScreen = () => {
               onClose={closeFeedback}
             />
           )}
+          <div style={{ position: 'absolute', top: '-9999px', left: '-9999px' }}>
+            <BOQPrintTemplate
+              ref={printRef}
+              project={project as any}
+              itemsGroupedByCategory={aggregated}
+              rooms={rooms}
+              title="ריכוז כמויות כולל (סיכום אשף)"
+            />
+          </div>
         </div>
       </ScreenBoundary>
     );

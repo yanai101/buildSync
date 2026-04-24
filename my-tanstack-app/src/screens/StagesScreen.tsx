@@ -1,24 +1,526 @@
 import React from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Icon, Btn, ProgressBar, Badge } from '../components/Shared';
-import { PaymentGatesPanel, PaymentBadge, computeGates, resolveStatus, ReleasePaymentModal } from '../components/PaymentControl';
+import { motion, AnimatePresence, Reorder } from 'framer-motion';
+import { Icon, Btn, ProgressBar, Badge, Modal, ConfirmDialog } from '../components/Shared';
+import { PaymentGatesPanel, PaymentBadge, computeGates, resolveStatus, aggregateStageStatus, ReleasePaymentModal } from '../components/PaymentControl';
 import { Stage, Milestone } from '../types';
 import { useDataSource } from '../hooks/useDataSource';
 import { useDataMutation } from '../hooks/useDataMutation';
 import { useCurrentProject } from '../hooks/useCurrentProject';
-import { useQuery } from 'convex/react';
+import { useMutation, useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { ScreenBoundary } from '../components/ScreenBoundary';
+import { STAGES, fmtMoney } from '../utils/mockData';
+
+type StageGuideTask = {
+  legacyId: number;
+  name: string;
+  assignee: string;
+  required: boolean;
+  paymentRequired: boolean;
+  paymentAmount: number;
+};
+
+type StageGuideMilestone = {
+  legacyKey: string;
+  name: string;
+  pct: number;
+  taskLegacyIds: number[];
+};
+
+type StageGuideStage = {
+  legacyId: number;
+  name: string;
+  icon?: string;
+  contractorRole?: string;
+  startDate: string;
+  endDate: string;
+  amount: number;
+  paymentAtEnd?: boolean;
+  tasks: StageGuideTask[];
+  milestones: StageGuideMilestone[];
+};
+
+const makeStageTemplate = (): StageGuideStage[] => STAGES.map((stage: Stage) => ({
+  legacyId: Number(stage.id),
+  name: stage.name,
+  icon: stage.icon,
+  contractorRole: stage.contractor,
+  startDate: stage.start,
+  endDate: stage.end,
+  amount: stage.payment?.amount ?? 0,
+  tasks: (stage.tasks || []).map(task => ({
+    legacyId: Number(task.id),
+    name: task.name,
+    assignee: task.assignee,
+    required: task.required !== false,
+    paymentRequired: Boolean(task.paymentRequired),
+    paymentAmount: Number(task.paymentAmount || 0),
+  })),
+  milestones: [],
+}));
+
+const nextLegacyId = (items: { legacyId: number }[], fallback: number) =>
+  Math.max(fallback, ...items.map(item => item.legacyId)) + 1;
+
+const hasStageStarted = (stage: Stage) =>
+  stage.status !== 'pending' ||
+  stage.progress > 0 ||
+  (stage.tasks || []).some(task => task.done) ||
+  Boolean(stage.payment && stage.payment.status !== 'draft');
+
+const ScrollShadow = ({
+  children,
+  style,
+}: {
+  children: React.ReactNode;
+  style?: React.CSSProperties;
+}) => {
+  const ref = React.useRef<HTMLDivElement | null>(null);
+  const [edge, setEdge] = React.useState({ top: false, bottom: false });
+
+  const updateEdge = React.useCallback(() => {
+    const el = ref.current;
+    if (!el) return;
+    const maxScroll = el.scrollHeight - el.clientHeight;
+    setEdge({
+      top: el.scrollTop > 2,
+      bottom: maxScroll - el.scrollTop > 2,
+    });
+  }, []);
+
+  React.useEffect(() => {
+    updateEdge();
+  }, [children, updateEdge]);
+
+  return (
+    <div style={{position:"relative",height:"100%",minHeight:0,...style}}>
+      {edge.top && (
+        <div style={{position:"absolute",top:0,left:0,right:0,height:18,background:"linear-gradient(to bottom, rgba(24,24,27,.16), rgba(24,24,27,0))",pointerEvents:"none",zIndex:2,borderTopLeftRadius:8,borderTopRightRadius:8}}/>
+      )}
+      <div
+        ref={ref}
+        onScroll={updateEdge}
+        style={{height:"100%",overflowY:"auto",paddingInlineEnd:4,scrollbarGutter:"stable"}}
+      >
+        {children}
+      </div>
+      {edge.bottom && (
+        <div style={{position:"absolute",bottom:0,left:0,right:0,height:18,background:"linear-gradient(to top, rgba(24,24,27,.16), rgba(24,24,27,0))",pointerEvents:"none",zIndex:2,borderBottomLeftRadius:8,borderBottomRightRadius:8}}/>
+      )}
+    </div>
+  );
+};
+
+const StageCreationGuide = ({
+  onClose,
+  onCreate,
+  saving,
+  projectId,
+}: {
+  onClose: () => void;
+  onCreate: (stages: StageGuideStage[]) => Promise<void>;
+  saving: boolean;
+  projectId: any;
+}) => {
+  const contractors = useQuery(api.queries.listContractors, { projectId });
+  const [draft, setDraft] = React.useState<StageGuideStage[]>(() => makeStageTemplate());
+  const [selected, setSelected] = React.useState(0);
+
+  const current = draft[selected] ?? draft[0];
+  const milestoneTotal = current?.milestones.reduce((sum, milestone) => sum + Number(milestone.pct || 0), 0) ?? 0;
+  const validation = React.useMemo(() => {
+    if (draft.length === 0) return 'צריך לפחות שלב אחד';
+    for (const stage of draft) {
+      if (!stage.name.trim()) return 'לכל שלב חייב להיות שם';
+      if (stage.tasks.length === 0) return `בשלב "${stage.name || 'ללא שם'}" חייבת להיות לפחות משימה אחת`;
+      const taskIds = new Set(stage.tasks.map(task => task.legacyId));
+      if (stage.milestones.some(milestone => milestone.taskLegacyIds.some(id => !taskIds.has(id)))) {
+        return `יש אבן דרך בשלב "${stage.name}" שמחוברת למשימה שלא קיימת`;
+      }
+      if (stage.tasks.some(task => task.paymentRequired && Number(task.paymentAmount || 0) <= 0)) {
+        return `יש משימה בתשלום בשלב "${stage.name}" ללא סכום תקין`;
+      }
+      if (!stage.paymentAtEnd && stage.amount > 0) {
+        const paidTasks = stage.tasks.filter(t => t.paymentRequired);
+        if (paidTasks.length > 0) {
+          const sum = paidTasks.reduce((acc, t) => acc + Number(t.paymentAmount || 0), 0);
+          if (sum !== stage.amount) {
+            return `בשלב "${stage.name}", סך התשלומים למשימות (₪${sum}) לא תואם לסכום השלב (₪${stage.amount})`;
+          }
+        }
+      }
+    }
+    return null;
+  }, [draft]);
+
+  const updateStage = (patch: Partial<StageGuideStage>) => {
+    setDraft(prev => prev.map((stage, index) => index === selected ? { ...stage, ...patch } : stage));
+  };
+
+  const updateTask = (taskIndex: number, patch: Partial<StageGuideTask>) => {
+    setDraft(prev => prev.map((stage, index) => {
+      if (index !== selected) return stage;
+      return {
+        ...stage,
+        tasks: stage.tasks.map((task, i) => i === taskIndex ? { ...task, ...patch } : task),
+      };
+    }));
+  };
+
+  const updateMilestone = (milestoneIndex: number, patch: Partial<StageGuideMilestone>) => {
+    setDraft(prev => prev.map((stage, index) => {
+      if (index !== selected) return stage;
+      return {
+        ...stage,
+        milestones: stage.milestones.map((milestone, i) => i === milestoneIndex ? { ...milestone, ...patch } : milestone),
+      };
+    }));
+  };
+
+
+  const removeStage = (idx: number) => {
+    setDraft(prev => prev.filter((_, index) => index !== idx));
+    if (selected >= idx) setSelected(Math.max(0, selected - 1));
+  };
+
+  const addTask = () => {
+    if (!current) return;
+    updateStage({
+      tasks: [
+        ...current.tasks,
+        {
+          legacyId: nextLegacyId(current.tasks, current.legacyId * 10),
+          name: 'משימה חדשה',
+          assignee: current.contractorRole || 'לא הוגדר',
+          required: true,
+          paymentRequired: false,
+          paymentAmount: 0,
+        },
+      ],
+    });
+  };
+
+  const removeTask = (taskIndex: number) => {
+    if (!current) return;
+    const removed = current.tasks[taskIndex];
+    updateStage({
+      tasks: current.tasks.filter((_, index) => index !== taskIndex),
+      milestones: current.milestones.map(milestone => ({
+        ...milestone,
+        taskLegacyIds: milestone.taskLegacyIds.filter(id => id !== removed.legacyId),
+      })),
+    });
+  };
+
+  const addMilestone = () => {
+    if (!current) return;
+    updateStage({
+      milestones: [
+        ...current.milestones,
+        { legacyKey: `m-${Date.now()}`, name: 'אבן דרך חדשה', pct: 0, taskLegacyIds: [] },
+      ],
+    });
+  };
+
+  const toggleMilestoneTask = (milestoneIndex: number, taskId: number) => {
+    const milestone = current.milestones[milestoneIndex];
+    const hasTask = milestone.taskLegacyIds.includes(taskId);
+    updateMilestone(milestoneIndex, {
+      taskLegacyIds: hasTask
+        ? milestone.taskLegacyIds.filter(id => id !== taskId)
+        : [...milestone.taskLegacyIds, taskId],
+    });
+  };
+
+  const addStage = () => {
+    const legacyId = nextLegacyId(draft, 0);
+    setDraft(prev => [
+      ...prev,
+      {
+        legacyId,
+        name: 'שלב חדש',
+        icon: '📌',
+        contractorRole: 'לא הוגדר',
+        startDate: '',
+        endDate: '',
+        amount: 0,
+        paymentAtEnd: false,
+        tasks: [{
+          legacyId: legacyId * 10 + 1,
+          name: 'משימה ראשונה',
+          assignee: 'לא הוגדר',
+          required: true,
+          paymentRequired: false,
+          paymentAmount: 0,
+        }],
+        milestones: [],
+      },
+    ]);
+    setSelected(draft.length);
+  };
+
+  return (
+    <Modal title="יצירת שלבי בנייה מתבנית" onClose={onClose} width={1040}>
+      <div style={{display:"grid",gridTemplateColumns:"280px minmax(0,1fr)",gap:18,height:"min(72vh, 720px)",overflow:"hidden"}}>
+        <div style={{display:"flex",flexDirection:"column",gap:10,minHeight:0}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <div style={{fontSize:13,fontWeight:800}}>תבנית מאסטר</div>
+            <Btn size="sm" variant="ghost" onClick={addStage}><Icon n="plus" s={12}/> שלב</Btn>
+          </div>
+          <ScrollShadow style={{flex:1}}>
+            <Reorder.Group
+              axis="y"
+              values={draft}
+              onReorder={(nextDraft) => {
+                const currentStage = draft[selected];
+                setDraft(nextDraft);
+                const nextIndex = nextDraft.findIndex(s => s.legacyId === currentStage.legacyId);
+                if (nextIndex !== -1) setSelected(nextIndex);
+              }}
+              style={{display:"flex",flexDirection:"column",gap:8,paddingBlock:2,listStyle:"none",padding:0}}
+            >
+              {draft.map((stage, index) => (
+                <Reorder.Item
+                  key={stage.legacyId}
+                  value={stage}
+                  onClick={() => setSelected(index)}
+                  style={{
+                    border:"1px solid",
+                    borderColor:index===selected?"var(--accent)":"var(--border)",
+                    background:index===selected?"var(--accent-light)":"#fff",
+                    borderRadius:8,
+                    padding:"10px 12px",
+                    textAlign:"right",
+                    cursor:"grab",
+                    fontFamily:"'Heebo',sans-serif",
+                    position:"relative",
+                  }}
+                >
+                  <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                    <span>{stage.icon || "•"}</span>
+                    <span style={{fontSize:13,fontWeight:700,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{stage.name}</span>
+                    <div style={{marginInlineStart:"auto",display:"flex",alignItems:"center",gap:4}}>
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); removeStage(index); }}
+                        style={{background:"none",border:"none",padding:4,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}
+                        title="מחק שלב"
+                      >
+                        <Icon n="trash" s={14} c="var(--danger)"/>
+                      </button>
+                      <Icon n="menu" s={14} c="var(--text3)"/>
+                    </div>
+                  </div>
+                  <div style={{fontSize:11,color:"var(--text3)",marginTop:4}}>{stage.tasks.length} משימות · {fmtMoney(stage.amount)}</div>
+                </Reorder.Item>
+              ))}
+            </Reorder.Group>
+          </ScrollShadow>
+        </div>
+
+        {current && (
+          <ScrollShadow>
+          <div style={{paddingInlineEnd:4,paddingBlock:2}}>
+            <div style={{display:"flex",justifyContent:"space-between",gap:10,alignItems:"center",marginBottom:14}}>
+              <div>
+                <div style={{fontSize:18,fontWeight:800}}>עריכת שלב</div>
+                <div style={{fontSize:12,color:"var(--text3)"}}>כל השלבים ייווצרו כחדשים, עם משימות לא מסומנות ותשלום במצב טיוטה.</div>
+              </div>
+            </div>
+
+            <div className="card" style={{padding:16,marginBottom:14}}>
+              <div style={{display:"grid",gridTemplateColumns:"80px 1.4fr 1fr 1fr 1fr",gap:10}}>
+                <label>
+                  <div style={{fontSize:11,color:"var(--text2)",marginBottom:3}}>אייקון</div>
+                  <input className="bp-input" value={current.icon || ""} onChange={e=>updateStage({icon:e.target.value})}/>
+                </label>
+                <label>
+                  <div style={{fontSize:11,color:"var(--text2)",marginBottom:3}}>שם שלב</div>
+                  <input className="bp-input" value={current.name} onChange={e=>updateStage({name:e.target.value})}/>
+                </label>
+                <label>
+                  <div style={{fontSize:11,color:"var(--text2)",marginBottom:3}}>קבלן / אחראי</div>
+                  <select className="bp-input" value={current.contractorRole || ""} onChange={e=>updateStage({contractorRole:e.target.value})}>
+                    <option value="">לא הוגדר</option>
+                    <option value="מפקח">מפקח</option>
+                    <option value="בעל הבית">בעל הבית</option>
+                    <optgroup label="קבלנים בפרויקט">
+                      {contractors?.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                    </optgroup>
+                  </select>
+                </label>
+                <label>
+                  <div style={{fontSize:11,color:"var(--text2)",marginBottom:3}}>התחלה</div>
+                  <input className="bp-input" type="date" value={current.startDate} onChange={e=>updateStage({startDate:e.target.value})}/>
+                </label>
+                <label>
+                  <div style={{fontSize:11,color:"var(--text2)",marginBottom:3}}>סיום</div>
+                  <input className="bp-input" type="date" value={current.endDate} onChange={e=>updateStage({endDate:e.target.value})}/>
+                </label>
+              </div>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",marginTop:10}}>
+                <div style={{display:"flex",alignItems:"center",gap:16}}>
+                  <label style={{display:"block",maxWidth:180}}>
+                    <div style={{fontSize:11,color:"var(--text2)",marginBottom:3}}>סכום תשלום גלובלי</div>
+                    <input className="bp-input" type="number" value={current.amount} onChange={e=>updateStage({amount:Number(e.target.value)})}/>
+                  </label>
+                  <label style={{display:"flex",alignItems:"center",gap:8,fontSize:13,cursor:"pointer",marginTop:14}}>
+                    <input type="checkbox" checked={current.paymentAtEnd} onChange={e=>{
+                      const isGlobal = e.target.checked;
+                      updateStage({ paymentAtEnd: isGlobal });
+                    }}/>
+                    תשלום גלובלי בסיום השלב
+                  </label>
+                </div>
+                <Btn size="sm" variant="ghost" onClick={()=>removeStage(selected)} disabled={draft.length<=1} style={{color:"var(--danger)"}}>
+                  <Icon n="trash" s={14}/> הסר שלב
+                </Btn>
+              </div>
+            </div>
+
+            <div className="card" style={{padding:16,marginBottom:14}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+                <div style={{fontSize:13,fontWeight:800}}>משימות</div>
+                <Btn size="sm" variant="ghost" onClick={addTask}><Icon n="plus" s={12}/> משימה</Btn>
+              </div>
+              <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                {current.tasks.map((task, taskIndex) => (
+                  <div key={task.legacyId} style={{display:"grid",gridTemplateColumns:current.paymentAtEnd ? "1.5fr 1fr 82px 70px" : "1.5fr 1fr 82px 130px 120px 70px",gap:8,alignItems:"center"}}>
+                    <input className="bp-input" value={task.name} onChange={e=>updateTask(taskIndex,{name:e.target.value})}/>
+                    <select className="bp-input" value={task.assignee} onChange={e=>updateTask(taskIndex,{assignee:e.target.value})}>
+                      <option value="">לא הוגדר</option>
+                      <option value="מפקח">מפקח</option>
+                      <option value="בעל הבית">בעל הבית</option>
+                      <optgroup label="קבלנים">
+                        {contractors?.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                      </optgroup>
+                    </select>
+                    <label style={{fontSize:12,color:"var(--text2)",display:"flex",gap:6,alignItems:"center"}}>
+                      <input type="checkbox" checked={task.required} onChange={e=>updateTask(taskIndex,{required:e.target.checked})}/>
+                      חובה
+                    </label>
+                    {!current.paymentAtEnd && (
+                      <>
+                        <label style={{fontSize:12,color:"var(--text2)",display:"flex",gap:6,alignItems:"center"}}>
+                          <input
+                            type="checkbox"
+                            checked={task.paymentRequired}
+                            onChange={e=>updateTask(taskIndex,{
+                              paymentRequired:e.target.checked,
+                              paymentAmount:e.target.checked ? task.paymentAmount : 0,
+                            })}
+                          />
+                          תשלום בסיום
+                        </label>
+                        <input
+                          className="bp-input"
+                          type="number"
+                          min={0}
+                          placeholder="סכום ₪"
+                          value={task.paymentRequired ? task.paymentAmount : ''}
+                          disabled={!task.paymentRequired}
+                          onChange={e=>updateTask(taskIndex,{paymentAmount:Number(e.target.value) || 0})}
+                        />
+                      </>
+                    )}
+                    <Btn size="sm" variant="ghost" onClick={()=>removeTask(taskIndex)}>מחק</Btn>
+                  </div>
+                ))}
+              </div>
+              {!current.paymentAtEnd && current.tasks.some(t => t.paymentRequired) && (
+                <div style={{marginTop: 12}}>
+                  {(() => {
+                    const sum = current.tasks.filter(t => t.paymentRequired).reduce((acc, t) => acc + Number(t.paymentAmount || 0), 0);
+                    if (sum !== current.amount) {
+                      const diff = current.amount - sum;
+                      return (
+                        <div style={{fontSize:12, color:"#991B1B", background:"#FEF2F2", padding:"8px 12px", borderRadius:6, border:"1px solid #F87171"}}>
+                          <div style={{fontWeight:700, marginBottom:2}}>סכום המשימות לא תואם!</div>
+                          <div>סך כל התשלומים במשימות ({fmtMoney(sum)}) {diff > 0 ? "נמוך" : "גבוה"} מהסכום הכולל של השלב ({fmtMoney(current.amount)}). הפרש: {fmtMoney(Math.abs(diff))}</div>
+                        </div>
+                      );
+                    }
+                    return (
+                      <div style={{fontSize:12, color:"#065F46", background:"#D1FAE5", padding:"8px 12px", borderRadius:6, display:"flex", alignItems:"center", gap:6}}>
+                        <Icon n="check" s={14}/>
+                        <span>סך התשלומים למשימות תואם לסכום השלב ({fmtMoney(sum)}).</span>
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+            </div>
+
+            <div className="card" style={{padding:16}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+                <div>
+                  <div style={{fontSize:13,fontWeight:800}}>תשלומים לפי משימות</div>
+                  <div style={{fontSize:11,color:"var(--text3)"}}>
+                    התשלום נפתח רק אחרי שכל משימות השלב הושלמו
+                  </div>
+                </div>
+              </div>
+              <div style={{display:"flex",flexDirection:"column",gap:10}}>
+                {current.paymentAtEnd ? (
+                  <div style={{border:"1px solid #10B981",background:"#F0FDF4",borderRadius:8,padding:"10px 12px",display:"flex",justifyContent:"space-between",gap:12,alignItems:"center"}}>
+                    <span style={{fontSize:13,fontWeight:700}}>תשלום גלובלי עבור סיום שלב: {current.name}</span>
+                    <span style={{fontSize:13,color:"var(--success)",fontWeight:800}}>{fmtMoney(Number(current.amount) || 0)}</span>
+                  </div>
+                ) : current.tasks.filter(task => task.paymentRequired).length ? (
+                  current.tasks.filter(task => task.paymentRequired).map(task => (
+                    <div key={task.legacyId} style={{border:"1px solid var(--border)",borderRadius:8,padding:"10px 12px",display:"flex",justifyContent:"space-between",gap:12,alignItems:"center"}}>
+                      <span style={{fontSize:13,fontWeight:700}}>{task.name}</span>
+                      <span style={{fontSize:13,color:"var(--success)",fontWeight:800}}>{fmtMoney(Number(task.paymentAmount) || 0)}</span>
+                    </div>
+                  ))
+                ) : (
+                  <div style={{fontSize:12,color:"var(--text3)",border:"1px dashed var(--border)",borderRadius:8,padding:12}}>
+                    לא הוגדרו תשלומים למשימות בשלב הזה.
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+          </ScrollShadow>
+        )}
+      </div>
+
+      {validation && <div style={{marginTop:14,color:"var(--danger)",fontSize:13,fontWeight:700}}>{validation}</div>}
+      <div style={{display:"flex",justifyContent:"flex-end",gap:10,marginTop:18}}>
+        <Btn variant="ghost" onClick={onClose} disabled={saving}>ביטול</Btn>
+        <Btn onClick={()=>onCreate(draft)} disabled={saving || Boolean(validation)}>
+          <Icon n="check" s={14}/> {saving ? "יוצר..." : "צור שלבי בנייה"}
+        </Btn>
+      </div>
+    </Modal>
+  );
+};
 
 export const StagesScreen = () => {
   const { projectId } = useCurrentProject();
   const dbStages = useQuery(api.queries.listStages, projectId ? { projectId } : "skip");
+  const project = useQuery(api.queries.getProject, projectId ? { projectId } : "skip");
   const { data: initialData, loading, error, refetch } = useDataSource<Stage[]>('stages', { db: dbStages as any });
   const { mutate } = useDataMutation('stages');
+  const createStagesFromTemplate = useMutation(api.stages.createFromTemplate);
+  const updateStageDetails = useMutation(api.stages.updateStageDetails);
+  const updateStageAdvanced = useMutation(api.stages.updateStageAdvanced);
+  const deleteStageMutation = useMutation(api.stages.deleteStage);
+  const setStagePaymentPaid = useMutation(api.stages.setStagePaymentPaid);
+  const setStageMilestonePaid = useMutation(api.stages.setStageMilestonePaid);
   
   const [stages, setStages] = React.useState<Stage[]>([]);
   const [expanded, setExpanded] = React.useState<number | null>(null);
   const [releaseFor, setReleaseFor] = React.useState<{stage: Stage; milestoneId: string | null; amount: number; milestoneName: string | null} | null>(null);
+  const [guideOpen, setGuideOpen] = React.useState(false);
+  const [savingGuide, setSavingGuide] = React.useState(false);
+  const [editingStage, setEditingStage] = React.useState<Stage | null>(null);
+  const [isAdvancedEdit, setIsAdvancedEdit] = React.useState(false);
+  const [editForm, setEditForm] = React.useState({name:"", contractorRole:"", startDate:"", endDate:"", amount:0, paymentAtEnd:false, tasks:[] as any[]});
+  const [savingEdit, setSavingEdit] = React.useState(false);
+  const [deleteTarget, setDeleteTarget] = React.useState<Stage | null>(null);
+  const [deletingStage, setDeletingStage] = React.useState(false);
+
+  const contractors = useQuery(api.queries.listContractors, projectId ? { projectId } : 'skip');
 
   React.useEffect(() => {
     if (initialData) setStages(initialData);
@@ -29,6 +531,31 @@ export const StagesScreen = () => {
   };
 
   const toggleStage = (id: number) => setExpanded(expanded === id ? null : id);
+
+  const paymentSummary = React.useMemo(() => {
+    const totalPaid = stages.reduce((sum, stage) => {
+      const milestones = stage.payment?.milestones || [];
+      if (milestones.length > 0) {
+        return sum + milestones
+          .filter(milestone => milestone.status === 'paid')
+          .reduce((milestoneSum, milestone) => milestoneSum + milestone.amount, 0);
+      }
+      return sum + (stage.payment?.status === 'paid' ? stage.payment.amount : 0);
+    }, 0);
+    const totalPaymentAmount = stages.reduce((sum, stage) => {
+      const milestones = stage.payment?.milestones || [];
+      if (milestones.length > 0) {
+        return sum + milestones.reduce((milestoneSum, milestone) => milestoneSum + milestone.amount, 0);
+      }
+      return sum + (stage.payment?.amount || 0);
+    }, 0);
+    const projectBudget = project?.budgetTotal || totalPaymentAmount;
+    const paidPct = projectBudget > 0 ? Math.min(100, Math.round((totalPaid / projectBudget) * 100)) : 0;
+    const remaining = Math.max(0, projectBudget - totalPaid);
+    const isOverLimit = projectBudget > 0 && totalPaid >= projectBudget;
+    const isNearLimit = projectBudget > 0 && totalPaid >= projectBudget * 0.9;
+    return { totalPaid, totalPaymentAmount, projectBudget, paidPct, remaining, isNearLimit, isOverLimit };
+  }, [project?.budgetTotal, stages]);
 
   const requestReview = async (stageId: number, dbId?: string) => {
     updateStageState(stageId, s => ({...s, payment: s.payment ? {...s.payment, status: 'review_requested'} : undefined}));
@@ -44,18 +571,12 @@ export const StagesScreen = () => {
     if (dbId) await mutate('update', { id: dbId, patch: { supervisorApprovalBy: 'רון לוי', supervisorApprovalAt: today } });
   };
 
-  const addProofPhoto = async (stageId: number, dbId?: string) => {
-    updateStageState(stageId, s => ({...s, extraProofPhotos: (s.extraProofPhotos||0) + 1}));
-    const s = stages.find(st => st.id === stageId);
-    if (dbId && s) await mutate('update', { id: dbId, patch: { extraProofPhotos: (s.extraProofPhotos||0) + 1 } });
-  };
-
-  const confirmRelease = async () => {
+  const confirmRelease = async (receipts?: string[]) => {
     if (!releaseFor) return;
     const { stage: rStage, milestoneId } = releaseFor;
     const id = rStage.id;
     const dbId = (rStage as any)._id;
-    const today = new Date().toLocaleDateString('he-IL');
+    const today = new Date().toISOString().slice(0, 10);
     
     updateStageState(id, s => {
       if (milestoneId) {
@@ -64,32 +585,30 @@ export const StagesScreen = () => {
           payment: s.payment ? {
             ...s.payment,
             milestones: s.payment.milestones?.map(m =>
-              m.id === milestoneId ? { ...m, status: 'paid', paidAt: today } : m
+              m.id === milestoneId ? { ...m, status: 'paid', paidAt: today, receipts } : m
             ),
           } : undefined,
         };
       }
       return {
         ...s,
-        payment: s.payment ? { ...s.payment, status: 'paid', paidAt: today } : undefined,
+        payment: s.payment ? { ...s.payment, status: 'paid', paidAt: today, receipts } : undefined,
       };
     });
 
-    if (dbId) {
-      if (milestoneId) {
-        // Complex nested update would need a specific mutation or better logic
-        // For now we just trigger it
-      } else {
-        await mutate('update', { id: dbId, patch: { 'payment.status': 'paid', 'payment.paidAt': today } });
-      }
+    if (milestoneId) {
+      await setStageMilestonePaid({ milestoneId: milestoneId as any, paid: true, receipts });
+    } else if (dbId) {
+      await setStagePaymentPaid({ stageId: dbId, paid: true, receipts });
     }
     
     setReleaseFor(null);
+    refetch();
   };
 
   const toggleTask = async (stageId: number, taskId: number, taskDbId?: string) => {
     const stage = stages.find(s => s.id === stageId);
-    const task = stage?.tasks.find(t => t.id === taskId);
+    const task = stage?.tasks?.find(t => t.id === taskId);
     if (!task) return;
 
     const newDone = !task.done;
@@ -97,8 +616,8 @@ export const StagesScreen = () => {
     // Optimistic UI update
     setStages(prev=>prev.map(s=>{
       if(s.id!==stageId) return s;
-      const tasks = s.tasks.map(t=>t.id===taskId?{...t,done:newDone}:t);
-      const progress = Math.round(tasks.filter(t=>t.done).length/tasks.length*100);
+      const tasks = (s.tasks || []).map(t=>t.id===taskId?{...t,done:newDone}:t);
+      const progress = tasks.length ? Math.round(tasks.filter(t=>t.done).length/tasks.length*100) : 0;
       const status = progress===100?"done":progress>0?"active":"pending";
       const wasPaid = s.payment?.status === 'paid';
       const payment = s.payment && wasPaid ? {...s.payment, status: 'disputed'} : s.payment;
@@ -112,13 +631,180 @@ export const StagesScreen = () => {
   };
 
   // Helper for milestones (simplified for now)
-  const addProofPhotoMs = (sid: number, mid: string) => {};
   const requestReviewMs = (sid: number, mid: string) => {};
   const supervisorApproveMs = (sid: number, mid: string) => {};
   const releaseMs = (s: Stage, m: Milestone) => setReleaseFor({ stage: s, milestoneId: m.id, milestoneName: m.name, amount: m.amount });
 
+  const openEditStage = (stage: Stage) => {
+    setEditingStage(stage);
+    setIsAdvancedEdit(false);
+    
+    const tasks = (stage.tasks || []).map((t, index) => {
+      const ms = stage.payment?.milestones?.find(m => m.taskIds.includes(t.id));
+      return {
+        _id: (t as any)._id,
+        legacyId: t.id,
+        name: t.name,
+        assignee: t.assignee,
+        required: t.required !== false,
+        paymentRequired: !!ms,
+        paymentAmount: ms ? ms.amount : 0,
+      };
+    });
+
+    setEditForm({
+      name: stage.name,
+      contractorRole: stage.contractor || '',
+      startDate: stage.start,
+      endDate: stage.end,
+      amount: stage.payment?.amount || 0,
+      paymentAtEnd: !stage.payment?.milestones?.length && (stage.payment?.amount || 0) > 0,
+      tasks,
+    });
+  };
+
+  const updateEditTask = (index: number, patch: any) => {
+    setEditForm(f => ({ ...f, tasks: f.tasks.map((t, i) => i === index ? { ...t, ...patch } : t) }));
+  };
+
+  const removeEditTask = (index: number) => {
+    setEditForm(f => ({ ...f, tasks: f.tasks.filter((_, i) => i !== index) }));
+  };
+
+  const saveStageEdit = async () => {
+    if (!editingStage) return;
+    const stageId = (editingStage as any)._id;
+    if (!stageId) return;
+
+    if (isAdvancedEdit && !editForm.paymentAtEnd && editForm.amount > 0) {
+      const paidTasks = editForm.tasks.filter(t => t.paymentRequired);
+      if (paidTasks.length > 0) {
+        const sum = paidTasks.reduce((acc, t) => acc + Number(t.paymentAmount || 0), 0);
+        if (sum !== editForm.amount) {
+          return; // Prevents saving if validation fails
+        }
+      }
+    }
+
+    setSavingEdit(true);
+    try {
+      if (isAdvancedEdit) {
+        await updateStageAdvanced({
+          stageId,
+          name: editForm.name,
+          contractorRole: editForm.contractorRole,
+          startDate: editForm.startDate,
+          endDate: editForm.endDate,
+          amount: Number(editForm.amount) || 0,
+          paymentAtEnd: editForm.paymentAtEnd,
+          tasks: editForm.tasks.map(t => ({
+            _id: t._id,
+            legacyId: t.legacyId,
+            name: t.name,
+            assignee: t.assignee,
+            required: t.required,
+            paymentRequired: t.paymentRequired,
+            paymentAmount: t.paymentAmount,
+          })),
+        });
+      } else {
+        await updateStageDetails({
+          stageId,
+          name: editForm.name,
+          contractorRole: editForm.contractorRole,
+          startDate: editForm.startDate,
+          endDate: editForm.endDate,
+          amount: Number(editForm.amount) || 0,
+        });
+      }
+      setStages(prev => prev.map(stage => stage.id === editingStage.id ? {
+        ...stage,
+        name: editForm.name,
+        contractor: editForm.contractorRole,
+        start: editForm.startDate,
+        end: editForm.endDate,
+        payment: stage.payment ? { ...stage.payment, amount: Number(editForm.amount) || 0 } : stage.payment,
+      } : stage));
+      setEditingStage(null);
+      refetch();
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+  const requestDeleteStage = (stage: Stage) => {
+    if (hasStageStarted(stage)) {
+      setDeleteTarget(stage);
+      return;
+    }
+    void confirmDeleteStage(stage);
+  };
+
+  const confirmDeleteStage = async (stage = deleteTarget) => {
+    if (!stage) return;
+    const stageId = (stage as any)._id;
+    if (!stageId) return;
+    setDeletingStage(true);
+    try {
+      await deleteStageMutation({ stageId });
+      setStages(prev => prev.filter(item => item.id !== stage.id));
+      if (expanded === stage.id) setExpanded(null);
+      setDeleteTarget(null);
+      refetch();
+    } finally {
+      setDeletingStage(false);
+    }
+  };
+
+  const createStages = async (draftStages: StageGuideStage[]) => {
+    if (!projectId) return;
+    setSavingGuide(true);
+    try {
+      await createStagesFromTemplate({
+        projectId,
+        stages: draftStages.map(stage => ({
+          legacyId: stage.legacyId,
+          name: stage.name,
+          ...(stage.icon ? { icon: stage.icon } : {}),
+          ...(stage.contractorRole ? { contractorRole: stage.contractorRole } : {}),
+          startDate: stage.startDate,
+          endDate: stage.endDate,
+          amount: Number(stage.amount) || 0,
+          tasks: stage.tasks.map(task => ({
+            legacyId: task.legacyId,
+            name: task.name,
+            assignee: task.assignee,
+            required: task.required,
+            paymentRequired: task.paymentRequired,
+            paymentAmount: Number(task.paymentAmount) || 0,
+          })),
+          milestones: stage.milestones.map(milestone => ({
+            legacyKey: milestone.legacyKey,
+            name: milestone.name,
+            pct: Number(milestone.pct) || 0,
+            taskLegacyIds: milestone.taskLegacyIds,
+          })),
+        })),
+      });
+      setGuideOpen(false);
+      refetch();
+    } finally {
+      setSavingGuide(false);
+    }
+  };
+
   return (
-    <ScreenBoundary loading={loading} error={error} isEmpty={stages.length === 0} emptyTitle="אין שלבי בנייה" emptyDesc="נראה שעדיין לא הוגדרו שלבים לפרויקט זה." onRetry={refetch}>
+    <>
+    <ScreenBoundary
+      loading={loading}
+      error={error}
+      isEmpty={stages.length === 0}
+      emptyTitle="אין שלבי בנייה"
+      emptyDesc="נראה שעדיין לא הוגדרו שלבים לפרויקט זה. אפשר להתחיל מתבנית המאסטר ולערוך אותה לפני יצירה."
+      emptyAction={() => setGuideOpen(true)}
+      emptyActionLabel="צור מתבנית"
+      onRetry={refetch}
+    >
       <div className="page-content">
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}>
           <div style={{display:"flex",alignItems:"center",gap:12}}>
@@ -128,6 +814,49 @@ export const StagesScreen = () => {
             <div>
               <h1 style={{fontSize:22,fontWeight:800,margin:0}}>שלבי הפרויקט</h1>
               <div style={{fontSize:13,color:"var(--text3)",marginTop:2}}>ניהול משימות, אישורים ותשלומים לפי שלבים</div>
+            </div>
+          </div>
+        </div>
+
+        <div className="card" style={{marginBottom:20,borderColor:paymentSummary.isOverLimit ? "var(--danger)" : paymentSummary.isNearLimit ? "var(--warning)" : "var(--border)"}}>
+          <div className="card-header" style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12}}>
+            <span>מעקב תשלומי שלבים</span>
+            <span style={{
+              fontSize:12,
+              color:paymentSummary.isOverLimit ? "var(--danger)" : paymentSummary.isNearLimit ? "var(--warning)" : "var(--text3)",
+              fontWeight:700,
+            }}>
+              {paymentSummary.isOverLimit
+                ? "חריגה ממסגרת הפרויקט"
+                : paymentSummary.isNearLimit
+                  ? "קרוב למסגרת הפרויקט"
+                  : "בתוך מסגרת הפרויקט"}
+            </span>
+          </div>
+          <div className="card-body" style={{paddingTop:12}}>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(3, minmax(0, 1fr))",gap:18,marginBottom:14}}>
+              {[
+                {label:"תקציב כולל", value:paymentSummary.projectBudget, color:"var(--text1)"},
+                {label:"שולם עד כה", value:paymentSummary.totalPaid, color:paymentSummary.isOverLimit ? "var(--danger)" : paymentSummary.isNearLimit ? "var(--warning)" : "var(--success)"},
+                {label:"נותר לתשלום", value:paymentSummary.remaining, color:paymentSummary.remaining === 0 ? "var(--danger)" : "var(--text1)"},
+              ].map(item => (
+                <div key={item.label}>
+                  <div style={{fontSize:20,fontWeight:800,color:item.color}}>{fmtMoney(item.value)}</div>
+                  <div style={{fontSize:12,color:"var(--text2)"}}>{item.label}</div>
+                </div>
+              ))}
+            </div>
+            <div style={{height:12,background:"var(--border)",borderRadius:6,overflow:"hidden"}}>
+              <div style={{
+                width:`${paymentSummary.paidPct}%`,
+                height:"100%",
+                background:paymentSummary.isOverLimit ? "var(--danger)" : paymentSummary.isNearLimit ? "var(--warning)" : "var(--success)",
+                transition:"width .4s",
+              }}/>
+            </div>
+            <div style={{display:"flex",justifyContent:"space-between",gap:12,marginTop:8,fontSize:11,color:"var(--text3)"}}>
+              <span>{paymentSummary.projectBudget ? `${paymentSummary.paidPct}% שולם מתוך מסגרת הפרויקט` : "אין תקציב פרויקט מוגדר"}</span>
+              <span>סך תשלומי שלבים מתוכננים: {fmtMoney(paymentSummary.totalPaymentAmount)}</span>
             </div>
           </div>
         </div>
@@ -149,9 +878,13 @@ export const StagesScreen = () => {
                 </div>
                 {s.payment && (
                   <div style={{marginRight:12}} onClick={e=>e.stopPropagation()}>
-                    <PaymentBadge status={resolveStatus(s, computeGates(s, s.extraProofPhotos||0))}/>
+                    <PaymentBadge status={s.payment.milestones?.length ? (aggregateStageStatus(s) || 'draft') : resolveStatus(s, computeGates(s))}/>
                   </div>
                 )}
+                <div style={{display:"flex",gap:8}} onClick={e=>e.stopPropagation()}>
+                  <Btn size="sm" variant="ghost" onClick={()=>openEditStage(s)}><Icon n="edit" s={13}/> ערוך</Btn>
+                  <Btn size="sm" variant="ghost" onClick={()=>requestDeleteStage(s)}><Icon n="trash" s={13}/> מחק</Btn>
+                </div>
                 <Icon n={expanded===s.id?"arrow-up":"arrow-down"} s={18} c="var(--text3)"/>
               </div>
 
@@ -163,14 +896,31 @@ export const StagesScreen = () => {
                         <div>
                           <div style={{fontSize:13,fontWeight:700,color:"var(--text2)",marginBottom:12}}>משימות בשלב זה</div>
                           <div className="card" style={{background:"#fff"}}>
-                            {s.tasks.map(t=>(
-                              <div key={t.id} onClick={()=>toggleTask(s.id,t.id, (t as any)._id)} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 16px",borderBottom:"1px solid var(--border)",cursor:"pointer"}} onMouseEnter={e=>e.currentTarget.style.background="#F9FAFB"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-                                <div style={{width:18,height:18,borderRadius:4,border:t.done?"none":"2px solid var(--border)",background:t.done?"var(--success)":"transparent",display:"flex",alignItems:"center",justifyContent:"center"}}>
-                                  {t.done && <Icon n="check" s={12} c="#fff"/>}
+                            {(s.tasks || []).map(t=>{
+                              const taskPayment = s.payment?.milestones?.find(m => m.taskIds.includes(t.id));
+                              return (
+                                <div key={t.id} onClick={()=>toggleTask(s.id,t.id, (t as any)._id)} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 16px",borderBottom:"1px solid var(--border)",cursor:"pointer"}} onMouseEnter={e=>e.currentTarget.style.background="#F9FAFB"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                                  <div style={{width:18,height:18,borderRadius:4,border:t.done?"none":"2px solid var(--border)",background:t.done?"var(--success)":"transparent",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                                    {t.done && <Icon n="check" s={12} c="#fff"/>}
+                                  </div>
+                                  <span style={{fontSize:13,color:t.done?"var(--text3)":"var(--text1)",textDecoration:t.done?"line-through":"none",flex:1}}>{t.name}</span>
+                                  {taskPayment && (
+                                    <span style={{
+                                      fontSize:11,
+                                      fontWeight:700,
+                                      color:taskPayment.status === "paid" ? "var(--success)" : "var(--text2)",
+                                      background:taskPayment.status === "paid" ? "#F0FDF4" : "#F9FAFB",
+                                      border:"1px solid var(--border)",
+                                      borderRadius:999,
+                                      padding:"3px 8px",
+                                      whiteSpace:"nowrap",
+                                    }}>
+                                      {taskPayment.status === "paid" ? "שולם" : "לתשלום"} · {fmtMoney(taskPayment.amount)}
+                                    </span>
+                                  )}
                                 </div>
-                                <span style={{fontSize:13,color:t.done?"var(--text3)":"var(--text1)",textDecoration:t.done?"line-through":"none"}}>{t.name}</span>
-                              </div>
-                            ))}
+                              );
+                            })}
                           </div>
                         </div>
 
@@ -178,13 +928,11 @@ export const StagesScreen = () => {
                           <div style={{fontSize:13,fontWeight:700,color:"var(--text2)",marginBottom:12}}>תשלום ואישור</div>
                           <PaymentGatesPanel
                             stage={s}
-                            gates={computeGates(s, s.extraProofPhotos||0)}
-                            status={resolveStatus(s, computeGates(s, s.extraProofPhotos||0))}
-                            onAddProofPhoto={() => addProofPhoto(s.id, (s as any)._id)}
+                            gates={computeGates(s)}
+                            status={resolveStatus(s, computeGates(s))}
                             onRequestReview={() => requestReview(s.id, (s as any)._id)}
                             onSupervisorApprove={() => supervisorApprove(s.id, (s as any)._id)}
                             onReleasePayment={() => setReleaseFor({ stage: s, milestoneId: null, milestoneName: null, amount: s.payment?.amount || 0 })}
-                            onAddProofPhotoMs={(mid: string) => addProofPhotoMs(s.id, mid)}
                             onRequestReviewMs={(mid: string) => requestReviewMs(s.id, mid)}
                             onSupervisorApproveMs={(mid: string) => supervisorApproveMs(s.id, mid)}
                             onReleaseMs={(m: Milestone) => releaseMs(s, m)}
@@ -207,7 +955,7 @@ export const StagesScreen = () => {
             gates={
               releaseFor.milestoneId
                 ? undefined
-                : computeGates(releaseFor.stage, releaseFor.stage.extraProofPhotos||0)
+                : computeGates(releaseFor.stage)
             }
             onClose={()=>setReleaseFor(null)}
             onConfirm={confirmRelease}
@@ -215,5 +963,153 @@ export const StagesScreen = () => {
         )}
       </div>
     </ScreenBoundary>
+    {editingStage && (
+      <Modal title="עריכת שלב בנייה" onClose={()=>setEditingStage(null)} width={560}>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+          <label style={{gridColumn:"1 / -1"}}>
+            <div style={{fontSize:12,color:"var(--text2)",marginBottom:4,fontWeight:600}}>שם שלב</div>
+            <input className="bp-input" value={editForm.name} onChange={e=>setEditForm(f=>({...f,name:e.target.value}))}/>
+          </label>
+          <label>
+            <div style={{fontSize:12,color:"var(--text2)",marginBottom:4,fontWeight:600}}>קבלן / אחראי</div>
+            <select className="bp-input" value={editForm.contractorRole} onChange={e=>setEditForm(f=>({...f,contractorRole:e.target.value}))}>
+              <option value="">לא הוגדר</option>
+              <option value="מפקח">מפקח</option>
+              <option value="בעל הבית">בעל הבית</option>
+              <optgroup label="קבלנים בפרויקט">
+                {contractors?.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+              </optgroup>
+            </select>
+          </label>
+          <label>
+            <div style={{fontSize:12,color:"var(--text2)",marginBottom:4,fontWeight:600}}>סכום תשלום</div>
+            <input className="bp-input" type="number" value={editForm.amount} onChange={e=>setEditForm(f=>({...f,amount:Number(e.target.value)}))}/>
+          </label>
+          <label>
+            <div style={{fontSize:12,color:"var(--text2)",marginBottom:4,fontWeight:600}}>תאריך התחלה</div>
+            <input className="bp-input" type="date" value={editForm.startDate} onChange={e=>setEditForm(f=>({...f,startDate:e.target.value}))}/>
+          </label>
+          <label>
+            <div style={{fontSize:12,color:"var(--text2)",marginBottom:4,fontWeight:600}}>תאריך סיום</div>
+            <input className="bp-input" type="date" value={editForm.endDate} onChange={e=>setEditForm(f=>({...f,endDate:e.target.value}))}/>
+          </label>
+
+          {isAdvancedEdit ? (
+            <div style={{gridColumn:"1 / -1", marginTop: 14}}>
+              <div style={{display:"flex", alignItems:"center", gap:16, marginBottom:16}}>
+                <label style={{display:"flex",alignItems:"center",gap:8,fontSize:13,cursor:"pointer"}}>
+                  <input type="checkbox" checked={editForm.paymentAtEnd} onChange={e=>setEditForm(f=>({...f, paymentAtEnd:e.target.checked}))}/>
+                  תשלום גלובלי בסיום השלב
+                </label>
+              </div>
+              
+              <div className="card" style={{padding:16,marginBottom:14,background:"#FAFAFA"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+                  <div style={{fontSize:13,fontWeight:800}}>משימות ותשלומים</div>
+                  <Btn size="sm" variant="ghost" onClick={() => setEditForm(f=>({...f, tasks: [...f.tasks, { legacyId: Date.now(), name: 'משימה חדשה', assignee: f.contractorRole || 'לא הוגדר', required: true, paymentRequired: false, paymentAmount: 0 }]}))}><Icon n="plus" s={12}/> משימה</Btn>
+                </div>
+                <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                  {editForm.tasks.map((task, taskIndex) => (
+                    <div key={taskIndex} style={{display:"grid",gridTemplateColumns:editForm.paymentAtEnd ? "1.5fr 1fr 82px 70px" : "1.5fr 1fr 82px 130px 120px 70px",gap:8,alignItems:"center"}}>
+                      <input className="bp-input" value={task.name} onChange={e=>updateEditTask(taskIndex,{name:e.target.value})}/>
+                      <select className="bp-input" value={task.assignee} onChange={e=>updateEditTask(taskIndex,{assignee:e.target.value})}>
+                        <option value="">לא הוגדר</option>
+                        <option value="מפקח">מפקח</option>
+                        <option value="בעל הבית">בעל הבית</option>
+                        <optgroup label="קבלנים">
+                          {contractors?.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                        </optgroup>
+                      </select>
+                      <label style={{fontSize:12,color:"var(--text2)",display:"flex",gap:6,alignItems:"center"}}>
+                        <input type="checkbox" checked={task.required} onChange={e=>updateEditTask(taskIndex,{required:e.target.checked})}/>
+                        חובה
+                      </label>
+                      {!editForm.paymentAtEnd && (
+                        <>
+                          <label style={{fontSize:12,color:"var(--text2)",display:"flex",gap:6,alignItems:"center"}}>
+                            <input type="checkbox" checked={task.paymentRequired} onChange={e=>updateEditTask(taskIndex,{paymentRequired:e.target.checked, paymentAmount:e.target.checked?task.paymentAmount:0})}/>
+                            תשלום בסיום
+                          </label>
+                          <input className="bp-input" type="number" min={0} placeholder="סכום ₪" value={task.paymentRequired ? task.paymentAmount : ''} disabled={!task.paymentRequired} onChange={e=>updateEditTask(taskIndex,{paymentAmount:Number(e.target.value) || 0})}/>
+                        </>
+                      )}
+                      <Btn size="sm" variant="ghost" onClick={()=>removeEditTask(taskIndex)} style={{color:"var(--danger)"}}>מחק</Btn>
+                    </div>
+                  ))}
+                </div>
+                {!editForm.paymentAtEnd && editForm.tasks.some(t => t.paymentRequired) && (
+                  <div style={{marginTop: 12}}>
+                    {(() => {
+                      const sum = editForm.tasks.filter(t => t.paymentRequired).reduce((acc, t) => acc + Number(t.paymentAmount || 0), 0);
+                      if (sum !== editForm.amount) {
+                        const diff = editForm.amount - sum;
+                        return (
+                          <div style={{fontSize:12, color:"#991B1B", background:"#FEF2F2", padding:"8px 12px", borderRadius:6, border:"1px solid #F87171"}}>
+                            <div style={{fontWeight:700, marginBottom:2}}>סכום המשימות לא תואם!</div>
+                            <div>סך כל התשלומים במשימות ({fmtMoney(sum)}) {diff > 0 ? "נמוך" : "גבוה"} מהסכום הכולל של השלב ({fmtMoney(editForm.amount)}).</div>
+                          </div>
+                        );
+                      }
+                      return (
+                        <div style={{fontSize:12, color:"#065F46", background:"#D1FAE5", padding:"8px 12px", borderRadius:6, display:"flex", alignItems:"center", gap:6}}>
+                          <Icon n="check" s={14}/><span>סך התשלומים למשימות תואם לסכום השלב ({fmtMoney(sum)}).</span>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div style={{gridColumn:"1 / -1", marginTop: 14}}>
+              <Btn variant="ghost" onClick={() => setIsAdvancedEdit(true)} size="sm" style={{color:"var(--accent)"}}>
+                <Icon n="settings" s={14}/> מתקדם - עריכת משימות ותשלומים
+              </Btn>
+            </div>
+          )}
+
+        </div>
+        <div style={{display:"flex",justifyContent:"space-between",marginTop:22}}>
+          <div>
+             <Btn variant="ghost" onClick={()=>setEditingStage(null)} disabled={savingEdit}>ביטול</Btn>
+          </div>
+          <Btn 
+            onClick={saveStageEdit} 
+            disabled={
+              savingEdit || 
+              !editForm.name.trim() || 
+              (isAdvancedEdit && !editForm.paymentAtEnd && editForm.amount > 0 && 
+                editForm.tasks.filter(t => t.paymentRequired).reduce((acc, t) => acc + Number(t.paymentAmount || 0), 0) !== editForm.amount &&
+                editForm.tasks.some(t => t.paymentRequired)
+              )
+            }
+          >
+            <Icon n="check" s={14}/> {savingEdit ? "שומר..." : "שמור שינויים"}
+          </Btn>
+        </div>
+      </Modal>
+    )}
+    {deleteTarget && (
+      <ConfirmDialog
+        title="מחיקת שלב שהתחיל"
+        message={`למחוק את "${deleteTarget.name}"? השלב כבר התחיל או כולל נתוני התקדמות. המחיקה תעדכן את בסיס הנתונים ותסיר גם משימות ואבני דרך לתשלום של השלב.`}
+        confirmText="מחק שלב"
+        cancelText="ביטול"
+        loading={deletingStage}
+        onConfirm={()=>confirmDeleteStage()}
+        onClose={()=>setDeleteTarget(null)}
+      />
+    )}
+    {guideOpen && (
+      <StageCreationGuide
+        projectId={projectId}
+        onClose={() => setGuideOpen(false)}
+        onCreate={async (stages) => {
+          await createStages(stages);
+        }}
+        saving={savingGuide}
+      />
+    )}
+    </>
   );
 };

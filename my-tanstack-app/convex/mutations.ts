@@ -1,6 +1,44 @@
 import { mutation } from './_generated/server';
+import type { MutationCtx } from './_generated/server';
+import type { Id } from './_generated/dataModel';
 import { v } from 'convex/values';
 import { getAuthUserId } from '@convex-dev/auth/server';
+
+const contractorRoleValidator = v.union(
+  v.literal('קבלן עד מפתח'),
+  v.literal('קבלן שלד'),
+  v.literal('קבלן עפר'),
+  v.literal('קבלן טיח'),
+  v.literal('חשמלאי ראשי'),
+  v.literal('אינסטלטור'),
+  v.literal('קבלן ריצוף'),
+  v.literal('קבלן גג'),
+  v.literal('קבלן גבס'),
+  v.literal('קבלן נגרות'),
+  v.literal('צבעי'),
+  v.literal('קבלן גינה'),
+  v.literal('אחר'),
+);
+
+const DEFAULT_CONTRACTOR_PAYMENT_SCHEDULE = [
+  { name: 'מקדמה לפני התחלה', pct: 30, triggerText: 'לפני תחילת עבודה' },
+  { name: "תשלום ביניים א'", pct: 25, triggerText: 'אחרי 30% מהעבודה' },
+  { name: "תשלום ביניים ב'", pct: 25, triggerText: 'אחרי 70% מהעבודה' },
+  { name: 'תשלום סופי', pct: 20, triggerText: 'סיום ואישור מפקח' },
+];
+
+const recomputeContractorPaid = async (ctx: MutationCtx, contractorId: Id<'contractors'>) => {
+  const milestones = await ctx.db
+    .query('contractorPaymentMilestones')
+    .withIndex('by_contractor', (q) => q.eq('contractorId', contractorId))
+    .take(100);
+
+  const paid = milestones
+    .filter((milestone) => milestone.paid)
+    .reduce((total, milestone) => total + milestone.amount, 0);
+
+  await ctx.db.patch(contractorId, { paid });
+};
 
 
 // ── GENERIC MUTATIONS ────────────────────────────────────────────────────────
@@ -38,16 +76,21 @@ export const remove = mutation({
 
 // ── DOMAIN SPECIFIC MUTATIONS ────────────────────────────────────────────────
 
+import { insertActivity } from './_lib/activity';
+
 export const toggleTask = mutation({
   args: {
     taskId: v.id('stageTasks'),
     done: v.boolean(),
   },
   handler: async (ctx, args) => {
+    const task = await ctx.db.get(args.taskId);
+    if (!task) return;
+
     await ctx.db.patch(args.taskId, { done: args.done });
     
-    const task = await ctx.db.get(args.taskId);
-    if (task) {
+    const stage = await ctx.db.get(task.stageId);
+    if (stage) {
       const allTasks = await ctx.db
         .query('stageTasks')
         .withIndex('by_stage', (q) => q.eq('stageId', task.stageId))
@@ -56,8 +99,197 @@ export const toggleTask = mutation({
       const doneCount = allTasks.filter(t => t._id === args.taskId ? args.done : t.done).length;
       const progressPct = Math.round((doneCount / allTasks.length) * 100);
       
-      await ctx.db.patch(task.stageId, { progressPct });
+      const newStatus = progressPct === 100 ? 'done' : progressPct > 0 ? 'active' : 'pending';
+      await ctx.db.patch(task.stageId, { progressPct, status: newStatus });
+
+      // Update project overall progress
+      const projectStages = await ctx.db
+        .query('stages')
+        .withIndex('by_project', q => q.eq('projectId', stage.projectId))
+        .collect();
+      
+      const totalProgress = projectStages.reduce((sum, s) => sum + (s._id === task.stageId ? progressPct : s.progressPct), 0);
+      const projectProgress = Math.round(totalProgress / projectStages.length);
+      
+      await ctx.db.patch(stage.projectId, { 
+        progressPct: projectProgress,
+        currentStageName: projectStages.find(s => s.status === 'active')?.name || projectStages[0]?.name
+      });
+
+      // Log activity
+      await insertActivity(ctx, {
+        projectId: stage.projectId,
+        text: `משימה "${task.name}" ${args.done ? 'בוצעה' : 'בוטלה'} בשלב ${stage.name}`,
+      });
     }
+  },
+});
+
+export const createContractor = mutation({
+  args: {
+    projectId: v.id('projects'),
+    name: v.string(),
+    company: v.optional(v.string()),
+    role: contractorRoleValidator,
+    phone: v.optional(v.string()),
+    email: v.optional(v.string()),
+    budget: v.number(),
+    avatarColor: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const contractorId = await ctx.db.insert('contractors', {
+      projectId: args.projectId,
+      name: args.name,
+      ...(args.company ? { company: args.company } : {}),
+      role: args.role,
+      ...(args.phone ? { phone: args.phone } : {}),
+      ...(args.email ? { email: args.email } : {}),
+      status: 'pending',
+      rating: 0,
+      budget: args.budget,
+      paid: 0,
+      avatarLetter: args.name[0] ?? '',
+      avatarColor: args.avatarColor,
+    });
+
+    for (let i = 0; i < DEFAULT_CONTRACTOR_PAYMENT_SCHEDULE.length; i++) {
+      const milestone = DEFAULT_CONTRACTOR_PAYMENT_SCHEDULE[i];
+      await ctx.db.insert('contractorPaymentMilestones', {
+        contractorId,
+        sortOrder: i,
+        name: milestone.name,
+        triggerText: milestone.triggerText,
+        pct: milestone.pct,
+        amount: Math.round((args.budget * milestone.pct) / 100),
+        paid: false,
+      });
+    }
+
+    return contractorId;
+  },
+});
+
+export const addContractorPaymentMilestone = mutation({
+  args: {
+    contractorId: v.id('contractors'),
+    name: v.string(),
+    triggerText: v.string(),
+    pct: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const contractor = await ctx.db.get(args.contractorId);
+    if (!contractor) {
+      throw new Error('Contractor not found');
+    }
+
+    const milestones = await ctx.db
+      .query('contractorPaymentMilestones')
+      .withIndex('by_contractor', (q) => q.eq('contractorId', args.contractorId))
+      .take(100);
+
+    return await ctx.db.insert('contractorPaymentMilestones', {
+      contractorId: args.contractorId,
+      sortOrder: milestones.length,
+      name: args.name,
+      triggerText: args.triggerText,
+      pct: args.pct,
+      amount: Math.round((contractor.budget * args.pct) / 100),
+      paid: false,
+    });
+  },
+});
+
+export const updateContractorPaymentMilestone = mutation({
+  args: {
+    milestoneId: v.id('contractorPaymentMilestones'),
+    name: v.string(),
+    triggerText: v.string(),
+    pct: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const milestone = await ctx.db.get(args.milestoneId);
+    if (!milestone) {
+      throw new Error('Payment milestone not found');
+    }
+
+    const contractor = await ctx.db.get(milestone.contractorId);
+    if (!contractor) {
+      throw new Error('Contractor not found');
+    }
+
+    await ctx.db.patch(args.milestoneId, {
+      name: args.name,
+      triggerText: args.triggerText,
+      pct: args.pct,
+      amount: Math.round((contractor.budget * args.pct) / 100),
+    });
+
+    await recomputeContractorPaid(ctx, milestone.contractorId);
+  },
+});
+
+export const saveContractorPaymentSchedule = mutation({
+  args: {
+    contractorId: v.id('contractors'),
+    milestones: v.array(v.object({
+      milestoneId: v.optional(v.id('contractorPaymentMilestones')),
+      name: v.string(),
+      triggerText: v.string(),
+      pct: v.number(),
+    })),
+  },
+  handler: async (ctx, args) => {
+    const contractor = await ctx.db.get(args.contractorId);
+    if (!contractor) {
+      throw new Error('Contractor not found');
+    }
+
+    for (let i = 0; i < args.milestones.length; i++) {
+      const milestone = args.milestones[i];
+      const amount = Math.round((contractor.budget * milestone.pct) / 100);
+
+      if (milestone.milestoneId) {
+        await ctx.db.patch(milestone.milestoneId, {
+          sortOrder: i,
+          name: milestone.name,
+          triggerText: milestone.triggerText,
+          pct: milestone.pct,
+          amount,
+        });
+      } else {
+        await ctx.db.insert('contractorPaymentMilestones', {
+          contractorId: args.contractorId,
+          sortOrder: i,
+          name: milestone.name,
+          triggerText: milestone.triggerText,
+          pct: milestone.pct,
+          amount,
+          paid: false,
+        });
+      }
+    }
+
+    await recomputeContractorPaid(ctx, args.contractorId);
+  },
+});
+
+export const setContractorPaymentMilestonePaid = mutation({
+  args: {
+    milestoneId: v.id('contractorPaymentMilestones'),
+    paid: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    const milestone = await ctx.db.get(args.milestoneId);
+    if (!milestone) {
+      throw new Error('Payment milestone not found');
+    }
+
+    await ctx.db.patch(args.milestoneId, {
+      paid: args.paid,
+      paidAt: args.paid ? new Date().toISOString().slice(0, 10) : undefined,
+    });
+
+    await recomputeContractorPaid(ctx, milestone.contractorId);
   },
 });
 
@@ -85,33 +317,63 @@ export const saveBoq = mutation({
   },
 });
 
-
-export const addExpense = mutation({
+export const addBoqItem = mutation({
   args: {
     projectId: v.id('projects'),
-    description: v.string(),
-    amount: v.number(),
+    roomId: v.optional(v.id('projectRooms')),
     category: v.string(),
-    date: v.string(),
-    status: v.union(v.literal('שולם'), v.literal('ממתין')),
+    name: v.string(),
+    qty: v.number(),
+    unit: v.string(),
+    unitPrice: v.number(),
+    supplier: v.optional(v.string()),
+    spec: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const category = await ctx.db
-      .query('budgetCategories')
-      .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
-      .filter(q => q.eq(q.field('name'), args.category))
-      .first();
+    const project = await ctx.db.get(args.projectId);
+    if (!project) {
+      throw new Error('Project not found');
+    }
 
-    await ctx.db.insert('expenses', {
+    if (args.roomId) {
+      const room = await ctx.db.get(args.roomId);
+      if (!room || room.projectId !== args.projectId) {
+        throw new Error('Room not found for project');
+      }
+    }
+
+    return await ctx.db.insert('boqItems', {
       projectId: args.projectId,
-      description: args.description,
-      amount: args.amount,
-      expenseDate: args.date,
-      status: args.status,
-      categoryId: category?._id,
+      roomId: args.roomId,
+      category: args.category,
+      name: args.name,
+      qty: args.qty,
+      unit: args.unit,
+      unitPrice: args.unitPrice,
+      ...(args.supplier ? { supplier: args.supplier } : {}),
+      ...(args.spec ? { spec: args.spec } : {}),
+      status: 'pending',
+      source: 'manual',
     });
   },
 });
+
+export const updateBoqItemStatus = mutation({
+  args: {
+    itemId: v.id('boqItems'),
+    status: v.union(v.literal('approved'), v.literal('pending')),
+  },
+  handler: async (ctx, args) => {
+    const item = await ctx.db.get(args.itemId);
+    if (!item) {
+      throw new Error('BOQ item not found');
+    }
+
+    await ctx.db.patch(args.itemId, { status: args.status });
+  },
+});
+
+
 
 export const saveNote = mutation({
   args: {

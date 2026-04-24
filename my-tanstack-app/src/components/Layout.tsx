@@ -155,9 +155,19 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
       <nav className="sidebar">
-        <div className="sidebar-logo">
-          <div className="sidebar-logo-mark">B</div>
-          <div><div className="sidebar-logo-text">Build<span>Sync</span></div></div>
+        <div className="sidebar-logo" style={{ padding: '0px 16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <img 
+            src="/logo.png" 
+            alt="BuildSync Icon" 
+            style={{ 
+              width: 36, 
+              height: 36, 
+              display: 'block', 
+              borderRadius: '8px',
+              objectFit: 'cover'
+            }} 
+          />
+          <div className="sidebar-logo-text" style={{ margin: 0 }}>Build<span>Sync</span></div>
         </div>
 
         <div className="sidebar-scroll">

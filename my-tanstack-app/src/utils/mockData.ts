@@ -1,6 +1,6 @@
 // @ts-nocheck
 
-// ── BuildPro DATA + HELPERS ──────────────────────────────────────────────────
+// ── BuildSync DATA + HELPERS ──────────────────────────────────────────────────
 
 export const ROOM_TYPE_OPTS = [
   {id:"living",   label:"סלון",              defaultSize:35, wet:false, needsAC:true},

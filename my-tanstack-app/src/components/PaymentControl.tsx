@@ -15,7 +15,6 @@ export interface Gate {
 export interface Gates {
   tasks: Gate;
   supervisor: Gate;
-  photos: Gate;
   allPassed: boolean;
 }
 
@@ -31,7 +30,6 @@ export const PAYMENT_STATUS = {
   disputed:         { label: 'במחלוקת' },
 };
 
-export const REQUIRED_PROOF_PHOTOS = 3;
 
 // ── Simple states — what the user actually sees ──────────────────────────────
 const SIMPLE = {
@@ -53,20 +51,15 @@ const toSimple = (status: string) => {
 };
 
 // ── Gate computation (unchanged — safety layer) ──────────────────────────────
-export const computeGates = (stage: Stage, extraApprovedPhotos: number = 0): Gates => {
+export const computeGates = (stage: Stage): Gates => {
   const tasks = stage.tasks || [];
   const requiredTasks = tasks.filter(t => t.required !== false);
   const doneTasks = requiredTasks.filter(t => t.done).length;
 
-  const stageKey = (stage.name || '').split(' ')[0];
-  const approvedPhotos = PHOTOS_DATA.filter(p =>
-    p.tag === 'אישור' && (p.stage === stage.name || p.stage === stageKey)
-  ).length + extraApprovedPhotos;
-
   const tasksGate = {
     key: 'tasks', label: 'המשימות הושלמו',
-    passed: requiredTasks.length > 0 && doneTasks === requiredTasks.length,
-    detail: `${doneTasks} מתוך ${requiredTasks.length}`,
+    passed: doneTasks === requiredTasks.length,
+    detail: requiredTasks.length > 0 ? `${doneTasks} מתוך ${requiredTasks.length}` : 'אין משימות חובה',
     missing: requiredTasks.length - doneTasks,
   };
   const supervisorGate = {
@@ -77,67 +70,50 @@ export const computeGates = (stage: Stage, extraApprovedPhotos: number = 0): Gat
       : 'טרם אושר',
     canApprove: tasksGate.passed,
   };
-  const photosGate = {
-    key: 'photos', label: 'יש תמונות אישור',
-    passed: approvedPhotos >= REQUIRED_PROOF_PHOTOS,
-    detail: `${approvedPhotos} מתוך ${REQUIRED_PROOF_PHOTOS}`,
-    missing: Math.max(0, REQUIRED_PROOF_PHOTOS - approvedPhotos),
-  };
 
-  const allPassed = tasksGate.passed && supervisorGate.passed && photosGate.passed;
-  return { tasks: tasksGate, supervisor: supervisorGate, photos: photosGate, allPassed };
+  const allPassed = tasksGate.passed && supervisorGate.passed;
+  return { tasks: tasksGate, supervisor: supervisorGate, allPassed };
 };
 
 // The UI reads gates, not intent — any active/review/blocked collapses to gate truth.
 export const resolveStatus = (stage: Stage, gates: Gates) => {
   const s = stage.payment?.status || 'draft';
-  if (s === 'paid' || s === 'disputed' || s === 'draft') return s;
-  return gates.allPassed ? 'ready' : 'blocked';
+  if (s === 'paid' || s === 'disputed') return s;
+  if (gates.allPassed) return 'ready';
+  if (stage.progress > 0) return 'in_progress';
+  return 'draft';
 };
 
 // ── Milestone helpers (unchanged logic) ──────────────────────────────────────
 export const computeMilestoneGates = (stage: Stage, milestone: Milestone): Gates => {
-  const tasks = (stage.tasks || []).filter(t => milestone.taskIds.includes(t.id));
-  const required = tasks.filter(t => t.required !== false);
+  const linkedTasks = (stage.tasks || []).filter(t => milestone.taskIds.includes(t.id));
+  const required = (stage.tasks || []).filter(t => t.required !== false);
   const done = required.filter(t => t.done).length;
 
-  const stageKey = (stage.name || '').split(' ')[0];
-  const basePhotos = PHOTOS_DATA.filter(p =>
-    p.tag === 'אישור' && (p.stage === stage.name || p.stage === stageKey)
-  ).length;
-  const milestonesCount = (stage.payment?.milestones || []).length || 1;
-  const sharedPhotos = Math.floor(basePhotos / milestonesCount);
-  const approvedPhotos = sharedPhotos + (milestone.extraProofPhotos || 0);
-
   const tasksGate = {
-    key: 'tasks', label: 'המשימות הושלמו',
-    passed: required.length > 0 && done === required.length,
-    detail: `${done} מתוך ${required.length}`,
+    key: 'tasks', label: 'כל משימות השלב הושלמו',
+    passed: done === required.length,
+    detail: required.length > 0 ? `${done} מתוך ${required.length}` : 'אין משימות חובה',
     missing: required.length - done,
   };
   const supervisorGate = {
     key: 'supervisor', label: 'המפקח אישר',
-    passed: !!milestone.supervisorApproval,
-    detail: milestone.supervisorApproval ? milestone.supervisorApproval.by : 'טרם אושר',
+    passed: tasksGate.passed,
+    detail: linkedTasks.length ? linkedTasks.map(task => task.name).join(', ') : 'משימת תשלום',
     canApprove: tasksGate.passed,
   };
-  const photosGate = {
-    key: 'photos', label: 'יש תמונות אישור',
-    passed: approvedPhotos >= REQUIRED_PROOF_PHOTOS,
-    detail: `${approvedPhotos} מתוך ${REQUIRED_PROOF_PHOTOS}`,
-    missing: Math.max(0, REQUIRED_PROOF_PHOTOS - approvedPhotos),
-  };
+  
   return {
-    tasks: tasksGate, supervisor: supervisorGate, photos: photosGate,
-    allPassed: tasksGate.passed && supervisorGate.passed && photosGate.passed,
+    tasks: tasksGate, supervisor: supervisorGate,
+    allPassed: tasksGate.passed && supervisorGate.passed,
   };
 };
 
 export const resolveMilestoneStatus = (milestone: Milestone, gates: Gates, prev: Milestone | null) => {
   const s = milestone.status;
   if (s === 'paid' || s === 'disputed') return s;
-  if (prev && prev.status !== 'paid') return 'locked';
-  if (s === 'draft') return 'draft';
+  if (prev && prev.status !== 'paid' && !gates.allPassed) return 'locked';
+  if (s === 'draft') return gates.allPassed ? 'ready' : 'draft';
   return gates.allPassed ? 'ready' : 'blocked';
 };
 
@@ -153,7 +129,7 @@ export const aggregateStageStatus = (stage: Stage) => {
 
 // ── Plain-Hebrew headline + single primary CTA ───────────────────────────────
 // Everything the user needs to know in one sentence and one button.
-const buildHeadlineAndCTA = (gates: Gates, handlers: { onSupervisorApprove?: () => void, onAddProofPhoto?: () => void, onReleasePayment?: () => void }, amount: number) => {
+const buildHeadlineAndCTA = (gates: Gates, handlers: { onSupervisorApprove?: () => void, onReleasePayment?: () => void }, amount: number) => {
   if (!gates.tasks.passed) {
     return {
       headline: `חסרות ${gates.tasks.missing} משימות — סיים אותן למעלה`,
@@ -166,15 +142,9 @@ const buildHeadlineAndCTA = (gates: Gates, handlers: { onSupervisorApprove?: () 
       cta: { label: 'שלח לאישור המפקח', onClick: handlers.onSupervisorApprove },
     };
   }
-  if (!gates.photos.passed) {
-    return {
-      headline: `חסרות ${gates.photos.missing} תמונות אישור`,
-      cta: { label: 'העלה תמונה', onClick: handlers.onAddProofPhoto },
-    };
-  }
   return {
     headline: 'הכל אושר — אפשר לשלם',
-    cta: { label: `שלם ${fmtMoney(amount)}`, onClick: handlers.onReleasePayment, primary: true },
+    cta: { label: `שולם ${fmtMoney(amount)}`, onClick: handlers.onReleasePayment, primary: true },
   };
 };
 
@@ -199,7 +169,7 @@ export const PaymentBadge = ({ status }: { status: string }) => {
 // Collapsible "what's missing" — shows the 3 gates for users who want detail.
 const WhatsMissing = ({ gates }: { gates: Gates }) => {
   const [open, setOpen] = React.useState(false);
-  const rows = [gates.tasks, gates.supervisor, gates.photos];
+  const rows = [gates.tasks, gates.supervisor];
   return (
     <div>
       <button
@@ -255,11 +225,9 @@ export const PaymentGatesPanel = ({
   gates,
   status,
   onSupervisorApprove,
-  onAddProofPhoto,
   onReleasePayment,
   onRequestReviewMs,
   onSupervisorApproveMs,
-  onAddProofPhotoMs,
   onReleaseMs,
 }: {
   stage: Stage,
@@ -267,11 +235,9 @@ export const PaymentGatesPanel = ({
   status: string,
   onRequestReview?: () => void,
   onSupervisorApprove: () => void,
-  onAddProofPhoto: () => void,
   onReleasePayment: () => void,
   onRequestReviewMs: (id: string) => void,
   onSupervisorApproveMs: (id: string) => void,
-  onAddProofPhotoMs: (id: string) => void,
   onReleaseMs: (m: Milestone) => void,
 }) => {
   if (stage.payment?.milestones?.length) {
@@ -279,7 +245,6 @@ export const PaymentGatesPanel = ({
       <MilestonesPanel
         stage={stage}
         onSupervisorApproveMs={onSupervisorApproveMs}
-        onAddProofPhotoMs={onAddProofPhotoMs}
         onReleaseMs={onReleaseMs}
       />
     );
@@ -306,8 +271,19 @@ export const PaymentGatesPanel = ({
       </div>
 
       {simple === 'paid' ? (
-        <div style={{ fontSize: 13, color: 'var(--text2)' }}>
-          שולם ב-{stage.payment?.paidAt || '—'}.
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div style={{ fontSize: 13, color: 'var(--text2)' }}>
+            שולם ב-{stage.payment?.paidAt || '—'}.
+          </div>
+          {stage.payment?.receipts && stage.payment.receipts.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 4 }}>
+              {stage.payment.receipts.map((receipt, idx) => (
+                <a key={idx} href={`#${receipt}`} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#10B981', background: '#ECFDF5', padding: '6px 10px', borderRadius: 6, alignSelf: 'flex-start', textDecoration: 'none' }}>
+                  <Icon n="file-text" s={14} /> אסמכתא {idx + 1}: {receipt}
+                </a>
+              ))}
+            </div>
+          )}
         </div>
       ) : simple === 'not_started' ? (
         <div style={{ fontSize: 13, color: 'var(--text2)' }}>
@@ -321,7 +297,7 @@ export const PaymentGatesPanel = ({
         <>
           {(() => {
             const { headline, cta } = buildHeadlineAndCTA(gates, {
-              onSupervisorApprove, onAddProofPhoto, onReleasePayment,
+              onSupervisorApprove, onReleasePayment,
             }, amount);
             const ready = simple === 'ready';
             return (
@@ -349,26 +325,36 @@ export const PaymentGatesPanel = ({
 // ── MilestonesPanel — focus on the next thing to pay ─────────────────────────
 const MilestoneItem = ({
   stage, milestone, gates, status, locked, isNext,
-  onSupervisorApprove, onAddProofPhoto, onRelease,
+  onSupervisorApprove, onRelease,
 }: {
   stage: Stage, milestone: Milestone, gates: Gates, status: string, locked: boolean, isNext?: boolean,
-  onSupervisorApprove?: () => void, onAddProofPhoto?: () => void, onRelease?: (m: Milestone) => void
+  onSupervisorApprove?: () => void, onRelease?: (m: Milestone) => void
 }) => {
   if (status === 'paid') {
     return (
       <div style={{
-        display: 'flex', alignItems: 'center', gap: 10,
+        display: 'flex', flexDirection: 'column', gap: 6,
         padding: '8px 12px',
         background: '#F9FAFB',
         border: '1px solid var(--border)',
         borderRadius: 8,
-        fontSize: 13,
       }}>
-        <Icon n="check-circle" s={14} c="var(--success)" />
-        <span style={{ flex: 1, color: 'var(--text2)' }}>{milestone.name}</span>
-        <span style={{ color: 'var(--text3)', fontSize: 12 }}>
-          {fmtMoney(milestone.amount)} · שולם ב-{milestone.paidAt || '—'}
-        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13 }}>
+          <Icon n="check-circle" s={14} c="var(--success)" />
+          <span style={{ flex: 1, color: 'var(--text2)' }}>{milestone.name}</span>
+          <span style={{ color: 'var(--text3)', fontSize: 12 }}>
+            {fmtMoney(milestone.amount)} · שולם ב-{milestone.paidAt || '—'}
+          </span>
+        </div>
+        {milestone.receipts && milestone.receipts.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginLeft: 24 }}>
+            {milestone.receipts.map((receipt, idx) => (
+              <a key={idx} href={`#${receipt}`} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#10B981', background: '#ECFDF5', padding: '4px 8px', borderRadius: 4, alignSelf: 'flex-start', textDecoration: 'none' }}>
+                <Icon n="file-text" s={12} /> אסמכתא {idx + 1}: {receipt}
+              </a>
+            ))}
+          </div>
+        )}
       </div>
     );
   }
@@ -394,7 +380,7 @@ const MilestoneItem = ({
 
   // The active milestone — the one the user should act on.
   const { headline, cta } = buildHeadlineAndCTA(gates, {
-    onSupervisorApprove, onAddProofPhoto,
+    onSupervisorApprove,
     onReleasePayment: onRelease ? () => onRelease(milestone) : undefined,
   }, milestone.amount);
   const ready = status === 'ready';
@@ -436,12 +422,10 @@ const MilestoneItem = ({
 export const MilestonesPanel = ({
   stage,
   onSupervisorApproveMs,
-  onAddProofPhotoMs,
   onReleaseMs,
 }: {
   stage: Stage,
   onSupervisorApproveMs: (id: string) => void,
-  onAddProofPhotoMs: (id: string) => void,
   onReleaseMs: (m: Milestone) => void
 }) => {
   const [showPaid,   setShowPaid]   = React.useState(false);
@@ -463,8 +447,6 @@ export const MilestonesPanel = ({
   const paid   = resolved.filter(r => r.status === 'paid');
   const active = resolved.filter(r => r.status !== 'paid' && r.status !== 'locked');
   const future = resolved.filter(r => r.status === 'locked');
-  const next   = active[0]; // only the first non-locked non-paid is "now"
-  const later  = active.slice(1);
 
   return (
     <div style={{
@@ -515,15 +497,18 @@ export const MilestonesPanel = ({
         </div>
       )}
 
-      {/* Next — the one that matters now */}
-      {next ? (
-        <MilestoneItem
-          stage={stage} milestone={next.m} gates={next.gates}
-          status={next.status} locked={false} isNext
-          onSupervisorApprove={() => onSupervisorApproveMs(next.m.id)}
-          onAddProofPhoto={() => onAddProofPhotoMs(next.m.id)}
-          onRelease={(milestone) => onReleaseMs(milestone)}
-        />
+      {active.length > 0 ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {active.map(({ m, gates, status }, index) => (
+            <MilestoneItem
+              key={m.id}
+              stage={stage} milestone={m} gates={gates}
+              status={status} locked={false} isNext={index === 0}
+              onSupervisorApprove={() => onSupervisorApproveMs(m.id)}
+              onRelease={(milestone) => onReleaseMs(milestone)}
+            />
+          ))}
+        </div>
       ) : paid.length === ms.length ? (
         <div style={{
           padding: 14, textAlign: 'center',
@@ -535,7 +520,7 @@ export const MilestonesPanel = ({
       ) : null}
 
       {/* Future — collapsed by default, show count only */}
-      {(later.length > 0 || future.length > 0) && (
+      {future.length > 0 && (
         <div style={{ marginTop: 12 }}>
           <button
             onClick={() => setShowFuture(!showFuture)}
@@ -546,11 +531,11 @@ export const MilestonesPanel = ({
             }}
           >
             <Icon n={showFuture ? 'chevron-down' : 'chevron-right'} s={12} c="var(--text2)" />
-            בהמשך — {later.length + future.length} שלבים
+            בהמשך — {future.length} שלבים
           </button>
           {showFuture && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {[...later, ...future].map(({ m, gates, status }) => (
+              {future.map(({ m, gates, status }) => (
                 <MilestoneItem key={m.id} stage={stage} milestone={m}
                   gates={gates} status={status} locked={status === 'locked'} />
               ))}
@@ -564,9 +549,15 @@ export const MilestonesPanel = ({
 
 // ── ReleasePaymentModal — simple yes/cancel ──────────────────────────────────
 export const ReleasePaymentModal = ({ stage, milestoneName, amount, gates, onClose, onConfirm }: {
-  stage: Stage, milestoneName: string | null, amount: number, gates?: Gates, onClose: () => void, onConfirm: () => void
+  stage: Stage, milestoneName: string | null, amount: number, gates?: Gates, onClose: () => void, onConfirm: (receipts?: string[]) => void
 }) => {
   const finalAmount = amount ?? stage.payment?.amount ?? 0;
+  const [selectedFiles, setSelectedFiles] = React.useState<File[]>([]);
+
+  const handleConfirm = () => {
+    onConfirm(selectedFiles.length > 0 ? selectedFiles.map(f => f.name) : undefined);
+  };
+
   return (
     <Modal title="לאשר תשלום?" onClose={onClose} width={440}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -574,12 +565,57 @@ export const ReleasePaymentModal = ({ stage, milestoneName, amount, gates, onClo
           אתה משלם <b>{fmtMoney(finalAmount)}</b> ל<b>{stage.contractor}</b>
           {milestoneName ? <> עבור <b>{milestoneName}</b></> : <> עבור שלב <b>{stage.name}</b></>}.
         </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: '16px', background: '#F9FAFB', borderRadius: 8, border: '1px dashed var(--border)', cursor: selectedFiles.length >= 3 ? 'not-allowed' : 'pointer', transition: '0.2s', opacity: selectedFiles.length >= 3 ? 0.6 : 1 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 600, color: 'var(--text1)' }}>
+              <Icon n="upload-cloud" s={16} c="var(--text2)" /> 
+              צירוף קבלה / אסמכתא (עד 3 קבצים)
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--text3)' }}>
+              ניתן להעלות תמונות או קבצי PDF
+            </div>
+            <input 
+              type="file" 
+              multiple={true}
+              style={{ display: 'none' }} 
+              accept="image/*,application/pdf" 
+              disabled={selectedFiles.length >= 3}
+              onChange={(e) => {
+                if (e.target.files) {
+                  const newFiles = Array.from(e.target.files);
+                  setSelectedFiles(prev => {
+                    const uniqueNewFiles = newFiles.filter(nf => !prev.some(pf => pf.name === nf.name && pf.size === nf.size));
+                    return [...prev, ...uniqueNewFiles].slice(0, 3);
+                  });
+                }
+                e.target.value = '';
+              }} 
+            />
+          </label>
+          
+          {selectedFiles.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {selectedFiles.map((f, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: '#ECFDF5', border: '1px solid #10B981', borderRadius: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#065F46', fontWeight: 500 }}>
+                    <Icon n="file-text" s={14} /> {f.name}
+                  </div>
+                  <button onClick={() => setSelectedFiles(prev => prev.filter((_, idx) => idx !== i))} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                    <Icon n="trash-2" s={14} c="var(--danger)" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
         <div style={{ fontSize: 12, color: 'var(--text3)' }}>
           יש לך 14 יום לטעון לפגם לאחר התשלום.
         </div>
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-start' }}>
           <button
-            onClick={onConfirm}
+            onClick={handleConfirm}
             style={{
               fontFamily: "'Heebo',sans-serif", fontWeight: 700, fontSize: 14,
               padding: '10px 18px', borderRadius: 8, border: 'none', cursor: 'pointer',
@@ -588,7 +624,7 @@ export const ReleasePaymentModal = ({ stage, milestoneName, amount, gates, onClo
             }}
           >
             <Icon n="check-circle" s={14} c="#fff" />
-            שלם {fmtMoney(finalAmount)}
+            סמן שולם {fmtMoney(finalAmount)}
           </button>
           <Btn variant="ghost" size="md" onClick={onClose}>ביטול</Btn>
         </div>

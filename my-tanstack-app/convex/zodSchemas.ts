@@ -113,6 +113,8 @@ export const zStagePayment = z.object({
   amount: z.number(),
   status: zPaymentStatus,
   paidAt: z.string().optional(),
+  receipts: z.array(z.string()).optional(),
+  receiptName: z.string().optional(), // legacy
 });
 
 export const zStage = {
@@ -129,7 +131,7 @@ export const zStage = {
   contractorId: zid('contractors').optional(),
   supervisorApprovalBy: z.string().optional(),
   supervisorApprovalAt: z.string().optional(),
-  extraProofPhotos: z.number(),
+  extraProofPhotos: z.number().optional(), // legacy
   payment: zStagePayment,
 };
 
@@ -153,8 +155,10 @@ export const zStageMilestone = {
   status: zPaymentStatus,
   supervisorApprovalBy: z.string().optional(),
   supervisorApprovalAt: z.string().optional(),
-  extraProofPhotos: z.number(),
+  extraProofPhotos: z.number().optional(), // legacy
   paidAt: z.string().optional(),
+  receipts: z.array(z.string()).optional(),
+  receiptName: z.string().optional(), // legacy
 };
 
 export const zStageMilestoneTask = {

@@ -5,7 +5,7 @@
  * Currently logs to console, but can be easily swapped for Sentry/PostHog.
  */
 export function logError(err: unknown, ctx: { op: string; args?: any }): void {
-  const prefix = '[BuildPro Error]';
+  const prefix = '[BuildSync Error]';
   const timestamp = new Date().toISOString();
 
   console.group(`${prefix} ${ctx.op} at ${timestamp}`);

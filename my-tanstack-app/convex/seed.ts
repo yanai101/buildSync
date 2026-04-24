@@ -1,6 +1,6 @@
 // Per-owner demo seed. Called from the client right after the owner signs up
 // (or the first time an owner with no project logs in). Fills every domain
-// table with the BuildPro mock data and links ownership to the caller.
+// table with the BuildSync mock data and links ownership to the caller.
 //
 // Mock data comes from src/utils/mockData.ts (no client-only imports, safe
 // to pull into Convex). A few values live inside React components — those
@@ -206,7 +206,6 @@ export const seedMyProject = mutation({
         contractorId: contractorIdByRole.get(s.contractor),
         supervisorApprovalBy: s.status === 'done' ? 'רון לוי' : undefined,
         supervisorApprovalAt: s.status === 'done' ? s.end : undefined,
-        extraProofPhotos: 0,
         payment: {
           amount,
           status: paymentStatus,
@@ -246,7 +245,6 @@ export const seedMyProject = mutation({
             status: msStatus,
             supervisorApprovalBy: s.status === 'done' ? 'רון לוי' : undefined,
             supervisorApprovalAt: s.status === 'done' ? s.end : undefined,
-            extraProofPhotos: 0,
             paidAt: s.status === 'done' ? s.end : undefined,
           });
           for (const legacyTaskId of m.taskLegacyIds) {
