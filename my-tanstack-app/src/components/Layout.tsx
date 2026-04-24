@@ -1,10 +1,13 @@
 // @ts-nocheck
 
 import * as React from 'react'
-import { Link, useRouterState, Outlet } from '@tanstack/react-router'
+import { Link, useNavigate, useRouterState, Outlet } from '@tanstack/react-router'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Icon } from './Shared'
+import { Icon, Btn } from './Shared'
 import { useCurrentProject } from '~/hooks/useCurrentProject'
+import { useConvexAuth, useQuery } from 'convex/react'
+import { useAuthActions } from '@convex-dev/auth/react'
+import { api } from '../../convex/_generated/api'
 
 export const NAV = [
   { id: "/",              label: "לוח בקרה",    icon: "home",      section: "ראשי" },
@@ -34,12 +37,14 @@ export const PAGE_TITLES: Record<string, string> = {
   "/budget": "תקציב והוצאות",
   "/quotes": "הצעות מחיר והשוואה",
   "/timeline": "לוח זמנים",
+  "/account": "פרטי חשבון",
 }
 
 export const PAGE_SUBTITLES: Record<string, string> = {
   "/setup": "הגדרת מבנה הבית, חדרים וצוות",
   "/boqwizard": "עבור חדר-חדר ובנה רשימת כמויות לרכישה / יבוא",
   "/quotes": "הוסיפו הצעות לפי נושא והשוו ביניהן",
+  "/account": "עדכון פרטים אישיים וסיסמה",
 }
 
 const BOTTOM_NAV = ["/", "/setup", "/boqwizard", "/photos", "/notes"].map(id => NAV.find(n => n.id === id)!)
@@ -47,15 +52,104 @@ const BOTTOM_NAV = ["/", "/setup", "/boqwizard", "/photos", "/notes"].map(id => 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const routerState = useRouterState()
   const currentPath = routerState.location.pathname
+  const navigate = useNavigate()
   const [tweaksOpen, setTweaksOpen] = React.useState(false)
   const { project, hasMultipleProjects } = useCurrentProject()
+  const { isAuthenticated, isLoading } = useConvexAuth()
+  const { signOut } = useAuthActions()
+  const identity = useQuery(api.users.currentIdentity, {})
+  const [menuOpen, setMenuOpen] = React.useState(false)
+  const menuRef = React.useRef<HTMLDivElement>(null)
+
+  const COLLAPSED_KEY = 'buildsync:sidebar-collapsed-sections'
+  const [collapsedSections, setCollapsedSections] = React.useState<Set<string>>(new Set())
+
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return
+    try {
+      const raw = window.localStorage.getItem(COLLAPSED_KEY)
+      if (raw) setCollapsedSections(new Set(JSON.parse(raw)))
+    } catch {}
+  }, [])
+
+  const toggleSection = (sec: string) => {
+    setCollapsedSections((prev) => {
+      const next = new Set(prev)
+      if (next.has(sec)) next.delete(sec)
+      else next.add(sec)
+      if (typeof window !== 'undefined') {
+        try {
+          window.localStorage.setItem(COLLAPSED_KEY, JSON.stringify(Array.from(next)))
+        } catch {}
+      }
+      return next
+    })
+  }
+
+  React.useEffect(() => {
+    if (!menuOpen) return
+    const onClick = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', onClick)
+    return () => document.removeEventListener('mousedown', onClick)
+  }, [menuOpen])
+
+  const handleLogout = async () => {
+    setMenuOpen(false)
+    try {
+      if (typeof window !== 'undefined') {
+        const keys = Object.keys(window.localStorage)
+        for (const k of keys) {
+          if (k.startsWith('buildsync:selected-project:')) {
+            window.localStorage.removeItem(k)
+          }
+        }
+      }
+      await signOut()
+    } finally {
+      if (typeof window !== 'undefined') {
+        window.location.replace('/login')
+      }
+    }
+  }
 
   // group nav sections
   const sections = Array.from(new Set(NAV.map(n => n.section)))
 
-  const noLayoutRoutes = ['/landing', '/register']
+  const publicRoutes = ['/landing', '/register', '/login']
+  const noLayoutRoutes = publicRoutes
+
+  React.useEffect(() => {
+    if (isLoading) return
+    if (!isAuthenticated && !publicRoutes.includes(currentPath)) {
+      navigate({ to: '/login' })
+    }
+  }, [currentPath, isAuthenticated, isLoading, navigate])
+
+  React.useEffect(() => {
+    if (isLoading) return
+    if (isAuthenticated && currentPath === '/login') {
+      navigate({ to: '/' })
+    }
+  }, [currentPath, isAuthenticated, isLoading, navigate])
+
   if (noLayoutRoutes.includes(currentPath)) {
     return <>{children}</>
+  }
+
+  if (isLoading) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', background: 'var(--bg)' }}>
+        <div className="card" style={{ padding: 24 }}>טוען סשן משתמש...</div>
+      </div>
+    )
+  }
+
+  if (!isAuthenticated) {
+    return null
   }
 
   return (
@@ -66,27 +160,61 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           <div><div className="sidebar-logo-text">Build<span>Sync</span></div></div>
         </div>
 
-        {sections.map(sec => (
-          <div key={sec}>
-            <div className="nav-section">{sec}</div>
-            {NAV.filter(n => n.section === sec).map(n => (
-              <Link 
-                key={n.id} 
-                to={n.id} 
-                className="nav-item"
-                activeProps={{ className: 'active' }}
-                exact
-              >
-                {currentPath === n.id && (
-                  <motion.div layoutId="nav-active" className="nav-item-bg" transition={{type:"spring", stiffness:300, damping:30}} />
-                )}
-                <Icon n={n.icon} s={18} />
-                <span style={{flex:1}}>{n.label}</span>
-                {n.badge && <span className="nav-item-badge">{n.badge}</span>}
-              </Link>
-            ))}
-          </div>
-        ))}
+        <div className="sidebar-scroll">
+          {sections.map(sec => {
+            const items = NAV.filter(n => n.section === sec)
+            const hasActive = items.some(n => n.id === currentPath)
+            const collapsed = collapsedSections.has(sec) && !hasActive
+            return (
+              <div key={sec}>
+                <button
+                  type="button"
+                  className="nav-section"
+                  onClick={() => toggleSection(sec)}
+                  aria-expanded={!collapsed}
+                >
+                  <span>{sec}</span>
+                  <motion.span
+                    animate={{ rotate: collapsed ? 0 : 90 }}
+                    transition={{ duration: 0.2 }}
+                    style={{ display: 'inline-flex' }}
+                  >
+                    <Icon n="chevron-right" s={12} c="rgba(255,255,255,.35)" />
+                  </motion.span>
+                </button>
+                <AnimatePresence initial={false}>
+                  {!collapsed && (
+                    <motion.div
+                      key="content"
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.22, ease: 'easeOut' }}
+                      style={{ overflow: 'hidden' }}
+                    >
+                      {items.map(n => (
+                        <Link
+                          key={n.id}
+                          to={n.id}
+                          className="nav-item"
+                          activeProps={{ className: 'active' }}
+                          exact
+                        >
+                          {currentPath === n.id && (
+                            <motion.div layoutId="nav-active" className="nav-item-bg" transition={{type:"spring", stiffness:300, damping:30}} />
+                          )}
+                          <Icon n={n.icon} s={18} />
+                          <span style={{flex:1}}>{n.label}</span>
+                          {n.badge && <span className="nav-item-badge">{n.badge}</span>}
+                        </Link>
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            )
+          })}
+        </div>
 
         <div className="sidebar-footer">
           <Link to={hasMultipleProjects ? "/projects" : "/"} className="sidebar-project" style={{ textDecoration: "none" }}>
@@ -129,13 +257,89 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 <Icon n="layers" s={14} />
                 <span>{project?.name || "בחירת פרויקט"}</span>
               </Link>
+            ) : project ? (
+              <span
+                className="mobile-only"
+                style={{
+                  border: "1px solid var(--border)",
+                  borderRadius: 10,
+                  padding: "8px 12px",
+                  fontSize: 13,
+                  color: "var(--text2)",
+                  alignItems: "center",
+                  gap: 8,
+                  background: "var(--surface)",
+                  maxWidth: 180,
+                  overflow: "hidden",
+                  whiteSpace: "nowrap",
+                  textOverflow: "ellipsis",
+                }}
+              >
+                <Icon n="layers" s={14} />
+                <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{project.name}</span>
+              </span>
             ) : null}
             <div style={{ fontSize: 12, color: "var(--text3)", display: "flex", alignItems: "center", gap: 4 }}>
               <Icon n="clock" s={12} c="var(--text3)" />
               <span>עודכן: היום, 09:45</span>
             </div>
             <div style={{ width: 1, height: 16, background: "var(--border)", margin: "0 4px" }} />
-            <div style={{ width: 30, height: 30, borderRadius: "50%", background: "var(--accent-light)", color: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>א</div>
+            <div ref={menuRef} style={{ position: "relative" }}>
+              <button
+                type="button"
+                onClick={() => setMenuOpen((v) => !v)}
+                aria-haspopup="menu"
+                aria-expanded={menuOpen}
+                style={{ width: 30, height: 30, borderRadius: "50%", background: "var(--accent-light)", color: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 13, cursor: "pointer", border: "none", padding: 0 }}
+              >
+                {(identity?.name?.[0] ?? identity?.email?.[0] ?? 'א').toUpperCase()}
+              </button>
+              {menuOpen && (
+                <div
+                  role="menu"
+                  style={{ position: "absolute", top: "calc(100% + 6px)", insetInlineEnd: 0, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: 8, minWidth: 220, boxShadow: "0 8px 24px rgba(0,0,0,0.08)", zIndex: 30 }}
+                >
+                  <div style={{ padding: "8px 10px" }}>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text1)" }}>
+                      {identity?.name ?? identity?.email ?? 'משתמש'}
+                    </div>
+                    {identity?.email && (
+                      <div style={{ fontSize: 12, color: "var(--text3)", marginTop: 2 }}>
+                        {identity.email}
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ height: 1, background: "var(--border)", margin: "6px 0" }} />
+                  <Link
+                    to="/account"
+                    onClick={() => setMenuOpen(false)}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      padding: "8px 10px",
+                      borderRadius: 8,
+                      color: "var(--text1)",
+                      fontSize: 13,
+                      fontWeight: 600,
+                      textDecoration: "none",
+                    }}
+                  >
+                    <Icon n="settings" s={14} />
+                    פרטי חשבון
+                  </Link>
+                  <div style={{ height: 1, background: "var(--border)", margin: "6px 0" }} />
+                  <Btn
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleLogout}
+                    style={{ width: "100%", justifyContent: "center" }}
+                  >
+                    התנתקות
+                  </Btn>
+                </div>
+              )}
+            </div>
           </div>
         </div>
         <div style={{ flex: 1, position: 'relative' }}>

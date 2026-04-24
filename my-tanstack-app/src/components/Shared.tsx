@@ -120,11 +120,11 @@ export const StatCard = ({label, value, sub, accent, icon}: any) => (
   </motion.div>
 );
 
-export const Btn = ({onClick, children, variant="primary", size="md", disabled, style:sx}: any) => {
+export const Btn = ({onClick, children, variant="primary", size="md", disabled, style:sx, type="button", ...rest}: any) => {
   const base = {display:"inline-flex",alignItems:"center",gap:8,border:"none",borderRadius:10,cursor:disabled?"not-allowed":"pointer",fontFamily:"'Heebo',sans-serif",fontWeight:700,transition:"all .2s",opacity:disabled?.5:1,...sx};
   const sizeS = size==="sm"?{padding:"6px 12px",fontSize:13}:{padding:"10px 20px",fontSize:14};
   const variantS = variant==="ghost"?{background:"transparent",color:"var(--text2)",border:"1px solid var(--border)"}:{background:"linear-gradient(135deg, var(--accent) 0%, #c96b30 100%)",color:"#fff",boxShadow:"0 2px 8px rgba(224,122,56,0.3)"};
-  return <motion.button whileHover={disabled?{}:{scale:1.02,boxShadow:variant==="primary"?"0 4px 12px rgba(224,122,56,0.4)":"none"}} whileTap={disabled?{}:{scale:0.97}} onClick={onClick} style={{...base,...sizeS,...variantS}} disabled={disabled}>{children}</motion.button>;
+  return <motion.button type={type} whileHover={disabled?{}:{scale:1.02,boxShadow:variant==="primary"?"0 4px 12px rgba(224,122,56,0.4)":"none"}} whileTap={disabled?{}:{scale:0.97}} onClick={onClick} style={{...base,...sizeS,...variantS}} disabled={disabled} {...rest}>{children}</motion.button>;
 };
 
 export const Input = ({value, onChange, placeholder, type="text", style:sx}: any) => (

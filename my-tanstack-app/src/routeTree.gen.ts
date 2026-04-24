@@ -17,11 +17,13 @@ import { Route as QuotesRouteImport } from './routes/quotes'
 import { Route as ProjectsRouteImport } from './routes/projects'
 import { Route as PhotosRouteImport } from './routes/photos'
 import { Route as NotesRouteImport } from './routes/notes'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as LandingRouteImport } from './routes/landing'
 import { Route as ContractorsRouteImport } from './routes/contractors'
 import { Route as BudgetRouteImport } from './routes/budget'
 import { Route as BoqwizardRouteImport } from './routes/boqwizard'
 import { Route as BoqRouteImport } from './routes/boq'
+import { Route as AccountRouteImport } from './routes/account'
 import { Route as IndexRouteImport } from './routes/index'
 
 const TimelineRoute = TimelineRouteImport.update({
@@ -64,6 +66,11 @@ const NotesRoute = NotesRouteImport.update({
   path: '/notes',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LandingRoute = LandingRouteImport.update({
   id: '/landing',
   path: '/landing',
@@ -89,6 +96,11 @@ const BoqRoute = BoqRouteImport.update({
   path: '/boq',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AccountRoute = AccountRouteImport.update({
+  id: '/account',
+  path: '/account',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -97,11 +109,13 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/account': typeof AccountRoute
   '/boq': typeof BoqRoute
   '/boqwizard': typeof BoqwizardRoute
   '/budget': typeof BudgetRoute
   '/contractors': typeof ContractorsRoute
   '/landing': typeof LandingRoute
+  '/login': typeof LoginRoute
   '/notes': typeof NotesRoute
   '/photos': typeof PhotosRoute
   '/projects': typeof ProjectsRoute
@@ -113,11 +127,13 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/account': typeof AccountRoute
   '/boq': typeof BoqRoute
   '/boqwizard': typeof BoqwizardRoute
   '/budget': typeof BudgetRoute
   '/contractors': typeof ContractorsRoute
   '/landing': typeof LandingRoute
+  '/login': typeof LoginRoute
   '/notes': typeof NotesRoute
   '/photos': typeof PhotosRoute
   '/projects': typeof ProjectsRoute
@@ -130,11 +146,13 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/account': typeof AccountRoute
   '/boq': typeof BoqRoute
   '/boqwizard': typeof BoqwizardRoute
   '/budget': typeof BudgetRoute
   '/contractors': typeof ContractorsRoute
   '/landing': typeof LandingRoute
+  '/login': typeof LoginRoute
   '/notes': typeof NotesRoute
   '/photos': typeof PhotosRoute
   '/projects': typeof ProjectsRoute
@@ -148,11 +166,13 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/account'
     | '/boq'
     | '/boqwizard'
     | '/budget'
     | '/contractors'
     | '/landing'
+    | '/login'
     | '/notes'
     | '/photos'
     | '/projects'
@@ -164,11 +184,13 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/account'
     | '/boq'
     | '/boqwizard'
     | '/budget'
     | '/contractors'
     | '/landing'
+    | '/login'
     | '/notes'
     | '/photos'
     | '/projects'
@@ -180,11 +202,13 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/account'
     | '/boq'
     | '/boqwizard'
     | '/budget'
     | '/contractors'
     | '/landing'
+    | '/login'
     | '/notes'
     | '/photos'
     | '/projects'
@@ -197,11 +221,13 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AccountRoute: typeof AccountRoute
   BoqRoute: typeof BoqRoute
   BoqwizardRoute: typeof BoqwizardRoute
   BudgetRoute: typeof BudgetRoute
   ContractorsRoute: typeof ContractorsRoute
   LandingRoute: typeof LandingRoute
+  LoginRoute: typeof LoginRoute
   NotesRoute: typeof NotesRoute
   PhotosRoute: typeof PhotosRoute
   ProjectsRoute: typeof ProjectsRoute
@@ -270,6 +296,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof NotesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/landing': {
       id: '/landing'
       path: '/landing'
@@ -305,6 +338,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BoqRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/account': {
+      id: '/account'
+      path: '/account'
+      fullPath: '/account'
+      preLoaderRoute: typeof AccountRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -317,11 +357,13 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AccountRoute: AccountRoute,
   BoqRoute: BoqRoute,
   BoqwizardRoute: BoqwizardRoute,
   BudgetRoute: BudgetRoute,
   ContractorsRoute: ContractorsRoute,
   LandingRoute: LandingRoute,
+  LoginRoute: LoginRoute,
   NotesRoute: NotesRoute,
   PhotosRoute: PhotosRoute,
   ProjectsRoute: ProjectsRoute,
