@@ -334,6 +334,7 @@ export const MOCK_DATA: Record<string, any> = {
   budget_cats: BUDGET_CATS,
   timeline: TIMELINE_DATA,
   quotes: QUOTES_DATA,
+  quote_topics: QUOTE_TOPICS,
   expenses: EXPENSES,
   dashboard: DASHBOARD_OVERVIEW,
 };

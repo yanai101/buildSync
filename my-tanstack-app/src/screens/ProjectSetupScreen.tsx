@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Icon, Btn } from '../components/Shared';
+import { Icon, Btn, FeedbackModal } from '../components/Shared';
 import { ROOM_TYPE_OPTS } from '../utils/mockData';
 import { Room, Project } from '../types';
 import { useDataSource } from '../hooks/useDataSource';
@@ -30,6 +30,7 @@ export const ProjectSetupScreen = () => {
   const [isEditing, setIsEditing] = React.useState(false);
   const [cfg, setCfg] = React.useState<ProjectConfig | null>(null);
   const [saving, setSaving] = React.useState(false);
+  const [feedback, setFeedback] = React.useState<{ title: string; message: string; type: 'success' | 'error' | 'info' } | null>(null);
 
   React.useEffect(() => {
     if (project) {
@@ -77,8 +78,9 @@ export const ProjectSetupScreen = () => {
       });
       setIsEditing(false);
       refetch();
+      setFeedback({ title: "הגדרות נשמרו", message: "פרטי הפרויקט ומבנה הבית עודכנו בהצלחה.", type: "success" });
     } catch (err) {
-      alert("שגיאה בשמירת ההגדרות");
+      setFeedback({ title: "שגיאה", message: "לא הצלחנו לשמור את ההגדרות. אנא נסו שוב.", type: "error" });
     } finally {
       setSaving(false);
     }
@@ -352,6 +354,15 @@ export const ProjectSetupScreen = () => {
         }
       </div>
       </div>
+      
+      {feedback && (
+        <FeedbackModal 
+          title={feedback.title} 
+          message={feedback.message} 
+          type={feedback.type} 
+          onClose={() => setFeedback(null)} 
+        />
+      )}
     </ScreenBoundary>
   );
 };

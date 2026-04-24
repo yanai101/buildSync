@@ -12,7 +12,11 @@ export const useDataMutation = (resource: MutationResource) => {
   const toggleTaskMutation = useMutation(api.mutations.toggleTask);
   const saveBoqMutation = useMutation(api.mutations.saveBoq);
   const saveProjectSetupMutation = useMutation(api.projects.saveProjectSetup);
-  const addExpenseMutation = useMutation(api.mutations.addExpense);
+  const addExpenseMutation = useMutation(api.budget.addExpense);
+  const addCategoryMutation = useMutation(api.budget.addCategory);
+  const saveQuoteMutation = useMutation(api.quotes.saveQuote);
+  const deleteQuoteMutation = useMutation(api.quotes.deleteQuote);
+  const addQuoteTopicMutation = useMutation(api.quotes.addTopic);
   const saveNoteMutation = useMutation(api.mutations.saveNote);
   const savePhotoAnnotationMutation = useMutation(api.mutations.savePhotoAnnotation);
   const createProjectMutation = useMutation(api.projects.createProject);
@@ -20,7 +24,7 @@ export const useDataMutation = (resource: MutationResource) => {
 
   const isMock = localStorage.getItem(`buildsync:ds:${resource}`) !== 'db';
 
-  const mutate = useCallback(async (action: 'add' | 'update' | 'delete' | 'toggleTask' | 'saveBoq' | 'saveProjectSetup' | 'addExpense' | 'saveNote' | 'savePhotoAnnotation' | 'createProject' | 'deleteProject', payload: any) => {
+  const mutate = useCallback(async (action: 'add' | 'update' | 'delete' | 'toggleTask' | 'saveBoq' | 'saveProjectSetup' | 'addExpense' | 'saveNote' | 'savePhotoAnnotation' | 'createProject' | 'deleteProject' | 'addBudgetCategory' | 'saveQuote' | 'deleteQuote' | 'addQuoteTopic', payload: any) => {
     if (isMock) {
       console.log(`[MOCK MUTATION] ${resource}:${action}`, payload);
       return { success: true, mock: true };
@@ -52,6 +56,14 @@ export const useDataMutation = (resource: MutationResource) => {
           });
         case 'addExpense':
           return await addExpenseMutation({ projectId: payload.projectId, description: payload.description, amount: payload.amount, category: payload.category, date: payload.date, status: payload.status });
+        case 'addBudgetCategory':
+          return await addCategoryMutation({ projectId: payload.projectId, name: payload.name, budget: payload.budget, color: payload.color });
+        case 'saveQuote':
+          return await saveQuoteMutation({ ...payload });
+        case 'deleteQuote':
+          return await deleteQuoteMutation({ id: payload.id });
+        case 'addQuoteTopic':
+          return await addQuoteTopicMutation({ ...payload });
         case 'saveNote':
           return await saveNoteMutation({ projectId: payload.projectId, fromName: payload.fromName, role: payload.role, text: payload.text, thread: payload.thread });
         case 'savePhotoAnnotation':

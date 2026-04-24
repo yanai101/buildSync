@@ -17,6 +17,7 @@ import type * as notes from "../notes.js";
 import type * as photos from "../photos.js";
 import type * as projects from "../projects.js";
 import type * as queries from "../queries.js";
+import type * as quotes from "../quotes.js";
 import type * as seed from "../seed.js";
 import type * as stages from "../stages.js";
 import type * as users from "../users.js";
@@ -38,6 +39,7 @@ declare const fullApi: ApiFromModules<{
   photos: typeof photos;
   projects: typeof projects;
   queries: typeof queries;
+  quotes: typeof quotes;
   seed: typeof seed;
   stages: typeof stages;
   users: typeof users;

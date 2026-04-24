@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import * as React from 'react';
 
 import { useCurrentProject } from '~/hooks/useCurrentProject';
-import { Btn, Icon } from '~/components/Shared';
+import { Btn, Icon, FeedbackModal } from '~/components/Shared';
 import { useDataMutation } from '~/hooks/useDataMutation';
 import { CreateProjectWizard } from '~/components/CreateProjectWizard';
 
@@ -18,10 +18,11 @@ function ProjectsRoute() {
   const [isWizardOpen, setIsWizardOpen] = React.useState(false);
   const [isDeleting, setIsDeleting] = React.useState<string | null>(null);
   const [isSaving, setIsSaving] = React.useState(false);
+  const [feedback, setFeedback] = React.useState<{ title: string; message: string; type: 'success' | 'error' | 'info' } | null>(null);
 
   const handleCreate = async (data: any) => {
     if (isMock) {
-      alert("פעולת יצירת פרויקט חסומה במצב Mock.");
+      setFeedback({ title: "פעולה חסומה", message: "יצירת פרויקטים אינה זמינה במצב דמו (Mock).", type: "info" });
       return;
     }
     setIsSaving(true);
@@ -32,9 +33,8 @@ function ProjectsRoute() {
       // Auto-switch to new project
       setCurrentProject(newId);
       navigate({ to: '/' });
-      
     } catch (err) {
-      alert("שגיאה ביצירת פרויקט");
+      setFeedback({ title: "שגיאה", message: "לא הצלחנו ליצור את הפרויקט. אנא נסו שוב.", type: "error" });
     } finally {
       setIsSaving(false);
     }
@@ -42,7 +42,7 @@ function ProjectsRoute() {
 
   const handleDelete = async (id: string) => {
     if (isMock) {
-      alert("פעולת מחיקה חסומה במצב Mock.");
+      setFeedback({ title: "פעולה חסומה", message: "מחיקת פרויקטים אינה זמינה במצב דמו (Mock).", type: "info" });
       return;
     }
     if (!window.confirm("האם אתה בטוח שברצונך למחוק את הפרויקט? פעולה זו תמחק לצמיתות את כל הנתונים הקשורים לפרויקט!")) return;
@@ -52,7 +52,7 @@ function ProjectsRoute() {
       await mutate('deleteProject', { id });
       window.location.reload();
     } catch (err) {
-      alert("שגיאה במחיקת פרויקט");
+      setFeedback({ title: "שגיאה", message: "לא הצלחנו למחוק את הפרויקט.", type: "error" });
     } finally {
       setIsDeleting(null);
     }
@@ -173,6 +173,15 @@ function ProjectsRoute() {
           onClose={() => setIsWizardOpen(false)} 
           onSave={handleCreate} 
           saving={isSaving} 
+        />
+      )}
+
+      {feedback && (
+        <FeedbackModal 
+          title={feedback.title} 
+          message={feedback.message} 
+          type={feedback.type} 
+          onClose={() => setFeedback(null)} 
         />
       )}
     </div>

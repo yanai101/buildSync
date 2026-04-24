@@ -138,6 +138,39 @@ export const Select = ({value, onChange, children, style:sx}: any) => (
   </select>
 );
 
+export const FeedbackModal = ({onClose, title, message, type="info", buttonText="הבנתי"}: any) => {
+  const iconMap: any = {
+    success: { n: "check-circle", c: "var(--success)" },
+    error:   { n: "alert", c: "var(--danger)" },
+    info:    { n: "message", c: "var(--accent)" }
+  };
+  const { n, c } = iconMap[type] || iconMap.info;
+  
+  return (
+    <Modal onClose={onClose} title={title} width={400}>
+      <div style={{ textAlign: "center", padding: "10px 0" }}>
+        <div style={{ 
+          width: 64, 
+          height: 64, 
+          margin: "0 auto 20px", 
+          background: `${c}11`, 
+          color: c, 
+          borderRadius: "50%", 
+          display: "flex", 
+          alignItems: "center", 
+          justifyContent: "center" 
+        }}>
+          <Icon n={n} s={32} />
+        </div>
+        <div style={{ fontSize: 16, color: "var(--text2)", lineHeight: 1.6, marginBottom: 24 }}>
+          {message}
+        </div>
+        <Btn onClick={onClose} style={{ width: "100%" }}>{buttonText}</Btn>
+      </div>
+    </Modal>
+  );
+};
+
 export const Spinner = ({size=24, color="var(--accent)"}: any) => (
   <motion.div
     animate={{ rotate: 360 }}
