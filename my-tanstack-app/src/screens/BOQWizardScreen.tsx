@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Icon, Btn, ProgressBar } from '../components/Shared';
+import { Icon, Btn, ProgressBar, FeedbackModal } from '../components/Shared';
 import { ROOM_TYPE_OPTS } from '../utils/mockData';
 import { useDataSource } from '../hooks/useDataSource';
 import { useDataMutation } from '../hooks/useDataMutation';
@@ -119,6 +119,7 @@ export const BOQWizardScreen = () => {
   const [allItems, setAllItems] = React.useState<any>({});
   const [view, setView] = React.useState<'wizard' | 'summary'>('wizard');
   const [saving, setSaving] = React.useState(false);
+  const [feedback, setFeedback] = React.useState<{ title: string; message: string; type: 'success' | 'error'; redirect?: string } | null>(null);
 
   React.useEffect(() => {
     if (project && (project as any).rooms) {
@@ -164,13 +165,18 @@ export const BOQWizardScreen = () => {
       });
 
       await mutate('saveBoq', { projectId: (project as any)._id, items: itemsToSave });
-      alert("הכמויות נשמרו בהצלחה!");
-      window.location.href = '/boq';
+      setFeedback({ title: "נשמר בהצלחה", message: "הכמויות נשמרו בהצלחה!", type: "success", redirect: "/boq" });
     } catch (err) {
-      alert("שגיאה בשמירת הנתונים");
+      setFeedback({ title: "שגיאה", message: "שגיאה בשמירת הנתונים", type: "error" });
     } finally {
       setSaving(false);
     }
+  };
+
+  const closeFeedback = () => {
+    const redirect = feedback?.redirect;
+    setFeedback(null);
+    if (redirect) window.location.href = redirect;
   };
 
   if (!project) return <ScreenBoundary loading={loading} error={error} onRetry={refetch}><div/></ScreenBoundary>;
@@ -276,6 +282,14 @@ export const BOQWizardScreen = () => {
               </div>
             ))}
           </div>
+          {feedback && (
+            <FeedbackModal
+              title={feedback.title}
+              message={feedback.message}
+              type={feedback.type}
+              onClose={closeFeedback}
+            />
+          )}
         </div>
       </ScreenBoundary>
     );
@@ -387,6 +401,14 @@ export const BOQWizardScreen = () => {
           </div>
 
         </div>
+        {feedback && (
+          <FeedbackModal
+            title={feedback.title}
+            message={feedback.message}
+            type={feedback.type}
+            onClose={closeFeedback}
+          />
+        )}
       </div>
     </ScreenBoundary>
   );

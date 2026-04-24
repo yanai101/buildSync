@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Icon, Avatar, Select, Btn } from '../components/Shared';
+import { Icon, Avatar, Select, Btn, FeedbackModal } from '../components/Shared';
 import { ROLE_COLORS, ROLE_LABELS, PROJECT } from '../utils/mockData';
 import { useDataSource } from '../hooks/useDataSource';
 import { useDataMutation } from '../hooks/useDataMutation';
@@ -31,6 +31,7 @@ export const NotesScreen = () => {
   const [text, setText] = React.useState("");
   const [myRole, setMyRole] = React.useState<string>("manager");
   const [targetThread, setTargetThread] = React.useState<string>("internal");
+  const [feedback, setFeedback] = React.useState<{ title: string; message: string; type: 'error' | 'info' | 'success' } | null>(null);
   const endRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
@@ -69,7 +70,7 @@ export const NotesScreen = () => {
       });
       refetch();
     } catch (err) {
-      alert("שגיאה בשליחת הערה");
+      setFeedback({ title: "שגיאה", message: "שגיאה בשליחת הערה", type: "error" });
     }
   };
 
@@ -151,6 +152,14 @@ export const NotesScreen = () => {
             <Btn onClick={send}><Icon n="send" s={14}/> שלח</Btn>
           </div>
         </div>
+        {feedback && (
+          <FeedbackModal
+            title={feedback.title}
+            message={feedback.message}
+            type={feedback.type}
+            onClose={() => setFeedback(null)}
+          />
+        )}
       </div>
     </ScreenBoundary>
   );

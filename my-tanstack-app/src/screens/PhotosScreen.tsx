@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Icon, Btn, Modal, TagBadge, Select } from '../components/Shared';
+import { Icon, Btn, Modal, TagBadge, Select, FeedbackModal } from '../components/Shared';
 import { useDataSource } from '../hooks/useDataSource';
 import { useDataMutation } from '../hooks/useDataMutation';
 import { useCurrentProject } from '../hooks/useCurrentProject';
@@ -25,6 +25,7 @@ export const PhotosScreen = () => {
   const [drawMode, setDrawMode] = React.useState("pen");
   const [drawColor, setDrawColor] = React.useState("#FF3B30");
   const [noteText, setNoteText] = React.useState("");
+  const [feedback, setFeedback] = React.useState<{ title: string; message: string; type: 'error' | 'info' | 'success' } | null>(null);
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
   const drawing = React.useRef(false);
   const lastPos = React.useRef<any>(null);
@@ -66,7 +67,7 @@ export const PhotosScreen = () => {
       setNoteText("");
       refetch();
     } catch (err) {
-      alert("שגיאה בשמירת הערה");
+      setFeedback({ title: "שגיאה", message: "שגיאה בשמירת הערה", type: "error" });
     }
   };
 
@@ -158,7 +159,7 @@ export const PhotosScreen = () => {
                 }
               </div>
               <div style={{display:"flex",flexDirection:"column",gap:6}}>
-                <textarea value={noteText} onChange={setNoteText} placeholder="הוסף הערה..." rows={3}
+                <textarea value={noteText} onChange={e=>setNoteText(e.target.value)} placeholder="הוסף הערה..." rows={3}
                   style={{width:"100%",border:"1px solid var(--border)",borderRadius:8,padding:"8px",fontSize:12,fontFamily:"'Heebo',sans-serif",resize:"none",outline:"none"}}/>
                 <div style={{display:"flex",gap:6}}>
                   <Select value="manager" onChange={()=>{}} style={{flex:1,fontSize:11}}>
@@ -179,6 +180,14 @@ export const PhotosScreen = () => {
             <Btn size="sm" variant="ghost"><Icon n="download" s={13}/> שמור תמונה</Btn>
           </div>
         </Modal>
+      )}
+      {feedback && (
+        <FeedbackModal
+          title={feedback.title}
+          message={feedback.message}
+          type={feedback.type}
+          onClose={() => setFeedback(null)}
+        />
       )}
     </div>
     </ScreenBoundary>

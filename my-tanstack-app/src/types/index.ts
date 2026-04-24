@@ -46,6 +46,8 @@ export interface Project {
   owner: string;
   startDate: string;
   expectedEnd: string;
+  floors?: number;
+  areaSqm?: number;
   progress: number;
   currentStage: string;
   budget: number;

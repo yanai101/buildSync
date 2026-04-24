@@ -34,20 +34,39 @@ export const listBoq = query({
 export const listPhotos = query({
   args: { projectId: v.id('projects') },
   handler: async (ctx, args) => {
-    return await ctx.db
+    const photos = await ctx.db
       .query('photos')
       .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
       .collect();
+
+    return await Promise.all(photos.map(async (photo) => {
+      const notes = await ctx.db
+        .query('photoNotes')
+        .withIndex('by_photo', (q) => q.eq('photoId', photo._id))
+        .collect();
+      return {
+        ...photo,
+        id: photo._id,
+        stage: photo.stageLabel,
+        date: photo.takenOn,
+        notesCount: notes.length,
+      };
+    }));
   },
 });
 
 export const listNotes = query({
   args: { projectId: v.id('projects') },
   handler: async (ctx, args) => {
-    return await ctx.db
-      .query('notes')
+    const notes = await ctx.db
+      .query('messages')
       .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
       .collect();
+
+    return notes.map(n => ({
+      ...n,
+      id: n._id,
+    }));
   },
 });
 

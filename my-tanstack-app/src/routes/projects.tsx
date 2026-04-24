@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import * as React from 'react';
 
 import { useCurrentProject } from '~/hooks/useCurrentProject';
-import { Btn, Icon, FeedbackModal } from '~/components/Shared';
+import { Btn, Icon, FeedbackModal, ConfirmDialog } from '~/components/Shared';
 import { useDataMutation } from '~/hooks/useDataMutation';
 import { CreateProjectWizard } from '~/components/CreateProjectWizard';
 
@@ -17,6 +17,7 @@ function ProjectsRoute() {
   
   const [isWizardOpen, setIsWizardOpen] = React.useState(false);
   const [isDeleting, setIsDeleting] = React.useState<string | null>(null);
+  const [deleteTargetId, setDeleteTargetId] = React.useState<string | null>(null);
   const [isSaving, setIsSaving] = React.useState(false);
   const [feedback, setFeedback] = React.useState<{ title: string; message: string; type: 'success' | 'error' | 'info' } | null>(null);
 
@@ -31,7 +32,9 @@ function ProjectsRoute() {
       setIsWizardOpen(false);
       
       // Auto-switch to new project
-      setCurrentProject(newId);
+      if (typeof newId === 'string') {
+        setCurrentProject(newId);
+      }
       navigate({ to: '/' });
     } catch (err) {
       setFeedback({ title: "שגיאה", message: "לא הצלחנו ליצור את הפרויקט. אנא נסו שוב.", type: "error" });
@@ -45,16 +48,21 @@ function ProjectsRoute() {
       setFeedback({ title: "פעולה חסומה", message: "מחיקת פרויקטים אינה זמינה במצב דמו (Mock).", type: "info" });
       return;
     }
-    if (!window.confirm("האם אתה בטוח שברצונך למחוק את הפרויקט? פעולה זו תמחק לצמיתות את כל הנתונים הקשורים לפרויקט!")) return;
+    setDeleteTargetId(id);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTargetId) return;
     
-    setIsDeleting(id);
+    setIsDeleting(deleteTargetId);
     try {
-      await mutate('deleteProject', { id });
+      await mutate('deleteProject', { id: deleteTargetId });
       window.location.reload();
     } catch (err) {
       setFeedback({ title: "שגיאה", message: "לא הצלחנו למחוק את הפרויקט.", type: "error" });
     } finally {
       setIsDeleting(null);
+      setDeleteTargetId(null);
     }
   };
 
@@ -173,6 +181,18 @@ function ProjectsRoute() {
           onClose={() => setIsWizardOpen(false)} 
           onSave={handleCreate} 
           saving={isSaving} 
+        />
+      )}
+
+      {deleteTargetId && (
+        <ConfirmDialog
+          title="מחיקת פרויקט"
+          message="האם אתה בטוח שברצונך למחוק את הפרויקט? פעולה זו תמחק לצמיתות את כל הנתונים הקשורים לפרויקט!"
+          confirmText="מחק פרויקט"
+          cancelText="ביטול"
+          loading={isDeleting === deleteTargetId}
+          onConfirm={confirmDelete}
+          onClose={() => setDeleteTargetId(null)}
         />
       )}
 

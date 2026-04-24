@@ -124,7 +124,7 @@ export const Btn = ({onClick, children, variant="primary", size="md", disabled, 
   const base = {display:"inline-flex",alignItems:"center",gap:8,border:"none",borderRadius:10,cursor:disabled?"not-allowed":"pointer",fontFamily:"'Heebo',sans-serif",fontWeight:700,transition:"all .2s",opacity:disabled?.5:1,...sx};
   const sizeS = size==="sm"?{padding:"6px 12px",fontSize:13}:{padding:"10px 20px",fontSize:14};
   const variantS = variant==="ghost"?{background:"transparent",color:"var(--text2)",border:"1px solid var(--border)"}:{background:"linear-gradient(135deg, var(--accent) 0%, #c96b30 100%)",color:"#fff",boxShadow:"0 2px 8px rgba(224,122,56,0.3)"};
-  return <motion.button type={type} whileHover={disabled?{}:{scale:1.02,boxShadow:variant==="primary"?"0 4px 12px rgba(224,122,56,0.4)":"none"}} whileTap={disabled?{}:{scale:0.97}} onClick={onClick} style={{...base,...sizeS,...variantS}} disabled={disabled} {...rest}>{children}</motion.button>;
+  return <motion.button type={type} whileHover={disabled?{}:{scale:1.02,boxShadow:variant==="primary"?"0 4px 12px rgba(224,122,56,0.4)":"none"}} whileTap={disabled?{}:{scale:0.97}} onClick={onClick} style={{...base,...sizeS,...variantS,...sx}} disabled={disabled} {...rest}>{children}</motion.button>;
 };
 
 export const Input = ({value, onChange, placeholder, type="text", style:sx}: any) => (
@@ -138,16 +138,39 @@ export const Select = ({value, onChange, children, style:sx}: any) => (
   </select>
 );
 
-export const FeedbackModal = ({onClose, title, message, type="info", buttonText="הבנתי"}: any) => {
+export const AppDialog = ({
+  onClose,
+  title,
+  message,
+  type = "info",
+  primaryText = "הבנתי",
+  secondaryText,
+  onPrimary,
+  onSecondary,
+  primaryVariant = "primary",
+  loading = false,
+}: any) => {
   const iconMap: any = {
     success: { n: "check-circle", c: "var(--success)" },
     error:   { n: "alert", c: "var(--danger)" },
+    warning: { n: "alert", c: "var(--warning)" },
     info:    { n: "message", c: "var(--accent)" }
   };
   const { n, c } = iconMap[type] || iconMap.info;
+  const close = onClose || (() => {});
+  const handlePrimary = () => {
+    if (loading) return;
+    if (onPrimary) onPrimary();
+    else close();
+  };
+  const handleSecondary = () => {
+    if (loading) return;
+    if (onSecondary) onSecondary();
+    else close();
+  };
   
   return (
-    <Modal onClose={onClose} title={title} width={400}>
+    <Modal onClose={close} title={title} width={420}>
       <div style={{ textAlign: "center", padding: "10px 0" }}>
         <div style={{ 
           width: 64, 
@@ -165,11 +188,58 @@ export const FeedbackModal = ({onClose, title, message, type="info", buttonText=
         <div style={{ fontSize: 16, color: "var(--text2)", lineHeight: 1.6, marginBottom: 24 }}>
           {message}
         </div>
-        <Btn onClick={onClose} style={{ width: "100%" }}>{buttonText}</Btn>
+        <div style={{display:"flex",gap:10,flexDirection:secondaryText?"row":"column"}}>
+          {secondaryText && (
+            <Btn variant="ghost" onClick={handleSecondary} disabled={loading} style={{ flex: 1, justifyContent: "center" }}>
+              {secondaryText}
+            </Btn>
+          )}
+          <Btn
+            onClick={handlePrimary}
+            disabled={loading}
+            variant={primaryVariant}
+            style={{
+              flex: 1,
+              justifyContent: "center",
+              ...(primaryVariant === "danger" ? {
+                background: "var(--danger)",
+                color: "#fff",
+                boxShadow: "0 2px 8px rgba(239,68,68,0.28)"
+              } : {})
+            }}
+          >
+            {loading ? "מבצע..." : primaryText}
+          </Btn>
+        </div>
       </div>
     </Modal>
   );
 };
+
+export const FeedbackModal = ({onClose, title, message, type="info", buttonText="הבנתי"}: any) => (
+  <AppDialog
+    onClose={onClose}
+    title={title}
+    message={message}
+    type={type}
+    primaryText={buttonText}
+  />
+);
+
+export const ConfirmDialog = ({onClose, onConfirm, title, message, confirmText="אישור", cancelText="ביטול", loading=false, type="warning"}: any) => (
+  <AppDialog
+    onClose={onClose}
+    title={title}
+    message={message}
+    type={type}
+    primaryText={confirmText}
+    secondaryText={cancelText}
+    onPrimary={onConfirm}
+    onSecondary={onClose}
+    primaryVariant="danger"
+    loading={loading}
+  />
+);
 
 export const Spinner = ({size=24, color="var(--accent)"}: any) => (
   <motion.div

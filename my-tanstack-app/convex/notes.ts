@@ -5,7 +5,7 @@ export const list = query({
   args: { projectId: v.id('projects') },
   handler: async (ctx, args) => {
     const notes = await ctx.db
-      .query('notes')
+      .query('messages')
       .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
       .collect();
     

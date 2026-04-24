@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Icon, Btn, Select, Input, Badge, Modal, FeedbackModal } from '../components/Shared';
+import { Icon, Btn, Select, Input, Badge, Modal, FeedbackModal, ConfirmDialog } from '../components/Shared';
 import { QUOTES_DATA, QUOTE_TOPICS, fmtMoney } from '../utils/mockData';
 import { useDataSource } from '../hooks/useDataSource';
 import { useDataMutation } from '../hooks/useDataMutation';
@@ -52,6 +52,7 @@ export const QuotesScreen = () => {
   const [topicInputOpen, setTopicInputOpen] = React.useState(false);
   const [newTopicName, setNewTopicName] = React.useState("");
   const [saving, setSaving] = React.useState(false);
+  const [deleteTargetId, setDeleteTargetId] = React.useState<any>(null);
   const [feedback, setFeedback] = React.useState<{ title: string; message: string; type: 'success' | 'error' | 'info' } | null>(null);
 
   React.useEffect(() => {
@@ -152,10 +153,15 @@ export const QuotesScreen = () => {
   };
 
   const deleteQuote = async (id: any) => {
-    if (!confirm("למחוק את הצעת המחיר?")) return;
+    setDeleteTargetId(id);
+  };
+
+  const confirmDeleteQuote = async () => {
+    if (!deleteTargetId) return;
     try {
-      await mutate('deleteQuote', { id });
+      await mutate('deleteQuote', { id: deleteTargetId });
       quotesRefetch();
+      setDeleteTargetId(null);
       setFeedback({ title: "נמחק", message: "הצעת המחיר הוסרה בהצלחה.", type: "info" });
     } catch (err) {
       setFeedback({ title: "שגיאה", message: "לא הצלחנו למחוק את הצעת המחיר.", type: "error" });
@@ -491,6 +497,17 @@ export const QuotesScreen = () => {
               </div>
             </div>
           </Modal>
+        )}
+
+        {deleteTargetId && (
+          <ConfirmDialog
+            title="מחיקת הצעת מחיר"
+            message="למחוק את הצעת המחיר?"
+            confirmText="מחק"
+            cancelText="ביטול"
+            onConfirm={confirmDeleteQuote}
+            onClose={() => setDeleteTargetId(null)}
+          />
         )}
 
         {feedback && (

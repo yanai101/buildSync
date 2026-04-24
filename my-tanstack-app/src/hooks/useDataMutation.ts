@@ -2,7 +2,7 @@ import { useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { useCallback } from 'react';
 
-export type MutationResource = 'stages' | 'tasks' | 'boq' | 'photos' | 'project' | 'notes' | 'budget' | 'quotes' | 'timeline' | 'contractors' | 'expenses';
+export type MutationResource = 'stages' | 'tasks' | 'boq' | 'photos' | 'project' | 'projects' | 'notes' | 'budget' | 'quotes' | 'timeline' | 'contractors' | 'expenses';
 
 export const useDataMutation = (resource: MutationResource) => {
   // Convex Mutations

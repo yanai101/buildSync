@@ -42,7 +42,7 @@ export const saveQuote = mutation({
     total: v.number(),
     validity: v.optional(v.string()),
     notes: v.optional(v.string()),
-    status: v.string(),
+    status: v.union(v.literal('pending'), v.literal('approved'), v.literal('rejected')),
     fileName: v.optional(v.string()),
     createdAt: v.optional(v.string()),
     id: v.optional(v.id('priceQuotes')),

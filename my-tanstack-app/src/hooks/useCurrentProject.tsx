@@ -2,6 +2,7 @@ import * as React from 'react';
 import { useQuery } from 'convex/react';
 
 import { api } from '../../convex/_generated/api';
+import type { Id } from '../../convex/_generated/dataModel';
 import { PROJECT } from '../utils/mockData';
 
 type ProjectContextType = {
@@ -115,7 +116,7 @@ export function useCurrentProject() {
     user,
     projects,
     project: project as any | null,
-    projectId: project?._id ?? null,
+    projectId: (project?._id ?? null) as Id<'projects'> | null,
     hasMultipleProjects: projects.length > 1,
     setCurrentProject,
     isMock

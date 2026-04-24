@@ -93,15 +93,22 @@ export const addExpense = mutation({
     amount: v.number(),
     category: v.string(),
     date: v.string(),
-    status: v.string(),
+    status: v.union(v.literal('שולם'), v.literal('ממתין')),
   },
   handler: async (ctx, args) => {
+    const category = await ctx.db
+      .query('budgetCategories')
+      .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
+      .filter(q => q.eq(q.field('name'), args.category))
+      .first();
+
     await ctx.db.insert('expenses', {
       projectId: args.projectId,
       description: args.description,
       amount: args.amount,
       expenseDate: args.date,
-      status: args.status as any,
+      status: args.status,
+      categoryId: category?._id,
     });
   },
 });
@@ -110,12 +117,12 @@ export const saveNote = mutation({
   args: {
     projectId: v.id('projects'),
     fromName: v.string(),
-    role: v.string(),
+    role: v.union(v.literal('owner'), v.literal('manager'), v.literal('inspector'), v.literal('contractor')),
     text: v.string(),
-    thread: v.string(),
+    thread: v.union(v.literal('internal'), v.literal('contractor')),
   },
   handler: async (ctx, args) => {
-    await ctx.db.insert('notes', {
+    await ctx.db.insert('messages', {
       projectId: args.projectId,
       fromName: args.fromName,
       role: args.role,
@@ -128,15 +135,16 @@ export const saveNote = mutation({
 
 export const savePhotoAnnotation = mutation({
   args: {
-    photoId: v.any(),
+    photoId: v.id('photos'),
     noteText: v.string(),
-    role: v.string(),
+    role: v.union(v.literal('owner'), v.literal('manager'), v.literal('inspector'), v.literal('contractor')),
   },
   handler: async (ctx, args) => {
-    const photo = await ctx.db.get(args.photoId);
-    if (photo) {
-      const annotations = [...(photo.annotations || []), { text: args.noteText, role: args.role, at: new Date().toISOString() }];
-      await ctx.db.patch(args.photoId, { annotations, notesCount: (photo.notesCount || 0) + 1 });
-    }
+    await ctx.db.insert('photoNotes', {
+      photoId: args.photoId,
+      authorName: 'משתמש',
+      role: args.role,
+      text: args.noteText,
+    });
   },
 });

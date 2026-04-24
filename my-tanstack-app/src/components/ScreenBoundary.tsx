@@ -3,7 +3,7 @@ import { Spinner, ErrorState, Icon, Btn } from './Shared';
 import { motion } from 'framer-motion';
 
 interface ScreenBoundaryProps {
-  loading: boolean;
+  loading?: boolean;
   error?: Error | string | null;
   isEmpty?: boolean;
   emptyTitle?: string;
