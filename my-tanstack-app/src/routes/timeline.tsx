@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { TimelineScreen } from '~/components/LegacyScreens'
+import { TimelineScreen } from '~/screens/TimelineScreen'
 
 export const Route = createFileRoute('/timeline')({
   component: TimelineScreen,

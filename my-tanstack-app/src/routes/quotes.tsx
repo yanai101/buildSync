@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { QuotesScreen } from '~/components/LegacyScreens'
+import { QuotesScreen } from '~/screens/QuotesScreen'
 
 export const Route = createFileRoute('/quotes')({
   component: QuotesScreen,

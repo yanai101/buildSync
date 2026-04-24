@@ -329,6 +329,46 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                     פרטי חשבון
                   </Link>
                   <div style={{ height: 1, background: "var(--border)", margin: "6px 0" }} />
+                  <div style={{ height: 1, background: "var(--border)", margin: "6px 0" }} />
+                  {/* Dev-only Data Source Toggle */}
+                  {import.meta.env.DEV && (
+                    <>
+                      <div style={{ padding: "4px 10px", fontSize: 10, fontWeight: 700, color: "var(--text3)", textTransform: "uppercase" }}>Data Sources</div>
+                      {['project', 'stages', 'contractors', 'boq', 'photos', 'notes', 'budget_cats', 'timeline', 'quotes'].map(key => {
+                        const dsKey = `buildsync:ds:${key}`;
+                        const current = typeof window !== 'undefined' ? localStorage.getItem(dsKey) || 'mock' : 'mock';
+                        return (
+                          <div key={key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "4px 10px" }}>
+                            <span style={{ fontSize: 11, color: "var(--text2)" }}>{key}</span>
+                            <div style={{ display: "flex", background: "var(--bg)", borderRadius: 6, padding: 2 }}>
+                              {['mock', 'db'].map(m => (
+                                <button
+                                  key={m}
+                                  onClick={() => {
+                                    localStorage.setItem(dsKey, m);
+                                    window.location.reload();
+                                  }}
+                                  style={{
+                                    padding: "2px 6px",
+                                    fontSize: 10,
+                                    borderRadius: 4,
+                                    border: "none",
+                                    background: current === m ? "var(--accent)" : "transparent",
+                                    color: current === m ? "#fff" : "var(--text3)",
+                                    cursor: "pointer",
+                                    fontWeight: 700
+                                  }}
+                                >
+                                  {m.toUpperCase()}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                      <div style={{ height: 1, background: "var(--border)", margin: "6px 0" }} />
+                    </>
+                  )}
                   <Btn
                     variant="ghost"
                     size="sm"

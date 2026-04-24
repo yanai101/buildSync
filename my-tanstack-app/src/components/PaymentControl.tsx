@@ -1,8 +1,23 @@
-// @ts-nocheck
-
 import * as React from 'react';
 import { Icon, Btn, Modal } from './Shared';
 import { PHOTOS_DATA, fmtMoney } from '../utils/mockData';
+import { Stage, Milestone } from '../types';
+
+export interface Gate {
+  key: string;
+  label: string;
+  passed: boolean;
+  detail: string;
+  missing?: number;
+  canApprove?: boolean;
+}
+
+export interface Gates {
+  tasks: Gate;
+  supervisor: Gate;
+  photos: Gate;
+  allPassed: boolean;
+}
 
 // ── Payment Control Flow — internal status (audit/logic) ─────────────────────
 // Kept for audit + logic layers. Users never see these — they see SIMPLE_STATES.
@@ -28,7 +43,7 @@ const SIMPLE = {
   locked:      { label: 'בהמשך',         bg: '#F9FAFB', fg: '#9CA3AF', dot: '#D1D5DB' },
 };
 
-const toSimple = (status) => {
+const toSimple = (status: string) => {
   if (status === 'paid')     return 'paid';
   if (status === 'disputed') return 'issue';
   if (status === 'draft')    return 'not_started';
@@ -38,7 +53,7 @@ const toSimple = (status) => {
 };
 
 // ── Gate computation (unchanged — safety layer) ──────────────────────────────
-export const computeGates = (stage, extraApprovedPhotos = 0) => {
+export const computeGates = (stage: Stage, extraApprovedPhotos: number = 0): Gates => {
   const tasks = stage.tasks || [];
   const requiredTasks = tasks.filter(t => t.required !== false);
   const doneTasks = requiredTasks.filter(t => t.done).length;
@@ -74,14 +89,14 @@ export const computeGates = (stage, extraApprovedPhotos = 0) => {
 };
 
 // The UI reads gates, not intent — any active/review/blocked collapses to gate truth.
-export const resolveStatus = (stage, gates) => {
+export const resolveStatus = (stage: Stage, gates: Gates) => {
   const s = stage.payment?.status || 'draft';
   if (s === 'paid' || s === 'disputed' || s === 'draft') return s;
   return gates.allPassed ? 'ready' : 'blocked';
 };
 
 // ── Milestone helpers (unchanged logic) ──────────────────────────────────────
-export const computeMilestoneGates = (stage, milestone) => {
+export const computeMilestoneGates = (stage: Stage, milestone: Milestone): Gates => {
   const tasks = (stage.tasks || []).filter(t => milestone.taskIds.includes(t.id));
   const required = tasks.filter(t => t.required !== false);
   const done = required.filter(t => t.done).length;
@@ -118,7 +133,7 @@ export const computeMilestoneGates = (stage, milestone) => {
   };
 };
 
-export const resolveMilestoneStatus = (milestone, gates, prev) => {
+export const resolveMilestoneStatus = (milestone: Milestone, gates: Gates, prev: Milestone | null) => {
   const s = milestone.status;
   if (s === 'paid' || s === 'disputed') return s;
   if (prev && prev.status !== 'paid') return 'locked';
@@ -126,7 +141,7 @@ export const resolveMilestoneStatus = (milestone, gates, prev) => {
   return gates.allPassed ? 'ready' : 'blocked';
 };
 
-export const aggregateStageStatus = (stage) => {
+export const aggregateStageStatus = (stage: Stage) => {
   const ms = stage.payment?.milestones;
   if (!ms?.length) return null;
   if (ms.every(m => m.status === 'paid')) return 'paid';
@@ -138,7 +153,7 @@ export const aggregateStageStatus = (stage) => {
 
 // ── Plain-Hebrew headline + single primary CTA ───────────────────────────────
 // Everything the user needs to know in one sentence and one button.
-const buildHeadlineAndCTA = (gates, handlers, amount) => {
+const buildHeadlineAndCTA = (gates: Gates, handlers: { onSupervisorApprove?: () => void, onAddProofPhoto?: () => void, onReleasePayment?: () => void }, amount: number) => {
   if (!gates.tasks.passed) {
     return {
       headline: `חסרות ${gates.tasks.missing} משימות — סיים אותן למעלה`,
@@ -164,7 +179,7 @@ const buildHeadlineAndCTA = (gates, handlers, amount) => {
 };
 
 // ── PaymentBadge — 3 colors max ──────────────────────────────────────────────
-export const PaymentBadge = ({ status }) => {
+export const PaymentBadge = ({ status }: { status: string }) => {
   const simple = toSimple(status);
   const s = SIMPLE[simple];
   return (
@@ -182,7 +197,7 @@ export const PaymentBadge = ({ status }) => {
 };
 
 // Collapsible "what's missing" — shows the 3 gates for users who want detail.
-const WhatsMissing = ({ gates }) => {
+const WhatsMissing = ({ gates }: { gates: Gates }) => {
   const [open, setOpen] = React.useState(false);
   const rows = [gates.tasks, gates.supervisor, gates.photos];
   return (
@@ -214,12 +229,12 @@ const WhatsMissing = ({ gates }) => {
 };
 
 // Primary button — one adaptive CTA.
-const PrimaryCTA = ({ cta }) => {
+const PrimaryCTA = ({ cta }: { cta: { label: string, onClick?: () => void, primary?: boolean } | null }) => {
   if (!cta) return null;
   const primary = cta.primary;
   return (
     <button
-      onClick={cta.onClick}
+      onClick={cta.onClick || (() => {})}
       style={{
         fontFamily: "'Heebo',sans-serif", fontWeight: 700, fontSize: 14,
         padding: '10px 18px', borderRadius: 8, border: 'none', cursor: 'pointer',
@@ -239,7 +254,6 @@ export const PaymentGatesPanel = ({
   stage,
   gates,
   status,
-  onRequestReview,
   onSupervisorApprove,
   onAddProofPhoto,
   onReleasePayment,
@@ -247,12 +261,23 @@ export const PaymentGatesPanel = ({
   onSupervisorApproveMs,
   onAddProofPhotoMs,
   onReleaseMs,
+}: {
+  stage: Stage,
+  gates: Gates,
+  status: string,
+  onRequestReview?: () => void,
+  onSupervisorApprove: () => void,
+  onAddProofPhoto: () => void,
+  onReleasePayment: () => void,
+  onRequestReviewMs: (id: string) => void,
+  onSupervisorApproveMs: (id: string) => void,
+  onAddProofPhotoMs: (id: string) => void,
+  onReleaseMs: (m: Milestone) => void,
 }) => {
   if (stage.payment?.milestones?.length) {
     return (
       <MilestonesPanel
         stage={stage}
-        onRequestReviewMs={onRequestReviewMs}
         onSupervisorApproveMs={onSupervisorApproveMs}
         onAddProofPhotoMs={onAddProofPhotoMs}
         onReleaseMs={onReleaseMs}
@@ -325,6 +350,9 @@ export const PaymentGatesPanel = ({
 const MilestoneItem = ({
   stage, milestone, gates, status, locked, isNext,
   onSupervisorApprove, onAddProofPhoto, onRelease,
+}: {
+  stage: Stage, milestone: Milestone, gates: Gates, status: string, locked: boolean, isNext?: boolean,
+  onSupervisorApprove?: () => void, onAddProofPhoto?: () => void, onRelease?: (m: Milestone) => void
 }) => {
   if (status === 'paid') {
     return (
@@ -367,7 +395,7 @@ const MilestoneItem = ({
   // The active milestone — the one the user should act on.
   const { headline, cta } = buildHeadlineAndCTA(gates, {
     onSupervisorApprove, onAddProofPhoto,
-    onReleasePayment: () => onRelease(milestone),
+    onReleasePayment: onRelease ? () => onRelease(milestone) : undefined,
   }, milestone.amount);
   const ready = status === 'ready';
 
@@ -398,7 +426,7 @@ const MilestoneItem = ({
         {headline}
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
-        <PrimaryCTA cta={cta} />
+        <PrimaryCTA cta={cta ? { ...cta, onClick: cta.onClick || (() => {}) } : null} />
         <WhatsMissing gates={gates} />
       </div>
     </div>
@@ -410,6 +438,11 @@ export const MilestonesPanel = ({
   onSupervisorApproveMs,
   onAddProofPhotoMs,
   onReleaseMs,
+}: {
+  stage: Stage,
+  onSupervisorApproveMs: (id: string) => void,
+  onAddProofPhotoMs: (id: string) => void,
+  onReleaseMs: (m: Milestone) => void
 }) => {
   const [showPaid,   setShowPaid]   = React.useState(false);
   const [showFuture, setShowFuture] = React.useState(false);
@@ -530,7 +563,9 @@ export const MilestonesPanel = ({
 };
 
 // ── ReleasePaymentModal — simple yes/cancel ──────────────────────────────────
-export const ReleasePaymentModal = ({ stage, milestoneName, amount, onClose, onConfirm }) => {
+export const ReleasePaymentModal = ({ stage, milestoneName, amount, gates, onClose, onConfirm }: {
+  stage: Stage, milestoneName: string | null, amount: number, gates?: Gates, onClose: () => void, onConfirm: () => void
+}) => {
   const finalAmount = amount ?? stage.payment?.amount ?? 0;
   return (
     <Modal title="לאשר תשלום?" onClose={onClose} width={440}>

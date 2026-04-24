@@ -2,15 +2,65 @@
 
 // ── BuildPro DATA + HELPERS ──────────────────────────────────────────────────
 
+export const ROOM_TYPE_OPTS = [
+  {id:"living",   label:"סלון",              defaultSize:35, wet:false, needsAC:true},
+  {id:"dining",   label:"פינת אוכל",         defaultSize:20, wet:false, needsAC:false},
+  {id:"kitchen",  label:"מטבח",              defaultSize:18, wet:true,  needsAC:false},
+  {id:"master",   label:"חדר שינה ראשי",    defaultSize:22, wet:false, needsAC:true},
+  {id:"bedroom",  label:"חדר שינה",          defaultSize:16, wet:false, needsAC:true},
+  {id:"bathroom", label:"חדר אמבטיה",        defaultSize:9,  wet:true,  needsAC:false},
+  {id:"toilet",   label:"שירותים",            defaultSize:4,  wet:true,  needsAC:false},
+  {id:"entrance", label:"כניסה/מסדרון",      defaultSize:10, wet:false, needsAC:false},
+  {id:"utility",  label:"חדר שירות",         defaultSize:6,  wet:true,  needsAC:false},
+  {id:"balcony",  label:"מרפסת",             defaultSize:12, wet:false, needsAC:false},
+  {id:"storage",  label:"מחסן",              defaultSize:8,  wet:false, needsAC:false},
+  {id:"garage",   label:"חניה",              defaultSize:30, wet:false, needsAC:false},
+];
+
+export const DEFAULT_ROOMS = [
+  {uid:"r1",  type:"kitchen",  name:"מטבח",           floor:1, size:24},
+  {uid:"r2",  type:"living",   name:"סלון",           floor:1, size:42},
+  {uid:"r3",  type:"dining",   name:"פינת אוכל",        floor:1, size:18},
+  {uid:"r4",  type:"toilet",   name:"שירותי אורחים",   floor:1, size:4},
+  {uid:"r5",  type:"entrance", name:"כניסה ומסדרון",   floor:1, size:12},
+  {uid:"r6",  type:"master",   name:"חדר שינה ראשי",  floor:2, size:22},
+  {uid:"r7",  type:"bedroom",  name:"חדר שינה 2",      floor:2, size:16},
+  {uid:"r8",  type:"bedroom",  name:"חדר שינה 3",      floor:2, size:15},
+  {uid:"r9",  type:"bathroom", name:"חדר אמבטיה 1",    floor:2, size:9},
+  {uid:"r10", type:"bathroom", name:"חדר אמבטיה 2",    floor:2, size:7},
+];
+
 export const PROJECT = {
   name: "בית רוזנברג", address: "רחוב הכרם 14, נהריה",
   owner: "יוסי רוזנברג", manager: "אבי כהן", inspector: "רון לוי",
   startDate: "01/01/2025", expectedEnd: "31/12/2025",
   progress: 35, currentStage: "טיח ועבודות פנים",
-  budget: 2800000, spent: 980000, committed: 450000
+  budget: 2800000, spent: 980000, committed: 450000,
+  floors: 2,
+  area: 250,
+  rooms: DEFAULT_ROOMS,
 };
 
-export const STAGES = [
+const STAGE_AMOUNTS: Record<number, number> = {
+  1:80000, 2:85000, 3:450000, 4:60000, 5:65000, 6:50000, 7:120000,
+  8:140000, 9:40000, 10:45000, 11:120000, 12:45000, 13:30000, 14:20000,
+};
+
+const STAGE_MILESTONES: Record<number, any[]> = {
+  3: [
+    { id: 'm3a', name: "תקרה קומה א'",      pct: 30, taskIds: [31, 32] },
+    { id: 'm3b', name: "קירות קומה ב'",     pct: 40, taskIds: [33] },
+    { id: 'm3c', name: "גג",                 pct: 30, taskIds: [34] },
+  ],
+  7: [
+    { id: 'm7a', name: "טיח פנים קומה א'",  pct: 25, taskIds: [71] },
+    { id: 'm7b', name: "טיח פנים קומה ב'",  pct: 25, taskIds: [72] },
+    { id: 'm7c', name: "טיח חוץ",            pct: 30, taskIds: [73] },
+    { id: 'm7d', name: "גמר + אינסטלציה עדינה", pct: 20, taskIds: [74] },
+  ],
+};
+
+const RAW_STAGES = [
   {id:1,name:"תכנון והיתרים",status:"done",progress:100,start:"2025-01-01",end:"2025-02-15",contractor:"מפקח",icon:"📋",tasks:[
     {id:11,name:"תכניות אדריכל",done:true,assignee:"מפקח"},
     {id:12,name:"תכניות קונסטרוקציה",done:true,assignee:"מפקח"},
@@ -81,6 +131,25 @@ export const STAGES = [
   ]},
 ];
 
+export const STAGES = RAW_STAGES.map(s => {
+  const amount = STAGE_AMOUNTS[s.id] || 0;
+  const milestoneTemplate = STAGE_MILESTONES[s.id];
+  const milestones = milestoneTemplate?.map(m => ({
+    ...m,
+    amount: Math.round(amount * m.pct / 100),
+    status: s.status === 'done' ? 'paid' : 'draft',
+    supervisorApproval: s.status === 'done' ? { by: 'רון לוי', at: s.end } : null,
+    extraProofPhotos: 0,
+    paidAt: s.status === 'done' ? s.end : null,
+  }));
+  return {
+    ...s,
+    supervisorApproval: s.status === 'done' ? { by: 'רון לוי', at: s.end } : null,
+    payment: { amount, status: s.status === 'done' ? 'paid' : s.status === 'active' ? 'in_progress' : 'draft', paidAt: s.status === 'done' ? s.end : null, milestones },
+    extraProofPhotos: 0,
+  };
+});
+
 export const CONTRACTORS_DATA = [
   {id:1,name:"דוד בן-דוד",company:"ב.ד. שלד בע\"מ",role:"קבלן שלד",phone:"052-1234567",email:"david@bdshelet.co.il",status:"completed",rating:4.8,budget:450000,paid:450000,avatar:"ד",color:"#7B9B8A"},
   {id:2,name:"מוחמד עלי",company:"עלי עבודות עפר",role:"קבלן עפר",phone:"050-7654321",email:"moh@ali-works.co.il",status:"completed",rating:4.5,budget:85000,paid:85000,avatar:"מ",color:"#8B7B5A"},
@@ -100,14 +169,14 @@ export const ROOMS_LIST = [
 ];
 
 export const BOQ_DATA = {
-  living:[
+  r2:[
     {id:1,name:"ריצוף פורצלן 60×60",cat:"ריצוף",qty:45,unit:"מ\"ר",unitPrice:280,supplier:"כרמל ריצוף",spec:"פורצלן מלוטש אפור בהיר",status:"approved"},
     {id:2,name:"תאורה מרכזית תלויה",cat:"חשמל",qty:2,unit:"יח'",unitPrice:950,supplier:"פנס טוב",spec:"תליון מודרני LED 40W",status:"approved"},
     {id:3,name:"ספוטים שקועים",cat:"חשמל",qty:12,unit:"יח'",unitPrice:180,supplier:"ברק חשמל",spec:"LED 7W 3000K",status:"approved"},
     {id:4,name:"שקעים כפולים",cat:"חשמל",qty:8,unit:"יח'",unitPrice:85,supplier:"ברק חשמל",spec:"עם ארקה",status:"pending"},
     {id:5,name:"מזגן 18000BTU",cat:"מיזוג",qty:1,unit:"יח'",unitPrice:4200,supplier:"קר מזגנים",spec:"אינוורטר A++",status:"pending"},
   ],
-  kitchen:[
+  r1:[
     {id:1,name:"ריצוף אנטיסליפ 60×60",cat:"ריצוף",qty:18,unit:"מ\"ר",unitPrice:280,supplier:"כרמל ריצוף",spec:"פורצלן אפור כהה",status:"approved"},
     {id:2,name:"חיפוי קיר פסיפס",cat:"חיפוי",qty:8,unit:"מ\"ר",unitPrice:350,supplier:"כרמל ריצוף",spec:"פסיפס זכוכית לבן-אפור",status:"pending"},
     {id:3,name:"ארון מטבח תחתון",cat:"נגרות",qty:5,unit:"מ'",unitPrice:3200,supplier:"מטבחי לוי",spec:"MDF אקרילי לבן",status:"approved"},
@@ -115,20 +184,20 @@ export const BOQ_DATA = {
     {id:5,name:"כיריים גז 5 להבות",cat:"מכשירים",qty:1,unit:"יח'",unitPrice:3500,supplier:"כלים סניטריים",spec:"נירוסטה 90×60",status:"pending"},
     {id:6,name:"כיור מטבח כפול",cat:"אינסטלציה",qty:1,unit:"יח'",unitPrice:1200,supplier:"כהן אינסטלציה",spec:"נירוסטה עמוק",status:"approved"},
   ],
-  master:[
+  r6:[
     {id:1,name:"פרקט עץ אלון",cat:"ריצוף",qty:22,unit:"מ\"ר",unitPrice:450,supplier:"יער פרקט",spec:"אלון 12mm",status:"pending"},
     {id:2,name:"ארון הזזה 4 דלתות",cat:"נגרות",qty:1,unit:"יח'",unitPrice:12000,supplier:"מטבחי לוי",spec:"240×240×60 מראות",status:"pending"},
     {id:3,name:"תאורה מרכזית",cat:"חשמל",qty:1,unit:"יח'",unitPrice:1200,supplier:"פנס טוב",spec:"תליון LED מינימליסטי",status:"pending"},
     {id:4,name:"מזגן 12000BTU",cat:"מיזוג",qty:1,unit:"יח'",unitPrice:3200,supplier:"קר מזגנים",spec:"אינוורטר A++",status:"pending"},
   ],
-  bath1:[
+  r9:[
     {id:1,name:"ריצוף שיש קררה",cat:"ריצוף",qty:8,unit:"מ\"ר",unitPrice:680,supplier:"כרמל ריצוף",spec:"שיש 60×60",status:"approved"},
     {id:2,name:"חיפוי קיר שיש",cat:"חיפוי",qty:16,unit:"מ\"ר",unitPrice:680,supplier:"כרמל ריצוף",spec:"שיש קררה עד תקרה",status:"approved"},
     {id:3,name:"אמבטיה חפויה",cat:"כלים סניטריים",qty:1,unit:"יח'",unitPrice:8500,supplier:"כלים סניטריים",spec:"אקרילי לבן 170×75",status:"approved"},
     {id:4,name:"מקלחון זכוכית",cat:"כלים סניטריים",qty:1,unit:"יח'",unitPrice:4200,supplier:"כלים סניטריים",spec:"זכוכית שקופה 8mm",status:"pending"},
     {id:5,name:"כיור תלוי",cat:"כלים סניטריים",qty:1,unit:"יח'",unitPrice:1800,supplier:"כלים סניטריים",spec:"פורצלן לבן 80cm",status:"approved"},
   ],
-  bed2:[],bed3:[],bath2:[],toilet:[],entrance:[],utility:[],
+  r3:[],r4:[],r5:[],r7:[],r8:[],r10:[],
 };
 
 export const PHOTOS_DATA = [
@@ -221,3 +290,40 @@ export const QUOTES_DATA = [
   {id:6, topicId:"plaster",  supplier:"טיח מקצועי בע\"מ", contact:"פרץ יעקב",   phone:"050-8887766", email:"peretz@tiach.co.il",        total:28000, validity:"2026-05-15", notes:"טיח פנים + חוץ, 3 שכבות",               status:"pending",  createdAt:"2026-03-05", fileName:""},
   {id:7, topicId:"plaster",  supplier:"אחים גבאי טיח",    contact:"דוד גבאי",   phone:"052-3334455", email:"david@gabai.co.il",         total:31500, validity:"2026-04-30", notes:"טיח משולב, כולל תיקונים",              status:"pending",  createdAt:"2026-03-08", fileName:"הצעת_גבאי.pdf"},
 ];
+
+
+export const DASHBOARD_OVERVIEW = {
+  project: { ...PROJECT, progressPct: PROJECT.progress, ownerName: PROJECT.owner, managerName: PROJECT.manager, inspectorName: PROJECT.inspector },
+  stats: {
+    totalBudget: PROJECT.budget,
+    totalSpent: PROJECT.spent,
+    remainingBudget: PROJECT.budget - PROJECT.spent,
+    progressPct: PROJECT.progress
+  },
+  stages: STAGES,
+  recentActivity: NOTES_INITIAL.map(n => ({
+    id: n.id,
+    actorName: n.fromName,
+    role: n.role,
+    text: n.text,
+    createdAt: new Date().toISOString()
+  })).slice(0, 5),
+  topOverruns: [
+    { id: 'o1', name: 'מטבח', overrun: 15000 },
+    { id: 'o2', name: 'ריצוף', overrun: 8000 }
+  ]
+};
+
+export const MOCK_DATA: Record<string, any> = {
+  project: PROJECT,
+  stages: STAGES,
+  contractors: CONTRACTORS_DATA,
+  rooms_list: ROOMS_LIST,
+  boq: BOQ_DATA,
+  photos: PHOTOS_DATA,
+  notes: NOTES_INITIAL,
+  budget_cats: BUDGET_CATS,
+  timeline: TIMELINE_DATA,
+  quotes: QUOTES_DATA,
+  dashboard: DASHBOARD_OVERVIEW,
+};

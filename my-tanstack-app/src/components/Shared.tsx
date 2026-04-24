@@ -137,3 +137,22 @@ export const Select = ({value, onChange, children, style:sx}: any) => (
     {children}
   </select>
 );
+
+export const Spinner = ({size=24, color="var(--accent)"}: any) => (
+  <motion.div
+    animate={{ rotate: 360 }}
+    transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+    style={{ width: size, height: size, border: `3px solid ${color}22`, borderTop: `3px solid ${color}`, borderRadius: "50%" }}
+  />
+);
+
+export const ErrorState = ({message, onRetry}: any) => (
+  <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:40,textAlign:"center"}}>
+    <div style={{width:64,height:64,background:"var(--problem-light)",color:"var(--danger)",borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:16}}>
+      <Icon n="alert" s={32}/>
+    </div>
+    <div style={{fontSize:18,fontWeight:800,marginBottom:8}}>אופס, משהו השתבש</div>
+    <div style={{fontSize:14,color:"var(--text3)",marginBottom:24,maxWidth:300}}>{message || "לא הצלחנו לטעון את המידע המבוקש. אנא נסו שוב."}</div>
+    {onRetry && <Btn onClick={onRetry}><Icon n="check" s={14}/> נסה שוב</Btn>}
+  </div>
+);
