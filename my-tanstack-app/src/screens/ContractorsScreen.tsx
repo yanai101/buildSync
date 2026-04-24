@@ -6,8 +6,14 @@ import { useDataSource } from '../hooks/useDataSource';
 import { ScreenBoundary } from '../components/ScreenBoundary';
 import { fmtMoney } from '../utils/mockData';
 
+import { useCurrentProject } from '../hooks/useCurrentProject';
+import { useQuery } from 'convex/react';
+import { api } from '../../convex/_generated/api';
+
 export const ContractorsScreen = () => {
-  const { data: initialContractors, loading, error, refetch } = useDataSource<Contractor[]>('contractors');
+  const { projectId } = useCurrentProject();
+  const dbContractors = useQuery(api.queries.listContractors, projectId ? { projectId } : "skip");
+  const { data: initialContractors, loading, error, refetch } = useDataSource<Contractor[]>('contractors', { db: dbContractors as any });
   const [contractors, setContractors] = React.useState<Contractor[]>([]);
   const [expanded, setExpanded] = React.useState<number | null>(null);
   const [addOpen, setAddOpen] = React.useState(false);

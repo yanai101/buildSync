@@ -1,8 +1,12 @@
 import * as React from 'react';
-import { Icon, Btn, Modal } from '../components/Shared';
-import { DEFAULT_ROOMS, ROOM_TYPE_OPTS } from '../utils/mockData';
+import { Icon, Btn } from '../components/Shared';
+import { ROOM_TYPE_OPTS } from '../utils/mockData';
 import { Room, Project } from '../types';
 import { useDataSource } from '../hooks/useDataSource';
+import { useDataMutation } from '../hooks/useDataMutation';
+import { useCurrentProject } from '../hooks/useCurrentProject';
+import { useQuery } from 'convex/react';
+import { api } from '../../convex/_generated/api';
 import { ScreenBoundary } from '../components/ScreenBoundary';
 
 export interface ProjectConfig {
@@ -17,13 +21,29 @@ export interface ProjectConfig {
 }
 
 export const ProjectSetupScreen = () => {
-  const { data: project, loading, error, refetch } = useDataSource<Project>('project');
+  const { projectId } = useCurrentProject();
+  const dbProject = useQuery(api.projects.getWithDetails, projectId ? { projectId } : "skip");
+  const { data: project, loading, error, refetch } = useDataSource<Project>('project', { db: dbProject as any });
+  const { mutate } = useDataMutation('projects');
+
   const [step, setStep] = React.useState(0);
-  const [saved, setSaved] = React.useState(false);
+  const [isEditing, setIsEditing] = React.useState(false);
   const [cfg, setCfg] = React.useState<ProjectConfig | null>(null);
+  const [saving, setSaving] = React.useState(false);
 
   React.useEffect(() => {
-    if (project) setCfg(project as any);
+    if (project) {
+      setCfg({
+        name: project.name || '',
+        address: project.address || '',
+        owner: (project as any).ownerName || '',
+        manager: (project as any).managerName || '',
+        inspector: (project as any).inspectorName || '',
+        floors: project.floors || 1,
+        area: project.areaSqm || 0,
+        rooms: (project as any).rooms || [],
+      });
+    }
   }, [project]);
 
   const setField = (k: keyof ProjectConfig, v: string | number) => setCfg((c)=> c ? ({...c,[k]:v}) : c);
@@ -35,24 +55,99 @@ export const ProjectSetupScreen = () => {
   const removeRoom = (uid: string) => setCfg((c)=> c ? ({...c,rooms:(c.rooms || []).filter((r)=>r.uid!==uid)}) : c);
 
   const STEPS = ["פרטי הפרויקט","מבנה הבית","חדרים","צוות","סיכום"];
-  const totalArea = cfg ? (cfg.rooms || []).reduce((a: number,r)=>a+Number(r.size||0),0) : 0;
+  const totalRoomArea = cfg ? (cfg.rooms || []).reduce((a: number,r)=>a+Number(r.size||0),0) : 0;
+  const displayArea = cfg?.area || totalRoomArea;
 
   const floorRooms = (f: number) => cfg ? (cfg.rooms || []).filter((r)=>Number(r.floor)===f) : [];
 
+  const handleSave = async () => {
+    if (!cfg || !project) return;
+    setSaving(true);
+    try {
+      await mutate('saveProjectSetup', {
+        projectId: (project as any)._id,
+        name: cfg.name,
+        address: cfg.address,
+        ownerName: cfg.owner,
+        managerName: cfg.manager,
+        inspectorName: cfg.inspector,
+        floors: Number(cfg.floors),
+        areaSqm: Number(cfg.area) || totalRoomArea,
+        rooms: cfg.rooms,
+      });
+      setIsEditing(false);
+      refetch();
+    } catch (err) {
+      alert("שגיאה בשמירת ההגדרות");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if(!cfg) return null;
 
-  if(saved) return (
-    <div className="page-content" style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:400}}>
-      <div style={{textAlign:"center",maxWidth:400}}>
-        <div style={{width:64,height:64,borderRadius:"50%",background:"#D1FAE5",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 16px"}}>
-          <Icon n="check" s={28} c="var(--success)"/>
+  // Summary View
+  if (!isEditing && project) {
+    return (
+      <ScreenBoundary loading={loading} error={error} onRetry={refetch}>
+        <div className="page-content">
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}>
+            <div style={{display:"flex",alignItems:"center",gap:12}}>
+              <div style={{width:42,height:42,borderRadius:12,background:"var(--accent-light)",color:"var(--accent)",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                <Icon n="settings" s={22}/>
+              </div>
+              <div>
+                <h1 style={{fontSize:22,fontWeight:800,margin:0}}>הגדרות הבית</h1>
+                <div style={{fontSize:13,color:"var(--text3)",marginTop:2}}>ניהול פרטי הפרויקט, מבנה הקומות והחדרים</div>
+              </div>
+            </div>
+            <Btn onClick={() => setIsEditing(true)}><Icon n="edit" s={14}/> ערוך הגדרות</Btn>
+          </div>
+
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20}}>
+            <div className="card">
+              <div className="card-header">פרטי פרויקט</div>
+              <div className="card-body">
+                 {[
+                   ["שם", cfg.name],
+                   ["כתובת", cfg.address],
+                   ["בעל הבית", cfg.owner],
+                   ["מנהל פרויקט", cfg.manager],
+                   ["מפקח", cfg.inspector]
+                 ].map(([k,v]) => (
+                   <div key={k} style={{display:"flex",justifyContent:"space-between",padding:"10px 0",borderBottom:"1px solid var(--border)",fontSize:14}}>
+                     <span style={{color:"var(--text2)"}}>{k}</span>
+                     <span style={{fontWeight:600}}>{v}</span>
+                   </div>
+                 ))}
+              </div>
+            </div>
+
+            <div className="card">
+              <div className="card-header">מבנה ושטח</div>
+              <div className="card-body">
+                 {[
+                   ["קומות", cfg.floors],
+                   ["חדרים", cfg.rooms.length],
+                   ["שטח כולל", `${displayArea} מ"ר`]
+                 ].map(([k,v]) => (
+                   <div key={k} style={{display:"flex",justifyContent:"space-between",padding:"10px 0",borderBottom:"1px solid var(--border)",fontSize:14}}>
+                     <span style={{color:"var(--text2)"}}>{k}</span>
+                     <span style={{fontWeight:600}}>{v as any}</span>
+                   </div>
+                 ))}
+                 <div style={{marginTop:16,display:"flex",flexWrap:"wrap",gap:6}}>
+                   {cfg.rooms.map(r => (
+                     <span key={r.uid} style={{fontSize:11,background:"var(--bg)",padding:"4px 10px",borderRadius:20,border:"1px solid var(--border)"}}>{r.name} ({r.size} מ"ר)</span>
+                   ))}
+                 </div>
+              </div>
+            </div>
+          </div>
         </div>
-        <div style={{fontSize:22,fontWeight:800,marginBottom:8}}>הפרויקט הוגדר בהצלחה!</div>
-        <div style={{fontSize:14,color:"var(--text2)",marginBottom:24}}>{(cfg.rooms || []).length} חדרים · {cfg.floors} קומות · {totalArea} מ"ר</div>
-        <Btn onClick={()=>setSaved(false)}>עריכה נוספת</Btn>
-      </div>
-    </div>
-  );
+      </ScreenBoundary>
+    );
+  }
 
   return (
     <ScreenBoundary loading={loading} error={error} onRetry={refetch}>
@@ -123,11 +218,12 @@ export const ProjectSetupScreen = () => {
               </div>
               <div>
                 <div style={{fontSize:12,color:"var(--text2)",marginBottom:4,fontWeight:500}}>שטח כולל (מ"ר)</div>
-                <input className="bp-input" type="number" value={cfg.area} onChange={e=>setField("area",e.target.value)} style={{width:100}}/>
+                <input className="bp-input" type="number" value={cfg.area} onChange={e=>setField("area",Number(e.target.value))} placeholder={`או חישוב אוטומטי: ${totalRoomArea}`} style={{width:100}}/>
+                {cfg.area === 0 && <div style={{fontSize:11,color:"var(--text3)",marginTop:4}}>מחושב לפי חדרים</div>}
               </div>
               <div>
-                <div style={{fontSize:12,color:"var(--text2)",marginBottom:4,fontWeight:500}}>שטח מוגדר</div>
-                <div style={{fontSize:22,fontWeight:800,color:"var(--accent)"}}>{totalArea} <span style={{fontSize:14,fontWeight:400,color:"var(--text2)"}}>מ"ר</span></div>
+                <div style={{fontSize:12,color:"var(--text2)",marginBottom:4,fontWeight:500}}>שטח מוגדר (חדרים)</div>
+                <div style={{fontSize:22,fontWeight:800,color:"var(--accent)"}}>{totalRoomArea} <span style={{fontSize:14,fontWeight:400,color:"var(--text2)"}}>מ"ר</span></div>
               </div>
             </div>
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(120px,1fr))",gap:10}}>
@@ -185,8 +281,8 @@ export const ProjectSetupScreen = () => {
             ))}
             <div style={{padding:"10px 18px",background:"#FAFAF8",borderRadius:"0 0 10px 10px",display:"flex",gap:20,fontSize:12,color:"var(--text2)"}}>
               <span>סה"כ חדרים: <strong>{(cfg.rooms || []).length}</strong></span>
-              <span>שטח מוגדר: <strong>{totalArea} מ"ר</strong></span>
-              <span>ממוצע לחדר: <strong>{(cfg.rooms || []).length?Math.round(totalArea/(cfg.rooms || []).length):0} מ"ר</strong></span>
+              <span>שטח מוגדר: <strong>{totalRoomArea} מ"ר</strong></span>
+              <span>ממוצע לחדר: <strong>{(cfg.rooms || []).length?Math.round(totalRoomArea/(cfg.rooms || []).length):0} מ"ר</strong></span>
             </div>
           </div>
         )}
@@ -221,7 +317,7 @@ export const ProjectSetupScreen = () => {
               </div>
               <div>
                 <div style={{fontSize:12,fontWeight:700,color:"var(--text3)",marginBottom:10,textTransform:"uppercase",letterSpacing:".5px"}}>מבנה הבית</div>
-                {[["קומות",cfg.floors],["חדרים",(cfg.rooms || []).length],["שטח כולל",`${totalArea} מ"ר`]].map(([k,v])=>(
+                {[["קומות",cfg.floors],["חדרים",(cfg.rooms || []).length],["שטח כולל",`${displayArea} מ"ר`]].map(([k,v])=>(
                   <div key={k} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:"1px solid var(--border)",fontSize:13}}>
                     <span style={{color:"var(--text2)"}}>{k}</span><span style={{fontWeight:600}}>{v as any}</span>
                   </div>
@@ -250,8 +346,8 @@ export const ProjectSetupScreen = () => {
         </Btn>
         {step<STEPS.length-1
           ? <Btn onClick={()=>setStep(s=>s+1)}>הבא <Icon n="chevron-right" s={14}/></Btn>
-          : <Btn onClick={()=>{ (window as any).PROJECT_ROOMS=cfg.rooms; (window as any).PROJECT_CFG=cfg; setSaved(true); }}>
-              <Icon n="check" s={14}/> שמור הגדרות
+          : <Btn onClick={handleSave} disabled={saving}>
+              <Icon n={saving ? "refresh" : "check"} s={14}/> {saving ? "שומר..." : "שמור הגדרות"}
             </Btn>
         }
       </div>

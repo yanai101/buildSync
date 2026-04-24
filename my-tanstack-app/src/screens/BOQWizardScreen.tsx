@@ -1,8 +1,9 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Icon, Btn, ProgressBar, Badge } from '../components/Shared';
+import { Icon, Btn, ProgressBar } from '../components/Shared';
 import { ROOM_TYPE_OPTS } from '../utils/mockData';
 import { useDataSource } from '../hooks/useDataSource';
+import { useDataMutation } from '../hooks/useDataMutation';
 import { ScreenBoundary } from '../components/ScreenBoundary';
 import { Project, Room } from '../types';
 
@@ -112,9 +113,12 @@ const AddItemWidget = ({roomUid, roomType, existingItems, onAdd}: {roomUid: stri
 
 export const BOQWizardScreen = () => {
   const { data: project, loading, error, refetch } = useDataSource<Project>('project');
+  const { mutate } = useDataMutation('boq');
+  
   const [step, setStep] = React.useState(0);
   const [allItems, setAllItems] = React.useState<any>({});
   const [view, setView] = React.useState<'wizard' | 'summary'>('wizard');
+  const [saving, setSaving] = React.useState(false);
 
   React.useEffect(() => {
     if (project && (project as any).rooms) {
@@ -139,10 +143,39 @@ export const BOQWizardScreen = () => {
     setAllItems((prev: any)=>({...prev,[roomUid]:(prev[roomUid]||[]).filter((i: any)=>i.id!==itemId)}));
   };
 
+  const onFinish = async () => {
+    if (!project) return;
+    setSaving(true);
+    try {
+      const itemsToSave: any[] = [];
+      Object.keys(allItems).forEach(ruid => {
+        const room = rooms.find((r:any) => r.uid === ruid);
+        allItems[ruid].forEach((item: any) => {
+          itemsToSave.push({
+            roomId: (room as any)?._id,
+            category: item.cat,
+            name: item.name,
+            qty: item.qty,
+            userQty: item.userQty,
+            unit: item.unit,
+            hint: item.hint,
+          });
+        });
+      });
+
+      await mutate('saveBoq', { projectId: (project as any)._id, items: itemsToSave });
+      alert("הכמויות נשמרו בהצלחה!");
+      window.location.href = '/boq';
+    } catch (err) {
+      alert("שגיאה בשמירת הנתונים");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (!project) return <ScreenBoundary loading={loading} error={error} onRetry={refetch}><div/></ScreenBoundary>;
 
   if (view === 'summary') {
-    // Group all items from all rooms by name+cat+unit
     const aggregated: Record<string, {name: string, cat: string, unit: string, total: number, rooms: {name: string, qty: number}[]}> = {};
     Object.keys(allItems).forEach(ruid => {
       const rName = rooms.find((r:any)=>r.uid===ruid)?.name || "חדר";
@@ -183,8 +216,8 @@ export const BOQWizardScreen = () => {
               <Btn variant="ghost" onClick={() => setView('wizard')} style={{borderRadius:12,padding:"10px 20px",fontWeight:700}}>
                 <Icon n="arrow-right" s={16} style={{marginLeft:8}}/> חזרה לאשף
               </Btn>
-              <Btn style={{borderRadius:12,padding:"10px 20px",fontWeight:700,background:"#F97316",borderColor:"#F97316"}}>
-                <Icon n="download" s={16} style={{marginLeft:8}}/> ייצוא PDF
+              <Btn onClick={onFinish} disabled={saving} style={{borderRadius:12,padding:"10px 20px",fontWeight:700,background:"var(--success)",borderColor:"var(--success)"}}>
+                <Icon n={saving ? "refresh" : "check"} s={16} style={{marginLeft:8}}/> {saving ? "שומר..." : "סיום ושמירה"}
               </Btn>
             </div>
           </div>
@@ -205,7 +238,7 @@ export const BOQWizardScreen = () => {
           </div>
 
           <div style={{display:"flex",flexDirection:"column",gap:24}}>
-            {summaryCats.map(cat => (
+            {(summaryCats as string[]).map(cat => (
               <div key={cat} className="card" style={{borderRadius:20,overflow:"hidden"}}>
                 <div style={{padding:"16px 24px",background:"var(--surface)",borderBottom:"1px solid var(--border)",fontSize:14,fontWeight:800}}>
                   {cat}
@@ -273,8 +306,7 @@ export const BOQWizardScreen = () => {
 
         <div style={{display:"grid",gridTemplateColumns:"300px 1fr",gap:32}}>
           
-          {/* Sidebar (Right side in RTL, so we put it first in the grid if we want it on the right in Hebrew) */}
-          {/* Wait, in LTR 300px 1fr puts sidebar on LEFT. In RTL it puts it on RIGHT. */}
+          {/* Sidebar */}
           <div style={{display:"flex",flexDirection:"column",gap:12}}>
             <div style={{fontSize:13,fontWeight:700,color:"var(--text3)",marginBottom:4,textTransform:"uppercase",letterSpacing:".5px",textAlign:"right"}}>חדרים</div>
             {rooms.map((r: Room, i: number)=>(
@@ -307,7 +339,7 @@ export const BOQWizardScreen = () => {
                  if(step < rooms.length - 1) setStep(s=>s+1);
                  else setView('summary');
               }} style={{padding:"12px 24px",borderRadius:12,fontSize:15,fontWeight:700}}>
-                {step === rooms.length - 1 ? "סיים ועדכון" : "אישור ולחדר הבא"}
+                {step === rooms.length - 1 ? "סיים וסיכום" : "אישור ולחדר הבא"}
                 <Icon n="chevron-left" s={18} style={{marginRight:8}}/>
               </Btn>
             </div>
@@ -322,7 +354,7 @@ export const BOQWizardScreen = () => {
             </div>
 
             <div style={{display:"flex",flexDirection:"column",gap:16,marginTop:12}}>
-              {cats.map(cat => (
+              {(cats as string[]).map(cat => (
                 <div key={cat} className="card" style={{borderRadius:16,overflow:"hidden"}}>
                   <div style={{padding:"14px 20px",background:"var(--surface)",borderBottom:"1px solid var(--border)",fontSize:13,fontWeight:700,display:"flex",justifyContent:"space-between"}}>
                     <span>{cat}</span>

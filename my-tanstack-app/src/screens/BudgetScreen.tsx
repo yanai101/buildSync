@@ -1,29 +1,67 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Icon, StatCard, ProgressBar, Btn, Badge } from '../components/Shared';
+import { Icon, StatCard, ProgressBar, Btn, Badge, Modal } from '../components/Shared';
 import { PROJECT, fmtMoney } from '../utils/mockData';
 import { useDataSource } from '../hooks/useDataSource';
+import { useDataMutation } from '../hooks/useDataMutation';
+import { useCurrentProject } from '../hooks/useCurrentProject';
+import { useQuery } from 'convex/react';
+import { api } from '../../convex/_generated/api';
 import { ScreenBoundary } from '../components/ScreenBoundary';
 
 export const BudgetScreen = () => {
-  const { data: categories, loading, error, refetch } = useDataSource<any[]>('budget_cats');
-  
-  const [expenses] = React.useState([
-    {date:"15/09/25",desc:"תשלום לקבלן שלד — מקדמה",cat:"שלד ויסודות",amount:135000,status:"שולם"},
-    {date:"01/10/25",desc:"תשלום לחשמלאי — ביניים",cat:"חשמל",amount:45000,status:"שולם"},
-    {date:"10/10/25",desc:"חומרי טיח — פרץ טיח",cat:"טיח",amount:28000,status:"שולם"},
-    {date:"20/10/25",desc:"תשלום לאינסטלטור",cat:"אינסטלציה",amount:40000,status:"שולם"},
-    {date:"25/10/25",desc:"תשלום לקבלן טיח — ביניים",cat:"טיח",amount:44000,status:"שולם"},
-    {date:"01/11/25",desc:"תשלום לחשמלאי — סיום גולמי",cat:"חשמל",amount:20000,status:"ממתין"},
-  ]);
+  const { projectId } = useCurrentProject();
+  const dbCats = useQuery(api.queries.listBudgetCategories, projectId ? { projectId } : "skip");
+  const dbExps = useQuery(api.queries.listExpenses, projectId ? { projectId } : "skip");
 
-  if (!categories) return null;
+  const { data: categories, loading: catsLoading, error: catsError, refetch: catsRefetch } = useDataSource<any[]>('budget_cats', { db: dbCats as any });
+  const { data: expenses, loading: expLoading, error: expError, refetch: expRefetch } = useDataSource<any[]>('expenses', { db: dbExps as any });
+  const { mutate } = useDataMutation('expenses');
+  
+  const [addOpen, setAddOpen] = React.useState(false);
+  const [newExp, setNewExp] = React.useState({ desc: '', amount: '', cat: '', date: new Date().toISOString().split('T')[0] });
+  const [saving, setSaving] = React.useState(false);
+
+  const loading = catsLoading || expLoading;
+  const error = catsError || expError;
+  const refetch = () => { catsRefetch(); expRefetch(); };
+
+  if (!categories || !expenses) return <ScreenBoundary loading={loading} error={error} onRetry={refetch}><div/></ScreenBoundary>;
 
   const totalBudget = categories.reduce((a,c)=>a+c.budget,0);
   const totalSpent = categories.reduce((a,c)=>a+c.spent,0);
 
+  const handleAddExpense = async () => {
+    if (!newExp.desc || !newExp.amount || !newExp.cat) return;
+    setSaving(true);
+    try {
+      await mutate('addExpense', {
+        projectId: projectId || 'dummy',
+        description: newExp.desc,
+        amount: Number(newExp.amount),
+        category: newExp.cat,
+        date: newExp.date,
+        status: 'שולם',
+      });
+      setAddOpen(false);
+      setNewExp({ desc: '', amount: '', cat: '', date: new Date().toISOString().split('T')[0] });
+      expRefetch();
+    } catch (err) {
+      alert("שגיאה בהוספת הוצאה");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
-    <ScreenBoundary loading={loading} error={error} onRetry={refetch}>
+    <ScreenBoundary 
+      loading={loading} 
+      error={error} 
+      isEmpty={categories.length === 0} 
+      emptyTitle="אין הגדרות תקציב" 
+      emptyDesc="נראה שעדיין לא הוגדרו קטגוריות תקציב לפרויקט זה."
+      onRetry={refetch}
+    >
       <div className="page-content">
         {/* Summary cards */}
         <motion.div
@@ -84,25 +122,57 @@ export const BudgetScreen = () => {
         <div className="card">
           <div className="card-header" style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
             <span>הוצאות אחרונות</span>
-            <Btn size="sm"><Icon n="plus" s={12}/> הוצאה חדשה</Btn>
+            <Btn size="sm" onClick={()=>setAddOpen(true)}><Icon n="plus" s={12}/> הוצאה חדשה</Btn>
           </div>
           <div style={{overflowX:"auto"}}>
-            <table className="bp-table" style={{width:"100%"}}>
-              <thead><tr><th>תאריך</th><th>תיאור</th><th>קטגוריה</th><th>סכום</th><th>סטטוס</th></tr></thead>
-              <tbody>
-                {expenses.map((e,i)=>(
-                  <tr key={i}>
-                    <td style={{fontSize:13,color:"var(--text3)"}}>{e.date}</td>
-                    <td style={{fontSize:13,fontWeight:500}}>{e.desc}</td>
-                    <td style={{fontSize:12,color:"var(--text2)"}}>{e.cat}</td>
-                    <td style={{fontSize:13,fontWeight:600}}>{fmtMoney(e.amount)}</td>
-                    <td><Badge type={e.status==="שולם"?"done":"active"}>{e.status}</Badge></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            {expenses.length === 0 ? (
+              <div style={{padding:40,textAlign:"center",color:"var(--text3)",fontSize:13}}>לא נמצאו הוצאות.</div>
+            ) : (
+              <table className="bp-table" style={{width:"100%"}}>
+                <thead><tr><th>תאריך</th><th>תיאור</th><th>קטגוריה</th><th>סכום</th><th>סטטוס</th></tr></thead>
+                <tbody>
+                  {expenses.map((e,i)=>(
+                    <tr key={i}>
+                      <td style={{fontSize:13,color:"var(--text3)"}}>{e.date}</td>
+                      <td style={{fontSize:13,fontWeight:500}}>{e.desc}</td>
+                      <td style={{fontSize:12,color:"var(--text2)"}}>{e.cat}</td>
+                      <td style={{fontSize:13,fontWeight:600}}>{fmtMoney(e.amount)}</td>
+                      <td><Badge type={e.status==="שולם"?"done":"active"}>{e.status}</Badge></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
         </div>
+
+        {addOpen && (
+          <Modal title="הוצאה חדשה" onClose={()=>setAddOpen(false)}>
+            <div style={{display:"flex",flexDirection:"column",gap:16}}>
+              <div>
+                <div style={{fontSize:12,color:"var(--text2)",marginBottom:4}}>תיאור</div>
+                <input className="bp-input" value={newExp.desc} onChange={e=>setNewExp({...newExp, desc: e.target.value})} placeholder="לדוג׳: רכישת חומרי אינסטלציה" style={{width:"100%"}}/>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+                <div>
+                  <div style={{fontSize:12,color:"var(--text2)",marginBottom:4}}>סכום</div>
+                  <input className="bp-input" type="number" value={newExp.amount} onChange={e=>setNewExp({...newExp, amount: e.target.value})} placeholder="0" style={{width:"100%"}}/>
+                </div>
+                <div>
+                  <div style={{fontSize:12,color:"var(--text2)",marginBottom:4}}>קטגוריה</div>
+                  <select className="bp-input" value={newExp.cat} onChange={e=>setNewExp({...newExp, cat: e.target.value})} style={{width:"100%"}}>
+                    <option value="">בחר קטגוריה</option>
+                    {categories.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div style={{marginTop:8,display:"flex",justifyContent:"flex-end",gap:12}}>
+                <Btn variant="ghost" onClick={()=>setAddOpen(false)}>ביטול</Btn>
+                <Btn onClick={handleAddExpense} disabled={saving}>{saving ? "שומר..." : "הוסף הוצאה"}</Btn>
+              </div>
+            </div>
+          </Modal>
+        )}
       </div>
     </ScreenBoundary>
   );

@@ -40,6 +40,8 @@ export const Route = createRootRoute({
   shellComponent: RootDocument,
 })
 
+import { ProjectProvider } from '~/hooks/useCurrentProject'
+
 function RootDocument({ children }: { children: React.ReactNode }) {
   const storage = typeof window === 'undefined' ? undefined : window.localStorage
 
@@ -51,9 +53,11 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       <body>
         <div id="root">
           <ConvexAuthProvider client={convex} storage={storage} storageNamespace="buildsync-auth">
-            <AppLayout>
-              {children}
-            </AppLayout>
+            <ProjectProvider>
+              <AppLayout>
+                {children}
+              </AppLayout>
+            </ProjectProvider>
           </ConvexAuthProvider>
         </div>
         <TanStackRouterDevtools position="bottom-right" />

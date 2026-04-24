@@ -17,9 +17,17 @@ export interface BOQItem {
   status: "pending" | "approved" | "rejected";
 }
 
+import { useCurrentProject } from '../hooks/useCurrentProject';
+import { useQuery } from 'convex/react';
+import { api } from '../../convex/_generated/api';
+
 export const BOQScreen = () => {
-  const { data: initialBoq, loading: boqLoading, error: boqError, refetch: refetchBoq } = useDataSource<Record<string, BOQItem[]>>('boq');
-  const { data: project, loading: projectLoading, error: projectError, refetch: refetchProject } = useDataSource<Project>('project');
+  const { projectId } = useCurrentProject();
+  const dbBoq = useQuery(api.queries.listBoq, projectId ? { projectId } : "skip");
+  const dbProject = useQuery(api.projects.getWithDetails, projectId ? { projectId } : "skip");
+
+  const { data: initialBoq, loading: boqLoading, error: boqError, refetch: refetchBoq } = useDataSource<any[]>('boq', { db: dbBoq as any });
+  const { data: project, loading: projectLoading, error: projectError, refetch: refetchProject } = useDataSource<Project>('project', { db: dbProject as any });
   
   const [items, setItems] = React.useState<Record<string, BOQItem[]>>({});
   const [room, setRoom] = React.useState<string>("");
@@ -29,7 +37,30 @@ export const BOQScreen = () => {
   const rooms = (project as any)?.rooms || [];
 
   React.useEffect(() => {
-    if (initialBoq) setItems(initialBoq);
+    if (initialBoq) {
+      if (Array.isArray(initialBoq)) {
+        // Group by room for DB data
+        const grouped: Record<string, BOQItem[]> = {};
+        initialBoq.forEach((item: any) => {
+          const roomId = item.roomId || "unassigned";
+          if (!grouped[roomId]) grouped[roomId] = [];
+          grouped[roomId].push({
+            id: item._id,
+            name: item.name,
+            cat: item.category,
+            qty: item.qty,
+            unit: item.unit,
+            unitPrice: item.unitPrice,
+            supplier: item.supplier,
+            spec: item.spec,
+            status: item.status,
+          });
+        });
+        setItems(grouped);
+      } else {
+        setItems(initialBoq);
+      }
+    }
   }, [initialBoq]);
 
   React.useEffect(() => {

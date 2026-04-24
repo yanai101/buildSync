@@ -2,10 +2,18 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Icon, Btn, Modal, TagBadge, Select } from '../components/Shared';
 import { useDataSource } from '../hooks/useDataSource';
+import { useDataMutation } from '../hooks/useDataMutation';
+import { useCurrentProject } from '../hooks/useCurrentProject';
+import { useQuery } from 'convex/react';
+import { api } from '../../convex/_generated/api';
 import { ScreenBoundary } from '../components/ScreenBoundary';
 
 export const PhotosScreen = () => {
-  const { data: initialPhotos, loading, error, refetch } = useDataSource<any[]>('photos');
+  const { projectId } = useCurrentProject();
+  const dbPhotos = useQuery(api.queries.listPhotos, projectId ? { projectId } : "skip");
+  const { data: initialPhotos, loading, error, refetch } = useDataSource<any[]>('photos', { db: dbPhotos as any });
+  const { mutate } = useDataMutation('photos');
+
   const [photos, setPhotos] = React.useState<any[]>([]);
   const [selected, setSelected] = React.useState<any>(null);
   const [filter, setFilter] = React.useState("הכל");
@@ -43,14 +51,27 @@ export const PhotosScreen = () => {
   const endDraw = () => { drawing.current=false; };
   const clearCanvas = () => { const c=canvasRef.current; if(c) c.getContext("2d")?.clearRect(0,0,c.width,c.height); };
 
-  const addNote = () => {
+  const addNote = async () => {
     if(!noteText||!selected) return;
-    setPhotos(prev=>prev.map(p=>p.id===selected.id?{...p,notesCount:p.notesCount+1}:p));
-    setNoteText("");
+    
+    // Optimistic
+    setPhotos(prev=>prev.map(p=>p.id===selected.id?{...p,notesCount:(p.notesCount||0)+1}:p));
+    
+    try {
+      await mutate('savePhotoAnnotation', {
+        photoId: selected._id || 'dummy',
+        noteText: noteText,
+        role: 'manager'
+      });
+      setNoteText("");
+      refetch();
+    } catch (err) {
+      alert("שגיאה בשמירת הערה");
+    }
   };
 
   return (
-    <ScreenBoundary loading={loading} error={error} onRetry={refetch}>
+    <ScreenBoundary loading={loading} error={error} isEmpty={photos.length === 0} emptyTitle="אין תמונות" emptyDesc="נראה שעדיין לא הועלו תמונות תיעוד לפרויקט." onRetry={refetch}>
       <div className="page-content">
       {/* Filter + upload */}
       <div style={{display:"flex",gap:8,marginBottom:16,alignItems:"center",flexWrap:"wrap"}}>
@@ -124,7 +145,7 @@ export const PhotosScreen = () => {
             </div>
             {/* Notes panel */}
             <div style={{flex:"0 0 200px",display:"flex",flexDirection:"column",gap:8}}>
-              <div style={{fontWeight:600,fontSize:13,marginBottom:4}}>הערות ({selected.notesCount})</div>
+              <div style={{fontWeight:600,fontSize:13,marginBottom:4}}>הערות ({selected.notesCount || 0})</div>
               <div style={{flex:1,maxHeight:240,overflowY:"auto",display:"flex",flexDirection:"column",gap:6}}>
                 {selected.notesCount>0
                   ? Array.from({length:selected.notesCount}).map((_,i)=>(
@@ -137,7 +158,7 @@ export const PhotosScreen = () => {
                 }
               </div>
               <div style={{display:"flex",flexDirection:"column",gap:6}}>
-                <textarea value={noteText} onChange={e=>setNoteText(e.target.value)} placeholder="הוסף הערה..." rows={3}
+                <textarea value={noteText} onChange={setNoteText} placeholder="הוסף הערה..." rows={3}
                   style={{width:"100%",border:"1px solid var(--border)",borderRadius:8,padding:"8px",fontSize:12,fontFamily:"'Heebo',sans-serif",resize:"none",outline:"none"}}/>
                 <div style={{display:"flex",gap:6}}>
                   <Select value="manager" onChange={()=>{}} style={{flex:1,fontSize:11}}>

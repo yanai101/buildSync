@@ -314,6 +314,15 @@ export const DASHBOARD_OVERVIEW = {
   ]
 };
 
+export const EXPENSES = [
+  {id:1, date:"15/09/25",desc:"תשלום לקבלן שלד — מקדמה",cat:"שלד ויסודות",amount:135000,status:"שולם"},
+  {id:2, date:"01/10/25",desc:"תשלום לחשמלאי — ביניים",cat:"חשמל",amount:45000,status:"שולם"},
+  {id:3, date:"10/10/25",desc:"חומרי טיח — פרץ טיח",cat:"טיח",amount:28000,status:"שולם"},
+  {id:4, date:"20/10/25",desc:"תשלום לאינסטלטור",cat:"אינסטלציה",amount:40000,status:"שולם"},
+  {id:5, date:"25/10/25",desc:"תשלום לקבלן טיח — ביניים",cat:"טיח",amount:44000,status:"שולם"},
+  {id:6, date:"01/11/25",desc:"תשלום לחשמלאי — סיום גולמי",cat:"חשמל",amount:20000,status:"ממתין"},
+];
+
 export const MOCK_DATA: Record<string, any> = {
   project: PROJECT,
   stages: STAGES,
@@ -325,5 +334,6 @@ export const MOCK_DATA: Record<string, any> = {
   budget_cats: BUDGET_CATS,
   timeline: TIMELINE_DATA,
   quotes: QUOTES_DATA,
+  expenses: EXPENSES,
   dashboard: DASHBOARD_OVERVIEW,
 };

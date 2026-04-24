@@ -82,20 +82,18 @@ export const zProject = {
   ownerUserId: zid('users').optional(),
   managerUserId: zid('users').optional(),
   inspectorUserId: zid('users').optional(),
-  // Denormalized names — the mock data tracks these as strings on PROJECT
-  // before users exist. Keep them alongside the FKs.
-  ownerName: z.string(),
-  managerName: z.string(),
-  inspectorName: z.string(),
+  ownerName: z.string().optional(),
+  managerName: z.string().optional(),
+  inspectorName: z.string().optional(),
   startDate: z.string(),
   expectedEnd: z.string(),
-  floors: z.number(),
-  areaSqm: z.number(),
+  floors: z.number().optional(),
+  areaSqm: z.number().optional(),
   progressPct: z.number(),
   currentStageName: z.string().optional(),
   budgetTotal: z.number(),
   spent: z.number(),
-  committed: z.number(),
+  committed: z.number().optional(),
   totalWeeks: z.number().optional(),
 };
 

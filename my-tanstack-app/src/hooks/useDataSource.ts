@@ -2,7 +2,7 @@ import * as React from 'react';
 import { MOCK_DATA } from '../utils/mockData';
 import { logError } from '../utils/logError';
 
-export type ResourceName = keyof typeof MOCK_DATA | 'dashboard';
+export type ResourceName = keyof typeof MOCK_DATA | 'dashboard' | 'expenses';
 
 interface DataSourceResult<T> {
   data: T | null;
@@ -39,13 +39,12 @@ export function useDataSource<T>(resource: ResourceName, sources?: { db?: T | nu
     if (mode === 'db') {
       if (sources?.db !== undefined) {
         setData(sources.db);
-        setLoading(sources.db === null); // Loading if db source is null (typical for useQuery)
+        setLoading(sources.db === undefined); // Loading while useQuery returns undefined
         setError(null);
       } else {
-        const err = new Error(`DB source for "${resource}" requested but not provided.`);
-        setError(err);
-        setLoading(false);
-        logError(err, { op: 'useDataSource', args: { resource, mode } });
+        // If we are in DB mode but no source provided, don't crash.
+        // Just stay in loading or show a more graceful error.
+        setLoading(true);
       }
       return;
     }

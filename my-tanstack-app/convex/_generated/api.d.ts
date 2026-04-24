@@ -9,10 +9,16 @@
  */
 
 import type * as auth from "../auth.js";
+import type * as budget from "../budget.js";
 import type * as dashboard from "../dashboard.js";
 import type * as http from "../http.js";
+import type * as mutations from "../mutations.js";
+import type * as notes from "../notes.js";
+import type * as photos from "../photos.js";
 import type * as projects from "../projects.js";
+import type * as queries from "../queries.js";
 import type * as seed from "../seed.js";
+import type * as stages from "../stages.js";
 import type * as users from "../users.js";
 import type * as zodSchemas from "../zodSchemas.js";
 
@@ -24,10 +30,16 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
+  budget: typeof budget;
   dashboard: typeof dashboard;
   http: typeof http;
+  mutations: typeof mutations;
+  notes: typeof notes;
+  photos: typeof photos;
   projects: typeof projects;
+  queries: typeof queries;
   seed: typeof seed;
+  stages: typeof stages;
   users: typeof users;
   zodSchemas: typeof zodSchemas;
 }>;
