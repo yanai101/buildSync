@@ -10,9 +10,13 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
       profile(params) {
         return {
           email: params.email as string,
-          name: (params.name as string | undefined) ?? undefined,
-          phone: (params.phone as string | undefined) ?? undefined,
           role: 'owner' as const,
+          ...((params.name as string | undefined)
+            ? { name: params.name as string }
+            : {}),
+          ...((params.phone as string | undefined)
+            ? { phone: params.phone as string }
+            : {}),
         };
       },
     }),

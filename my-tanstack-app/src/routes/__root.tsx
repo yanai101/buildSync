@@ -41,6 +41,8 @@ export const Route = createRootRoute({
 })
 
 function RootDocument({ children }: { children: React.ReactNode }) {
+  const storage = typeof window === 'undefined' ? undefined : window.localStorage
+
   return (
     <html lang="he" dir="rtl">
       <head>
@@ -48,7 +50,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       </head>
       <body>
         <div id="root">
-          <ConvexAuthProvider client={convex}>
+          <ConvexAuthProvider client={convex} storage={storage} storageNamespace="buildsync-auth">
             <AppLayout>
               {children}
             </AppLayout>
