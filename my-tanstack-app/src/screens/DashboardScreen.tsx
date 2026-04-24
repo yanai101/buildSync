@@ -19,7 +19,17 @@ export const DashboardScreen = () => {
   const { project, stats, stages, recentActivity, topOverruns } = dashboard;
   const stageRows = stages ?? [];
   const rc = ROLE_COLORS;
-  
+  const fmtDate = (dateStr: string) => {
+    if (!dateStr) return 'טרם הוגדר';
+    try {
+      const date = new Date(dateStr);
+      if (isNaN(date.getTime())) return dateStr;
+      return date.toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    } catch (e) {
+      return dateStr;
+    }
+  };
+
   return (
     <ScreenBoundary loading={loading} error={error} onRetry={refetch}>
       <div className="page-content">
@@ -134,7 +144,15 @@ export const DashboardScreen = () => {
             <div className="card">
               <div className="card-header">פרטי פרויקט</div>
               <div className="card-body" style={{paddingTop:12}}>
-                {[["שם הפרויקט",project.name],["כתובת",project.address],["בעל הבית",project.ownerName],["בעל בנייה",project.managerName],["מפקח",project.inspectorName],["תחילת עבודה",project.startDate],["סיום צפוי",project.expectedEnd]].map(([k,v])=>(
+                {[
+                  ["שם הפרויקט", project.name],
+                  ["כתובת", project.address],
+                  ["בעל הבית", project.ownerName],
+                  ["מנהל פרויקט", project.managerName],
+                  ["מפקח", project.inspectorName],
+                  ["תחילת עבודה", fmtDate(project.startDate)],
+                  ["סיום צפוי", fmtDate(project.expectedEnd)]
+                ].map(([k,v])=>(
                   <div key={k} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:"1px solid var(--border)",fontSize:13}}>
                     <span style={{color:"var(--text2)"}}>{k}</span>
                     <span style={{fontWeight:500}}>{v}</span>

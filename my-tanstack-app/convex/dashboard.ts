@@ -33,9 +33,10 @@ export const getOverview = query({
       stages.find((stage) => stage.status === 'pending') ??
       null;
     const doneStages = stages.filter((stage) => stage.status === 'done').length;
-    const totalBudget = budgetCategories.reduce((sum, category) => sum + category.budget, 0);
+    const categoryBudget = budgetCategories.reduce((sum, category) => sum + category.budget, 0);
+    const totalBudget = categoryBudget > 0 ? categoryBudget : (project.budgetTotal || 0);
     const totalSpent = budgetCategories.reduce((sum, category) => sum + category.spent, 0);
-    const remainingBudget = totalBudget - totalSpent - project.committed;
+    const remainingBudget = totalBudget - totalSpent - (project.committed || 0);
     const topOverruns = budgetCategories
       .filter((category) => category.spent > category.budget)
       .sort((left, right) => right.spent - right.budget - (left.spent - left.budget))

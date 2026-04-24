@@ -57,7 +57,18 @@ export const useDataMutation = (resource: MutationResource) => {
         case 'savePhotoAnnotation':
           return await savePhotoAnnotationMutation({ photoId: payload.photoId, noteText: payload.noteText, role: payload.role });
         case 'createProject':
-          return await createProjectMutation({ name: payload.name, address: payload.address });
+          return await createProjectMutation({ 
+            name: payload.name, 
+            address: payload.address,
+            ownerName: payload.ownerName,
+            managerName: payload.managerName,
+            inspectorName: payload.inspectorName,
+            floors: payload.floors,
+            areaSqm: payload.areaSqm,
+            budgetTotal: payload.budgetTotal,
+            startDate: payload.startDate,
+            expectedEnd: payload.expectedEnd
+          });
         case 'deleteProject':
           return await deleteProjectMutation({ projectId: payload.id });
         default:
