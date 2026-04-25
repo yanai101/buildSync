@@ -119,6 +119,7 @@ export function useCurrentProject() {
     projectId: (project?._id ?? null) as Id<'projects'> | null,
     hasMultipleProjects: projects.length > 1,
     setCurrentProject,
-    isMock
+    isMock,
+    isLoading
   };
 }

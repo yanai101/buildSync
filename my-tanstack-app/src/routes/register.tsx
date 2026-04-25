@@ -37,8 +37,7 @@ function RegisterPage() {
         name: form.name,
         phone: form.phone,
       })
-      await seedMyProject({})
-      window.location.assign('/')
+      // Navigation is handled by the useEffect above when isAuthenticated becomes true
     } catch (err) {
       setError(err instanceof Error ? err.message : 'ההרשמה נכשלה. נסה שוב.')
     } finally {
@@ -61,9 +60,19 @@ function RegisterPage() {
       {/* Visual side pane (hidden on mobile) */}
       <div style={{ flex: 1, background: 'linear-gradient(135deg, var(--text1), #1a1a24)', display: 'flex', flexDirection: 'column', padding: '60px', color: '#fff', position: 'relative', overflow: 'hidden' }} className="hidden-mobile">
         <div style={{ position: 'relative', zIndex: 2 }}>
-          <div className="sidebar-logo" style={{ marginBottom: 60, alignSelf: 'flex-start' }}>
-            <div className="sidebar-logo-mark" style={{ background: 'var(--accent)', color: '#fff' }}>B</div>
-            <div><div className="sidebar-logo-text" style={{fontSize: 28, color: '#fff'}}>Build<span style={{ color: 'var(--accent)'}}>Pro</span></div></div>
+          <div className="sidebar-logo" style={{ marginBottom: 60, alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <img 
+              src="/logo.png" 
+              alt="BuildSync Icon" 
+              style={{ 
+                width: 40, 
+                height: 40, 
+                display: 'block', 
+                borderRadius: '10px',
+                objectFit: 'cover'
+              }} 
+            />
+            <div className="sidebar-logo-text" style={{ fontSize: 28, color: '#fff', margin: 0 }}>Build<span style={{color: 'var(--accent)'}}>Sync</span></div>
           </div>
 
           <h2 style={{ fontSize: '3rem', fontWeight: 800, lineHeight: 1.1, marginBottom: 24, letterSpacing: '-0.02em', maxWidth: 400 }}>

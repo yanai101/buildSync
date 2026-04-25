@@ -7,7 +7,8 @@ import { useDataMutation } from '../hooks/useDataMutation';
 import { ScreenBoundary } from '../components/ScreenBoundary';
 import { Project, Room } from '../types';
 import { useCurrentProject } from '../hooks/useCurrentProject';
-import { DEFAULT_ROOMS } from '../utils/mockData';
+import { useQuery } from 'convex/react';
+import { api } from '../../convex/_generated/api';
 import html2pdf from 'html2pdf.js';
 import { BOQPrintTemplate } from '../components/BOQPrintTemplate';
 
@@ -116,9 +117,9 @@ const AddItemWidget = ({roomUid, roomType, existingItems, onAdd}: {roomUid: stri
 // ── BOQ WIZARD SCREEN ───────────────────────────────────────────────────────
 
 export const BOQWizardScreen = () => {
-  const { project: currentProject } = useCurrentProject();
-  const projectWithRooms = currentProject ? { ...currentProject, rooms: (currentProject as any).rooms || DEFAULT_ROOMS } : null;
-  const { data: project, loading, error, refetch } = useDataSource<Project>('project', { db: projectWithRooms as any });
+  const { projectId } = useCurrentProject();
+  const dbProject = useQuery(api.projects.getWithDetails, projectId ? { projectId } : "skip");
+  const { data: project, loading, error, refetch } = useDataSource<Project>('project', { db: dbProject as any });
   const { mutate } = useDataMutation('boq');
   
   const [step, setStep] = React.useState(0);
@@ -336,7 +337,24 @@ export const BOQWizardScreen = () => {
   }
 
   // Wizard View
-  if (!currentRoom) return null;
+  if (!currentRoom) {
+    return (
+      <ScreenBoundary loading={loading} error={error} onRetry={refetch}>
+        <div className="page-content" style={{maxWidth:1200,margin:"0 auto",padding:"40px", textAlign: "center"}}>
+          <div style={{width: 80, height: 80, borderRadius: "50%", background: "var(--accent-light)", color: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 24px"}}>
+            <Icon n="alert-circle" s={40} />
+          </div>
+          <h2 style={{fontSize: 24, fontWeight: 800, marginBottom: 12}}>לא נמצאו חדרים בפרויקט</h2>
+          <p style={{fontSize: 16, color: "var(--text2)", marginBottom: 32, maxWidth: 400, margin: "0 auto 32px"}}>
+            אשף הכמויות מבוסס על החדרים שהוגדרו בפרויקט. כדי להתחיל, יש להגדיר קודם את מבנה הבית.
+          </p>
+          <Btn onClick={() => window.location.href = '/setup'} style={{margin: "0 auto", padding: "12px 24px"}}>
+            <Icon n="settings" s={18} /> מעבר להגדרות הבית
+          </Btn>
+        </div>
+      </ScreenBoundary>
+    );
+  }
   const items = allItems[currentRoom.uid] || [];
   const cats = [...new Set(items.map((i: any)=>i.cat))];
 

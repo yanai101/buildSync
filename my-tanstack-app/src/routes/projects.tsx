@@ -94,7 +94,7 @@ function ProjectsRoute() {
           <Icon n="plus" s={48} c="#fff" />
         </div>
         <h1 style={{ fontSize: 32, fontWeight: 900, marginBottom: 12, textAlign: 'center' }}>בוא נתחיל פרויקט חדש</h1>
-        <Btn size="lg" onClick={() => setIsWizardOpen(true)} style={{ padding: '16px 40px', fontSize: 18 }}>
+        <Btn id="tour-create-project" size="lg" onClick={() => setIsWizardOpen(true)} style={{ padding: '16px 40px', fontSize: 18 }}>
           <Icon n="plus" s={20} />
           צור פרויקט ראשון
         </Btn>

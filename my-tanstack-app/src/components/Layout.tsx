@@ -8,6 +8,7 @@ import { useCurrentProject } from '~/hooks/useCurrentProject'
 import { useConvexAuth, useQuery } from 'convex/react'
 import { useAuthActions } from '@convex-dev/auth/react'
 import { api } from '../../convex/_generated/api'
+import { useOnboardingTour } from '~/hooks/useOnboardingTour'
 
 export const NAV = [
   { id: "/",              label: "לוח בקרה",    icon: "home",      section: "ראשי" },
@@ -54,12 +55,13 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const currentPath = routerState.location.pathname
   const navigate = useNavigate()
   const [tweaksOpen, setTweaksOpen] = React.useState(false)
-  const { project, hasMultipleProjects } = useCurrentProject()
+  const { project, projects, hasMultipleProjects, isLoading: isProjectLoading } = useCurrentProject()
   const { isAuthenticated, isLoading } = useConvexAuth()
   const { signOut } = useAuthActions()
   const identity = useQuery(api.users.currentIdentity, {})
   const [menuOpen, setMenuOpen] = React.useState(false)
   const menuRef = React.useRef<HTMLDivElement>(null)
+  const { startTour } = useOnboardingTour()
 
   const COLLAPSED_KEY = 'buildsync:sidebar-collapsed-sections'
   const [collapsedSections, setCollapsedSections] = React.useState<Set<string>>(new Set())
@@ -136,6 +138,30 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     }
   }, [currentPath, isAuthenticated, isLoading, navigate])
 
+  React.useEffect(() => {
+    if (isLoading || isProjectLoading) return
+    if (isAuthenticated && !publicRoutes.includes(currentPath) && currentPath !== '/projects' && projects.length === 0) {
+      navigate({ to: '/projects' })
+    }
+  }, [currentPath, isAuthenticated, isLoading, isProjectLoading, navigate, projects.length])
+
+  React.useEffect(() => {
+    if (typeof window === 'undefined' || isLoading || isProjectLoading) return;
+    if (isAuthenticated && !publicRoutes.includes(currentPath)) {
+      // If user has 0 projects, wait until they are actually on /projects page so the button is mounted
+      if (projects.length === 0 && currentPath !== '/projects') return;
+
+      const tourCompleted = window.localStorage.getItem('buildsync:tour_completed');
+      if (!tourCompleted) {
+        window.localStorage.setItem('buildsync:tour_completed', 'true');
+        // Small delay to ensure DOM is ready and page transitioned
+        setTimeout(() => {
+          startTour();
+        }, 500);
+      }
+    }
+  }, [isAuthenticated, isLoading, isProjectLoading, currentPath, startTour, projects.length]);
+
   if (noLayoutRoutes.includes(currentPath)) {
     return <>{children}</>
   }
@@ -202,22 +228,30 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                       transition={{ duration: 0.22, ease: 'easeOut' }}
                       style={{ overflow: 'hidden' }}
                     >
-                      {items.map(n => (
-                        <Link
-                          key={n.id}
-                          to={n.id}
-                          className="nav-item"
-                          activeProps={{ className: 'active' }}
-                          exact
-                        >
-                          {currentPath === n.id && (
-                            <motion.div layoutId="nav-active" className="nav-item-bg" transition={{type:"spring", stiffness:300, damping:30}} />
-                          )}
-                          <Icon n={n.icon} s={18} />
-                          <span style={{flex:1}}>{n.label}</span>
-                          {n.badge && <span className="nav-item-badge">{n.badge}</span>}
-                        </Link>
-                      ))}
+                      {items.map(n => {
+                        const isDisabled = projects.length === 0 && n.id !== '/projects';
+                        return (
+                          <Link
+                            id={`tour-nav-${n.id.replace('/', '') || 'dashboard'}`}
+                            key={n.id}
+                            to={isDisabled ? currentPath : n.id}
+                            className="nav-item"
+                            activeProps={isDisabled ? {} : { className: 'active' }}
+                            style={{ 
+                              opacity: isDisabled ? 0.4 : 1, 
+                              pointerEvents: isDisabled ? 'none' : 'auto' 
+                            }}
+                            exact
+                          >
+                            {currentPath === n.id && !isDisabled && (
+                              <motion.div layoutId="nav-active" className="nav-item-bg" transition={{type:"spring", stiffness:300, damping:30}} />
+                            )}
+                            <Icon n={n.icon} s={18} />
+                            <span style={{flex:1}}>{n.label}</span>
+                            {n.badge && <span className="nav-item-badge">{n.badge}</span>}
+                          </Link>
+                        )
+                      })}
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -296,6 +330,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             <div style={{ width: 1, height: 16, background: "var(--border)", margin: "0 4px" }} />
             <div ref={menuRef} style={{ position: "relative" }}>
               <button
+                id="tour-user-menu"
                 type="button"
                 onClick={() => setMenuOpen((v) => !v)}
                 aria-haspopup="menu"
@@ -339,6 +374,32 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                     פרטי חשבון
                   </Link>
                   <div style={{ height: 1, background: "var(--border)", margin: "6px 0" }} />
+                  <button
+                    onClick={() => {
+                      setMenuOpen(false);
+                      startTour();
+                    }}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      padding: "8px 10px",
+                      borderRadius: 8,
+                      color: "var(--text1)",
+                      fontSize: 13,
+                      fontWeight: 600,
+                      textDecoration: "none",
+                      background: "none",
+                      border: "none",
+                      width: "100%",
+                      cursor: "pointer",
+                      textAlign: "right",
+                      fontFamily: "inherit"
+                    }}
+                  >
+                    <Icon n="help-circle" s={14} />
+                    מדריך מערכת
+                  </button>
                   <div style={{ height: 1, background: "var(--border)", margin: "6px 0" }} />
                   {/* Dev-only Data Source Toggle */}
                   {import.meta.env.DEV && (

@@ -49,9 +49,9 @@ export const ProjectSetupScreen = () => {
 
   const setField = (k: keyof ProjectConfig, v: string | number) => setCfg((c)=> c ? ({...c,[k]:v}) : c);
   const setRoom = (uid: string, k: keyof Room, v: any) => setCfg((c)=> c ? ({...c,rooms:(c.rooms || []).map((r)=>r.uid===uid?{...r,[k]:v}:r)}) : c);
-  const addRoom = () => {
+  const addRoom = (floor: number = 1) => {
     const uid = `r${Date.now()}`;
-    setCfg((c)=> c ? ({...c,rooms:[...(c.rooms || []),{uid,type:"bedroom",name:"חדר שינה חדש",floor:1,size:16}]}) : c);
+    setCfg((c)=> c ? ({...c,rooms:[...(c.rooms || []),{uid,type:"bedroom",name:"חדר שינה חדש",floor,size:16}]}) : c);
   };
   const removeRoom = (uid: string) => setCfg((c)=> c ? ({...c,rooms:(c.rooms || []).filter((r)=>r.uid!==uid)}) : c);
 
@@ -249,11 +249,13 @@ export const ProjectSetupScreen = () => {
           <div>
             <div style={{padding:"14px 18px",borderBottom:"1px solid var(--border)",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
               <span style={{fontWeight:700,fontSize:15}}>הגדרת חדרים</span>
-              <Btn size="sm" onClick={addRoom}><Icon n="plus" s={13}/> חדר חדש</Btn>
             </div>
             {Array.from({length:cfg.floors},(_,fi)=>(
               <div key={fi} style={{padding:"14px 18px 8px",borderBottom:"1px solid var(--border)"}}>
-                <div style={{fontSize:12,fontWeight:700,color:"var(--text3)",textTransform:"uppercase",letterSpacing:".5px",marginBottom:10}}>קומה {fi+1}</div>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+                  <div style={{fontSize:12,fontWeight:700,color:"var(--text3)",textTransform:"uppercase",letterSpacing:".5px"}}>קומה {fi+1}</div>
+                  <Btn size="sm" variant="ghost" onClick={() => addRoom(fi+1)}><Icon n="plus" s={13}/> חדר לקומה זו</Btn>
+                </div>
                 <div style={{display:"flex",flexDirection:"column",gap:8}}>
                   {floorRooms(fi+1).length===0 && <div style={{fontSize:13,color:"var(--text3)",padding:"8px 0"}}>אין חדרים בקומה זו</div>}
                   {floorRooms(fi+1).map((r)=>(

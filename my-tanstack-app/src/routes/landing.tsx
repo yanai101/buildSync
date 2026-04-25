@@ -125,11 +125,19 @@ function LandingPage() {
         </motion.div>
 
         <header style={{ position: 'relative', zIndex: 10, display: 'flex', justifyContent: 'space-between', padding: '30px 5%', alignItems: 'center' }}>
-          <div className="sidebar-logo" style={{ marginBottom: 0 }}>
-            <div className="sidebar-logo-mark" style={{ background: 'linear-gradient(135deg, var(--accent) 0%, #B45309 100%)', color: '#fff', boxShadow: '0 0 15px rgba(224,122,56,0.4)' }}>B</div>
-            <div>
-              <div className="sidebar-logo-text" style={{fontSize: 28, color: '#fff'}}>Build<span style={{color: 'var(--accent)'}}>Pro</span></div>
-            </div>
+          <div className="sidebar-logo" style={{ marginBottom: 0, display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <img 
+              src="/logo.png" 
+              alt="BuildSync Icon" 
+              style={{ 
+                width: 40, 
+                height: 40, 
+                display: 'block', 
+                borderRadius: '10px',
+                objectFit: 'cover'
+              }} 
+            />
+            <div className="sidebar-logo-text" style={{ fontSize: 28, color: '#fff', margin: 0 }}>Build<span style={{color: 'var(--accent)'}}>Sync</span></div>
           </div>
           <div style={{ display: 'flex', gap: 24, alignItems: 'center' }}>
             <Link to="/" style={{ color: '#ddd', fontWeight: 600, fontSize: 16, textDecoration: 'none', transition: 'color 0.2s' }}
