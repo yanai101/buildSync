@@ -1,5 +1,5 @@
 import React from 'react';
-import { Icon, Btn, Badge } from '../components/Shared';
+import { Icon, Btn, Badge, EmptyState, PageBackground } from '../components/Shared';
 import { BOQ_DATA, fmtMoney } from '../utils/mockData';
 import { ScreenBoundary } from '../components/ScreenBoundary';
 import { Project, Room } from '../types';
@@ -378,7 +378,26 @@ export const BOQScreen = () => {
         )}
 
         {roomItems.length === 0
-          ? <div className="card card-body" style={{textAlign:"center",color:"var(--text3)",padding:40}}>אין פריטים עדיין. לחץ "פריט חדש" להוסיף או עבר לאשף הכמויות.</div>
+          ? (
+            <div style={{ position: 'relative', zIndex: 1, height: '100%' }}>
+              <PageBackground image="/empty_states/boq.png" />
+              <EmptyState 
+                icon="clipboard" 
+                title="אין פריטים בחדר זה" 
+              description="הוסיפו פריטים ידנית או השתמשו באשף הכמויות ליצירה אוטומטית של רשימת קניות על בסיס סוג החדר."
+              action={
+                <div style={{display: 'flex', gap: 12}}>
+                  <Btn size="lg" onClick={()=>{resetForm();setAdding(true)}} disabled={!projectId || !room}>
+                    <Icon n="plus" s={18} /> פריט חדש
+                  </Btn>
+                  <Btn size="lg" variant="ghost" onClick={() => (window as any).location.href='/boqwizard'}>
+                    <Icon n="zoom-in" s={18} /> אשף כמויות
+                  </Btn>
+                </div>
+              }
+            />
+            </div>
+          )
           : cats.map((cat)=>(
             <div key={cat} className="card" style={{marginBottom:16}}>
               <div className="card-header" style={{fontSize:13,display:"flex",justifyContent:"space-between"}}>

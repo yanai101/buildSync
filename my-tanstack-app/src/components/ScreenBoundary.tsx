@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Spinner, ErrorState, Icon, Btn } from './Shared';
+import { Spinner, ErrorState, Icon, Btn, EmptyState, PageBackground } from './Shared';
 import { motion } from 'framer-motion';
 
 interface ScreenBoundaryProps {
@@ -9,6 +9,7 @@ interface ScreenBoundaryProps {
   emptyTitle?: string;
   emptyDesc?: string;
   emptyIcon?: string;
+  emptyImage?: string;
   emptyAction?: () => void;
   emptyActionLabel?: string;
   children: React.ReactNode;
@@ -22,6 +23,7 @@ export const ScreenBoundary: React.FC<ScreenBoundaryProps> = ({
   emptyTitle = "אין נתונים להצגה",
   emptyDesc = "נראה שעדיין לא נוספו נתונים לקטגוריה זו.",
   emptyIcon = "clipboard",
+  emptyImage,
   emptyAction,
   emptyActionLabel = "הוספה ראשונה",
   children, 
@@ -52,16 +54,21 @@ export const ScreenBoundary: React.FC<ScreenBoundaryProps> = ({
         className="page-content" 
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 400, textAlign: 'center' }}
+        style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', justifyContent: 'center', minHeight: 400, position: 'relative', zIndex: 1 }}
       >
-        <div style={{ width: 80, height: 80, borderRadius: '50%', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
-          <Icon n={emptyIcon} s={32} c="var(--text3)" />
+        {emptyImage && <PageBackground image={emptyImage} />}
+        <div style={{ position: 'relative', zIndex: 1 }}>
+          <EmptyState 
+            icon={emptyIcon}
+            title={emptyTitle}
+            description={emptyDesc}
+            action={emptyAction && (
+              <Btn onClick={emptyAction} size="lg" style={{padding: '12px 28px', fontSize: 16}}>
+                <Icon n="plus" s={16} /> {emptyActionLabel}
+              </Btn>
+            )}
+          />
         </div>
-        <h3 style={{ fontSize: 20, fontWeight: 800, margin: '0 0 8px 0' }}>{emptyTitle}</h3>
-        <p style={{ fontSize: 14, color: 'var(--text3)', maxWidth: 300, margin: '0 0 24px 0', lineHeight: 1.5 }}>{emptyDesc}</p>
-        {emptyAction && (
-          <Btn onClick={emptyAction}><Icon n="plus" s={14} /> {emptyActionLabel}</Btn>
-        )}
       </motion.div>
     );
   }

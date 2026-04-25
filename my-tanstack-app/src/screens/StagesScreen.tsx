@@ -799,6 +799,8 @@ export const StagesScreen = () => {
       loading={loading}
       error={error}
       isEmpty={stages.length === 0}
+      emptyIcon="layers"
+      emptyImage="/empty_states/stages.png"
       emptyTitle="אין שלבי בנייה"
       emptyDesc="נראה שעדיין לא הוגדרו שלבים לפרויקט זה. אפשר להתחיל מתבנית המאסטר ולערוך אותה לפני יצירה."
       emptyAction={() => setGuideOpen(true)}

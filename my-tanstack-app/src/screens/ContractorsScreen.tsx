@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Icon, Avatar, Badge, Stars, Btn, Modal, ProgressBar } from '../components/Shared';
+import { Icon, Avatar, Badge, Stars, Btn, Modal, ProgressBar, EmptyState } from '../components/Shared';
 import { Contractor, Milestone } from '../types';
 import { useDataSource } from '../hooks/useDataSource';
 import { ScreenBoundary } from '../components/ScreenBoundary';
@@ -447,55 +447,67 @@ export const ContractorsScreen = () => {
   );
 
   return (
-    <ScreenBoundary loading={loading} error={error} onRetry={refetch}>
+    <ScreenBoundary 
+      loading={loading} 
+      error={error} 
+      onRetry={refetch}
+      isEmpty={contractors.length === 0}
+      emptyTitle="לא נמצאו קבלנים בפרויקט"
+      emptyDesc="הוסיפו קבלנים, הגדירו עבורם לוח תשלומים המחובר להתקדמות הבנייה, ועקבו אחר התקציב."
+      emptyIcon="users"
+      emptyImage="/empty_states/contractors.png"
+      emptyAction={() => setAdding(true)}
+      emptyActionLabel="קבלן חדש"
+    >
       <div className="page-content">
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
           <div style={{fontSize:13,color:"var(--text2)"}}>{contractors.length} קבלנים בפרויקט</div>
           <Btn size="sm" onClick={()=>setAdding(true)} disabled={!projectId || mode !== 'db'}><Icon n="plus" s={14}/> קבלן חדש</Btn>
         </div>
 
-        {contractors.some(c=>c.role==="קבלן עד מפתח") && (
-          <div style={{background:"#EEF2FF",border:"1px solid #C7D2FE",borderRadius:8,padding:"10px 14px",marginBottom:16,fontSize:13,color:"#3730A3",display:"flex",alignItems:"center",gap:8}}>
-            <Icon n="check-circle" s={14} c="#3730A3"/>
-            יש בפרויקט קבלן עד מפתח — לוח התשלומים שלו מחובר לשלבי הבנייה
-          </div>
-        )}
+        <>
+            {contractors.some(c=>c.role==="קבלן עד מפתח") && (
+              <div style={{background:"#EEF2FF",border:"1px solid #C7D2FE",borderRadius:8,padding:"10px 14px",marginBottom:16,fontSize:13,color:"#3730A3",display:"flex",alignItems:"center",gap:8}}>
+                <Icon n="check-circle" s={14} c="#3730A3"/>
+                יש בפרויקט קבלן עד מפתח — לוח התשלומים שלו מחובר לשלבי הבנייה
+              </div>
+            )}
 
-        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(295px,1fr))",gap:22}}>
-          {contractors.map(c=>(
-            <motion.div
-              key={c.id}
-              className="card"
-              style={{padding:24,cursor:"pointer"}}
-              whileHover={{y:-5,boxShadow:"var(--shadow-xl)",borderColor:"rgba(224,122,56,0.3)"}}
-              whileTap={{scale:0.99}}
-              onClick={()=>setSelectedId(String(c.id))}
-            >
-              <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:16}}>
-                <Avatar letter={c.avatar || c.name[0]} color={c.color} size={44}/>
-                <div style={{flex:1,minWidth:0}}>
-                  <div style={{fontWeight:700,fontSize:15,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.name}</div>
-                  <div style={{fontSize:12.5,color:"var(--text2)",marginTop:2}}>{c.role}</div>
-                </div>
-                <div style={{marginRight:"auto"}}><Badge type={c.status}/></div>
-              </div>
-              {c.role==="קבלן עד מפתח" && (
-                <div style={{fontSize:11,background:"#EEF2FF",color:"#3730A3",borderRadius:4,padding:"2px 6px",marginBottom:8,display:"inline-block",fontWeight:600}}>עד מפתח · 9 שלבים</div>
-              )}
-              <div style={{fontSize:12,color:"var(--text3)",marginBottom:10}}>{c.company}</div>
-              <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}>
-                <span style={{fontSize:12,color:"var(--text2)"}}>תקציב</span>
-                <span style={{fontSize:12,fontWeight:600}}>{fmtMoney(c.budget)}</span>
-              </div>
-              <ProgressBar value={c.budget?c.paid/c.budget*100:0} color="var(--success)" height={4}/>
-              <div style={{display:"flex",justifyContent:"space-between",marginTop:6,fontSize:11,color:"var(--text3)"}}>
-                <span>שולם: {fmtMoney(c.paid)}</span>
-                <Stars rating={c.rating}/>
-              </div>
-            </motion.div>
-          ))}
-        </div>
-
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(295px,1fr))",gap:22}}>
+              {contractors.map(c=>(
+                <motion.div
+                  key={c.id}
+                  className="card"
+                  style={{padding:24,cursor:"pointer"}}
+                  whileHover={{y:-5,boxShadow:"var(--shadow-xl)",borderColor:"rgba(224,122,56,0.3)"}}
+                  whileTap={{scale:0.99}}
+                  onClick={()=>setSelectedId(String(c.id))}
+                >
+                  <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:16}}>
+                    <Avatar letter={c.avatar || c.name[0]} color={c.color} size={44}/>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontWeight:700,fontSize:15,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.name}</div>
+                      <div style={{fontSize:12.5,color:"var(--text2)",marginTop:2}}>{c.role}</div>
+                    </div>
+                    <div style={{marginRight:"auto"}}><Badge type={c.status}/></div>
+                  </div>
+                  {c.role==="קבלן עד מפתח" && (
+                    <div style={{fontSize:11,background:"#EEF2FF",color:"#3730A3",borderRadius:4,padding:"2px 6px",marginBottom:8,display:"inline-block",fontWeight:600}}>עד מפתח · 9 שלבים</div>
+                  )}
+                  <div style={{fontSize:12,color:"var(--text3)",marginBottom:10}}>{c.company}</div>
+                  <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}>
+                    <span style={{fontSize:12,color:"var(--text2)"}}>תקציב</span>
+                    <span style={{fontSize:12,fontWeight:600}}>{fmtMoney(c.budget)}</span>
+                  </div>
+                  <ProgressBar value={c.budget?c.paid/c.budget*100:0} color="var(--success)" height={4}/>
+                  <div style={{display:"flex",justifyContent:"space-between",marginTop:6,fontSize:11,color:"var(--text3)"}}>
+                    <span>שולם: {fmtMoney(c.paid)}</span>
+                    <Stars rating={c.rating}/>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </>
         {adding && (
           <Modal onClose={()=>setAdding(false)} title="הוספת קבלן חדש" width={520}>
             <div style={{display:"flex",flexDirection:"column",gap:14}}>

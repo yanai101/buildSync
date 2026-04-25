@@ -259,3 +259,72 @@ export const ErrorState = ({message, onRetry}: any) => (
     {onRetry && <Btn onClick={onRetry}><Icon n="check" s={14}/> נסה שוב</Btn>}
   </div>
 );
+
+export const PageBackground = ({ image, opacity = 0.05 }: { image: string, opacity?: number }) => (
+  <div style={{
+    position: 'absolute',
+    inset: 0,
+    backgroundImage: `url(${image})`,
+    backgroundSize: 'cover',
+    backgroundPosition: 'center',
+    opacity,
+    zIndex: -1,
+    pointerEvents: 'none',
+    borderRadius: 24,
+  }} />
+);
+
+export const EmptyState = ({ icon, image, title, description, action, accentColor = "var(--accent)" }: any) => {
+  return (
+    <div style={{
+      display: 'flex', 
+      flexDirection: 'column', 
+      alignItems: 'center', 
+      justifyContent: 'center', 
+      padding: '80px 20px', 
+      textAlign: 'center',
+      background: `radial-gradient(circle at center, ${accentColor}0a 0%, transparent 60%), url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0h40v40H0V0zm20 20h20v20H20V20zM0 20h20v20H0V20z' fill='%239C92AC' fill-opacity='0.03' fill-rule='evenodd'/%3E%3C/svg%3E")`,
+      borderRadius: '24px',
+      border: '1px solid var(--border)',
+      boxShadow: 'var(--shadow-sm)',
+      margin: '20px 0',
+      position: 'relative',
+      overflow: 'hidden'
+    }}>
+      {image ? (
+        <motion.div 
+          initial={{ scale: 0.9, opacity: 0 }} 
+          animate={{ scale: 1, opacity: 1 }} 
+          transition={{ type: "spring", stiffness: 300, damping: 20 }}
+          style={{ marginBottom: 32 }}
+        >
+          <img src={image} alt="illustration" style={{width: 240, height: 240, objectFit: 'contain', mixBlendMode: 'multiply', opacity: 0.95}} />
+        </motion.div>
+      ) : (
+        <motion.div 
+          initial={{ scale: 0.8, opacity: 0 }} 
+          animate={{ scale: 1, opacity: 1 }} 
+          transition={{ type: "spring", stiffness: 300, damping: 20 }}
+          style={{
+            width: 80, 
+            height: 80, 
+            borderRadius: 30, 
+            background: `linear-gradient(135deg, ${accentColor} 0%, ${accentColor}dd 100%)`, 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center', 
+            boxShadow: `0 20px 40px ${accentColor}44`, 
+            marginBottom: 24
+          }}
+        >
+          <Icon n={icon} s={36} c="#fff" />
+        </motion.div>
+      )}
+      <h2 style={{fontSize: 24, fontWeight: 800, marginBottom: 12, color: 'var(--text1)'}}>{title}</h2>
+      <p style={{fontSize: 16, color: 'var(--text2)', marginBottom: 32, maxWidth: 400, lineHeight: 1.6}}>
+        {description}
+      </p>
+      {action && action}
+    </div>
+  );
+};

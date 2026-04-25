@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Icon, Btn, ProgressBar, FeedbackModal } from '../components/Shared';
+import { Icon, Btn, ProgressBar, FeedbackModal, EmptyState, PageBackground } from '../components/Shared';
 import { ROOM_TYPE_OPTS } from '../utils/mockData';
 import { useDataSource } from '../hooks/useDataSource';
 import { useDataMutation } from '../hooks/useDataMutation';
@@ -340,17 +340,20 @@ export const BOQWizardScreen = () => {
   if (!currentRoom) {
     return (
       <ScreenBoundary loading={loading} error={error} onRetry={refetch}>
-        <div className="page-content" style={{maxWidth:1200,margin:"0 auto",padding:"40px", textAlign: "center"}}>
-          <div style={{width: 80, height: 80, borderRadius: "50%", background: "var(--accent-light)", color: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 24px"}}>
-            <Icon n="alert-circle" s={40} />
+        <div style={{ position: 'relative', zIndex: 1, minHeight: 400, display: 'flex', flexDirection: 'column' }}>
+          <PageBackground image="/empty_states/boq.png" />
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <EmptyState 
+              icon="alert-circle" 
+              title="לא נמצאו חדרים בפרויקט" 
+          description="אשף הכמויות מבוסס על החדרים שהוגדרו בפרויקט. כדי להתחיל, יש להגדיר קודם את מבנה הבית."
+          action={
+            <Btn onClick={() => window.location.href = '/setup'} style={{margin: "0 auto", padding: "12px 24px"}}>
+              <Icon n="settings" s={18} /> מעבר להגדרות הבית
+            </Btn>
+          }
+        />
           </div>
-          <h2 style={{fontSize: 24, fontWeight: 800, marginBottom: 12}}>לא נמצאו חדרים בפרויקט</h2>
-          <p style={{fontSize: 16, color: "var(--text2)", marginBottom: 32, maxWidth: 400, margin: "0 auto 32px"}}>
-            אשף הכמויות מבוסס על החדרים שהוגדרו בפרויקט. כדי להתחיל, יש להגדיר קודם את מבנה הבית.
-          </p>
-          <Btn onClick={() => window.location.href = '/setup'} style={{margin: "0 auto", padding: "12px 24px"}}>
-            <Icon n="settings" s={18} /> מעבר להגדרות הבית
-          </Btn>
         </div>
       </ScreenBoundary>
     );
