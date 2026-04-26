@@ -33,7 +33,8 @@ export const getOverview = query({
       null;
     const doneStages = stages.filter((stage) => stage.status === 'done').length;
     const categoryBudget = budgetCategories.reduce((sum, category) => sum + category.budget, 0);
-    const totalBudget = categoryBudget > 0 ? categoryBudget : (project.budgetTotal || 0);
+    const projectBudget = project.budgetTotal || 0;
+    const totalBudget = projectBudget > 0 ? projectBudget : categoryBudget;
     const budgetCategorySpent = budgetCategories.reduce((sum, category) => sum + category.spent, 0);
     const stageMilestonesByStage = await Promise.all(
       stages.map(async (stage) => {
