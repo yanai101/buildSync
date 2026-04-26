@@ -1,8 +1,14 @@
 import { mutation, query } from './_generated/server';
 import type { Id } from './_generated/dataModel';
+import type { MutationCtx } from './_generated/server';
 import { v } from 'convex/values';
 import { insertActivity } from './_lib/activity';
 import { patchStageDatesWithCascade } from './_lib/stageSchedule';
+import {
+  hasSyncedStageContractorLinks,
+  syncContractorStagePayments,
+  syncStageLinkedContractorPayments,
+} from './_lib/contractorPaymentSync';
 
 export const list = query({
   args: { projectId: v.id('projects') },
@@ -51,6 +57,7 @@ const stageTemplateValidator = v.object({
   name: v.string(),
   icon: v.optional(v.string()),
   contractorRole: v.optional(v.string()),
+  contractorIds: v.optional(v.array(v.id('contractors'))),
   startDate: v.string(),
   endDate: v.string(),
   dependsOnPrevious: v.optional(v.boolean()),
@@ -59,6 +66,125 @@ const stageTemplateValidator = v.object({
   tasks: v.array(taskTemplateValidator),
   milestones: v.array(milestoneTemplateValidator),
 });
+
+const uniqueContractorIds = (ids: Id<'contractors'>[]) => {
+  const seen = new Set<string>();
+  return ids.filter((id) => {
+    const key = String(id);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+};
+
+const syncStageContractors = async (
+  ctx: MutationCtx,
+  projectId: Id<'projects'>,
+  stageId: Id<'stages'>,
+  contractorIds: Id<'contractors'>[],
+) => {
+  const uniqueIds = uniqueContractorIds(contractorIds);
+  const contractors = [];
+
+  for (const contractorId of uniqueIds) {
+    const contractor = await ctx.db.get(contractorId);
+    if (!contractor || contractor.projectId !== projectId) {
+      throw new Error('Contractor not found in this project');
+    }
+    contractors.push(contractor);
+  }
+
+  const existing = await ctx.db
+    .query('stageContractors')
+    .withIndex('by_stage', (q) => q.eq('stageId', stageId))
+    .collect();
+  const affectedContractorIds = new Set(existing.map((link) => link.contractorId));
+  for (const contractorId of uniqueIds) {
+    affectedContractorIds.add(contractorId);
+  }
+
+  const nextIdSet = new Set(uniqueIds.map(String));
+  for (const link of existing) {
+    if (!nextIdSet.has(String(link.contractorId))) {
+      await ctx.db.delete(link._id);
+    }
+  }
+
+  const existingByContractor = new Map(existing.map((link) => [String(link.contractorId), link]));
+  for (let i = 0; i < contractors.length; i++) {
+    const contractor = contractors[i];
+    const existingLink = existingByContractor.get(String(contractor._id));
+    if (existingLink) {
+      await ctx.db.patch(existingLink._id, {
+        sortOrder: i,
+        roleLabel: contractor.name,
+        paymentMode: existingLink.paymentMode ?? 'stage_synced',
+      });
+    } else {
+      await ctx.db.insert('stageContractors', {
+        projectId,
+        stageId,
+        contractorId: contractor._id,
+        roleLabel: contractor.name,
+        paymentMode: 'stage_synced',
+        sortOrder: i,
+      });
+    }
+  }
+
+  const primary = contractors[0];
+  await ctx.db.patch(stageId, {
+    contractorId: primary?._id,
+    contractorRole: contractors.map((contractor) => contractor.name).join(', ') || undefined,
+  });
+
+  for (const contractorId of affectedContractorIds) {
+    await syncContractorStagePayments(ctx, contractorId);
+  }
+
+  return contractors.length;
+};
+
+const ensureLegacyContractorStageLinks = async (
+  ctx: MutationCtx,
+  contractorId: Id<'contractors'>,
+  paymentMode: 'stage_synced' | 'custom' = 'stage_synced',
+) => {
+  const contractor = await ctx.db.get(contractorId);
+  if (!contractor) throw new Error('Contractor not found');
+
+  const stages = await ctx.db
+    .query('stages')
+    .withIndex('by_project_sort', (q) => q.eq('projectId', contractor.projectId))
+    .collect();
+
+  let created = 0;
+  for (const stage of stages) {
+    const isLegacyMatch =
+      stage.contractorId === contractor._id ||
+      stage.contractorRole === contractor.name ||
+      stage.contractorRole === contractor.role;
+    if (!isLegacyMatch) continue;
+
+    const existing = await ctx.db
+      .query('stageContractors')
+      .withIndex('by_stage', (q) => q.eq('stageId', stage._id))
+      .collect();
+    if (existing.some((link) => link.contractorId === contractor._id)) continue;
+
+    await ctx.db.insert('stageContractors', {
+      projectId: contractor.projectId,
+      stageId: stage._id,
+      contractorId: contractor._id,
+      roleLabel: contractor.name,
+      paymentMode,
+      sortOrder: existing.length,
+    });
+    created += 1;
+  }
+
+  return created;
+};
 
 export const createFromTemplate = mutation({
   args: {
@@ -123,6 +249,10 @@ export const createFromTemplate = mutation({
         },
       });
 
+      if (stage.contractorIds?.length) {
+        await syncStageContractors(ctx, args.projectId, stageId, stage.contractorIds);
+      }
+
       const taskIdByLegacyId = new Map<number, Id<'stageTasks'>>();
       for (let j = 0; j < stage.tasks.length; j++) {
         const task = stage.tasks[j];
@@ -176,6 +306,8 @@ export const createFromTemplate = mutation({
           }
         }
       }
+
+      await syncStageLinkedContractorPayments(ctx, stageId);
     }
 
     await ctx.db.patch(args.projectId, {
@@ -192,6 +324,7 @@ export const updateStageDetails = mutation({
     stageId: v.id('stages'),
     name: v.string(),
     contractorRole: v.optional(v.string()),
+    contractorIds: v.optional(v.array(v.id('contractors'))),
     startDate: v.string(),
     endDate: v.string(),
     dependsOnPrevious: v.optional(v.boolean()),
@@ -210,7 +343,7 @@ export const updateStageDetails = mutation({
       endDate: args.endDate,
       patch: {
         name: args.name.trim(),
-        ...(args.contractorRole ? { contractorRole: args.contractorRole } : {}),
+        contractorRole: args.contractorRole,
         dependsOnPrevious: stage.sortOrder > 0 && Boolean(args.dependsOnPrevious),
         payment: {
           ...stage.payment,
@@ -218,6 +351,11 @@ export const updateStageDetails = mutation({
         },
       },
     });
+
+    if (args.contractorIds !== undefined) {
+      await syncStageContractors(ctx, stage.projectId, args.stageId, args.contractorIds);
+    }
+    await syncStageLinkedContractorPayments(ctx, args.stageId);
 
     return { updatedStages };
   },
@@ -228,6 +366,7 @@ export const updateStageAdvanced = mutation({
     stageId: v.id('stages'),
     name: v.string(),
     contractorRole: v.optional(v.string()),
+    contractorIds: v.optional(v.array(v.id('contractors'))),
     startDate: v.string(),
     endDate: v.string(),
     dependsOnPrevious: v.optional(v.boolean()),
@@ -254,7 +393,7 @@ export const updateStageAdvanced = mutation({
       endDate: args.endDate,
       patch: {
         name: args.name.trim(),
-        ...(args.contractorRole ? { contractorRole: args.contractorRole } : {}),
+        contractorRole: args.contractorRole,
         dependsOnPrevious: stage.sortOrder > 0 && Boolean(args.dependsOnPrevious),
         payment: {
           ...stage.payment,
@@ -262,6 +401,10 @@ export const updateStageAdvanced = mutation({
         },
       },
     });
+
+    if (args.contractorIds !== undefined) {
+      await syncStageContractors(ctx, stage.projectId, args.stageId, args.contractorIds);
+    }
 
     // 1. Sync tasks
     const existingTasks = await ctx.db
@@ -348,7 +491,168 @@ export const updateStageAdvanced = mutation({
       }
     }
 
+    await syncStageLinkedContractorPayments(ctx, args.stageId);
+
     return { updatedStages };
+  },
+});
+
+export const setStageContractors = mutation({
+  args: {
+    stageId: v.id('stages'),
+    contractorIds: v.array(v.id('contractors')),
+  },
+  handler: async (ctx, args) => {
+    const stage = await ctx.db.get(args.stageId);
+    if (!stage) throw new Error('Stage not found');
+
+    const count = await syncStageContractors(ctx, stage.projectId, args.stageId, args.contractorIds);
+    return { count };
+  },
+});
+
+export const setContractorStages = mutation({
+  args: {
+    contractorId: v.id('contractors'),
+    stageIds: v.array(v.id('stages')),
+  },
+  handler: async (ctx, args) => {
+    const contractor = await ctx.db.get(args.contractorId);
+    if (!contractor) throw new Error('Contractor not found');
+
+    const stageIdSet = new Set(args.stageIds.map(String));
+    for (const stageId of args.stageIds) {
+      const stage = await ctx.db.get(stageId);
+      if (!stage || stage.projectId !== contractor.projectId) {
+        throw new Error('Stage not found in this project');
+      }
+    }
+
+    await ensureLegacyContractorStageLinks(ctx, args.contractorId, 'stage_synced');
+
+    const stages = await ctx.db
+      .query('stages')
+      .withIndex('by_project_sort', (q) => q.eq('projectId', contractor.projectId))
+      .collect();
+
+    let changed = 0;
+    for (const stage of stages) {
+      const links = await ctx.db
+        .query('stageContractors')
+        .withIndex('by_stage', (q) => q.eq('stageId', stage._id))
+        .collect();
+      const currentIds = links
+        .sort((a, b) => a.sortOrder - b.sortOrder)
+        .map((link) => link.contractorId);
+      const hasLegacyContractor =
+        stage.contractorId === args.contractorId ||
+        stage.contractorRole === contractor.name ||
+        stage.contractorRole === contractor.role;
+      if (currentIds.length === 0 && hasLegacyContractor) {
+        currentIds.push(args.contractorId);
+      }
+      const hasContractor = currentIds.some((id) => id === args.contractorId);
+      const shouldHaveContractor = stageIdSet.has(String(stage._id));
+
+      if (hasContractor === shouldHaveContractor) continue;
+
+      const nextIds = shouldHaveContractor
+        ? [...currentIds, args.contractorId]
+        : currentIds.filter((id) => id !== args.contractorId);
+      await syncStageContractors(ctx, contractor.projectId, stage._id, nextIds);
+      changed += 1;
+    }
+
+    return { changed };
+  },
+});
+
+export const setContractorPaymentMode = mutation({
+  args: {
+    contractorId: v.id('contractors'),
+    paymentMode: v.union(v.literal('stage_synced'), v.literal('custom')),
+  },
+  handler: async (ctx, args) => {
+    const contractor = await ctx.db.get(args.contractorId);
+    if (!contractor) throw new Error('Contractor not found');
+
+    const existingLinks = await ctx.db
+      .query('stageContractors')
+      .withIndex('by_contractor', (q) => q.eq('contractorId', args.contractorId))
+      .take(200);
+    const existingMilestones = await ctx.db
+      .query('contractorPaymentMilestones')
+      .withIndex('by_contractor', (q) => q.eq('contractorId', args.contractorId))
+      .take(200);
+    const currentPaymentMode = existingLinks.length > 0 && existingLinks.some((link) => (link.paymentMode ?? 'stage_synced') === 'stage_synced')
+      ? 'stage_synced'
+      : 'custom';
+    const paymentStarted = contractor.paid > 0 || existingMilestones.some((milestone) => milestone.paid);
+    if (paymentStarted && currentPaymentMode !== args.paymentMode) {
+      throw new Error('Cannot change payment type after contractor payments have started');
+    }
+
+    await ensureLegacyContractorStageLinks(ctx, args.contractorId, args.paymentMode);
+
+    const links = await ctx.db
+      .query('stageContractors')
+      .withIndex('by_contractor', (q) => q.eq('contractorId', args.contractorId))
+      .take(200);
+    for (const link of links) {
+      await ctx.db.patch(link._id, { paymentMode: args.paymentMode });
+    }
+
+    if (args.paymentMode === 'stage_synced') {
+      await syncContractorStagePayments(ctx, args.contractorId);
+    } else {
+      for (const milestone of existingMilestones) {
+        if (!milestone.paid) {
+          await ctx.db.patch(milestone._id, {
+            sourceMode: 'custom',
+            sourceStageId: undefined,
+            sourceStageMilestoneId: undefined,
+            sourceTaskId: undefined,
+          });
+        }
+      }
+    }
+
+    return { updated: links.length };
+  },
+});
+
+export const backfillStageContractors = mutation({
+  args: { projectId: v.id('projects') },
+  handler: async (ctx, args) => {
+    const stages = await ctx.db
+      .query('stages')
+      .withIndex('by_project_sort', (q) => q.eq('projectId', args.projectId))
+      .collect();
+    const contractors = await ctx.db
+      .query('contractors')
+      .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
+      .collect();
+
+    let createdStages = 0;
+    for (const stage of stages) {
+      const existing = await ctx.db
+        .query('stageContractors')
+        .withIndex('by_stage', (q) => q.eq('stageId', stage._id))
+        .take(1);
+      if (existing.length > 0) continue;
+
+      const contractor =
+        (stage.contractorId ? contractors.find((item) => item._id === stage.contractorId) : null) ??
+        contractors.find((item) => item.name === stage.contractorRole) ??
+        contractors.find((item) => item.role === stage.contractorRole);
+
+      if (contractor) {
+        await syncStageContractors(ctx, args.projectId, stage._id, [contractor._id]);
+        createdStages += 1;
+      }
+    }
+
+    return { createdStages };
   },
 });
 
@@ -362,6 +666,18 @@ export const setStagePaymentPaid = mutation({
     const stage = await ctx.db.get(args.stageId);
     if (!stage) {
       throw new Error('Stage not found');
+    }
+    if (args.paid) {
+      const linkedContractors = await ctx.db
+        .query('stageContractors')
+        .withIndex('by_stage', (q) => q.eq('stageId', args.stageId))
+        .take(1);
+      if (linkedContractors.length === 0) {
+        throw new Error('אי אפשר לשלם — לא קושר קבלן לשלב');
+      }
+    }
+    if (await hasSyncedStageContractorLinks(ctx, args.stageId)) {
+      throw new Error('Pay synced contractor stage payments from the contractor payment schedule');
     }
 
     await ctx.db.patch(args.stageId, {
@@ -418,6 +734,18 @@ export const setStageMilestonePaid = mutation({
 
     const stage = await ctx.db.get(milestone.stageId);
     if (!stage) throw new Error('Stage not found');
+    if (args.paid) {
+      const linkedContractors = await ctx.db
+        .query('stageContractors')
+        .withIndex('by_stage', (q) => q.eq('stageId', stage._id))
+        .take(1);
+      if (linkedContractors.length === 0) {
+        throw new Error('אי אפשר לשלם — לא קושר קבלן לשלב');
+      }
+    }
+    if (await hasSyncedStageContractorLinks(ctx, stage._id)) {
+      throw new Error('Pay synced contractor stage payments from the contractor payment schedule');
+    }
 
     await ctx.db.patch(args.milestoneId, {
       status: args.paid ? 'paid' : 'draft',
@@ -487,6 +815,14 @@ export const deleteStage = mutation({
 
     for (const task of tasks) {
       await ctx.db.delete(task._id);
+    }
+
+    const contractorLinks = await ctx.db
+      .query('stageContractors')
+      .withIndex('by_stage', (q) => q.eq('stageId', args.stageId))
+      .take(100);
+    for (const link of contractorLinks) {
+      await ctx.db.delete(link._id);
     }
 
     await ctx.db.delete(args.stageId);

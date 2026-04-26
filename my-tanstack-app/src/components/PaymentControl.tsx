@@ -129,7 +129,16 @@ export const aggregateStageStatus = (stage: Stage) => {
 
 // ── Plain-Hebrew headline + single primary CTA ───────────────────────────────
 // Everything the user needs to know in one sentence and one button.
-const buildHeadlineAndCTA = (gates: Gates, handlers: { onSupervisorApprove?: () => void, onReleasePayment?: () => void }, amount: number) => {
+const stageHasContractor = (stage: Stage) =>
+  (stage.contractorIds?.length ?? 0) > 0 || (stage.contractors?.length ?? 0) > 0;
+
+const buildHeadlineAndCTA = (stage: Stage, gates: Gates, handlers: { onSupervisorApprove?: () => void, onReleasePayment?: () => void }, amount: number) => {
+  if (!stageHasContractor(stage)) {
+    return {
+      headline: 'אין קבלן מקושר לשלב — אי אפשר לשלם',
+      cta: null,
+    };
+  }
   if (!gates.tasks.passed) {
     return {
       headline: `חסרות ${gates.tasks.missing} משימות — סיים אותן למעלה`,
@@ -296,7 +305,7 @@ export const PaymentGatesPanel = ({
       ) : (
         <>
           {(() => {
-            const { headline, cta } = buildHeadlineAndCTA(gates, {
+            const { headline, cta } = buildHeadlineAndCTA(stage, gates, {
               onSupervisorApprove, onReleasePayment,
             }, amount);
             const ready = simple === 'ready';
@@ -379,7 +388,7 @@ const MilestoneItem = ({
   }
 
   // The active milestone — the one the user should act on.
-  const { headline, cta } = buildHeadlineAndCTA(gates, {
+  const { headline, cta } = buildHeadlineAndCTA(stage, gates, {
     onSupervisorApprove,
     onReleasePayment: onRelease ? () => onRelease(milestone) : undefined,
   }, milestone.amount);

@@ -75,6 +75,8 @@ export const zContractorRole = z.enum([
 
 export const zContractorStatus = z.enum(['active', 'completed', 'pending']);
 
+export const zPaymentSourceMode = z.enum(['stage_synced', 'custom']);
+
 // ── Tables ───────────────────────────────────────────────────────────────────
 // Note: the `users` table is owned by Convex Auth (see schema.ts). It's
 // extended with `role`, `avatarLetter`, `avatarColor` directly in schema.ts
@@ -140,6 +142,15 @@ export const zStage = {
   payment: zStagePayment,
 };
 
+export const zStageContractor = {
+  projectId: zid('projects'),
+  stageId: zid('stages'),
+  contractorId: zid('contractors'),
+  roleLabel: z.string().optional(),
+  paymentMode: zPaymentSourceMode.optional(),
+  sortOrder: z.number(),
+};
+
 export const zStageTask = {
   stageId: zid('stages'),
   legacyId: z.number().optional(),
@@ -196,6 +207,10 @@ export const zContractorPaymentMilestone = {
   amount: z.number(),
   paid: z.boolean(),
   paidAt: z.string().optional(),
+  sourceMode: zPaymentSourceMode.optional(),
+  sourceStageId: zid('stages').optional(),
+  sourceStageMilestoneId: zid('stageMilestones').optional(),
+  sourceTaskId: zid('stageTasks').optional(),
 };
 
 export const zBoqItem = {
@@ -247,6 +262,7 @@ export const zProjectFile = {
   width: z.number().optional(),
   height: z.number().optional(),
   uploaderUserId: zid('users').optional(),
+  contractorId: zid('contractors').optional(),
 };
 
 export const zPhotoAnnotation = {
@@ -274,6 +290,15 @@ export const zPhotoFileVersion = {
   width: z.number().optional(),
   height: z.number().optional(),
   createdAt: z.string(),
+};
+
+export const zContractorNote = {
+  projectId: zid('projects'),
+  contractorId: zid('contractors'),
+  authorUserId: zid('users').optional(),
+  authorName: z.string(),
+  role: zUserRole,
+  text: z.string(),
 };
 
 export const zPhotoNote = {

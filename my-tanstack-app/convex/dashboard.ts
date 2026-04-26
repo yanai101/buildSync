@@ -42,10 +42,18 @@ export const getOverview = query({
           .query('stageMilestones')
           .withIndex('by_stage', (q) => q.eq('stageId', stage._id))
           .take(100);
-        return { stage, milestones };
+        const contractorLinks = await ctx.db
+          .query('stageContractors')
+          .withIndex('by_stage', (q) => q.eq('stageId', stage._id))
+          .take(100);
+        const hasSyncedContractor = contractorLinks.some((link) => (link.paymentMode ?? 'stage_synced') === 'stage_synced');
+        return { stage, milestones, hasSyncedContractor };
       }),
     );
-    const stagePaidTotal = stageMilestonesByStage.reduce((sum, { stage, milestones }) => {
+    const stagePaidTotal = stageMilestonesByStage.reduce((sum, { stage, milestones, hasSyncedContractor }) => {
+      if (hasSyncedContractor) {
+        return sum;
+      }
       if (milestones.length > 0) {
         return sum + milestones
           .filter((milestone) => milestone.status === 'paid')

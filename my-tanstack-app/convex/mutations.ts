@@ -140,6 +140,16 @@ export const toggleTask = mutation({
     const task = await ctx.db.get(args.taskId);
     if (!task) return;
 
+    if (args.done) {
+      const linkedContractors = await ctx.db
+        .query('stageContractors')
+        .withIndex('by_stage', (q) => q.eq('stageId', task.stageId))
+        .take(1);
+      if (linkedContractors.length === 0) {
+        throw new Error('אי אפשר לסמן משימות — לא קושר קבלן לשלב');
+      }
+    }
+
     await ctx.db.patch(args.taskId, { done: args.done });
     
     const stage = await ctx.db.get(task.stageId);
@@ -215,6 +225,7 @@ export const createContractor = mutation({
         pct: milestone.pct,
         amount: Math.round((args.budget * milestone.pct) / 100),
         paid: false,
+        sourceMode: 'custom',
       });
     }
 
@@ -248,6 +259,7 @@ export const addContractorPaymentMilestone = mutation({
       pct: args.pct,
       amount: Math.round((contractor.budget * args.pct) / 100),
       paid: false,
+      sourceMode: 'custom',
     });
   },
 });
@@ -275,6 +287,10 @@ export const updateContractorPaymentMilestone = mutation({
       triggerText: args.triggerText,
       pct: args.pct,
       amount: Math.round((contractor.budget * args.pct) / 100),
+      sourceMode: 'custom',
+      sourceStageId: undefined,
+      sourceStageMilestoneId: undefined,
+      sourceTaskId: undefined,
     });
 
     await recomputeContractorPaid(ctx, milestone.contractorId);
@@ -297,6 +313,38 @@ export const saveContractorPaymentSchedule = mutation({
       throw new Error('Contractor not found');
     }
 
+    const totalPct = args.milestones.reduce((sum, milestone) => sum + milestone.pct, 0);
+    if (totalPct > 100.01) {
+      throw new Error('Contractor payment schedule cannot exceed the agreed budget');
+    }
+
+    const stageLinks = await ctx.db
+      .query('stageContractors')
+      .withIndex('by_contractor', (q) => q.eq('contractorId', args.contractorId))
+      .take(200);
+    for (const link of stageLinks) {
+      await ctx.db.patch(link._id, { paymentMode: 'custom' });
+    }
+
+    const existingMilestones = await ctx.db
+      .query('contractorPaymentMilestones')
+      .withIndex('by_contractor', (q) => q.eq('contractorId', args.contractorId))
+      .take(200);
+    const incomingIds = new Set(
+      args.milestones
+        .map((milestone) => milestone.milestoneId)
+        .filter((id): id is Id<'contractorPaymentMilestones'> => Boolean(id)),
+    );
+
+    for (const milestone of existingMilestones) {
+      if (!incomingIds.has(milestone._id)) {
+        if (milestone.paid) {
+          throw new Error('Cannot remove a payment stage after it was paid');
+        }
+        await ctx.db.delete(milestone._id);
+      }
+    }
+
     for (let i = 0; i < args.milestones.length; i++) {
       const milestone = args.milestones[i];
       const amount = Math.round((contractor.budget * milestone.pct) / 100);
@@ -308,6 +356,10 @@ export const saveContractorPaymentSchedule = mutation({
           triggerText: milestone.triggerText,
           pct: milestone.pct,
           amount,
+          sourceMode: 'custom',
+          sourceStageId: undefined,
+          sourceStageMilestoneId: undefined,
+          sourceTaskId: undefined,
         });
       } else {
         await ctx.db.insert('contractorPaymentMilestones', {
@@ -318,6 +370,7 @@ export const saveContractorPaymentSchedule = mutation({
           pct: milestone.pct,
           amount,
           paid: false,
+          sourceMode: 'custom',
         });
       }
     }

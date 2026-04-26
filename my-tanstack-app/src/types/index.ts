@@ -20,6 +20,10 @@ export interface Milestone {
   supervisorApproval?: { by: string; at: string } | null;
   paidAt?: string | null;
   receipts?: string[];
+  sourceMode?: 'stage_synced' | 'custom';
+  sourceStageId?: string;
+  sourceStageMilestoneId?: string;
+  sourceTaskId?: string;
 }
 
 export interface Payment {
@@ -28,6 +32,17 @@ export interface Payment {
   paidAt: string | null;
   receipts?: string[];
   milestones?: Milestone[];
+}
+
+export interface StageContractorRef {
+  id: string;
+  _id?: string;
+  name: string;
+  role?: string;
+  company?: string;
+  avatar?: string;
+  color?: string;
+  paymentMode?: 'stage_synced' | 'custom';
 }
 
 export interface Stage {
@@ -39,10 +54,18 @@ export interface Stage {
   end: string;
   dependsOnPrevious?: boolean;
   contractor: string;
+  contractorIds?: string[];
+  contractors?: StageContractorRef[];
   icon: string;
   tasks: Task[];
   supervisorApproval?: { by: string; at: string } | null;
   payment?: Payment;
+  hasSyncedContractorPayments?: boolean;
+  contractorPayments?: Array<{
+    contractorId: string;
+    contractorName: string;
+    milestones: Milestone[];
+  }>;
 }
 
 export interface Project {
@@ -78,6 +101,19 @@ export interface Contractor {
   avatarLetter?: string;
   avatarColor?: string;
   milestones?: Milestone[];
+  paymentMode?: 'stage_synced' | 'custom';
+  stageProgressPct?: number;
+  stages?: Array<{
+    id: string;
+    stageId?: string;
+    name: string;
+    status: string;
+    progressPct: number;
+    startDate: string;
+    endDate: string;
+    sortOrder: number;
+    paymentMode?: 'stage_synced' | 'custom';
+  }>;
 }
 
 export interface Room {

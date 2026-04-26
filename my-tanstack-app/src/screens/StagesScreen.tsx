@@ -31,6 +31,7 @@ type StageGuideStage = {
   name: string;
   icon?: string;
   contractorRole?: string;
+  contractorIds?: string[];
   startDate: string;
   endDate: string;
   dependsOnPrevious?: boolean;
@@ -91,6 +92,13 @@ const hasStageStarted = (stage: Stage) =>
   stage.progress > 0 ||
   (stage.tasks || []).some(task => task.done) ||
   Boolean(stage.payment && stage.payment.status !== 'draft');
+
+const contractorKey = (contractor: { id?: unknown; _id?: unknown }) => String(contractor._id ?? contractor.id);
+
+const contractorNamesFromIds = (ids: string[], contractors?: Array<{ id?: unknown; _id?: unknown; name: string }>) =>
+  ids
+    .map((id) => contractors?.find((contractor) => contractorKey(contractor) === id)?.name)
+    .filter((name): name is string => Boolean(name));
 
 const ScrollShadow = ({
   children,
@@ -153,6 +161,9 @@ const StageCreationGuide = ({
   const [selected, setSelected] = React.useState(0);
 
   const current = draft[selected] ?? draft[0];
+  const contractorOptions = contractors ?? [];
+  const selectedContractorIds = current?.contractorIds ?? [];
+  const selectedContractorNames = contractorNamesFromIds(selectedContractorIds, contractorOptions);
   const milestoneTotal = current?.milestones.reduce((sum, milestone) => sum + Number(milestone.pct || 0), 0) ?? 0;
   const validation = React.useMemo(() => {
     if (draft.length === 0) return 'צריך לפחות שלב אחד';
@@ -181,6 +192,16 @@ const StageCreationGuide = ({
 
   const updateStage = (patch: Partial<StageGuideStage>) => {
     setDraft(prev => prev.map((stage, index) => index === selected ? { ...stage, ...patch } : stage));
+  };
+
+  const toggleStageContractor = (id: string, checked: boolean) => {
+    const nextIds = checked
+      ? [...selectedContractorIds, id]
+      : selectedContractorIds.filter((contractorId) => contractorId !== id);
+    updateStage({
+      contractorIds: nextIds,
+      contractorRole: contractorNamesFromIds(nextIds, contractorOptions).join(', '),
+    });
   };
 
   const updateTask = (taskIndex: number, patch: Partial<StageGuideTask>) => {
@@ -217,7 +238,7 @@ const StageCreationGuide = ({
         {
           legacyId: nextLegacyId(current.tasks, current.legacyId * 10),
           name: 'משימה חדשה',
-          assignee: current.contractorRole || 'לא הוגדר',
+          assignee: selectedContractorNames[0] || current.contractorRole || 'לא הוגדר',
           required: true,
           paymentRequired: false,
           paymentAmount: 0,
@@ -267,6 +288,7 @@ const StageCreationGuide = ({
         name: 'שלב חדש',
         icon: '📌',
         contractorRole: 'לא הוגדר',
+        contractorIds: [],
         startDate: '',
         endDate: '',
         dependsOnPrevious: draft.length > 0,
@@ -358,7 +380,7 @@ const StageCreationGuide = ({
             </div>
 
             <div className="card" style={{padding:16,marginBottom:14}}>
-              <div style={{display:"grid",gridTemplateColumns:"80px 1.4fr 1fr 1fr 1fr",gap:10}}>
+              <div style={{display:"grid",gridTemplateColumns:"80px 1.4fr 1fr 1fr",gap:10}}>
                 <label>
                   <div style={{fontSize:11,color:"var(--text2)",marginBottom:3}}>אייקון</div>
                   <input className="bp-input" value={current.icon || ""} onChange={e=>updateStage({icon:e.target.value})}/>
@@ -368,17 +390,6 @@ const StageCreationGuide = ({
                   <input className="bp-input" value={current.name} onChange={e=>updateStage({name:e.target.value})}/>
                 </label>
                 <label>
-                  <div style={{fontSize:11,color:"var(--text2)",marginBottom:3}}>קבלן / אחראי</div>
-                  <select className="bp-input" value={current.contractorRole || ""} onChange={e=>updateStage({contractorRole:e.target.value})}>
-                    <option value="">לא הוגדר</option>
-                    <option value="מפקח">מפקח</option>
-                    <option value="בעל הבית">בעל הבית</option>
-                    <optgroup label="קבלנים בפרויקט">
-                      {contractors?.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
-                    </optgroup>
-                  </select>
-                </label>
-                <label>
                   <div style={{fontSize:11,color:"var(--text2)",marginBottom:3}}>התחלה</div>
                   <input className="bp-input" type="date" value={current.startDate} onChange={e=>updateStage({startDate:e.target.value})}/>
                 </label>
@@ -386,6 +397,23 @@ const StageCreationGuide = ({
                   <div style={{fontSize:11,color:"var(--text2)",marginBottom:3}}>סיום</div>
                   <input className="bp-input" type="date" value={current.endDate} onChange={e=>updateStage({endDate:e.target.value})}/>
                 </label>
+              </div>
+              <div style={{marginTop:10,border:"1px solid var(--border)",borderRadius:8,padding:10,background:"#fff"}}>
+                <div style={{fontSize:11,color:"var(--text2)",fontWeight:700,marginBottom:8}}>קבלנים משתתפים בשלב</div>
+                <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
+                  {contractorOptions.length ? contractorOptions.map(contractor => {
+                    const id = contractorKey(contractor);
+                    const checked = selectedContractorIds.includes(id);
+                    return (
+                      <label key={id} style={{display:"flex",alignItems:"center",gap:6,border:"1px solid",borderColor:checked?"var(--accent)":"var(--border)",background:checked?"var(--accent-light)":"#fff",borderRadius:999,padding:"5px 9px",fontSize:12,cursor:"pointer"}}>
+                        <input type="checkbox" checked={checked} onChange={e=>toggleStageContractor(id, e.target.checked)} />
+                        <span>{contractor.name}</span>
+                      </label>
+                    );
+                  }) : (
+                    <span style={{fontSize:12,color:"var(--text3)"}}>אין עדיין קבלנים בפרויקט.</span>
+                  )}
+                </div>
               </div>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",marginTop:10}}>
                 <div style={{display:"flex",alignItems:"center",gap:16}}>
@@ -557,12 +585,13 @@ export const StagesScreen = () => {
   const [savingGuide, setSavingGuide] = React.useState(false);
   const [editingStage, setEditingStage] = React.useState<Stage | null>(null);
   const [isAdvancedEdit, setIsAdvancedEdit] = React.useState(false);
-  const [editForm, setEditForm] = React.useState({name:"", contractorRole:"", startDate:"", endDate:"", dependsOnPrevious:false, amount:0, paymentAtEnd:false, tasks:[] as any[]});
+  const [editForm, setEditForm] = React.useState({name:"", contractorRole:"", contractorIds: [] as string[], startDate:"", endDate:"", dependsOnPrevious:false, amount:0, paymentAtEnd:false, tasks:[] as any[]});
   const [savingEdit, setSavingEdit] = React.useState(false);
   const [deleteTarget, setDeleteTarget] = React.useState<Stage | null>(null);
   const [deletingStage, setDeletingStage] = React.useState(false);
 
   const contractors = useQuery(api.queries.listContractors, projectId ? { projectId } : 'skip');
+  const contractorOptions = contractors ?? [];
 
   React.useEffect(() => {
     if (initialData) setStages(initialData);
@@ -688,6 +717,7 @@ export const StagesScreen = () => {
   const openEditStage = (stage: Stage) => {
     setEditingStage(stage);
     setIsAdvancedEdit(false);
+    const stageContractorIds = (stage.contractorIds ?? stage.contractors?.map(contractor => String(contractor._id ?? contractor.id)) ?? []);
     
     const tasks = (stage.tasks || []).map((t, index) => {
       const ms = stage.payment?.milestones?.find(m => m.taskIds.includes(t.id));
@@ -705,6 +735,7 @@ export const StagesScreen = () => {
     setEditForm({
       name: stage.name,
       contractorRole: stage.contractor || '',
+      contractorIds: stageContractorIds,
       startDate: stage.start,
       endDate: stage.end,
       dependsOnPrevious: Boolean(stage.dependsOnPrevious),
@@ -716,6 +747,19 @@ export const StagesScreen = () => {
 
   const updateEditTask = (index: number, patch: any) => {
     setEditForm(f => ({ ...f, tasks: f.tasks.map((t, i) => i === index ? { ...t, ...patch } : t) }));
+  };
+
+  const toggleEditContractor = (id: string, checked: boolean) => {
+    setEditForm(f => {
+      const nextIds = checked
+        ? [...f.contractorIds, id]
+        : f.contractorIds.filter(contractorId => contractorId !== id);
+      return {
+        ...f,
+        contractorIds: nextIds,
+        contractorRole: contractorNamesFromIds(nextIds, contractorOptions).join(', '),
+      };
+    });
   };
 
   const removeEditTask = (index: number) => {
@@ -739,11 +783,14 @@ export const StagesScreen = () => {
 
     setSavingEdit(true);
     try {
+      const selectedContractorNames = contractorNamesFromIds(editForm.contractorIds, contractorOptions);
+      const contractorRole = selectedContractorNames.join(', ') || editForm.contractorRole;
       if (isAdvancedEdit) {
         const result = await updateStageAdvanced({
           stageId,
           name: editForm.name,
-          contractorRole: editForm.contractorRole,
+          contractorRole,
+          contractorIds: editForm.contractorIds as any[],
           startDate: editForm.startDate,
           endDate: editForm.endDate,
           dependsOnPrevious: editForm.dependsOnPrevious,
@@ -764,7 +811,8 @@ export const StagesScreen = () => {
         const result = await updateStageDetails({
           stageId,
           name: editForm.name,
-          contractorRole: editForm.contractorRole,
+          contractorRole,
+          contractorIds: editForm.contractorIds as any[],
           startDate: editForm.startDate,
           endDate: editForm.endDate,
           dependsOnPrevious: editForm.dependsOnPrevious,
@@ -775,7 +823,19 @@ export const StagesScreen = () => {
       setStages(prev => prev.map(stage => stage.id === editingStage.id ? {
         ...stage,
         name: editForm.name,
-        contractor: editForm.contractorRole,
+        contractor: contractorRole,
+        contractorIds: editForm.contractorIds,
+        contractors: contractorOptions
+          .filter(contractor => editForm.contractorIds.includes(contractorKey(contractor)))
+          .map(contractor => ({
+            id: contractorKey(contractor),
+            _id: contractorKey(contractor),
+            name: contractor.name,
+            role: contractor.role,
+            company: contractor.company,
+            avatar: contractor.avatar,
+            color: contractor.color,
+          })),
         start: editForm.startDate,
         end: editForm.endDate,
         dependsOnPrevious: ((editingStage as any).sortOrder ?? editingStage.id - 1) > 0 && editForm.dependsOnPrevious,
@@ -823,10 +883,12 @@ export const StagesScreen = () => {
           name: stage.name,
           ...(stage.icon ? { icon: stage.icon } : {}),
           ...(stage.contractorRole ? { contractorRole: stage.contractorRole } : {}),
+          ...(stage.contractorIds?.length ? { contractorIds: stage.contractorIds as any[] } : {}),
           startDate: stage.startDate,
           endDate: stage.endDate,
           dependsOnPrevious: stage.dependsOnPrevious,
           amount: Number(stage.amount) || 0,
+          paymentAtEnd: stage.paymentAtEnd,
           tasks: stage.tasks.map(task => ({
             legacyId: task.legacyId,
             name: task.name,
@@ -930,6 +992,13 @@ export const StagesScreen = () => {
                     {s.name}
                     <Badge type={s.status}/>
                   </div>
+                  <div style={{display:"flex",flexWrap:"wrap",gap:6,marginTop:6}}>
+                    {(s.contractors?.length ? s.contractors : (s.contractor ? [{id:s.contractor,name:s.contractor}] : [])).map(contractor => (
+                      <span key={String(contractor.id)} style={{fontSize:11,color:"var(--text2)",background:"#fff",border:"1px solid var(--border)",borderRadius:999,padding:"2px 7px",whiteSpace:"nowrap"}}>
+                        {contractor.name}
+                      </span>
+                    ))}
+                  </div>
                   <div style={{marginTop:8,display:"flex",alignItems:"center",gap:12}}>
                     <div style={{flex:1}}><ProgressBar value={s.progress} color={s.status==="done"?"var(--success)":"var(--accent)"} height={6}/></div>
                     <span style={{fontSize:12,color:"var(--text2)",minWidth:36}}>{s.progress}%</span>
@@ -948,17 +1017,33 @@ export const StagesScreen = () => {
               </div>
 
               <AnimatePresence>
-                {expanded===s.id && (
+                {expanded===s.id && (() => {
+                  const stageHasContractor = ((s as any).contractorIds?.length ?? 0) > 0 || ((s as any).contractors?.length ?? 0) > 0;
+                  return (
                   <motion.div initial={{height:0,opacity:0}} animate={{height:"auto",opacity:1}} exit={{height:0,opacity:0}} style={{overflow:"hidden"}}>
                     <div style={{padding:"0 20px 20px",borderTop:"1px solid var(--border)",background:"#FAFAF9"}}>
+                      {!stageHasContractor && (
+                        <div style={{marginTop:16,border:"1px solid #FCD34D",background:"#FFFBEB",color:"#92400E",borderRadius:8,padding:"10px 12px",fontSize:13,fontWeight:600,display:"flex",alignItems:"center",gap:8}}>
+                          <Icon n="alert" s={14} c="#92400E"/>
+                          אין קבלן מקושר לשלב — אי אפשר לסמן משימות או לשלם. קשרו קבלן לשלב כדי להמשיך.
+                        </div>
+                      )}
                       <div style={{display:"grid",gridTemplateColumns:"1fr 340px",gap:20,marginTop:20}}>
                         <div>
                           <div style={{fontSize:13,fontWeight:700,color:"var(--text2)",marginBottom:12}}>משימות בשלב זה</div>
                           <div className="card" style={{background:"#fff"}}>
                             {(s.tasks || []).map(t=>{
                               const taskPayment = s.payment?.milestones?.find(m => m.taskIds.includes(t.id));
+                              const taskDisabled = !stageHasContractor;
                               return (
-                                <div key={t.id} onClick={()=>toggleTask(s.id,t.id, (t as any)._id)} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 16px",borderBottom:"1px solid var(--border)",cursor:"pointer"}} onMouseEnter={e=>e.currentTarget.style.background="#F9FAFB"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                                <div
+                                  key={t.id}
+                                  onClick={taskDisabled ? undefined : ()=>toggleTask(s.id,t.id, (t as any)._id)}
+                                  style={{display:"flex",alignItems:"center",gap:12,padding:"10px 16px",borderBottom:"1px solid var(--border)",cursor:taskDisabled?"not-allowed":"pointer",opacity:taskDisabled?0.55:1}}
+                                  title={taskDisabled?"קשרו קבלן לשלב כדי לסמן משימות":undefined}
+                                  onMouseEnter={taskDisabled ? undefined : e=>e.currentTarget.style.background="#F9FAFB"}
+                                  onMouseLeave={taskDisabled ? undefined : e=>e.currentTarget.style.background="transparent"}
+                                >
                                   <div style={{width:18,height:18,borderRadius:4,border:t.done?"none":"2px solid var(--border)",background:t.done?"var(--success)":"transparent",display:"flex",alignItems:"center",justifyContent:"center"}}>
                                     {t.done && <Icon n="check" s={12} c="#fff"/>}
                                   </div>
@@ -985,22 +1070,49 @@ export const StagesScreen = () => {
 
                         <div>
                           <div style={{fontSize:13,fontWeight:700,color:"var(--text2)",marginBottom:12}}>תשלום ואישור</div>
-                          <PaymentGatesPanel
-                            stage={s}
-                            gates={computeGates(s)}
-                            status={resolveStatus(s, computeGates(s))}
-                            onRequestReview={() => requestReview(s.id, (s as any)._id)}
-                            onSupervisorApprove={() => supervisorApprove(s.id, (s as any)._id)}
-                            onReleasePayment={() => setReleaseFor({ stage: s, milestoneId: null, milestoneName: null, amount: s.payment?.amount || 0 })}
-                            onRequestReviewMs={(mid: string) => requestReviewMs(s.id, mid)}
-                            onSupervisorApproveMs={(mid: string) => supervisorApproveMs(s.id, mid)}
-                            onReleaseMs={(m: Milestone) => releaseMs(s, m)}
-                          />
+                          {s.hasSyncedContractorPayments ? (
+                            <div className="card" style={{background:"#fff"}}>
+                              <div className="card-body" style={{display:"flex",flexDirection:"column",gap:10}}>
+                                <div style={{fontSize:13,fontWeight:800}}>התשלום מסונכרן לקבלנים</div>
+                                <div style={{fontSize:12,color:"var(--text3)"}}>
+                                  אבני התשלום מגיעות ממשימות ואבני הדרך של השלב, ואישור התשלום מתבצע בלוח התשלומים של הקבלן כדי למנוע הוצאה כפולה.
+                                </div>
+                                {(s.contractorPayments || []).map(contractorPayment => (
+                                  <div key={contractorPayment.contractorId} style={{border:"1px solid var(--border)",borderRadius:8,padding:10}}>
+                                    <div style={{fontSize:12,fontWeight:800,marginBottom:8}}>{contractorPayment.contractorName}</div>
+                                    <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                                      {contractorPayment.milestones.map(milestone => (
+                                        <div key={milestone.id} style={{display:"flex",justifyContent:"space-between",gap:8,alignItems:"center",fontSize:12}}>
+                                          <span style={{fontWeight:700}}>{milestone.name}</span>
+                                          <span style={{color:milestone.paid?"var(--success)":"var(--text2)",fontWeight:800}}>
+                                            {milestone.paid ? "שולם" : "ממתין"} · {fmtMoney(milestone.amount)}
+                                          </span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ) : (
+                            <PaymentGatesPanel
+                              stage={s}
+                              gates={computeGates(s)}
+                              status={resolveStatus(s, computeGates(s))}
+                              onRequestReview={() => requestReview(s.id, (s as any)._id)}
+                              onSupervisorApprove={() => supervisorApprove(s.id, (s as any)._id)}
+                              onReleasePayment={() => setReleaseFor({ stage: s, milestoneId: null, milestoneName: null, amount: s.payment?.amount || 0 })}
+                              onRequestReviewMs={(mid: string) => requestReviewMs(s.id, mid)}
+                              onSupervisorApproveMs={(mid: string) => supervisorApproveMs(s.id, mid)}
+                              onReleaseMs={(m: Milestone) => releaseMs(s, m)}
+                            />
+                          )}
                         </div>
                       </div>
                     </div>
                   </motion.div>
-                )}
+                  );
+                })()}
               </AnimatePresence>
             </div>
           ))}
@@ -1029,17 +1141,23 @@ export const StagesScreen = () => {
             <div style={{fontSize:12,color:"var(--text2)",marginBottom:4,fontWeight:600}}>שם שלב</div>
             <input className="bp-input" value={editForm.name} onChange={e=>setEditForm(f=>({...f,name:e.target.value}))}/>
           </label>
-          <label>
-            <div style={{fontSize:12,color:"var(--text2)",marginBottom:4,fontWeight:600}}>קבלן / אחראי</div>
-            <select className="bp-input" value={editForm.contractorRole} onChange={e=>setEditForm(f=>({...f,contractorRole:e.target.value}))}>
-              <option value="">לא הוגדר</option>
-              <option value="מפקח">מפקח</option>
-              <option value="בעל הבית">בעל הבית</option>
-              <optgroup label="קבלנים בפרויקט">
-                {contractors?.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
-              </optgroup>
-            </select>
-          </label>
+          <div style={{gridColumn:"1 / -1",border:"1px solid var(--border)",borderRadius:8,padding:12,background:"#fff"}}>
+            <div style={{fontSize:12,color:"var(--text2)",marginBottom:8,fontWeight:600}}>קבלנים משתתפים בשלב</div>
+            <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
+              {contractorOptions.length ? contractorOptions.map(contractor => {
+                const id = contractorKey(contractor);
+                const checked = editForm.contractorIds.includes(id);
+                return (
+                  <label key={id} style={{display:"flex",alignItems:"center",gap:6,border:"1px solid",borderColor:checked?"var(--accent)":"var(--border)",background:checked?"var(--accent-light)":"#fff",borderRadius:999,padding:"6px 10px",fontSize:12,cursor:"pointer"}}>
+                    <input type="checkbox" checked={checked} onChange={e=>toggleEditContractor(id, e.target.checked)} />
+                    <span>{contractor.name}</span>
+                  </label>
+                );
+              }) : (
+                <span style={{fontSize:12,color:"var(--text3)"}}>אין עדיין קבלנים בפרויקט.</span>
+              )}
+            </div>
+          </div>
           <label>
             <div style={{fontSize:12,color:"var(--text2)",marginBottom:4,fontWeight:600}}>סכום תשלום</div>
             <input className="bp-input" type="number" value={editForm.amount} onChange={e=>setEditForm(f=>({...f,amount:Number(e.target.value)}))}/>
@@ -1074,7 +1192,7 @@ export const StagesScreen = () => {
               <div className="card" style={{padding:16,marginBottom:14,background:"#FAFAFA"}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
                   <div style={{fontSize:13,fontWeight:800}}>משימות ותשלומים</div>
-                  <Btn size="sm" variant="ghost" onClick={() => setEditForm(f=>({...f, tasks: [...f.tasks, { legacyId: Date.now(), name: 'משימה חדשה', assignee: f.contractorRole || 'לא הוגדר', required: true, paymentRequired: false, paymentAmount: 0 }]}))}><Icon n="plus" s={12}/> משימה</Btn>
+                  <Btn size="sm" variant="ghost" onClick={() => setEditForm(f=>({...f, tasks: [...f.tasks, { legacyId: Date.now(), name: 'משימה חדשה', assignee: contractorNamesFromIds(f.contractorIds, contractorOptions)[0] || f.contractorRole || 'לא הוגדר', required: true, paymentRequired: false, paymentAmount: 0 }]}))}><Icon n="plus" s={12}/> משימה</Btn>
                 </div>
                 <div style={{display:"flex",flexDirection:"column",gap:8}}>
                   {editForm.tasks.map((task, taskIndex) => (

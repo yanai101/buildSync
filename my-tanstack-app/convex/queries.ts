@@ -17,6 +17,11 @@ export const listStages = query({
       .query('stages')
       .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
       .take(200);
+    const projectContractors = await ctx.db
+      .query('contractors')
+      .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
+      .take(200);
+    const contractorById = new Map(projectContractors.map((contractor) => [String(contractor._id), contractor]));
 
     const normalized = await Promise.all(stages.map(async (stage) => {
       const tasks = await ctx.db
@@ -34,6 +39,61 @@ export const listStages = query({
         .query('stageMilestones')
         .withIndex('by_stage', (q) => q.eq('stageId', stage._id))
         .take(50);
+
+      const contractorLinks = await ctx.db
+        .query('stageContractors')
+        .withIndex('by_stage', (q) => q.eq('stageId', stage._id))
+        .take(100);
+      let stageContractors = contractorLinks
+        .sort((a, b) => a.sortOrder - b.sortOrder)
+        .map((link) => contractorById.get(String(link.contractorId)))
+        .filter((contractor): contractor is (typeof projectContractors)[number] => Boolean(contractor));
+
+      if (stageContractors.length === 0) {
+        const legacyContractor =
+          (stage.contractorId ? contractorById.get(String(stage.contractorId)) : null) ??
+          projectContractors.find((contractor) => contractor.name === stage.contractorRole) ??
+          projectContractors.find((contractor) => contractor.role === stage.contractorRole);
+        if (legacyContractor) {
+          stageContractors = [legacyContractor];
+        }
+      }
+
+      const contractorRefs = stageContractors.map((contractor) => ({
+        id: contractor._id,
+        _id: contractor._id,
+        name: contractor.name,
+        role: contractor.role,
+        company: contractor.company ?? '',
+        avatar: contractor.avatarLetter ?? contractor.name[0] ?? '',
+        color: contractor.avatarColor ?? '#E07A38',
+        paymentMode: contractorLinks.find((link) => link.contractorId === contractor._id)?.paymentMode ?? 'stage_synced',
+      }));
+      const syncedContractorPayments = await Promise.all(
+        contractorLinks
+          .filter((link) => (link.paymentMode ?? 'stage_synced') === 'stage_synced')
+          .map(async (link) => {
+            const contractor = contractorById.get(String(link.contractorId));
+            const contractorMilestones = await ctx.db
+              .query('contractorPaymentMilestones')
+              .withIndex('by_contractor', (q) => q.eq('contractorId', link.contractorId))
+              .take(200);
+            return {
+              contractorId: link.contractorId,
+              contractorName: contractor?.name ?? '',
+              milestones: contractorMilestones
+                .filter((milestone) => milestone.sourceMode === 'stage_synced' && milestone.sourceStageId === stage._id)
+                .sort((a, b) => a.sortOrder - b.sortOrder)
+                .map((milestone) => ({
+                  ...milestone,
+                  id: milestone._id,
+                  taskIds: [],
+                  status: milestone.paid ? 'paid' : 'pending',
+                  paidAt: milestone.paidAt ?? null,
+                })),
+            };
+          }),
+      );
 
       const paymentMilestones = await Promise.all(
         milestones
@@ -65,7 +125,11 @@ export const listStages = query({
         progress: stage.progressPct,
         start: stage.startDate,
         end: stage.endDate,
-        contractor: stage.contractorRole ?? '',
+        contractor: contractorRefs.map((contractor) => contractor.name).join(', ') || (stage.contractorRole ?? ''),
+        contractorIds: contractorRefs.map((contractor) => contractor._id),
+        contractors: contractorRefs,
+        hasSyncedContractorPayments: syncedContractorPayments.length > 0,
+        contractorPayments: syncedContractorPayments,
         icon: stage.icon ?? '',
         tasks: sortedTasks.map((task, index) => ({
           ...task,
@@ -222,12 +286,48 @@ export const listContractors = query({
       .query('contractors')
       .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
       .take(200);
+    const projectStages = await ctx.db
+      .query('stages')
+      .withIndex('by_project_sort', (q) => q.eq('projectId', args.projectId))
+      .take(200);
+    const stageById = new Map(projectStages.map((stage) => [String(stage._id), stage]));
 
     return await Promise.all(contractors.map(async (contractor) => {
       const milestones = await ctx.db
         .query('contractorPaymentMilestones')
         .withIndex('by_contractor', (q) => q.eq('contractorId', contractor._id))
         .take(100);
+      const stageLinks = await ctx.db
+        .query('stageContractors')
+        .withIndex('by_contractor', (q) => q.eq('contractorId', contractor._id))
+        .take(200);
+      const stageLinkByStageId = new Map(stageLinks.map((link) => [String(link.stageId), link]));
+      const linkedStages = stageLinks
+        .sort((a, b) => a.sortOrder - b.sortOrder)
+        .map((link) => stageById.get(String(link.stageId)))
+        .filter((stage): stage is (typeof projectStages)[number] => Boolean(stage));
+      const linkedStageIds = new Set(linkedStages.map((stage) => String(stage._id)));
+      for (const stage of projectStages) {
+        if (linkedStageIds.has(String(stage._id))) continue;
+        if (
+          stage.contractorId === contractor._id ||
+          stage.contractorRole === contractor.name ||
+          stage.contractorRole === contractor.role
+        ) {
+          linkedStages.push(stage);
+          linkedStageIds.add(String(stage._id));
+        }
+      }
+      const sortedLinkedStages = linkedStages.sort((a, b) => a.sortOrder - b.sortOrder);
+      const stageProgressPct = sortedLinkedStages.length
+        ? Math.round(sortedLinkedStages.reduce((sum, stage) => sum + stage.progressPct, 0) / sortedLinkedStages.length)
+        : 0;
+      const linkedPaymentModes = stageLinks.map((link) => link.paymentMode ?? 'stage_synced');
+      const paymentMode = linkedPaymentModes.length === 0
+        ? 'custom'
+        : linkedPaymentModes.some((mode) => mode === 'stage_synced')
+          ? 'stage_synced'
+          : 'custom';
 
       return {
         ...contractor,
@@ -237,6 +337,19 @@ export const listContractors = query({
         company: contractor.company ?? '',
         phone: contractor.phone ?? '',
         email: contractor.email ?? '',
+        paymentMode,
+        stageProgressPct,
+        stages: sortedLinkedStages.map((stage) => ({
+          id: stage._id,
+          stageId: stage._id,
+          name: stage.name,
+          status: stage.status,
+          progressPct: stage.progressPct,
+          startDate: stage.startDate,
+          endDate: stage.endDate,
+          sortOrder: stage.sortOrder,
+          paymentMode: stageLinkByStageId.get(String(stage._id))?.paymentMode ?? 'stage_synced',
+        })),
         milestones: milestones
           .sort((a, b) => a.sortOrder - b.sortOrder)
           .map((milestone) => ({
@@ -245,6 +358,10 @@ export const listContractors = query({
             taskIds: [],
             status: milestone.paid ? 'paid' : 'pending',
             paidAt: milestone.paidAt ?? null,
+            sourceMode: milestone.sourceMode ?? 'custom',
+            sourceStageId: milestone.sourceStageId,
+            sourceStageMilestoneId: milestone.sourceStageMilestoneId,
+            sourceTaskId: milestone.sourceTaskId,
           })),
       };
     }));

@@ -48,6 +48,11 @@ export default defineSchema({
     .index('by_project_sort', ['projectId', 'sortOrder'])
     .index('by_contractor', ['contractorId']),
 
+  stageContractors: defineTable(zodToConvexFields(s.zStageContractor))
+    .index('by_project', ['projectId'])
+    .index('by_stage', ['stageId'])
+    .index('by_contractor', ['contractorId']),
+
   stageTasks: defineTable(zodToConvexFields(s.zStageTask))
     .index('by_stage', ['stageId']),
 
@@ -72,7 +77,11 @@ export default defineSchema({
   projectFiles: defineTable(zodToConvexFields(s.zProjectFile))
     .index('by_project', ['projectId'])
     .index('by_project_usage', ['projectId', 'usage'])
-    .index('by_storage', ['storageId']),
+    .index('by_storage', ['storageId'])
+    .index('by_contractor', ['contractorId']),
+
+  contractorNotes: defineTable(zodToConvexFields(s.zContractorNote))
+    .index('by_contractor', ['contractorId']),
 
   photos: defineTable(zodToConvexFields(s.zPhoto))
     .index('by_project', ['projectId'])

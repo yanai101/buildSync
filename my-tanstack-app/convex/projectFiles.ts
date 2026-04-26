@@ -40,6 +40,7 @@ export const createProjectFile = mutation({
     storedSize: v.number(),
     width: v.optional(v.number()),
     height: v.optional(v.number()),
+    contractorId: v.optional(v.id('contractors')),
   },
   handler: async (ctx, args) => {
     const { userId } = await requireProjectFileUser(ctx, args.projectId);
@@ -62,6 +63,7 @@ export const createProjectFile = mutation({
       ...(args.width !== undefined ? { width: args.width } : {}),
       ...(args.height !== undefined ? { height: args.height } : {}),
       uploaderUserId: userId,
+      ...(args.contractorId ? { contractorId: args.contractorId } : {}),
     });
   },
 });
@@ -107,6 +109,28 @@ export const listByProject = query({
         .query('projectFiles')
         .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
         .take(100);
+
+    return await Promise.all(files.map(async (file) => ({
+      ...file,
+      id: file._id,
+      url: await ctx.storage.getUrl(file.storageId),
+    })));
+  },
+});
+
+export const listByContractor = query({
+  args: {
+    contractorId: v.id('contractors'),
+  },
+  handler: async (ctx, args) => {
+    const contractor = await ctx.db.get(args.contractorId);
+    if (!contractor) return [];
+    await requireProjectFileUser(ctx, contractor.projectId);
+
+    const files = await ctx.db
+      .query('projectFiles')
+      .withIndex('by_contractor', (q) => q.eq('contractorId', args.contractorId))
+      .take(200);
 
     return await Promise.all(files.map(async (file) => ({
       ...file,

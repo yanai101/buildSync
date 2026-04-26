@@ -1,6 +1,7 @@
 import React from 'react';
-import { motion } from 'framer-motion';
+import { motion, Reorder, useDragControls } from 'framer-motion';
 import { Icon, Avatar, Badge, Stars, Btn, Modal, ProgressBar, EmptyState, ConfirmDialog, FeedbackModal } from '../components/Shared';
+import { ContractorNotesAndDocs } from '../components/ContractorNotesAndDocs';
 import { Contractor, Milestone } from '../types';
 import { useDataSource } from '../hooks/useDataSource';
 import { ScreenBoundary } from '../components/ScreenBoundary';
@@ -8,6 +9,7 @@ import { fmtMoney } from '../utils/mockData';
 import { useCurrentProject } from '../hooks/useCurrentProject';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
+import type { Id } from '../../convex/_generated/dataModel';
 
 const DEFAULT_SCHEDULE = [
   {name:"מקדמה לפני התחלה", pct:30, triggerText:"לפני תחילת עבודה"},
@@ -83,6 +85,7 @@ const normalizeMilestones = (contractor: Contractor): Milestone[] => {
 };
 
 const contractorDbId = (contractor: Contractor) => String(contractor._id ?? contractor.id);
+const stageDbId = (stage: { id?: unknown; _id?: unknown; stageId?: unknown }) => String(stage._id ?? stage.stageId ?? stage.id);
 
 type DraftMilestone = Milestone & { isNew?: boolean };
 
@@ -133,14 +136,37 @@ const balanceMilestones = (milestones: DraftMilestone[], changedIndex: number): 
   return next.map(m => ({ ...m, pct: clampPct(m.pct) }));
 };
 
+type DraggableMilestoneRowProps = {
+  m: DraftMilestone;
+  i: number;
+  renderCells: (m: DraftMilestone, i: number, gripStarter: (e: React.PointerEvent) => void) => React.ReactNode;
+};
+
+const DraggableMilestoneRow = ({ m, i, renderCells }: DraggableMilestoneRowProps) => {
+  const controls = useDragControls();
+  return (
+    <Reorder.Item
+      as="tr"
+      value={m}
+      dragListener={false}
+      dragControls={controls}
+      style={{background:m.paid?"#F0FDF4":"transparent"}}
+    >
+      {renderCells(m, i, (e) => controls.start(e))}
+    </Reorder.Item>
+  );
+};
+
 const PaymentSchedule = ({
   contractor,
   onTogglePaid,
   onSaveSchedule,
+  locked,
 }: {
   contractor: Contractor;
   onTogglePaid: (milestone: Milestone, paid: boolean) => Promise<void>;
   onSaveSchedule: (contractor: Contractor, milestones: DraftMilestone[]) => Promise<void>;
+  locked?: boolean;
 }) => {
   const sourceMilestones = React.useMemo(() => normalizeMilestones(contractor), [contractor]);
   const [milestones, setMilestones] = React.useState<DraftMilestone[]>(() => sourceMilestones);
@@ -158,6 +184,7 @@ const PaymentSchedule = ({
   const totalPct = milestones.filter(m=>m.paid).reduce((a,m)=>a+m.pct,0);
   const totalPctAll = milestones.reduce((a,m)=>a+m.pct,0);
   const totalAmount = milestones.reduce((a,m)=>a+m.amount,0);
+  const scheduleOverBudget = totalPctAll > 100 || totalAmount > contractor.budget;
 
   const toggle = async (milestone: Milestone) => {
     setPendingId(String(milestone.id));
@@ -169,6 +196,10 @@ const PaymentSchedule = ({
   };
 
   const saveSchedule = async (nextMilestones = milestones) => {
+    if (locked) return;
+    const nextTotalPct = nextMilestones.reduce((sum, milestone) => sum + milestone.pct, 0);
+    const nextTotalAmount = nextMilestones.reduce((sum, milestone) => sum + milestone.amount, 0);
+    if (nextTotalPct > 100 || nextTotalAmount > contractor.budget) return;
     setSavingSchedule(true);
     try {
       await onSaveSchedule(contractor, nextMilestones);
@@ -216,16 +247,125 @@ const PaymentSchedule = ({
     await saveSchedule(withAmounts(contractor, balanceMilestones(milestones, Math.max(0, milestones.length - 1))));
   };
 
+  const handleReorder = (next: DraftMilestone[]) => {
+    if (locked) return;
+    setMilestones(next);
+    void saveSchedule(next);
+  };
+
+  const renderMilestoneCells = (m: DraftMilestone, i: number, gripStarter?: (e: React.PointerEvent) => void) => (
+    <>
+      <td style={{fontSize:12,color:"var(--text3)",fontWeight:700,whiteSpace:"nowrap"}}>
+        {gripStarter && (
+          <span
+            onPointerDown={gripStarter}
+            title="גרור לסידור"
+            style={{cursor:"grab",display:"inline-flex",verticalAlign:"middle",marginInlineEnd:6,padding:2,touchAction:"none"}}
+          >
+            <Icon n="menu" s={12} c="var(--text3)"/>
+          </span>
+        )}
+        {i+1}
+      </td>
+      <td>
+        <input
+          className="bp-input"
+          value={m.name}
+          disabled={savingSchedule || locked || m.sourceMode === 'stage_synced'}
+          onChange={e=>updateMilestone(i, {name:e.target.value})}
+          onBlur={saveOnBlur}
+          style={{minWidth:150,fontSize:13,fontWeight:500}}
+        />
+      </td>
+      <td>
+        <input
+          className="bp-input"
+          value={m.triggerText || ""}
+          disabled={savingSchedule || locked || m.sourceMode === 'stage_synced'}
+          onChange={e=>updateMilestone(i, {triggerText:e.target.value})}
+          onBlur={saveOnBlur}
+          style={{minWidth:180,fontSize:12}}
+        />
+      </td>
+      <td>
+        <input
+          className="bp-input"
+          type="number"
+          min={0}
+          max={100}
+          value={m.pct}
+          disabled={savingSchedule || locked || m.sourceMode === 'stage_synced'}
+          onChange={e=>updateMilestone(i, {pct:Number(e.target.value)}, true)}
+          onBlur={saveOnBlur}
+          style={{width:72,fontSize:13,fontWeight:600}}
+        />
+      </td>
+      <td style={{fontSize:13,fontWeight:700,color:m.paid?"var(--success)":"var(--text1)"}}>{fmtMoney(m.amount)}</td>
+      <td style={{fontSize:12,color:"var(--text3)"}}>
+        {m.paidAt || "—"}
+        {m.sourceMode === 'stage_synced' && (
+          <div style={{fontSize:10,color:"#3730A3",fontWeight:700,marginTop:2}}>ממשימות השלב</div>
+        )}
+      </td>
+      <td>
+        <label style={{display:"flex",alignItems:"center",gap:6,cursor:"pointer"}}>
+          <input
+            type="checkbox"
+            checked={Boolean(m.paid)}
+            disabled={pendingId === String(m.id) || m.isNew}
+            onChange={()=>toggle(m)}
+            style={{accentColor:"var(--success)",width:14,height:14}}
+          />
+          <span className={`badge ${m.paid?"badge-done":"badge-pending"}`}>{m.paid?"שולם":"ממתין"}</span>
+        </label>
+      </td>
+      <td>
+        <Btn
+          size="sm"
+          variant="ghost"
+          disabled={savingSchedule || locked || Boolean(m.paid) || m.sourceMode === 'stage_synced'}
+          onClick={()=>removeMilestone(i)}
+          style={{color:"var(--danger)"}}
+        >
+          <Icon n="trash" s={12}/> מחק
+        </Btn>
+      </td>
+    </>
+  );
+
+  const removeMilestone = async (index: number) => {
+    if (locked) return;
+    const milestone = milestones[index];
+    if (!milestone || milestone.paid || milestone.sourceMode === 'stage_synced') return;
+    const next = withAmounts(contractor, balanceMilestones(
+      milestones.filter((_, i) => i !== index),
+      Math.max(0, index - 1),
+    ));
+    setMilestones(next);
+    await saveSchedule(next);
+  };
+
   return (
     <div className="card">
       <div className="card-header" style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
         <span>לוח תשלומים</span>
         <div style={{display:"flex",gap:8,alignItems:"center"}}>
+          {locked && (
+            <span style={{fontSize:11,background:"#EEF2FF",color:"#3730A3",borderRadius:999,padding:"3px 8px",fontWeight:700}}>
+              מסונכרן לפי משימות השלבים
+            </span>
+          )}
           <span style={{fontSize:12,color:"var(--text3)",fontWeight:400}}>שולם: {totalPct}% · {fmtMoney(totalPaid)}</span>
-          <span style={{fontSize:12,color:totalPctAll===100?"var(--success)":"var(--danger)",fontWeight:700}}>סה"כ: {totalPctAll}%</span>
-          <Btn size="sm" onClick={()=>setAdding(v=>!v)}><Icon n="plus" s={12}/> שלב תשלום</Btn>
+          <span style={{fontSize:12,color:scheduleOverBudget?"var(--danger)":totalPctAll===100?"var(--success)":"var(--warning)",fontWeight:700}}>סה"כ: {totalPctAll}%</span>
+          <Btn size="sm" onClick={()=>setAdding(v=>!v)} disabled={locked}><Icon n="plus" s={12}/> שלב תשלום</Btn>
         </div>
       </div>
+
+      {scheduleOverBudget && (
+        <div style={{margin:"10px 18px 0",border:"1px solid #FCA5A5",background:"#FEF2F2",color:"#991B1B",borderRadius:8,padding:"8px 10px",fontSize:12,fontWeight:700}}>
+          סכום שלבי התשלום ({fmtMoney(totalAmount)}) גבוה מהסכום המוסכם עם הקבלן ({fmtMoney(contractor.budget)}). צריך להקטין אחוזים לפני שמירה.
+        </div>
+      )}
 
       <div style={{padding:"10px 18px 0"}}>
         <div style={{height:8,background:"var(--border)",borderRadius:4,overflow:"hidden",display:"flex"}}>
@@ -240,68 +380,30 @@ const PaymentSchedule = ({
 
       <div style={{overflowX:"auto"}}>
         <table className="bp-table" style={{width:"100%"}}>
-          <thead><tr><th>#</th><th>שלב תשלום</th><th>תנאי לתשלום</th><th>%</th><th>סכום</th><th>תאריך</th><th>סטטוס</th></tr></thead>
-          <tbody>
-            {milestones.map((m,i)=>(
-              <tr key={m.id} style={{background:m.paid?"#F0FDF4":"transparent"}}>
-                <td style={{fontSize:12,color:"var(--text3)",fontWeight:700}}>{i+1}</td>
-                <td>
-                  <input
-                    className="bp-input"
-                    value={m.name}
-                    disabled={savingSchedule}
-                    onChange={e=>updateMilestone(i, {name:e.target.value})}
-                    onBlur={saveOnBlur}
-                    style={{minWidth:150,fontSize:13,fontWeight:500}}
-                  />
-                </td>
-                <td>
-                  <input
-                    className="bp-input"
-                    value={m.triggerText || ""}
-                    disabled={savingSchedule}
-                    onChange={e=>updateMilestone(i, {triggerText:e.target.value})}
-                    onBlur={saveOnBlur}
-                    style={{minWidth:180,fontSize:12}}
-                  />
-                </td>
-                <td>
-                  <input
-                    className="bp-input"
-                    type="number"
-                    min={0}
-                    max={100}
-                    value={m.pct}
-                    disabled={savingSchedule}
-                    onChange={e=>updateMilestone(i, {pct:Number(e.target.value)}, true)}
-                    onBlur={saveOnBlur}
-                    style={{width:72,fontSize:13,fontWeight:600}}
-                  />
-                </td>
-                <td style={{fontSize:13,fontWeight:700,color:m.paid?"var(--success)":"var(--text1)"}}>{fmtMoney(m.amount)}</td>
-                <td style={{fontSize:12,color:"var(--text3)"}}>{m.paidAt || "—"}</td>
-                <td>
-                  <label style={{display:"flex",alignItems:"center",gap:6,cursor:"pointer"}}>
-                    <input
-                      type="checkbox"
-                      checked={Boolean(m.paid)}
-                      disabled={pendingId === String(m.id) || m.isNew}
-                      onChange={()=>toggle(m)}
-                      style={{accentColor:"var(--success)",width:14,height:14}}
-                    />
-                    <span className={`badge ${m.paid?"badge-done":"badge-pending"}`}>{m.paid?"שולם":"ממתין"}</span>
-                  </label>
-                </td>
-              </tr>
-            ))}
-          </tbody>
+          <thead><tr><th>#</th><th>שלב תשלום</th><th>תנאי לתשלום</th><th>%</th><th>סכום</th><th>תאריך</th><th>סטטוס</th><th></th></tr></thead>
+          {locked ? (
+            <tbody>
+              {milestones.map((m,i)=>(
+                <tr key={m.id} style={{background:m.paid?"#F0FDF4":"transparent"}}>
+                  {renderMilestoneCells(m, i)}
+                </tr>
+              ))}
+            </tbody>
+          ) : (
+            <Reorder.Group as="tbody" axis="y" values={milestones} onReorder={handleReorder}>
+              {milestones.map((m,i)=>(
+                <DraggableMilestoneRow key={m.id} m={m} i={i} renderCells={renderMilestoneCells} />
+              ))}
+            </Reorder.Group>
+          )}
           <tfoot>
             <tr style={{background:"#F9F8F6"}}>
               <td colSpan={3} style={{padding:"10px 12px",fontSize:13,fontWeight:700}}>סה"כ</td>
-              <td style={{fontSize:13,fontWeight:700,color:totalPctAll===100?"var(--text1)":"var(--danger)"}}>{totalPctAll}%</td>
-              <td style={{fontSize:13,fontWeight:700}}>{fmtMoney(totalAmount)}</td>
+              <td style={{fontSize:13,fontWeight:700,color:scheduleOverBudget?"var(--danger)":totalPctAll===100?"var(--text1)":"var(--warning)"}}>{totalPctAll}%</td>
+              <td style={{fontSize:13,fontWeight:700,color:scheduleOverBudget?"var(--danger)":"var(--text1)"}}>{fmtMoney(totalAmount)}</td>
               <td/>
               <td style={{fontSize:12,color:"var(--success)",fontWeight:600}}>{fmtMoney(totalPaid)} שולם</td>
+              <td/>
             </tr>
           </tfoot>
         </table>
@@ -327,7 +429,7 @@ const PaymentSchedule = ({
               = {fmtMoney(Math.round(contractor.budget*newM.pct/100))}
             </div>
             <div style={{display:"flex",gap:6}}>
-              <Btn onClick={addMilestone} disabled={savingNew}><Icon n="plus" s={13}/> הוסף</Btn>
+              <Btn onClick={addMilestone} disabled={savingNew || scheduleOverBudget}><Icon n="plus" s={13}/> הוסף</Btn>
               <Btn variant="ghost" onClick={()=>setAdding(false)} disabled={savingNew}>ביטול</Btn>
             </div>
           </div>
@@ -343,21 +445,27 @@ const PaymentSchedule = ({
 export const ContractorsScreen = () => {
   const { projectId } = useCurrentProject();
   const dbContractors = useQuery(api.queries.listContractors, projectId ? { projectId } : "skip");
+  const dbStages = useQuery(api.queries.listStages, projectId ? { projectId } : "skip");
   const contractorsSource = useDataSource<Contractor[]>('contractors', { db: dbContractors as any });
   const { loading, error, refetch, mode } = contractorsSource;
   const contractors = contractorsSource.data ?? [];
   const createContractor = useMutation(api.mutations.createContractor);
   const saveSchedule = useMutation(api.mutations.saveContractorPaymentSchedule);
   const setMilestonePaid = useMutation(api.mutations.setContractorPaymentMilestonePaid);
+  const setContractorStages = useMutation(api.stages.setContractorStages);
+  const setContractorPaymentMode = useMutation(api.stages.setContractorPaymentMode);
   const [selectedId, setSelectedId] = React.useState<string | null>(null);
   const [adding, setAdding] = React.useState(false);
   const [savingContractor, setSavingContractor] = React.useState(false);
   const [savingPayment, setSavingPayment] = React.useState(false);
   const [pendingPayment, setPendingPayment] = React.useState<{ contractor: Contractor; milestone: Milestone; paid: boolean } | null>(null);
   const [feedback, setFeedback] = React.useState<{ title: string; message: string; type: 'success' | 'error' | 'info' } | null>(null);
+  const [savingStageLinks, setSavingStageLinks] = React.useState(false);
+  const [savingPaymentMode, setSavingPaymentMode] = React.useState(false);
   const [form, setForm] = React.useState<ContractorForm>(emptyForm);
 
   const selected = contractors.find(c => String(c.id) === selectedId || String(c._id) === selectedId) ?? null;
+  const stages = (dbStages ?? []) as any[];
 
   React.useEffect(() => {
     if (selectedId && !selected) setSelectedId(null);
@@ -424,7 +532,44 @@ export const ContractorsScreen = () => {
     });
   };
 
+  const handleToggleStage = async (contractor: Contractor, stageId: string, checked: boolean) => {
+    if (mode !== 'db') return;
+    const currentIds = new Set((contractor.stages ?? []).map(stageDbId));
+    if (checked) currentIds.add(stageId);
+    else currentIds.delete(stageId);
+
+    setSavingStageLinks(true);
+    try {
+      await setContractorStages({
+        contractorId: contractorDbId(contractor) as any,
+        stageIds: Array.from(currentIds) as any[],
+      });
+    } catch (err) {
+      setFeedback({ title: "שגיאה", message: "לא הצלחנו לעדכן את שיוך השלבים לקבלן.", type: "error" });
+    } finally {
+      setSavingStageLinks(false);
+    }
+  };
+
+  const handlePaymentModeChange = async (contractor: Contractor, paymentMode: 'stage_synced' | 'custom') => {
+    if (mode !== 'db') return;
+    setSavingPaymentMode(true);
+    try {
+      await setContractorPaymentMode({
+        contractorId: contractorDbId(contractor) as any,
+        paymentMode,
+      });
+    } catch (err) {
+      setFeedback({ title: "שגיאה", message: "לא הצלחנו לעדכן את מצב לוח התשלומים.", type: "error" });
+    } finally {
+      setSavingPaymentMode(false);
+    }
+  };
+
   const c = selected;
+  const selectedPaymentStarted = c
+    ? c.paid > 0 || normalizeMilestones(c).some(milestone => Boolean(milestone.paid))
+    : false;
 
   if (c) return (
     <ScreenBoundary loading={loading} error={error} onRetry={refetch}>
@@ -460,11 +605,101 @@ export const ContractorsScreen = () => {
             </div>
           </div>
           <div style={{display:"flex",flexDirection:"column",gap:16}}>
-            <PaymentSchedule contractor={c} onTogglePaid={handleTogglePaid} onSaveSchedule={handleSaveSchedule}/>
             <div className="card">
-              <div className="card-header">הערות ותיעוד</div>
-              <div className="card-body" style={{color:"var(--text3)",fontSize:13}}>אין הערות עדיין.</div>
+              <div className="card-header" style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}>
+                <span>שלבי בנייה מקושרים</span>
+                <span style={{fontSize:12,color:"var(--text3)",fontWeight:500}}>
+                  {c.stages?.length ?? 0} שלבים · {c.stageProgressPct ?? 0}% התקדמות
+                </span>
+              </div>
+              <div className="card-body" style={{display:"flex",flexDirection:"column",gap:14}}>
+                <div>
+                  <ProgressBar value={c.stageProgressPct ?? 0} color="var(--accent)" height={6}/>
+                  <div style={{fontSize:11,color:"var(--text3)",marginTop:5,textAlign:"left"}}>התקדמות ממוצעת לפי השלבים המשויכים</div>
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(210px,1fr))",gap:8}}>
+                  {stages.length ? stages.map(stage => {
+                    const id = stageDbId(stage);
+                    const checked = (c.stages ?? []).some(linkedStage => stageDbId(linkedStage) === id);
+                    return (
+                      <label key={id} style={{display:"flex",alignItems:"center",gap:8,border:"1px solid",borderColor:checked?"var(--accent)":"var(--border)",background:checked?"var(--accent-light)":"#fff",borderRadius:8,padding:"9px 10px",cursor:savingStageLinks?"wait":"pointer"}}>
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          disabled={savingStageLinks}
+                          onChange={e=>handleToggleStage(c, id, e.target.checked)}
+                        />
+                        <span style={{flex:1,minWidth:0}}>
+                          <span style={{display:"block",fontSize:13,fontWeight:700,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{stage.name}</span>
+                          <span style={{display:"block",fontSize:11,color:"var(--text3)"}}>{stage.start} - {stage.end} · {stage.progress}%</span>
+                        </span>
+                      </label>
+                    );
+                  }) : (
+                    <div style={{fontSize:12,color:"var(--text3)",border:"1px dashed var(--border)",borderRadius:8,padding:12}}>
+                      אין עדיין שלבי בנייה בפרויקט.
+                    </div>
+                  )}
+                </div>
+                {(c.stages?.length ?? 0) > 0 && (
+                  <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                    {c.stages!.map(stage => (
+                      <div key={stageDbId(stage)} style={{display:"flex",alignItems:"center",gap:10,fontSize:12,color:"var(--text2)"}}>
+                        <Badge type={stage.status}/>
+                        <span style={{fontWeight:700,color:"var(--text1)"}}>{stage.name}</span>
+                        <span style={{marginInlineStart:"auto"}}>{stage.progressPct}%</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {(c.stages?.length ?? 0) > 0 && (
+                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,borderTop:"1px solid var(--border)",paddingTop:12}}>
+                    <div>
+                      <div style={{fontSize:13,fontWeight:800}}>מקור לוח התשלומים</div>
+                      <div style={{fontSize:11,color:"var(--text3)"}}>
+                        {selectedPaymentStarted
+                          ? "כבר החל תשלום לקבלן, לכן אי אפשר לשנות את סוג לוח התשלומים."
+                          : c.paymentMode === 'stage_synced'
+                            ? "התשלומים נבנים אוטומטית ממשימות ואבני הדרך של השלבים המקושרים."
+                            : "התשלומים נקבעים לפי מה שסוכם עם הקבלן."}
+                      </div>
+                    </div>
+                    <div style={{display:"flex",gap:6,background:"#F4F4F5",borderRadius:8,padding:3}}>
+                      {[
+                        {mode:'stage_synced' as const,label:'לפי משימות השלבים'},
+                        {mode:'custom' as const,label:'לפי חוזה קבלן'},
+                      ].map(option => {
+                        const active = (c.paymentMode ?? 'custom') === option.mode;
+                        return (
+                          <button
+                            key={option.mode}
+                            type="button"
+                            disabled={savingPaymentMode || selectedPaymentStarted || active}
+                            onClick={()=>handlePaymentModeChange(c, option.mode)}
+                            style={{border:"none",borderRadius:6,padding:"6px 10px",fontFamily:"'Heebo',sans-serif",fontSize:12,fontWeight:700,cursor:savingPaymentMode?"wait":selectedPaymentStarted||active?"default":"pointer",background:active?"#fff":"transparent",color:active?"var(--accent)":selectedPaymentStarted?"var(--text3)":"var(--text2)",boxShadow:active?"var(--shadow-sm)":"none",opacity:selectedPaymentStarted&&!active?0.7:1}}
+                          >
+                            {option.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
+            <PaymentSchedule
+              contractor={c}
+              locked={c.paymentMode === 'stage_synced'}
+              onTogglePaid={handleTogglePaid}
+              onSaveSchedule={handleSaveSchedule}
+            />
+            {projectId && c._id && (
+              <ContractorNotesAndDocs
+                projectId={projectId}
+                contractorId={c._id as Id<'contractors'>}
+                contractorName={c.name}
+              />
+            )}
           </div>
         </div>
         {pendingPayment && (
@@ -544,6 +779,11 @@ export const ContractorsScreen = () => {
                     <div style={{fontSize:11,background:"#EEF2FF",color:"#3730A3",borderRadius:4,padding:"2px 6px",marginBottom:8,display:"inline-block",fontWeight:600}}>עד מפתח · 9 שלבים</div>
                   )}
                   <div style={{fontSize:12,color:"var(--text3)",marginBottom:10}}>{c.company}</div>
+                  <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}>
+                    <span style={{fontSize:12,color:"var(--text2)"}}>התקדמות שלבים</span>
+                    <span style={{fontSize:12,fontWeight:600}}>{c.stages?.length ?? 0} שלבים · {c.stageProgressPct ?? 0}%</span>
+                  </div>
+                  <ProgressBar value={c.stageProgressPct ?? 0} color="var(--accent)" height={4}/>
                   <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}>
                     <span style={{fontSize:12,color:"var(--text2)"}}>תקציב</span>
                     <span style={{fontSize:12,fontWeight:600}}>{fmtMoney(c.budget)}</span>

@@ -127,11 +127,13 @@ export function useProjectFileUploader() {
     file,
     usage,
     kind = 'image',
+    contractorId,
   }: {
     projectId: Id<'projects'>;
     file: File;
     usage: ProjectFileUsage;
     kind?: ProjectFileKind;
+    contractorId?: Id<'contractors'>;
   }) => {
     const optimized = await optimizeImageFile(file);
     const uploadUrl = await generateUploadUrl({ projectId });
@@ -159,6 +161,7 @@ export function useProjectFileUploader() {
       storedSize: optimized.blob.size,
       ...(optimized.width !== undefined ? { width: optimized.width } : {}),
       ...(optimized.height !== undefined ? { height: optimized.height } : {}),
+      ...(contractorId ? { contractorId } : {}),
     });
 
     return {
