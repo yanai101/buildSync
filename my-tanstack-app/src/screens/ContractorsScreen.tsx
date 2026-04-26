@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Icon, Avatar, Badge, Stars, Btn, Modal, ProgressBar, EmptyState } from '../components/Shared';
+import { Icon, Avatar, Badge, Stars, Btn, Modal, ProgressBar, EmptyState, ConfirmDialog, FeedbackModal } from '../components/Shared';
 import { Contractor, Milestone } from '../types';
 import { useDataSource } from '../hooks/useDataSource';
 import { ScreenBoundary } from '../components/ScreenBoundary';
@@ -352,6 +352,9 @@ export const ContractorsScreen = () => {
   const [selectedId, setSelectedId] = React.useState<string | null>(null);
   const [adding, setAdding] = React.useState(false);
   const [savingContractor, setSavingContractor] = React.useState(false);
+  const [savingPayment, setSavingPayment] = React.useState(false);
+  const [pendingPayment, setPendingPayment] = React.useState<{ contractor: Contractor; milestone: Milestone; paid: boolean } | null>(null);
+  const [feedback, setFeedback] = React.useState<{ title: string; message: string; type: 'success' | 'error' | 'info' } | null>(null);
   const [form, setForm] = React.useState<ContractorForm>(emptyForm);
 
   const selected = contractors.find(c => String(c.id) === selectedId || String(c._id) === selectedId) ?? null;
@@ -383,7 +386,29 @@ export const ContractorsScreen = () => {
 
   const handleTogglePaid = async (milestone: Milestone, paid: boolean) => {
     if (mode !== 'db') return;
-    await setMilestonePaid({ milestoneId: String(milestone.id) as any, paid });
+    const contractor = contractors.find(c => normalizeMilestones(c).some(m => String(m.id) === String(milestone.id)));
+    if (!contractor) return;
+    setPendingPayment({ contractor, milestone, paid });
+  };
+
+  const confirmPaymentChange = async () => {
+    if (!pendingPayment) return;
+    setSavingPayment(true);
+    try {
+      await setMilestonePaid({ milestoneId: String(pendingPayment.milestone.id) as any, paid: pendingPayment.paid });
+      setFeedback({
+        title: pendingPayment.paid ? "תשלום אושר" : "תשלום בוטל",
+        message: pendingPayment.paid
+          ? "התשלום סומן כשולם ונוספה הוצאה גלובלית לתקציב."
+          : "התשלום בוטל וההוצאה הגלובלית המקושרת הוסרה.",
+        type: pendingPayment.paid ? "success" : "info",
+      });
+      setPendingPayment(null);
+    } catch (err) {
+      setFeedback({ title: "שגיאה", message: "לא הצלחנו לעדכן את התשלום. אנא נסו שוב.", type: "error" });
+    } finally {
+      setSavingPayment(false);
+    }
   };
 
   const handleSaveSchedule = async (contractor: Contractor, milestones: DraftMilestone[]) => {
@@ -442,6 +467,30 @@ export const ContractorsScreen = () => {
             </div>
           </div>
         </div>
+        {pendingPayment && (
+          <ConfirmDialog
+            title={pendingPayment.paid ? "אישור תשלום לקבלן" : "ביטול תשלום לקבלן"}
+            message={
+              pendingPayment.paid
+                ? `לאשר תשלום של ${fmtMoney(pendingPayment.milestone.amount)} עבור "${pendingPayment.milestone.name}" לקבלן ${pendingPayment.contractor.name}? הפעולה תוסיף הוצאה גלובלית לתקציב.`
+                : `לבטל את התשלום של ${fmtMoney(pendingPayment.milestone.amount)} עבור "${pendingPayment.milestone.name}" לקבלן ${pendingPayment.contractor.name}? הפעולה תסיר את ההוצאה הגלובלית המקושרת.`
+            }
+            confirmText={savingPayment ? "שומר..." : pendingPayment.paid ? "אשר תשלום" : "בטל תשלום"}
+            cancelText="חזור"
+            loading={savingPayment}
+            type={pendingPayment.paid ? "info" : "warning"}
+            onConfirm={confirmPaymentChange}
+            onClose={() => savingPayment ? undefined : setPendingPayment(null)}
+          />
+        )}
+        {feedback && (
+          <FeedbackModal
+            title={feedback.title}
+            message={feedback.message}
+            type={feedback.type}
+            onClose={() => setFeedback(null)}
+          />
+        )}
       </div>
     </ScreenBoundary>
   );

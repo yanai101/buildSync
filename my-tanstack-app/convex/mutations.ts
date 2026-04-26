@@ -27,6 +27,22 @@ const DEFAULT_CONTRACTOR_PAYMENT_SCHEDULE = [
   { name: 'תשלום סופי', pct: 20, triggerText: 'סיום ואישור מפקח' },
 ];
 
+const contractorRoleBudgetCategory: Record<string, string> = {
+  'קבלן עד מפתח': 'שונות',
+  'קבלן שלד': 'שלד ויסודות',
+  'קבלן עפר': 'שלד ויסודות',
+  'קבלן טיח': 'טיח',
+  'חשמלאי ראשי': 'חשמל',
+  'אינסטלטור': 'אינסטלציה',
+  'קבלן ריצוף': 'ריצוף וחיפוי',
+  'קבלן גג': 'שונות',
+  'קבלן גבס': 'גבס ותקרות',
+  'קבלן נגרות': 'נגרות ומטבח',
+  'צבעי': 'צביעה',
+  'קבלן גינה': 'גינה וחוץ',
+  'אחר': 'שונות',
+};
+
 const recomputeContractorPaid = async (ctx: MutationCtx, contractorId: Id<'contractors'>) => {
   const milestones = await ctx.db
     .query('contractorPaymentMilestones')
@@ -38,6 +54,31 @@ const recomputeContractorPaid = async (ctx: MutationCtx, contractorId: Id<'contr
     .reduce((total, milestone) => total + milestone.amount, 0);
 
   await ctx.db.patch(contractorId, { paid });
+};
+
+const findContractorPaymentExpense = async (
+  ctx: MutationCtx,
+  projectId: Id<'projects'>,
+  milestoneId: Id<'contractorPaymentMilestones'>,
+) => {
+  return await ctx.db
+    .query('expenses')
+    .withIndex('by_project', (q) => q.eq('projectId', projectId))
+    .filter((q) => q.eq(q.field('milestoneId'), milestoneId))
+    .first();
+};
+
+const findBudgetCategoryForContractor = async (
+  ctx: MutationCtx,
+  projectId: Id<'projects'>,
+  role: string,
+) => {
+  const categoryName = contractorRoleBudgetCategory[role] ?? 'שונות';
+  return await ctx.db
+    .query('budgetCategories')
+    .withIndex('by_project', (q) => q.eq('projectId', projectId))
+    .filter((q) => q.eq(q.field('name'), categoryName))
+    .first();
 };
 
 const requirePhotoManager = async (ctx: MutationCtx) => {
@@ -296,10 +337,50 @@ export const setContractorPaymentMilestonePaid = mutation({
       throw new Error('Payment milestone not found');
     }
 
+    const contractor = await ctx.db.get(milestone.contractorId);
+    if (!contractor) {
+      throw new Error('Contractor not found');
+    }
+
+    const existingExpense = await findContractorPaymentExpense(ctx, contractor.projectId, args.milestoneId);
+    const category = await findBudgetCategoryForContractor(ctx, contractor.projectId, contractor.role);
+    const today = new Date().toISOString().slice(0, 10);
+
     await ctx.db.patch(args.milestoneId, {
       paid: args.paid,
-      paidAt: args.paid ? new Date().toISOString().slice(0, 10) : undefined,
+      paidAt: args.paid ? today : undefined,
     });
+
+    if (args.paid) {
+      if (!existingExpense) {
+        await ctx.db.insert('expenses', {
+          projectId: contractor.projectId,
+          description: `תשלום לקבלן ${contractor.name} — ${milestone.name}`,
+          amount: milestone.amount,
+          expenseDate: today,
+          status: 'שולם',
+          categoryId: category?._id,
+          contractorId: contractor._id,
+          milestoneId: args.milestoneId,
+        });
+
+        if (category) {
+          await ctx.db.patch(category._id, {
+            spent: category.spent + milestone.amount,
+          });
+        }
+      }
+    } else if (existingExpense) {
+      await ctx.db.delete(existingExpense._id);
+      if (existingExpense.categoryId) {
+        const expenseCategory = await ctx.db.get(existingExpense.categoryId);
+        if (expenseCategory) {
+          await ctx.db.patch(expenseCategory._id, {
+            spent: Math.max(0, expenseCategory.spent - existingExpense.amount),
+          });
+        }
+      }
+    }
 
     await recomputeContractorPaid(ctx, milestone.contractorId);
   },
