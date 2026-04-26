@@ -35,7 +35,8 @@ export const BudgetScreen = () => {
   if (error) return <ScreenBoundary error={error} onRetry={refetch}><div/></ScreenBoundary>;
 
   const categoryBudgetSum = categories?.reduce((a,c)=>a+c.budget,0) || 0;
-  const totalBudget = categoryBudgetSum > 0 ? categoryBudgetSum : (project?.budgetTotal || 0);
+  const projectBudget = project?.budgetTotal || 0;
+  const totalBudget = projectBudget > 0 ? projectBudget : categoryBudgetSum;
   const totalSpent = categories?.reduce((a,c)=>a+c.spent,0) || 0;
   const committed = project?.committed || 0;
 

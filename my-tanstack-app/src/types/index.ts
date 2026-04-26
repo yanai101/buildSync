@@ -56,6 +56,7 @@ export interface Project {
   progress: number;
   currentStage: string;
   budget: number;
+  budgetTotal?: number;
   spent: number;
   committed: number;
 }

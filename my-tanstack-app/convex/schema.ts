@@ -36,7 +36,8 @@ export default defineSchema({
     .index('email', ['email'])
     .index('phone', ['phone']),
 
-  projects: defineTable(zodToConvexFields(s.zProject)),
+  projects: defineTable(zodToConvexFields(s.zProject))
+    .index('by_ownerUserId', ['ownerUserId']),
 
   projectRooms: defineTable(zodToConvexFields(s.zProjectRoom))
     .index('by_project', ['projectId'])

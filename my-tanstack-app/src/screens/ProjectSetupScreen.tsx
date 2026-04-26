@@ -17,6 +17,7 @@ export interface ProjectConfig {
   inspector: string;
   floors: number;
   area: number;
+  budgetTotal: number;
   rooms: Room[];
 }
 
@@ -42,6 +43,7 @@ export const ProjectSetupScreen = () => {
         inspector: (project as any).inspectorName || '',
         floors: project.floors || 1,
         area: project.areaSqm || 0,
+        budgetTotal: (project as any).budgetTotal || 0,
         rooms: (project as any).rooms || [],
       });
     }
@@ -74,6 +76,7 @@ export const ProjectSetupScreen = () => {
         inspectorName: cfg.inspector,
         floors: Number(cfg.floors),
         areaSqm: Number(cfg.area) || totalRoomArea,
+        budgetTotal: Number(cfg.budgetTotal) || 0,
         rooms: cfg.rooms,
       });
       setIsEditing(false);
@@ -115,6 +118,7 @@ export const ProjectSetupScreen = () => {
                    ["כתובת", cfg.address],
                    ["בעל הבית", cfg.owner],
                    ["מנהל פרויקט", cfg.manager],
+                   ["תקציב כולל", cfg.budgetTotal ? `${cfg.budgetTotal.toLocaleString('he-IL')} ₪` : "טרם הוגדר"],
                    ["מפקח", cfg.inspector]
                  ].map(([k,v]) => (
                    <div key={k} style={{display:"flex",justifyContent:"space-between",padding:"10px 0",borderBottom:"1px solid var(--border)",fontSize:14}}>
@@ -198,6 +202,10 @@ export const ProjectSetupScreen = () => {
               <div>
                 <div style={{fontSize:12,color:"var(--text2)",marginBottom:4,fontWeight:500}}>תאריך התחלה צפוי</div>
                 <input className="bp-input" type="date" defaultValue="2025-01-01"/>
+              </div>
+              <div>
+                <div style={{fontSize:12,color:"var(--text2)",marginBottom:4,fontWeight:500}}>תקציב כולל (₪)</div>
+                <input className="bp-input" type="number" min={0} value={cfg.budgetTotal || ''} onChange={e=>setField("budgetTotal",Number(e.target.value))}/>
               </div>
             </div>
           </div>
@@ -313,7 +321,7 @@ export const ProjectSetupScreen = () => {
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20,marginBottom:20}}>
               <div>
                 <div style={{fontSize:12,fontWeight:700,color:"var(--text3)",marginBottom:10,textTransform:"uppercase",letterSpacing:".5px"}}>פרטי פרויקט</div>
-                {[["שם",cfg.name],["כתובת",cfg.address],["בעל הבית",cfg.owner],["בעל בנייה",cfg.manager],["מפקח",cfg.inspector]].map(([k,v])=>(
+                {[["שם",cfg.name],["כתובת",cfg.address],["בעל הבית",cfg.owner],["בעל בנייה",cfg.manager],["מפקח",cfg.inspector],["תקציב כולל",cfg.budgetTotal ? `${cfg.budgetTotal.toLocaleString('he-IL')} ₪` : "טרם הוגדר"]].map(([k,v])=>(
                   <div key={k} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:"1px solid var(--border)",fontSize:13}}>
                     <span style={{color:"var(--text2)"}}>{k}</span><span style={{fontWeight:500}}>{v}</span>
                   </div>

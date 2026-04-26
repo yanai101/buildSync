@@ -12,7 +12,8 @@ export const listMine = query({
 
     return await ctx.db
       .query('projects')
-      .filter((q) => q.eq(q.field('ownerUserId'), userId))
+      .withIndex('by_ownerUserId', (q) => q.eq('ownerUserId', userId))
+      .order('desc')
       .collect();
   },
 });
@@ -88,10 +89,11 @@ export const saveProjectSetup = mutation({
     inspectorName: v.optional(v.string()),
     floors: v.optional(v.number()),
     areaSqm: v.optional(v.number()),
+    budgetTotal: v.optional(v.number()),
     rooms: v.array(v.any()),
   },
   handler: async (ctx, args) => {
-    await ctx.db.patch(args.projectId, { 
+    const projectPatch = {
       name: args.name, 
       address: args.address,
       ownerName: args.ownerName ?? "בעל הבית",
@@ -99,7 +101,10 @@ export const saveProjectSetup = mutation({
       inspectorName: args.inspectorName ?? "טרם הוגדר",
       floors: args.floors ?? 1,
       areaSqm: args.areaSqm ?? 0,
-    });
+      ...(args.budgetTotal !== undefined ? { budgetTotal: args.budgetTotal } : {}),
+    };
+
+    await ctx.db.patch(args.projectId, projectPatch);
     
     const existingRooms = await ctx.db
       .query('projectRooms')
