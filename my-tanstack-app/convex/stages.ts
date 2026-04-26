@@ -2,6 +2,7 @@ import { mutation, query } from './_generated/server';
 import type { Id } from './_generated/dataModel';
 import { v } from 'convex/values';
 import { insertActivity } from './_lib/activity';
+import { patchStageDatesWithCascade } from './_lib/stageSchedule';
 
 export const list = query({
   args: { projectId: v.id('projects') },
@@ -52,6 +53,7 @@ const stageTemplateValidator = v.object({
   contractorRole: v.optional(v.string()),
   startDate: v.string(),
   endDate: v.string(),
+  dependsOnPrevious: v.optional(v.boolean()),
   amount: v.number(),
   paymentAtEnd: v.optional(v.boolean()),
   tasks: v.array(taskTemplateValidator),
@@ -113,6 +115,7 @@ export const createFromTemplate = mutation({
         progressPct: 0,
         startDate: stage.startDate,
         endDate: stage.endDate,
+        dependsOnPrevious: i > 0 && Boolean(stage.dependsOnPrevious),
         ...(stage.contractorRole ? { contractorRole: stage.contractorRole } : {}),
         payment: {
           amount: stage.amount,
@@ -191,6 +194,7 @@ export const updateStageDetails = mutation({
     contractorRole: v.optional(v.string()),
     startDate: v.string(),
     endDate: v.string(),
+    dependsOnPrevious: v.optional(v.boolean()),
     amount: v.number(),
   },
   handler: async (ctx, args) => {
@@ -199,19 +203,23 @@ export const updateStageDetails = mutation({
       throw new Error('Stage not found');
     }
 
-    await ctx.db.patch(args.stageId, {
-      name: args.name.trim(),
-      ...(args.contractorRole ? { contractorRole: args.contractorRole } : {}),
+    const updatedStages = await patchStageDatesWithCascade(ctx, {
+      projectId: stage.projectId,
+      stage,
       startDate: args.startDate,
       endDate: args.endDate,
-      payment: {
-        ...stage.payment,
-        amount: args.amount,
+      patch: {
+        name: args.name.trim(),
+        ...(args.contractorRole ? { contractorRole: args.contractorRole } : {}),
+        dependsOnPrevious: stage.sortOrder > 0 && Boolean(args.dependsOnPrevious),
+        payment: {
+          ...stage.payment,
+          amount: args.amount,
+        },
       },
     });
 
-    // Mission payment milestones store fixed amounts, so editing the stage
-    // total should not rewrite already configured mission payments.
+    return { updatedStages };
   },
 });
 
@@ -222,6 +230,7 @@ export const updateStageAdvanced = mutation({
     contractorRole: v.optional(v.string()),
     startDate: v.string(),
     endDate: v.string(),
+    dependsOnPrevious: v.optional(v.boolean()),
     amount: v.number(),
     paymentAtEnd: v.optional(v.boolean()),
     tasks: v.array(v.object({
@@ -238,14 +247,19 @@ export const updateStageAdvanced = mutation({
     const stage = await ctx.db.get(args.stageId);
     if (!stage) throw new Error('Stage not found');
 
-    await ctx.db.patch(args.stageId, {
-      name: args.name.trim(),
-      ...(args.contractorRole ? { contractorRole: args.contractorRole } : {}),
+    const updatedStages = await patchStageDatesWithCascade(ctx, {
+      projectId: stage.projectId,
+      stage,
       startDate: args.startDate,
       endDate: args.endDate,
-      payment: {
-        ...stage.payment,
-        amount: args.amount,
+      patch: {
+        name: args.name.trim(),
+        ...(args.contractorRole ? { contractorRole: args.contractorRole } : {}),
+        dependsOnPrevious: stage.sortOrder > 0 && Boolean(args.dependsOnPrevious),
+        payment: {
+          ...stage.payment,
+          amount: args.amount,
+        },
       },
     });
 
@@ -333,6 +347,8 @@ export const updateStageAdvanced = mutation({
         }
       }
     }
+
+    return { updatedStages };
   },
 });
 

@@ -68,16 +68,28 @@ export default defineSchema({
     .index('by_project', ['projectId'])
     .index('by_room', ['roomId']),
 
+  projectFiles: defineTable(zodToConvexFields(s.zProjectFile))
+    .index('by_project', ['projectId'])
+    .index('by_project_usage', ['projectId', 'usage'])
+    .index('by_storage', ['storageId']),
+
   photos: defineTable(zodToConvexFields(s.zPhoto))
     .index('by_project', ['projectId'])
     .index('by_stage', ['stageId'])
     .index('by_tag', ['projectId', 'tag']),
 
   photoAnnotations: defineTable(zodToConvexFields(s.zPhotoAnnotation))
-    .index('by_photo', ['photoId']),
+    .index('by_photo', ['photoId'])
+    .index('by_version', ['versionId']),
+
+  photoFileVersions: defineTable(zodToConvexFields(s.zPhotoFileVersion))
+    .index('by_photo', ['photoId'])
+    .index('by_photo_versionNumber', ['photoId', 'versionNumber'])
+    .index('by_annotated_project_file', ['annotatedProjectFileId']),
 
   photoNotes: defineTable(zodToConvexFields(s.zPhotoNote))
-    .index('by_photo', ['photoId']),
+    .index('by_photo', ['photoId'])
+    .index('by_version', ['versionId']),
 
   messages: defineTable(zodToConvexFields(s.zMessage))
     .index('by_project', ['projectId'])

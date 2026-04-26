@@ -3,7 +3,6 @@ import { motion, AnimatePresence, Reorder } from 'framer-motion';
 import { Icon, Btn, ProgressBar, Badge, Modal, ConfirmDialog } from '../components/Shared';
 import { PaymentGatesPanel, PaymentBadge, computeGates, resolveStatus, aggregateStageStatus, ReleasePaymentModal } from '../components/PaymentControl';
 import { Stage, Milestone } from '../types';
-import { useDataSource } from '../hooks/useDataSource';
 import { useDataMutation } from '../hooks/useDataMutation';
 import { useCurrentProject } from '../hooks/useCurrentProject';
 import { useMutation, useQuery } from 'convex/react';
@@ -34,30 +33,55 @@ type StageGuideStage = {
   contractorRole?: string;
   startDate: string;
   endDate: string;
+  dependsOnPrevious?: boolean;
   amount: number;
   paymentAtEnd?: boolean;
   tasks: StageGuideTask[];
   milestones: StageGuideMilestone[];
 };
 
-const makeStageTemplate = (): StageGuideStage[] => STAGES.map((stage: Stage) => ({
-  legacyId: Number(stage.id),
-  name: stage.name,
-  icon: stage.icon,
-  contractorRole: stage.contractor,
-  startDate: stage.start,
-  endDate: stage.end,
-  amount: stage.payment?.amount ?? 0,
-  tasks: (stage.tasks || []).map(task => ({
-    legacyId: Number(task.id),
-    name: task.name,
-    assignee: task.assignee,
-    required: task.required !== false,
-    paymentRequired: Boolean(task.paymentRequired),
-    paymentAmount: Number(task.paymentAmount || 0),
-  })),
-  milestones: [],
-}));
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const isoFromUTC = (t: number) => {
+  const d = new Date(t);
+  const y = d.getUTCFullYear();
+  const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(d.getUTCDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
+const utcMs = (iso: string) => {
+  const [y, m, d] = iso.slice(0, 10).split('-').map(Number);
+  return Date.UTC(y, m - 1, d);
+};
+const shiftIsoDate = (iso: string, days: number) => isoFromUTC(utcMs(iso) + days * 86400000);
+const diffIsoDays = (a: string, b: string) => Math.round((utcMs(b) - utcMs(a)) / 86400000);
+
+const makeStageTemplate = (projectStartDate?: string): StageGuideStage[] => {
+  const baseStart = STAGES[0]?.start;
+  const usableProjectStart = projectStartDate && ISO_DATE_RE.test(projectStartDate.slice(0, 10))
+    ? projectStartDate.slice(0, 10)
+    : '';
+  const offsetDays = usableProjectStart && baseStart ? diffIsoDays(baseStart, usableProjectStart) : 0;
+
+  return STAGES.map((stage: Stage, index: number) => ({
+    legacyId: Number(stage.id),
+    name: stage.name,
+    icon: stage.icon,
+    contractorRole: stage.contractor,
+    startDate: offsetDays && stage.start ? shiftIsoDate(stage.start, offsetDays) : stage.start,
+    endDate: offsetDays && stage.end ? shiftIsoDate(stage.end, offsetDays) : stage.end,
+    dependsOnPrevious: index > 0,
+    amount: stage.payment?.amount ?? 0,
+    tasks: (stage.tasks || []).map(task => ({
+      legacyId: Number(task.id),
+      name: task.name,
+      assignee: task.assignee,
+      required: task.required !== false,
+      paymentRequired: Boolean(task.paymentRequired),
+      paymentAmount: Number(task.paymentAmount || 0),
+    })),
+    milestones: [],
+  }));
+};
 
 const nextLegacyId = (items: { legacyId: number }[], fallback: number) =>
   Math.max(fallback, ...items.map(item => item.legacyId)) + 1;
@@ -116,14 +140,16 @@ const StageCreationGuide = ({
   onCreate,
   saving,
   projectId,
+  projectStartDate,
 }: {
   onClose: () => void;
   onCreate: (stages: StageGuideStage[]) => Promise<void>;
   saving: boolean;
   projectId: any;
+  projectStartDate?: string;
 }) => {
   const contractors = useQuery(api.queries.listContractors, { projectId });
-  const [draft, setDraft] = React.useState<StageGuideStage[]>(() => makeStageTemplate());
+  const [draft, setDraft] = React.useState<StageGuideStage[]>(() => makeStageTemplate(projectStartDate));
   const [selected, setSelected] = React.useState(0);
 
   const current = draft[selected] ?? draft[0];
@@ -243,6 +269,7 @@ const StageCreationGuide = ({
         contractorRole: 'לא הוגדר',
         startDate: '',
         endDate: '',
+        dependsOnPrevious: draft.length > 0,
         amount: 0,
         paymentAtEnd: false,
         tasks: [{
@@ -310,7 +337,10 @@ const StageCreationGuide = ({
                       <Icon n="menu" s={14} c="var(--text3)"/>
                     </div>
                   </div>
-                  <div style={{fontSize:11,color:"var(--text3)",marginTop:4}}>{stage.tasks.length} משימות · {fmtMoney(stage.amount)}</div>
+                  <div style={{fontSize:11,color:"var(--text3)",marginTop:4}}>
+                    {stage.tasks.length} משימות · {fmtMoney(stage.amount)}
+                    {index > 0 && stage.dependsOnPrevious ? ' · מחובר לקודם' : ''}
+                  </div>
                 </Reorder.Item>
               ))}
             </Reorder.Group>
@@ -369,6 +399,15 @@ const StageCreationGuide = ({
                       updateStage({ paymentAtEnd: isGlobal });
                     }}/>
                     תשלום גלובלי בסיום השלב
+                  </label>
+                  <label style={{display:"flex",alignItems:"center",gap:8,fontSize:13,cursor:selected===0?"not-allowed":"pointer",marginTop:14,color:selected===0?"var(--text3)":"var(--text2)"}}>
+                    <input
+                      type="checkbox"
+                      checked={selected > 0 && Boolean(current.dependsOnPrevious)}
+                      disabled={selected === 0}
+                      onChange={e=>updateStage({dependsOnPrevious:e.target.checked})}
+                    />
+                    מחובר לשלב הקודם
                   </label>
                 </div>
                 <Btn size="sm" variant="ghost" onClick={()=>removeStage(selected)} disabled={draft.length<=1} style={{color:"var(--danger)"}}>
@@ -499,7 +538,10 @@ export const StagesScreen = () => {
   const { projectId } = useCurrentProject();
   const dbStages = useQuery(api.queries.listStages, projectId ? { projectId } : "skip");
   const project = useQuery(api.queries.getProject, projectId ? { projectId } : "skip");
-  const { data: initialData, loading, error, refetch } = useDataSource<Stage[]>('stages', { db: dbStages as any });
+  const initialData = (dbStages ?? null) as Stage[] | null;
+  const loading = Boolean(projectId) && dbStages === undefined;
+  const error = null as Error | null;
+  const refetch = React.useCallback(() => {}, []);
   const { mutate } = useDataMutation('stages');
   const createStagesFromTemplate = useMutation(api.stages.createFromTemplate);
   const updateStageDetails = useMutation(api.stages.updateStageDetails);
@@ -515,7 +557,7 @@ export const StagesScreen = () => {
   const [savingGuide, setSavingGuide] = React.useState(false);
   const [editingStage, setEditingStage] = React.useState<Stage | null>(null);
   const [isAdvancedEdit, setIsAdvancedEdit] = React.useState(false);
-  const [editForm, setEditForm] = React.useState({name:"", contractorRole:"", startDate:"", endDate:"", amount:0, paymentAtEnd:false, tasks:[] as any[]});
+  const [editForm, setEditForm] = React.useState({name:"", contractorRole:"", startDate:"", endDate:"", dependsOnPrevious:false, amount:0, paymentAtEnd:false, tasks:[] as any[]});
   const [savingEdit, setSavingEdit] = React.useState(false);
   const [deleteTarget, setDeleteTarget] = React.useState<Stage | null>(null);
   const [deletingStage, setDeletingStage] = React.useState(false);
@@ -529,6 +571,14 @@ export const StagesScreen = () => {
   const updateStageState = (stageId: number, updater: (s: Stage) => Stage) => {
     setStages(prev => prev.map(s => s.id === stageId ? updater(s) : s));
   };
+
+  const applyUpdatedStageDates = React.useCallback((updatedStages?: Array<{stageId: string; startDate: string; endDate: string}>) => {
+    if (!updatedStages?.length) return;
+    setStages(prev => prev.map(stage => {
+      const updated = updatedStages.find(item => item.stageId === (stage as any)._id);
+      return updated ? { ...stage, start: updated.startDate, end: updated.endDate } : stage;
+    }));
+  }, []);
 
   const toggleStage = (id: number) => setExpanded(expanded === id ? null : id);
 
@@ -657,6 +707,7 @@ export const StagesScreen = () => {
       contractorRole: stage.contractor || '',
       startDate: stage.start,
       endDate: stage.end,
+      dependsOnPrevious: Boolean(stage.dependsOnPrevious),
       amount: stage.payment?.amount || 0,
       paymentAtEnd: !stage.payment?.milestones?.length && (stage.payment?.amount || 0) > 0,
       tasks,
@@ -689,12 +740,13 @@ export const StagesScreen = () => {
     setSavingEdit(true);
     try {
       if (isAdvancedEdit) {
-        await updateStageAdvanced({
+        const result = await updateStageAdvanced({
           stageId,
           name: editForm.name,
           contractorRole: editForm.contractorRole,
           startDate: editForm.startDate,
           endDate: editForm.endDate,
+          dependsOnPrevious: editForm.dependsOnPrevious,
           amount: Number(editForm.amount) || 0,
           paymentAtEnd: editForm.paymentAtEnd,
           tasks: editForm.tasks.map(t => ({
@@ -707,15 +759,18 @@ export const StagesScreen = () => {
             paymentAmount: t.paymentAmount,
           })),
         });
+        applyUpdatedStageDates(result.updatedStages);
       } else {
-        await updateStageDetails({
+        const result = await updateStageDetails({
           stageId,
           name: editForm.name,
           contractorRole: editForm.contractorRole,
           startDate: editForm.startDate,
           endDate: editForm.endDate,
+          dependsOnPrevious: editForm.dependsOnPrevious,
           amount: Number(editForm.amount) || 0,
         });
+        applyUpdatedStageDates(result.updatedStages);
       }
       setStages(prev => prev.map(stage => stage.id === editingStage.id ? {
         ...stage,
@@ -723,6 +778,7 @@ export const StagesScreen = () => {
         contractor: editForm.contractorRole,
         start: editForm.startDate,
         end: editForm.endDate,
+        dependsOnPrevious: ((editingStage as any).sortOrder ?? editingStage.id - 1) > 0 && editForm.dependsOnPrevious,
         payment: stage.payment ? { ...stage.payment, amount: Number(editForm.amount) || 0 } : stage.payment,
       } : stage));
       setEditingStage(null);
@@ -769,6 +825,7 @@ export const StagesScreen = () => {
           ...(stage.contractorRole ? { contractorRole: stage.contractorRole } : {}),
           startDate: stage.startDate,
           endDate: stage.endDate,
+          dependsOnPrevious: stage.dependsOnPrevious,
           amount: Number(stage.amount) || 0,
           tasks: stage.tasks.map(task => ({
             legacyId: task.legacyId,
@@ -995,6 +1052,15 @@ export const StagesScreen = () => {
             <div style={{fontSize:12,color:"var(--text2)",marginBottom:4,fontWeight:600}}>תאריך סיום</div>
             <input className="bp-input" type="date" value={editForm.endDate} onChange={e=>setEditForm(f=>({...f,endDate:e.target.value}))}/>
           </label>
+          <label style={{gridColumn:"1 / -1",display:"flex",alignItems:"center",gap:8,fontSize:13,cursor:((editingStage as any).sortOrder ?? editingStage.id - 1) <= 0?"not-allowed":"pointer",color:((editingStage as any).sortOrder ?? editingStage.id - 1) <= 0?"var(--text3)":"var(--text2)"}}>
+            <input
+              type="checkbox"
+              checked={((editingStage as any).sortOrder ?? editingStage.id - 1) > 0 && editForm.dependsOnPrevious}
+              disabled={((editingStage as any).sortOrder ?? editingStage.id - 1) <= 0}
+              onChange={e=>setEditForm(f=>({...f,dependsOnPrevious:e.target.checked}))}
+            />
+            מחובר לשלב הקודם - שינוי בשלב הקודם יזיז גם את השלב הזה
+          </label>
 
           {isAdvancedEdit ? (
             <div style={{gridColumn:"1 / -1", marginTop: 14}}>
@@ -1105,6 +1171,7 @@ export const StagesScreen = () => {
     {guideOpen && (
       <StageCreationGuide
         projectId={projectId}
+        projectStartDate={project?.startDate}
         onClose={() => setGuideOpen(false)}
         onCreate={async (stages) => {
           await createStages(stages);

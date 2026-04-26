@@ -19,12 +19,16 @@ export const useDataMutation = (resource: MutationResource) => {
   const addQuoteTopicMutation = useMutation(api.quotes.addTopic);
   const saveNoteMutation = useMutation(api.mutations.saveNote);
   const savePhotoAnnotationMutation = useMutation(api.mutations.savePhotoAnnotation);
+  const deletePhotoMutation = useMutation(api.mutations.deletePhoto);
+  const updatePhotoTagMutation = useMutation(api.mutations.updatePhotoTag);
   const createProjectMutation = useMutation(api.projects.createProject);
   const deleteProjectMutation = useMutation(api.projects.deleteProject);
 
-  const isMock = localStorage.getItem(`buildsync:ds:${resource}`) !== 'db';
+  const defaultDbResources: MutationResource[] = ['contractors', 'photos', 'notes'];
+  const savedMode = localStorage.getItem(`buildsync:ds:${resource}`);
+  const isMock = savedMode ? savedMode !== 'db' : !defaultDbResources.includes(resource);
 
-  const mutate = useCallback(async (action: 'add' | 'update' | 'delete' | 'toggleTask' | 'saveBoq' | 'saveProjectSetup' | 'addExpense' | 'saveNote' | 'savePhotoAnnotation' | 'createProject' | 'deleteProject' | 'addBudgetCategory' | 'saveQuote' | 'deleteQuote' | 'addQuoteTopic', payload: any) => {
+  const mutate = useCallback(async (action: 'add' | 'update' | 'delete' | 'toggleTask' | 'saveBoq' | 'saveProjectSetup' | 'addExpense' | 'saveNote' | 'savePhotoAnnotation' | 'deletePhoto' | 'updatePhotoTag' | 'createProject' | 'deleteProject' | 'addBudgetCategory' | 'saveQuote' | 'deleteQuote' | 'addQuoteTopic', payload: any) => {
     if (isMock) {
       console.log(`[MOCK MUTATION] ${resource}:${action}`, payload);
       return { success: true, mock: true };
@@ -65,9 +69,13 @@ export const useDataMutation = (resource: MutationResource) => {
         case 'addQuoteTopic':
           return await addQuoteTopicMutation({ ...payload });
         case 'saveNote':
-          return await saveNoteMutation({ projectId: payload.projectId, fromName: payload.fromName, role: payload.role, text: payload.text, thread: payload.thread });
+          return await saveNoteMutation({ projectId: payload.projectId, text: payload.text, thread: payload.thread });
         case 'savePhotoAnnotation':
           return await savePhotoAnnotationMutation({ photoId: payload.photoId, noteText: payload.noteText, role: payload.role });
+        case 'deletePhoto':
+          return await deletePhotoMutation({ photoId: payload.photoId });
+        case 'updatePhotoTag':
+          return await updatePhotoTagMutation({ photoId: payload.photoId, tag: payload.tag });
         case 'createProject':
           return await createProjectMutation({ 
             name: payload.name, 
@@ -90,7 +98,7 @@ export const useDataMutation = (resource: MutationResource) => {
       console.error(`[DB MUTATION ERROR] ${resource}:${action}`, err);
       throw err;
     }
-  }, [isMock, resource, genericUpdate, genericAdd, genericRemove, toggleTaskMutation, saveBoqMutation, saveProjectSetupMutation, addExpenseMutation, saveNoteMutation, savePhotoAnnotationMutation, createProjectMutation, deleteProjectMutation]);
+  }, [isMock, resource, genericUpdate, genericAdd, genericRemove, toggleTaskMutation, saveBoqMutation, saveProjectSetupMutation, addExpenseMutation, saveNoteMutation, savePhotoAnnotationMutation, deletePhotoMutation, updatePhotoTagMutation, createProjectMutation, deleteProjectMutation]);
 
   return { mutate };
 };

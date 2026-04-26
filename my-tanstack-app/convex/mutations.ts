@@ -40,6 +40,18 @@ const recomputeContractorPaid = async (ctx: MutationCtx, contractorId: Id<'contr
   await ctx.db.patch(contractorId, { paid });
 };
 
+const requirePhotoManager = async (ctx: MutationCtx) => {
+  const userId = await getAuthUserId(ctx);
+  if (!userId) {
+    throw new Error('Not authenticated');
+  }
+
+  const user = await ctx.db.get(userId);
+  if (user?.role !== 'owner' && user?.role !== 'manager') {
+    throw new Error('Only an owner or manager can update photos');
+  }
+};
+
 
 // ── GENERIC MUTATIONS ────────────────────────────────────────────────────────
 
@@ -378,16 +390,32 @@ export const updateBoqItemStatus = mutation({
 export const saveNote = mutation({
   args: {
     projectId: v.id('projects'),
-    fromName: v.string(),
-    role: v.union(v.literal('owner'), v.literal('manager'), v.literal('inspector'), v.literal('contractor')),
     text: v.string(),
     thread: v.union(v.literal('internal'), v.literal('contractor')),
   },
   handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error('Not authenticated');
+    }
+
+    const user = await ctx.db.get(userId);
+    if (!user?.role) {
+      throw new Error('Missing user role');
+    }
+
+    if (user.role !== 'owner') {
+      const allowedThread = user.role === 'contractor' ? 'contractor' : 'internal';
+      if (args.thread !== allowedThread) {
+        throw new Error('You do not have access to this chat');
+      }
+    }
+
     await ctx.db.insert('messages', {
       projectId: args.projectId,
-      fromName: args.fromName,
-      role: args.role,
+      fromUserId: userId,
+      fromName: user.name ?? user.email ?? 'משתמש',
+      role: user.role,
       text: args.text,
       thread: args.thread,
       resolved: false,
@@ -408,5 +436,126 @@ export const savePhotoAnnotation = mutation({
       role: args.role,
       text: args.noteText,
     });
+  },
+});
+
+export const deletePhoto = mutation({
+  args: {
+    photoId: v.id('photos'),
+  },
+  handler: async (ctx, args) => {
+    await requirePhotoManager(ctx);
+
+    const photo = await ctx.db.get(args.photoId);
+    if (!photo) {
+      return null;
+    }
+
+    const notes = await ctx.db
+      .query('photoNotes')
+      .withIndex('by_photo', (q) => q.eq('photoId', args.photoId))
+      .take(100);
+    for (const note of notes) {
+      await ctx.db.delete(note._id);
+    }
+
+    const annotations = await ctx.db
+      .query('photoAnnotations')
+      .withIndex('by_photo', (q) => q.eq('photoId', args.photoId))
+      .take(100);
+    for (const annotation of annotations) {
+      await ctx.db.delete(annotation._id);
+    }
+
+    const versions = await ctx.db
+      .query('photoFileVersions')
+      .withIndex('by_photo', (q) => q.eq('photoId', args.photoId))
+      .take(100);
+
+    let storageDeleted = false;
+    const deletedFileIds = new Set<string>();
+    for (const version of versions) {
+      const projectFile = await ctx.db.get(version.annotatedProjectFileId);
+      if (projectFile) {
+        await ctx.storage.delete(projectFile.storageId);
+        await ctx.db.delete(projectFile._id);
+        deletedFileIds.add(projectFile._id);
+        storageDeleted = true;
+      }
+      await ctx.db.delete(version._id);
+    }
+
+    if (photo.projectFileId) {
+      const projectFile = await ctx.db.get(photo.projectFileId);
+      if (projectFile && !deletedFileIds.has(projectFile._id)) {
+        await ctx.storage.delete(projectFile.storageId);
+        await ctx.db.delete(projectFile._id);
+        storageDeleted = true;
+      }
+    }
+
+    await ctx.db.delete(args.photoId);
+    return { deleted: true, fileUrl: photo.fileUrl ?? null, storageDeleted };
+  },
+});
+
+export const updatePhotoTag = mutation({
+  args: {
+    photoId: v.id('photos'),
+    tag: v.union(v.literal('התקדמות'), v.literal('בעיה'), v.literal('בדיקה'), v.literal('אישור')),
+  },
+  handler: async (ctx, args) => {
+    await requirePhotoManager(ctx);
+
+    const photo = await ctx.db.get(args.photoId);
+    if (!photo) {
+      throw new Error('Photo not found');
+    }
+
+    if (args.tag === 'אישור') {
+      const versions = await ctx.db
+        .query('photoFileVersions')
+        .withIndex('by_photo_versionNumber', (q) => q.eq('photoId', args.photoId))
+        .order('desc')
+        .take(100);
+      const originalFileId = versions.find((version) => version.sourceProjectFileId)?.sourceProjectFileId ?? photo.projectFileId;
+      const fileIdsToDelete = new Set<string>();
+
+      for (const version of versions) {
+        fileIdsToDelete.add(version.annotatedProjectFileId);
+        const annotations = await ctx.db
+          .query('photoAnnotations')
+          .withIndex('by_version', (q) => q.eq('versionId', version._id))
+          .take(200);
+        for (const annotation of annotations) {
+          await ctx.db.delete(annotation._id);
+        }
+        const notes = await ctx.db
+          .query('photoNotes')
+          .withIndex('by_version', (q) => q.eq('versionId', version._id))
+          .take(100);
+        for (const note of notes) {
+          await ctx.db.delete(note._id);
+        }
+        await ctx.db.delete(version._id);
+      }
+
+      for (const fileId of fileIdsToDelete) {
+        const projectFile = await ctx.db.get(fileId as Id<'projectFiles'>);
+        if (projectFile && projectFile._id !== originalFileId) {
+          await ctx.storage.delete(projectFile.storageId);
+          await ctx.db.delete(projectFile._id);
+        }
+      }
+
+      await ctx.db.patch(args.photoId, {
+        tag: args.tag,
+        ...(originalFileId ? { projectFileId: originalFileId } : {}),
+      });
+      return { updated: true, tag: args.tag, cleanedVersions: versions.length };
+    }
+
+    await ctx.db.patch(args.photoId, { tag: args.tag });
+    return { updated: true, tag: args.tag };
   },
 });

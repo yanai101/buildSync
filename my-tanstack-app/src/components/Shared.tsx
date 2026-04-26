@@ -132,8 +132,8 @@ export const Input = ({value, onChange, placeholder, type="text", style:sx}: any
     placeholder={placeholder} style={sx}/>
 );
 
-export const Select = ({value, onChange, children, style:sx}: any) => (
-  <select className="bp-input" value={value} onChange={e=>onChange(e.target.value)} style={sx}>
+export const Select = ({value, onChange, children, style:sx, ...rest}: any) => (
+  <select className="bp-input" value={value} onChange={e=>onChange(e.target.value)} style={sx} {...rest}>
     {children}
   </select>
 );

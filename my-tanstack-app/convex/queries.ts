@@ -1,5 +1,14 @@
 import { query } from './_generated/server';
 import { v } from 'convex/values';
+import { getAuthUserId } from '@convex-dev/auth/server';
+
+const formatMessageDate = (creationTime: number) => {
+  const date = new Date(creationTime);
+  return {
+    date: date.toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit' }),
+    time: date.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }),
+  };
+};
 
 export const listStages = query({
   args: { projectId: v.id('projects') },
@@ -103,18 +112,55 @@ export const listPhotos = query({
     const photos = await ctx.db
       .query('photos')
       .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
-      .collect();
+      .take(200);
 
     return await Promise.all(photos.map(async (photo) => {
       const notes = await ctx.db
         .query('photoNotes')
         .withIndex('by_photo', (q) => q.eq('photoId', photo._id))
-        .collect();
+        .take(100);
+      const projectFile = photo.projectFileId
+        ? await ctx.db.get(photo.projectFileId)
+        : null;
+      const latestVersion = await ctx.db
+        .query('photoFileVersions')
+        .withIndex('by_photo_versionNumber', (q) => q.eq('photoId', photo._id))
+        .order('desc')
+        .take(1);
+      const latestVersionFile = latestVersion[0]
+        ? await ctx.db.get(latestVersion[0].annotatedProjectFileId)
+        : null;
+      const storageUrl = projectFile
+        ? await ctx.storage.getUrl(projectFile.storageId)
+        : null;
+      const latestVersionUrl = latestVersionFile
+        ? await ctx.storage.getUrl(latestVersionFile.storageId)
+        : null;
+      const displayFile = photo.tag === 'אישור' ? projectFile : (latestVersionFile ?? projectFile);
+
       return {
         ...photo,
         id: photo._id,
         stage: photo.stageLabel,
         date: photo.takenOn,
+        originalFileUrl: storageUrl ?? photo.fileUrl,
+        fileUrl: photo.tag === 'אישור'
+          ? storageUrl ?? photo.fileUrl
+          : latestVersionUrl ?? storageUrl ?? photo.fileUrl,
+        versionNumber: photo.tag === 'אישור' ? 0 : latestVersion[0]?.versionNumber ?? 0,
+        latestVersionId: photo.tag === 'אישור' ? null : latestVersion[0]?._id ?? null,
+        file: displayFile
+          ? {
+            id: displayFile._id,
+            originalName: displayFile.originalName,
+            storedName: displayFile.storedName,
+            originalSize: displayFile.originalSize,
+            storedSize: displayFile.storedSize,
+            storedMimeType: displayFile.storedMimeType,
+            width: displayFile.width,
+            height: displayFile.height,
+          }
+          : null,
         notesCount: notes.length,
       };
     }));
@@ -124,14 +170,37 @@ export const listPhotos = query({
 export const listNotes = query({
   args: { projectId: v.id('projects') },
   handler: async (ctx, args) => {
-    const notes = await ctx.db
-      .query('messages')
-      .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
-      .collect();
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      return [];
+    }
+
+    const user = await ctx.db.get(userId);
+    if (!user?.role) {
+      return [];
+    }
+
+    const thread =
+      user.role === 'owner'
+        ? null
+        : user.role === 'contractor'
+          ? 'contractor'
+          : 'internal';
+
+    const notes = thread
+      ? await ctx.db
+        .query('messages')
+        .withIndex('by_project_thread', (q) => q.eq('projectId', args.projectId).eq('thread', thread))
+        .take(200)
+      : await ctx.db
+        .query('messages')
+        .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
+        .take(200);
 
     return notes.map(n => ({
       ...n,
       id: n._id,
+      ...formatMessageDate(n._creationTime),
     }));
   },
 });

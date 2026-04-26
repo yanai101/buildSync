@@ -27,6 +27,10 @@ export const zPhotoTag = z.enum(['התקדמות', 'בעיה', 'בדיקה', 'א
 
 export const zAnnotationType = z.enum(['rect', 'circle', 'pen']);
 
+export const zProjectFileUsage = z.enum(['photo', 'receipt', 'quote', 'document']);
+
+export const zProjectFileKind = z.enum(['image', 'pdf', 'document', 'other']);
+
 export const zBoqStatus = z.enum(['approved', 'pending']);
 
 export const zBoqSource = z.enum(['manual', 'wizard_smart', 'catalog']);
@@ -127,6 +131,7 @@ export const zStage = {
   progressPct: z.number(),
   startDate: z.string(),
   endDate: z.string(),
+  dependsOnPrevious: z.boolean().optional(),
   contractorRole: z.string().optional(),
   contractorId: zid('contractors').optional(),
   supervisorApprovalBy: z.string().optional(),
@@ -216,6 +221,7 @@ export const zBoqItem = {
 export const zPhoto = {
   projectId: zid('projects'),
   legacyId: z.number().optional(),
+  projectFileId: zid('projectFiles').optional(),
   takenOn: z.string(),
   stageId: zid('stages').optional(),
   stageLabel: z.string().optional(),
@@ -227,20 +233,52 @@ export const zPhoto = {
   uploaderUserId: zid('users').optional(),
 };
 
+export const zProjectFile = {
+  projectId: zid('projects'),
+  storageId: zid('_storage'),
+  usage: zProjectFileUsage,
+  kind: zProjectFileKind,
+  originalName: z.string(),
+  storedName: z.string(),
+  originalMimeType: z.string(),
+  storedMimeType: z.string(),
+  originalSize: z.number(),
+  storedSize: z.number(),
+  width: z.number().optional(),
+  height: z.number().optional(),
+  uploaderUserId: zid('users').optional(),
+};
+
 export const zPhotoAnnotation = {
   photoId: zid('photos'),
+  versionId: zid('photoFileVersions').optional(),
   type: zAnnotationType,
   x: z.number(),
   y: z.number(),
   w: z.number().optional(),
   h: z.number().optional(),
   r: z.number().optional(),
+  points: z.array(z.object({ x: z.number(), y: z.number() })).optional(),
   color: z.string(),
   text: z.string().optional(),
 };
 
+export const zPhotoFileVersion = {
+  photoId: zid('photos'),
+  projectId: zid('projects'),
+  sourceProjectFileId: zid('projectFiles').optional(),
+  annotatedProjectFileId: zid('projectFiles'),
+  versionNumber: z.number(),
+  noteText: z.string().optional(),
+  authorUserId: zid('users').optional(),
+  width: z.number().optional(),
+  height: z.number().optional(),
+  createdAt: z.string(),
+};
+
 export const zPhotoNote = {
   photoId: zid('photos'),
+  versionId: zid('photoFileVersions').optional(),
   authorUserId: zid('users').optional(),
   authorName: z.string(),
   role: zUserRole,

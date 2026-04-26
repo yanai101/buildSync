@@ -37,6 +37,7 @@ export interface Stage {
   progress: number;
   start: string;
   end: string;
+  dependsOnPrevious?: boolean;
   contractor: string;
   icon: string;
   tasks: Task[];
