@@ -4,10 +4,25 @@ import { v } from 'convex/values';
 export const listQuotes = query({
   args: { projectId: v.id('projects') },
   handler: async (ctx, args) => {
-    return await ctx.db
+    const quotes = await ctx.db
       .query('priceQuotes')
       .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
       .collect();
+
+    return await Promise.all(quotes.map(async (quote) => {
+      if (!quote.projectFileId) {
+        return quote;
+      }
+      const file = await ctx.db.get(quote.projectFileId);
+      if (!file) {
+        return quote;
+      }
+      return {
+        ...quote,
+        fileName: quote.fileName || file.originalName,
+        fileUrl: await ctx.storage.getUrl(file.storageId) ?? quote.fileUrl,
+      };
+    }));
   },
 });
 
@@ -44,13 +59,20 @@ export const saveQuote = mutation({
     notes: v.optional(v.string()),
     status: v.union(v.literal('pending'), v.literal('approved'), v.literal('rejected')),
     fileName: v.optional(v.string()),
+    projectFileId: v.optional(v.id('projectFiles')),
+    removeFile: v.optional(v.boolean()),
     createdAt: v.optional(v.string()),
     id: v.optional(v.id('priceQuotes')),
   },
   handler: async (ctx, args) => {
-    const { id, ...data } = args;
+    const { id, removeFile, ...data } = args;
     if (id) {
-      await ctx.db.patch(id, data);
+      await ctx.db.patch(id, removeFile ? {
+        ...data,
+        fileName: undefined,
+        projectFileId: undefined,
+        fileUrl: undefined,
+      } : data);
       return id;
     } else {
       return await ctx.db.insert('priceQuotes', {

@@ -26,7 +26,7 @@ export function useDataSource<T>(resource: ResourceName, sources?: { db?: T | nu
   const mode = React.useMemo<'db' | 'mock'>(() => {
     if (typeof window === 'undefined') return 'mock';
     // Default implemented DB-backed screens to 'db'.
-    const defaultDbResources: ResourceName[] = ['dashboard', 'contractors', 'photos', 'notes', 'stages', 'project', 'budget_cats', 'expenses'];
+    const defaultDbResources: ResourceName[] = ['dashboard', 'contractors', 'photos', 'notes', 'stages', 'project', 'budget_cats', 'expenses', 'quotes', 'quote_topics'];
     const defaultMode = defaultDbResources.includes(resource) ? 'db' : 'mock';
     const saved = localStorage.getItem(`buildsync:ds:${resource}`);
     return (saved as 'db' | 'mock') || defaultMode;

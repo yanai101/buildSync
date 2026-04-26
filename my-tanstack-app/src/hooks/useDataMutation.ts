@@ -24,7 +24,7 @@ export const useDataMutation = (resource: MutationResource) => {
   const createProjectMutation = useMutation(api.projects.createProject);
   const deleteProjectMutation = useMutation(api.projects.deleteProject);
 
-  const defaultDbResources: MutationResource[] = ['contractors', 'photos', 'notes', 'project', 'projects', 'expenses', 'budget'];
+  const defaultDbResources: MutationResource[] = ['contractors', 'photos', 'notes', 'project', 'projects', 'expenses', 'budget', 'quotes'];
   const savedMode = localStorage.getItem(`buildsync:ds:${resource}`);
   const isMock = savedMode ? savedMode !== 'db' : !defaultDbResources.includes(resource);
 

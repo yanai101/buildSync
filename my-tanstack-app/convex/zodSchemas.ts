@@ -350,6 +350,7 @@ export const zPriceQuote = {
   notes: z.string().optional(),
   status: zQuoteStatus,
   fileName: z.string().optional(),
+  projectFileId: zid('projectFiles').optional(),
   fileUrl: z.string().optional(),
   createdAt: z.string(),
 };
