@@ -73,12 +73,37 @@ export const saveQuote = mutation({
         projectFileId: undefined,
         fileUrl: undefined,
       } : data);
+      if (data.status === 'approved') {
+        const siblingQuotes = await ctx.db
+          .query('priceQuotes')
+          .withIndex('by_project', (q) => q.eq('projectId', data.projectId))
+          .collect();
+
+        await Promise.all(
+          siblingQuotes
+            .filter((quote) => quote._id !== id && quote.topicKey === data.topicKey && quote.status !== 'rejected')
+            .map((quote) => ctx.db.patch(quote._id, { status: 'rejected' })),
+        );
+      }
       return id;
     } else {
-      return await ctx.db.insert('priceQuotes', {
+      const quoteId = await ctx.db.insert('priceQuotes', {
         ...data,
         createdAt: new Date().toISOString().slice(0, 10),
       });
+      if (data.status === 'approved') {
+        const siblingQuotes = await ctx.db
+          .query('priceQuotes')
+          .withIndex('by_project', (q) => q.eq('projectId', data.projectId))
+          .collect();
+
+        await Promise.all(
+          siblingQuotes
+            .filter((quote) => quote._id !== quoteId && quote.topicKey === data.topicKey && quote.status !== 'rejected')
+            .map((quote) => ctx.db.patch(quote._id, { status: 'rejected' })),
+        );
+      }
+      return quoteId;
     }
   },
 });
