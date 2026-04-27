@@ -65,6 +65,14 @@ export const NotesScreen = () => {
     }
   }, [targetThread, targetThreadOptions, thread, threads]);
 
+  // When viewing a specific thread tab, messages must go to that same thread —
+  // each thread is independent. Only the "all" view lets the user pick a target.
+  React.useEffect(() => {
+    if (thread !== 'all' && targetThread !== thread) {
+      setTargetThread(thread);
+    }
+  }, [thread, targetThread]);
+
   const filtered = thread==="all"?notes:notes.filter(n=>n.thread===thread);
 
   const send = async () => {
@@ -197,11 +205,13 @@ export const NotesScreen = () => {
                   {(ROLE_LABELS as any)[activeRole] || "משתמש"}
                 </div>
               )}
-              <Select value={targetThread} onChange={setTargetThread} style={{fontSize:12,width:"auto"}}>
-                {targetThreadOptions.map(t => (
-                  <option key={t.id} value={t.id}>{t.label}</option>
-                ))}
-              </Select>
+              {thread === 'all' && targetThreadOptions.length > 1 && (
+                <Select value={targetThread} onChange={setTargetThread} style={{fontSize:12,width:"auto"}}>
+                  {targetThreadOptions.map(t => (
+                    <option key={t.id} value={t.id}>{t.label}</option>
+                  ))}
+                </Select>
+              )}
             </div>
             <Btn onClick={send}><Icon n="send" s={14}/> שלח</Btn>
           </div>
