@@ -83,6 +83,10 @@ export default defineSchema({
   contractorNotes: defineTable(zodToConvexFields(s.zContractorNote))
     .index('by_contractor', ['contractorId']),
 
+  personalFiles: defineTable(zodToConvexFields(s.zPersonalFile))
+    .index('by_owner', ['ownerUserId'])
+    .index('by_storage', ['storageId']),
+
   photos: defineTable(zodToConvexFields(s.zPhoto))
     .index('by_project', ['projectId'])
     .index('by_stage', ['stageId'])

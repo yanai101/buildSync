@@ -20,6 +20,7 @@ export const NAV = [
   { id: "/boqwizard",     label: "אשף כמויות", icon: "zoom-in",   section: "ניהול" },
   { id: "/photos",        label: "תמונות",     icon: "camera",    section: "תיעוד" },
   { id: "/notes",         label: "הערות",      icon: "message",   section: "תיעוד", badge: 3 },
+  { id: "/personal-files",label: "קבצים אישיים",icon: "file-text", section: "תיעוד", ownerOnly: true },
   { id: "/budget",        label: "תקציב",      icon: "chart",     section: "פיננסי" },
   { id: "/quotes",        label: "הצעות מחיר", icon: "clipboard", section: "פיננסי" },
   { id: "/timeline",      label: "לוח זמנים", icon: "calendar",  section: "פיננסי" },
@@ -35,6 +36,7 @@ export const PAGE_TITLES: Record<string, string> = {
   "/boqwizard": "אשף כתב כמויות",
   "/photos": "תמונות ותיעוד",
   "/notes": "הערות",
+  "/personal-files": "קבצים אישיים",
   "/budget": "תקציב והוצאות",
   "/quotes": "הצעות מחיר והשוואה",
   "/timeline": "לוח זמנים",
@@ -198,7 +200,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
         <div className="sidebar-scroll">
           {sections.map(sec => {
-            const items = NAV.filter(n => n.section === sec)
+            const items = NAV.filter(n => n.section === sec && (!n.ownerOnly || identity?.role === 'owner'))
+            if (items.length === 0) return null
             const hasActive = items.some(n => n.id === currentPath)
             const collapsed = collapsedSections.has(sec) && !hasActive
             return (

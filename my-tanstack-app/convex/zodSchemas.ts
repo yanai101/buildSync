@@ -265,6 +265,18 @@ export const zProjectFile = {
   contractorId: zid('contractors').optional(),
 };
 
+export const zPersonalFile = {
+  ownerUserId: zid('users'),
+  storageId: zid('_storage'),
+  originalName: z.string(),
+  storedName: z.string(),
+  originalMimeType: z.string(),
+  originalSize: z.number(),
+  storedSize: z.number(),
+  note: z.string(),
+  uploadedAt: z.number(),
+};
+
 export const zPhotoAnnotation = {
   photoId: zid('photos'),
   versionId: zid('photoFileVersions').optional(),
