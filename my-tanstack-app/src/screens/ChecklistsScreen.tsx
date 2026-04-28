@@ -55,6 +55,9 @@ export const ChecklistsScreen = () => {
   const [feedback, setFeedback] = useState<{ title: string; message: string; type: 'error' | 'success' } | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [isAdding, setIsAdding] = useState(false);
+  const [addingCustom, setAddingCustom] = useState(false);
+  const [customTitle, setCustomTitle] = useState('');
+  const [newItemText, setNewItemText] = useState<{ [key: string]: string }>({});
 
   const handleAddTemplate = async (template: typeof PREDEFINED_CHECKLISTS[0]) => {
     if (!projectId) return;
@@ -90,12 +93,39 @@ export const ChecklistsScreen = () => {
   };
 
   const handleAddNewItem = async (checklistId: string) => {
-    const text = prompt('הכנס משימה חדשה:');
+    const text = newItemText[checklistId];
     if (!text?.trim()) return;
     try {
       await mutate('addChecklistItem', { checklistId, text: text.trim() });
+      setNewItemText(prev => ({ ...prev, [checklistId]: '' }));
     } catch (e) {
       console.error(e);
+    }
+  };
+
+  const handleDeleteItem = async (itemId: string) => {
+    try {
+      await mutate('deleteChecklistItem', { itemId });
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleAddCustom = async () => {
+    if (!projectId || !customTitle.trim()) return;
+    try {
+      await mutate('addChecklist', {
+        projectId,
+        title: customTitle.trim(),
+        category: 'מותאם אישית',
+        items: [],
+      });
+      setFeedback({ title: 'נוסף בהצלחה', message: `הצ'קליסט "${customTitle}" נוסף לפרויקט.`, type: 'success' });
+      setCustomTitle('');
+      setAddingCustom(false);
+      setIsAdding(false);
+    } catch (e) {
+      setFeedback({ title: 'שגיאה', message: 'לא הצלחנו להוסיף את הצ\'קליסט.', type: 'error' });
     }
   };
 
@@ -121,21 +151,43 @@ export const ChecklistsScreen = () => {
               style={{ overflow: 'hidden', marginBottom: 24 }}
             >
               <div style={{ background: 'var(--surface)', padding: 20, borderRadius: 12, border: '1px solid var(--border)' }}>
-                <h3 style={{ margin: '0 0 16px', fontSize: 16 }}>בחר תבנית מוכנה:</h3>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
-                  {PREDEFINED_CHECKLISTS.map((template, idx) => (
-                    <div key={idx} style={{ padding: 16, border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg)', display: 'flex', flexDirection: 'column' }}>
-                      <div style={{ fontSize: 12, color: 'var(--accent)', fontWeight: 600, marginBottom: 4 }}>{template.category}</div>
-                      <div style={{ fontSize: 15, fontWeight: 500, marginBottom: 12, color: 'var(--text1)' }}>{template.title}</div>
-                      <div style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 16, flex: 1 }}>
-                        {template.items.length} משימות לבדיקה
-                      </div>
-                      <Btn onClick={() => handleAddTemplate(template)} variant="secondary" style={{ width: '100%', justifyContent: 'center' }}>
-                        הוסף לפרויקט
-                      </Btn>
-                    </div>
-                  ))}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                  <h3 style={{ margin: 0, fontSize: 16 }}>{addingCustom ? 'צור צ\'קליסט מותאם אישית' : 'בחר תבנית מוכנה:'}</h3>
+                  <Btn onClick={() => setAddingCustom(!addingCustom)} variant="secondary">
+                    {addingCustom ? 'חזור לתבניות' : 'צור צ\'קליסט ריק'}
+                  </Btn>
                 </div>
+                
+                {addingCustom ? (
+                  <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                    <input
+                      type="text"
+                      className="input"
+                      placeholder="שם הצ'קליסט (למשל: נגרות, מטבח, אלומיניום)..."
+                      value={customTitle}
+                      onChange={e => setCustomTitle(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && handleAddCustom()}
+                      style={{ flex: 1 }}
+                      autoFocus
+                    />
+                    <Btn onClick={handleAddCustom} variant="primary">הוסף</Btn>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>
+                    {PREDEFINED_CHECKLISTS.map((template, idx) => (
+                      <div key={idx} style={{ flex: '1 1 280px', padding: 16, border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg)', display: 'flex', flexDirection: 'column' }}>
+                        <div style={{ fontSize: 12, color: 'var(--accent)', fontWeight: 600, marginBottom: 4 }}>{template.category}</div>
+                        <div style={{ fontSize: 15, fontWeight: 500, marginBottom: 12, color: 'var(--text1)' }}>{template.title}</div>
+                        <div style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 16, flex: 1 }}>
+                          {template.items.length} משימות לבדיקה
+                        </div>
+                        <Btn onClick={() => handleAddTemplate(template)} variant="secondary" style={{ width: '100%', justifyContent: 'center' }}>
+                          הוסף לפרויקט
+                        </Btn>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </motion.div>
           )}
@@ -213,28 +265,44 @@ export const ChecklistsScreen = () => {
                         <div style={{ padding: '0 20px 20px', borderTop: '1px solid var(--border)' }}>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 0, marginTop: 8 }}>
                             {list.items.map((item: any) => (
-                              <label 
+                              <div 
                                 key={item.id} 
-                                style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 0', borderBottom: '1px solid var(--border)', cursor: 'pointer' }}
+                                style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 0', borderBottom: '1px solid var(--border)' }}
                               >
-                                <input 
-                                  type="checkbox" 
-                                  checked={item.isCompleted} 
-                                  onChange={() => handleToggleItem(item.id, item.isCompleted)}
-                                  style={{ width: 18, height: 18, accentColor: 'var(--accent)', cursor: 'pointer' }}
-                                />
-                                <span style={{ fontSize: 14, color: item.isCompleted ? 'var(--text3)' : 'var(--text1)', textDecoration: item.isCompleted ? 'line-through' : 'none', transition: 'all 0.2s' }}>
-                                  {item.text}
-                                </span>
-                              </label>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, cursor: 'pointer' }}>
+                                  <input 
+                                    type="checkbox" 
+                                    checked={item.isCompleted} 
+                                    onChange={() => handleToggleItem(item.id, item.isCompleted)}
+                                    style={{ width: 18, height: 18, accentColor: 'var(--accent)', cursor: 'pointer' }}
+                                  />
+                                  <span style={{ fontSize: 14, color: item.isCompleted ? 'var(--text3)' : 'var(--text1)', textDecoration: item.isCompleted ? 'line-through' : 'none', transition: 'all 0.2s' }}>
+                                    {item.text}
+                                  </span>
+                                </label>
+                                <button 
+                                  onClick={() => handleDeleteItem(item.id)}
+                                  style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', padding: 4 }}
+                                >
+                                  <Icon n="trash-2" s={14} />
+                                </button>
+                              </div>
                             ))}
                           </div>
-                          <button 
-                            onClick={() => handleAddNewItem(list.id as string)}
-                            style={{ background: 'none', border: 'none', color: 'var(--accent)', fontSize: 14, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', marginTop: 16, padding: 0 }}
-                          >
-                            <Icon n="plus" s={14} /> משימה חדשה
-                          </button>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 16 }}>
+                            <input
+                              type="text"
+                              className="input"
+                              placeholder="משימה חדשה..."
+                              value={newItemText[list.id as string] || ''}
+                              onChange={e => setNewItemText({ ...newItemText, [list.id as string]: e.target.value })}
+                              onKeyDown={e => e.key === 'Enter' && handleAddNewItem(list.id as string)}
+                              style={{ flex: 1, fontSize: 14, padding: '8px 12px' }}
+                            />
+                            <Btn onClick={() => handleAddNewItem(list.id as string)} variant="secondary" style={{ padding: '8px 16px' }}>
+                              הוסף
+                            </Btn>
+                          </div>
                         </div>
                       </motion.div>
                     )}
