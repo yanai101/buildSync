@@ -87,6 +87,11 @@ export default defineSchema({
     .index('by_owner', ['ownerUserId'])
     .index('by_storage', ['storageId']),
 
+  projectInvitations: defineTable(zodToConvexFields(s.zProjectInvitation))
+    .index('by_code', ['code'])
+    .index('by_project', ['projectId'])
+    .index('by_invited_email', ['invitedEmail']),
+
   photos: defineTable(zodToConvexFields(s.zPhoto))
     .index('by_project', ['projectId'])
     .index('by_stage', ['stageId'])

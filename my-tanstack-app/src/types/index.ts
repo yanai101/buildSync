@@ -72,6 +72,7 @@ export interface Project {
   name: string;
   address: string;
   owner: string;
+  manager?: string;
   startDate: string;
   expectedEnd: string;
   floors?: number;

@@ -163,12 +163,27 @@ export const listRooms = query({
 export const listBoq = query({
   args: { projectId: v.id('projects') },
   handler: async (ctx, args) => {
-    return await ctx.db
+    const items = await ctx.db
       .query('boqItems')
       .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
       .collect();
+
+    return await Promise.all(items.map(async (item) => {
+      let resolvedImageUrl: string | null = null;
+      if (item.projectFileId) {
+        const projectFile = await ctx.db.get(item.projectFileId);
+        if (projectFile) {
+          resolvedImageUrl = await ctx.storage.getUrl(projectFile.storageId);
+        }
+      } else if (item.imageUrl && !item.imageUrl.startsWith('blob:')) {
+        // Keep non-blob URLs (e.g. http/https) as-is
+        resolvedImageUrl = item.imageUrl;
+      }
+      return { ...item, imageUrl: resolvedImageUrl ?? undefined };
+    }));
   },
 });
+
 
 export const listPhotos = query({
   args: { projectId: v.id('projects') },

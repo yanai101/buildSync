@@ -56,6 +56,9 @@ export const createProject = mutation({
     budgetTotal: v.optional(v.number()),
     startDate: v.optional(v.string()),
     expectedEnd: v.optional(v.string()),
+    // One-time floor-waste setting captured at creation. Cannot be modified
+    // afterwards — `saveProjectSetup` does not accept this argument.
+    floorWastePct: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -75,6 +78,7 @@ export const createProject = mutation({
       spent: 0,
       committed: 0,
       currentStageName: "חדש",
+      ...(args.floorWastePct !== undefined ? { floorWastePct: args.floorWastePct } : {}),
     });
   }
 });
@@ -93,8 +97,10 @@ export const saveProjectSetup = mutation({
     rooms: v.array(v.any()),
   },
   handler: async (ctx, args) => {
+    // Note: floorWastePct is intentionally NOT accepted here. It is set once
+    // at project creation (see createProject) and locked thereafter.
     const projectPatch = {
-      name: args.name, 
+      name: args.name,
       address: args.address,
       ownerName: args.ownerName ?? "בעל הבית",
       managerName: args.managerName ?? "טרם הוגדר",
@@ -110,13 +116,12 @@ export const saveProjectSetup = mutation({
       .query('projectRooms')
       .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
       .collect();
-    
-    for (const r of existingRooms) {
-      await ctx.db.delete(r._id);
-    }
-    
+
+    const existingById = new Map(existingRooms.map((room) => [room._id, room]));
+    const keptRoomIds = new Set<string>();
+
     for (const r of args.rooms) {
-      await ctx.db.insert('projectRooms', {
+      const patch = {
         projectId: args.projectId,
         name: r.name,
         type: r.type,
@@ -125,8 +130,38 @@ export const saveProjectSetup = mutation({
         isWet: r.isWet || false,
         needsAc: r.needsAc || false,
         sortOrder: 0,
-      });
+      };
+      const existingRoom = existingById.get(r.uid);
+      if (existingRoom) {
+        keptRoomIds.add(existingRoom._id);
+        await ctx.db.patch(existingRoom._id, patch);
+      } else {
+        const insertedId = await ctx.db.insert('projectRooms', patch);
+        keptRoomIds.add(insertedId);
+      }
     }
+
+    for (const room of existingRooms) {
+      if (!keptRoomIds.has(room._id)) {
+        await ctx.db.delete(room._id);
+      }
+    }
+  },
+});
+
+export const updateBudgetTotal = mutation({
+  args: {
+    projectId: v.id('projects'),
+    budgetTotal: v.number(),
+  },
+  handler: async (ctx, args) => {
+    if (args.budgetTotal < 0) {
+      throw new Error('Budget total cannot be negative');
+    }
+
+    await ctx.db.patch(args.projectId, {
+      budgetTotal: args.budgetTotal,
+    });
   },
 });
 

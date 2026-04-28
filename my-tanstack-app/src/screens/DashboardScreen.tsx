@@ -1,10 +1,11 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Icon, StatCard, ProgressBar, Badge, Avatar, Btn } from '../components/Shared';
+import { Icon, ProgressBar, Badge, Avatar, Btn } from '../components/Shared';
 import { ROLE_COLORS, fmtMoney } from '../utils/mockData';
 import { useDataSource } from '../hooks/useDataSource';
 import { ScreenBoundary } from '../components/ScreenBoundary';
 import { useDashboardOverview } from '../hooks/useDashboardOverview';
+import { BudgetSummaryCards } from '../components/BudgetSummaryCards';
 
 export const DashboardScreen = () => {
   const [showAllStages, setShowAllStages] = React.useState(false);
@@ -43,30 +44,7 @@ export const DashboardScreen = () => {
           </div>
         </div>
 
-        <motion.div
-          className="grid-4"
-          style={{marginBottom:24}}
-          variants={{ show: { transition: { staggerChildren: 0.1 } } }}
-          initial="hidden"
-          animate="show"
-        >
-          {[
-            { label:"תקציב כולל", value:fmtMoney(stats.totalBudget), icon:"chart" },
-            {
-              label:"הוצא עד כה",
-              value:fmtMoney(stats.totalSpent),
-              accent:"var(--accent)",
-              sub:`${stats.totalBudget ? Math.round(stats.totalSpent / stats.totalBudget * 100) : 0}% מהתקציב`,
-              icon:"arrow-right",
-            },
-            { label:"מחויב (חוזים)", value:fmtMoney(project.committed), accent:"var(--warning)", icon:"clipboard" },
-            { label:"יתרה פנויה", value:fmtMoney(stats.remainingBudget), accent:"var(--success)", icon:"check-circle" },
-          ].map((card,i) => (
-            <motion.div key={i} variants={{ hidden:{opacity:0,y:20}, show:{opacity:1,y:0,transition:{type:"spring",stiffness:280,damping:24}} }}>
-              <StatCard {...card} />
-            </motion.div>
-          ))}
-        </motion.div>
+        <BudgetSummaryCards summary={stats} style={{marginBottom:24}} />
 
         <div style={{display:"grid",gridTemplateColumns:"1fr 340px",gap:20}}>
           {/* Left col */}
@@ -98,14 +76,14 @@ export const DashboardScreen = () => {
             </div>
 
             {/* Budget overview */}
-            <div className="card">
+              <div className="card">
               <div className="card-header" style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                 <span>תקציב ותשלומים</span>
-                <span style={{fontSize:12,color:"var(--text3)",fontWeight:400}}>עודף: {fmtMoney(stats.totalBudget - stats.totalSpent)}</span>
+                <span style={{fontSize:12,color:"var(--text3)",fontWeight:400}}>יתרה: {fmtMoney(stats.remainingBudget)}</span>
               </div>
               <div className="card-body" style={{paddingTop:12}}>
                 <div style={{display:"flex",gap:24,marginBottom:16}}>
-                  {[{label:"תקציב",v:stats.totalBudget,c:"var(--text1)"},{label:"הוצא",v:stats.totalSpent,c:"var(--accent)"},{label:"מחויב",v:project.committed,c:"var(--warning)"}].map(x=>(
+                  {[{label:"תקציב",v:stats.totalBudget,c:"var(--text1)"},{label:"הוצא",v:stats.totalSpent,c:"var(--accent)"},{label:"מחויב",v:stats.committed,c:"var(--warning)"}].map(x=>(
                     <div key={x.label}>
                       <div style={{fontSize:20,fontWeight:800,color:x.c}}>{fmtMoney(x.v)}</div>
                       <div style={{fontSize:12,color:"var(--text2)"}}>{x.label}</div>
@@ -114,11 +92,11 @@ export const DashboardScreen = () => {
                 </div>
                 <div style={{height:12,background:"var(--border)",borderRadius:6,overflow:"hidden",display:"flex"}}>
                   <div style={{width:`${stats.totalBudget ? (stats.totalSpent/stats.totalBudget*100) : 0}%`,background:"var(--accent)",transition:"width .4s"}}/>
-                  <div style={{width:`${stats.totalBudget ? (project.committed/stats.totalBudget*100) : 0}%`,background:"#FDE68A"}}/>
+                  <div style={{width:`${stats.totalBudget ? (stats.committed/stats.totalBudget*100) : 0}%`,background:"#FDE68A"}}/>
                 </div>
                 <div style={{display:"flex",gap:16,marginTop:8,fontSize:11,color:"var(--text3)"}}>
                   <span style={{display:"flex",alignItems:"center",gap:4}}><span style={{width:8,height:8,borderRadius:2,background:"var(--accent)",display:"inline-block"}}/> הוצא {stats.totalBudget ? (stats.totalSpent/stats.totalBudget*100).toFixed(1) : '0.0'}%</span>
-                  <span style={{display:"flex",alignItems:"center",gap:4}}><span style={{width:8,height:8,borderRadius:2,background:"#FDE68A",display:"inline-block"}}/> מחויב {stats.totalBudget ? (project.committed/stats.totalBudget*100).toFixed(1) : '0.0'}%</span>
+                  <span style={{display:"flex",alignItems:"center",gap:4}}><span style={{width:8,height:8,borderRadius:2,background:"#FDE68A",display:"inline-block"}}/> מחויב {stats.totalBudget ? (stats.committed/stats.totalBudget*100).toFixed(1) : '0.0'}%</span>
                 </div>
               </div>
             </div>

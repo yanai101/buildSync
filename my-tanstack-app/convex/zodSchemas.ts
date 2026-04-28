@@ -101,6 +101,9 @@ export const zProject = {
   spent: z.number(),
   committed: z.number().optional(),
   totalWeeks: z.number().optional(),
+  // Waste percentage applied to flooring qty calculations across the app.
+  // Default 10 if unset.
+  floorWastePct: z.number().optional(),
 };
 
 export const zProjectRoom = {
@@ -196,6 +199,7 @@ export const zContractor = {
   paid: z.number(),
   avatarLetter: z.string().optional(),
   avatarColor: z.string().optional(),
+  userId: zid('users').optional(),
 };
 
 export const zContractorPaymentMilestone = {
@@ -228,9 +232,19 @@ export const zBoqItem = {
   unitPrice: z.number(),
   supplier: z.string().optional(),
   spec: z.string().optional(),
+  notes: z.string().optional(),
   hint: z.string().optional(),
   status: zBoqStatus,
   source: zBoqSource,
+  // Reference photo for the item
+  imageUrl: z.string().optional(),
+  projectFileId: zid('projectFiles').optional(),
+  // Locked rows are auto-managed (e.g. per-room flooring) and cannot be
+  // deleted or have their qty edited by users.
+  isLocked: z.boolean().optional(),
+  // Whether this row is "chosen" / active. Locked rows can be toggled off
+  // (qty effectively 0) but never deleted. Default = true (enabled).
+  isEnabled: z.boolean().optional(),
 };
 
 export const zPhoto = {
@@ -263,6 +277,20 @@ export const zProjectFile = {
   height: z.number().optional(),
   uploaderUserId: zid('users').optional(),
   contractorId: zid('contractors').optional(),
+};
+
+export const zProjectInvitation = {
+  projectId: zid('projects'),
+  code: z.string(),
+  role: z.enum(['manager', 'inspector', 'contractor']),
+  invitedEmail: z.string().optional(),
+  invitedName: z.string().optional(),
+  contractorId: zid('contractors').optional(),
+  invitedByUserId: zid('users'),
+  consumedByUserId: zid('users').optional(),
+  consumedAt: z.number().optional(),
+  expiresAt: z.number(),
+  revokedAt: z.number().optional(),
 };
 
 export const zPersonalFile = {

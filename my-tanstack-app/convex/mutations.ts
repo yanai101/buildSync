@@ -3,6 +3,7 @@ import type { MutationCtx } from './_generated/server';
 import type { Id } from './_generated/dataModel';
 import { v } from 'convex/values';
 import { getAuthUserId } from '@convex-dev/auth/server';
+import { syncContractorStagePayments } from './_lib/contractorPaymentSync';
 
 const contractorRoleValidator = v.union(
   v.literal('קבלן עד מפתח'),
@@ -54,6 +55,26 @@ const recomputeContractorPaid = async (ctx: MutationCtx, contractorId: Id<'contr
     .reduce((total, milestone) => total + milestone.amount, 0);
 
   await ctx.db.patch(contractorId, { paid });
+};
+
+const createDefaultContractorPaymentSchedule = async (
+  ctx: MutationCtx,
+  contractorId: Id<'contractors'>,
+  budget: number,
+) => {
+  for (let i = 0; i < DEFAULT_CONTRACTOR_PAYMENT_SCHEDULE.length; i++) {
+    const milestone = DEFAULT_CONTRACTOR_PAYMENT_SCHEDULE[i];
+    await ctx.db.insert('contractorPaymentMilestones', {
+      contractorId,
+      sortOrder: i,
+      name: milestone.name,
+      triggerText: milestone.triggerText,
+      pct: milestone.pct,
+      amount: Math.round((budget * milestone.pct) / 100),
+      paid: false,
+      sourceMode: 'custom',
+    });
+  }
 };
 
 const findContractorPaymentExpense = async (
@@ -215,18 +236,38 @@ export const createContractor = mutation({
       avatarColor: args.avatarColor,
     });
 
-    for (let i = 0; i < DEFAULT_CONTRACTOR_PAYMENT_SCHEDULE.length; i++) {
-      const milestone = DEFAULT_CONTRACTOR_PAYMENT_SCHEDULE[i];
-      await ctx.db.insert('contractorPaymentMilestones', {
-        contractorId,
-        sortOrder: i,
-        name: milestone.name,
-        triggerText: milestone.triggerText,
-        pct: milestone.pct,
-        amount: Math.round((args.budget * milestone.pct) / 100),
-        paid: false,
-        sourceMode: 'custom',
-      });
+    if (args.role === 'קבלן עד מפתח') {
+      const executionStages = await ctx.db
+        .query('stages')
+        .withIndex('by_project_sort', (q) => q.eq('projectId', args.projectId))
+        .filter((q) => q.neq(q.field('sortOrder'), 0))
+        .collect();
+
+      for (const stage of executionStages) {
+        const existingLinks = await ctx.db
+          .query('stageContractors')
+          .withIndex('by_stage', (q) => q.eq('stageId', stage._id))
+          .collect();
+
+        if (existingLinks.some((link) => link.contractorId === contractorId)) continue;
+
+        await ctx.db.insert('stageContractors', {
+          projectId: args.projectId,
+          stageId: stage._id,
+          contractorId,
+          roleLabel: args.name,
+          paymentMode: 'stage_synced',
+          sortOrder: existingLinks.length,
+        });
+      }
+
+      if (executionStages.length > 0) {
+        await syncContractorStagePayments(ctx, contractorId);
+      } else {
+        await createDefaultContractorPaymentSchedule(ctx, contractorId, args.budget);
+      }
+    } else {
+      await createDefaultContractorPaymentSchedule(ctx, contractorId, args.budget);
     }
 
     return contractorId;
@@ -439,6 +480,91 @@ export const setContractorPaymentMilestonePaid = mutation({
   },
 });
 
+export const deleteContractor = mutation({
+  args: {
+    contractorId: v.id('contractors'),
+  },
+  handler: async (ctx, args) => {
+    const contractor = await ctx.db.get(args.contractorId);
+    if (!contractor) {
+      throw new Error('Contractor not found');
+    }
+
+    const milestones = await ctx.db
+      .query('contractorPaymentMilestones')
+      .withIndex('by_contractor', (q) => q.eq('contractorId', args.contractorId))
+      .take(200);
+    const paidMilestones = milestones.filter((milestone) => milestone.paid);
+
+    const stageLinks = await ctx.db
+      .query('stageContractors')
+      .withIndex('by_contractor', (q) => q.eq('contractorId', args.contractorId))
+      .take(200);
+    const affectedStageIds = new Set(stageLinks.map((link) => link.stageId));
+
+    for (const link of stageLinks) {
+      await ctx.db.delete(link._id);
+    }
+
+    for (const stageId of affectedStageIds) {
+      const remainingLinks = await ctx.db
+        .query('stageContractors')
+        .withIndex('by_stage', (q) => q.eq('stageId', stageId))
+        .collect();
+      const orderedLinks = remainingLinks.sort((a, b) => a.sortOrder - b.sortOrder);
+      const remainingContractors = [];
+
+      for (let i = 0; i < orderedLinks.length; i++) {
+        const link = orderedLinks[i];
+        if (link.sortOrder !== i) {
+          await ctx.db.patch(link._id, { sortOrder: i });
+        }
+        const linkedContractor = await ctx.db.get(link.contractorId);
+        if (linkedContractor) remainingContractors.push(linkedContractor);
+      }
+
+      await ctx.db.patch(stageId, {
+        contractorId: remainingContractors[0]?._id,
+        contractorRole: remainingContractors.map((item) => item.name).join(', ') || undefined,
+      });
+    }
+
+    for (const milestone of milestones) {
+      if (!milestone.paid) {
+        await ctx.db.delete(milestone._id);
+      }
+    }
+
+    const files = await ctx.db
+      .query('projectFiles')
+      .withIndex('by_contractor', (q) => q.eq('contractorId', args.contractorId))
+      .take(200);
+    for (const file of files) {
+      await ctx.db.patch(file._id, { contractorId: undefined });
+    }
+
+    const notes = await ctx.db
+      .query('contractorNotes')
+      .withIndex('by_contractor', (q) => q.eq('contractorId', args.contractorId))
+      .take(200);
+    for (const note of notes) {
+      await ctx.db.delete(note._id);
+    }
+
+    await ctx.db.delete(args.contractorId);
+
+    await insertActivity(ctx, {
+      projectId: contractor.projectId,
+      text: `נמחק קבלן: ${contractor.name}`,
+    });
+
+    return {
+      paidMilestonesPreserved: paidMilestones.length,
+      paidAmountPreserved: paidMilestones.reduce((sum, milestone) => sum + milestone.amount, 0),
+    };
+  },
+});
+
 export const saveBoq = mutation({
   args: {
     projectId: v.id('projects'),
@@ -458,6 +584,8 @@ export const saveBoq = mutation({
         status: 'pending',
         source: 'wizard_smart',
         hint: item.hint,
+        ...(item.notes ? { notes: item.notes } : {}),
+        ...(item.isLocked ? { isLocked: true } : {}),
       });
     }
   },
@@ -474,6 +602,15 @@ export const addBoqItem = mutation({
     unitPrice: v.number(),
     supplier: v.optional(v.string()),
     spec: v.optional(v.string()),
+    notes: v.optional(v.string()),
+    imageUrl: v.optional(v.string()),
+    projectFileId: v.optional(v.id('projectFiles')),
+    isLocked: v.optional(v.boolean()),
+    isEnabled: v.optional(v.boolean()),
+    userQty: v.optional(v.number()),
+    source: v.optional(
+      v.union(v.literal('manual'), v.literal('wizard_smart'), v.literal('catalog')),
+    ),
   },
   handler: async (ctx, args) => {
     const project = await ctx.db.get(args.projectId);
@@ -496,10 +633,16 @@ export const addBoqItem = mutation({
       qty: args.qty,
       unit: args.unit,
       unitPrice: args.unitPrice,
+      ...(args.userQty !== undefined ? { userQty: args.userQty } : {}),
       ...(args.supplier ? { supplier: args.supplier } : {}),
       ...(args.spec ? { spec: args.spec } : {}),
+      ...(args.notes ? { notes: args.notes } : {}),
+      ...(args.imageUrl ? { imageUrl: args.imageUrl } : {}),
+      ...(args.projectFileId ? { projectFileId: args.projectFileId } : {}),
+      ...(args.isLocked ? { isLocked: true } : {}),
+      ...(args.isEnabled !== undefined ? { isEnabled: args.isEnabled } : {}),
       status: 'pending',
-      source: 'manual',
+      source: args.source ?? 'manual',
     });
   },
 });
@@ -516,6 +659,72 @@ export const updateBoqItemStatus = mutation({
     }
 
     await ctx.db.patch(args.itemId, { status: args.status });
+  },
+});
+
+export const updateBoqItem = mutation({
+  args: {
+    itemId: v.id('boqItems'),
+    category: v.optional(v.string()),
+    name: v.optional(v.string()),
+    qty: v.optional(v.number()),
+    userQty: v.optional(v.number()),
+    unit: v.optional(v.string()),
+    unitPrice: v.optional(v.number()),
+    supplier: v.optional(v.string()),
+    spec: v.optional(v.string()),
+    notes: v.optional(v.string()),
+    imageUrl: v.optional(v.string()),
+    projectFileId: v.optional(v.id('projectFiles')),
+    isEnabled: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    const item = await ctx.db.get(args.itemId);
+    if (!item) {
+      throw new Error('BOQ item not found');
+    }
+
+    const patch: Record<string, unknown> = {};
+    if (args.category !== undefined && !item.isLocked) patch.category = args.category;
+    if (args.name !== undefined && !item.isLocked) patch.name = args.name;
+    if (args.qty !== undefined) patch.qty = args.qty;
+    if (args.userQty !== undefined) patch.userQty = args.userQty;
+    if (args.unit !== undefined && !item.isLocked) patch.unit = args.unit;
+    if (args.unitPrice !== undefined) patch.unitPrice = args.unitPrice;
+    if (args.supplier !== undefined) patch.supplier = args.supplier;
+    if (args.spec !== undefined) patch.spec = args.spec;
+    if (args.notes !== undefined) patch.notes = args.notes;
+    if (args.imageUrl !== undefined) patch.imageUrl = args.imageUrl;
+    if (args.projectFileId !== undefined) patch.projectFileId = args.projectFileId;
+    if (args.isEnabled !== undefined) patch.isEnabled = args.isEnabled;
+
+    if (Object.keys(patch).length === 0) return;
+    await ctx.db.patch(args.itemId, patch);
+  },
+});
+
+export const deleteBoqItem = mutation({
+  args: {
+    itemId: v.id('boqItems'),
+  },
+  handler: async (ctx, args) => {
+    const item = await ctx.db.get(args.itemId);
+    if (!item) return;
+
+    if (item.isLocked) {
+      throw new Error('אי אפשר למחוק פריט מערכת');
+    }
+
+    // Clean up linked project file (and its storage) if present
+    if (item.projectFileId) {
+      const projectFile = await ctx.db.get(item.projectFileId);
+      if (projectFile) {
+        try { await ctx.storage.delete(projectFile.storageId); } catch { /* best-effort */ }
+        await ctx.db.delete(projectFile._id);
+      }
+    }
+
+    await ctx.db.delete(args.itemId);
   },
 });
 

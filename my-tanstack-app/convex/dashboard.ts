@@ -1,5 +1,6 @@
 import { query } from './_generated/server';
 import { v } from 'convex/values';
+import { getFinancialSummary } from './_lib/financialSummary';
 
 export const getOverview = query({
   args: {
@@ -32,10 +33,7 @@ export const getOverview = query({
       stages.find((stage) => stage.status === 'pending') ??
       null;
     const doneStages = stages.filter((stage) => stage.status === 'done').length;
-    const categoryBudget = budgetCategories.reduce((sum, category) => sum + category.budget, 0);
-    const projectBudget = project.budgetTotal || 0;
-    const totalBudget = projectBudget > 0 ? projectBudget : categoryBudget;
-    const budgetCategorySpent = budgetCategories.reduce((sum, category) => sum + category.spent, 0);
+    const financialSummary = await getFinancialSummary(ctx, project);
     const stageMilestonesByStage = await Promise.all(
       stages.map(async (stage) => {
         const milestones = await ctx.db
@@ -61,8 +59,6 @@ export const getOverview = query({
       }
       return sum + (stage.payment.status === 'paid' ? stage.payment.amount : 0);
     }, 0);
-    const totalSpent = budgetCategorySpent + stagePaidTotal;
-    const remainingBudget = totalBudget - totalSpent - (project.committed || 0);
     const topOverruns = budgetCategories
       .filter((category) => category.spent > category.budget)
       .sort((left, right) => right.spent - right.budget - (left.spent - left.budget))
@@ -76,10 +72,8 @@ export const getOverview = query({
     return {
       project,
       stats: {
-        totalBudget,
-        totalSpent,
+        ...financialSummary,
         stagePaidTotal,
-        remainingBudget,
         doneStages,
         totalStages: stages.length,
       },

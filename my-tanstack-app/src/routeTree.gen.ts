@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TimelineRouteImport } from './routes/timeline'
+import { Route as TeamRouteImport } from './routes/team'
 import { Route as StagesRouteImport } from './routes/stages'
 import { Route as SetupRouteImport } from './routes/setup'
 import { Route as RegisterRouteImport } from './routes/register'
@@ -26,10 +27,16 @@ import { Route as BoqwizardRouteImport } from './routes/boqwizard'
 import { Route as BoqRouteImport } from './routes/boq'
 import { Route as AccountRouteImport } from './routes/account'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as JoinCodeRouteImport } from './routes/join.$code'
 
 const TimelineRoute = TimelineRouteImport.update({
   id: '/timeline',
   path: '/timeline',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TeamRoute = TeamRouteImport.update({
+  id: '/team',
+  path: '/team',
   getParentRoute: () => rootRouteImport,
 } as any)
 const StagesRoute = StagesRouteImport.update({
@@ -112,6 +119,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const JoinCodeRoute = JoinCodeRouteImport.update({
+  id: '/join/$code',
+  path: '/join/$code',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -130,7 +142,9 @@ export interface FileRoutesByFullPath {
   '/register': typeof RegisterRoute
   '/setup': typeof SetupRoute
   '/stages': typeof StagesRoute
+  '/team': typeof TeamRoute
   '/timeline': typeof TimelineRoute
+  '/join/$code': typeof JoinCodeRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -149,7 +163,9 @@ export interface FileRoutesByTo {
   '/register': typeof RegisterRoute
   '/setup': typeof SetupRoute
   '/stages': typeof StagesRoute
+  '/team': typeof TeamRoute
   '/timeline': typeof TimelineRoute
+  '/join/$code': typeof JoinCodeRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -169,7 +185,9 @@ export interface FileRoutesById {
   '/register': typeof RegisterRoute
   '/setup': typeof SetupRoute
   '/stages': typeof StagesRoute
+  '/team': typeof TeamRoute
   '/timeline': typeof TimelineRoute
+  '/join/$code': typeof JoinCodeRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -190,7 +208,9 @@ export interface FileRouteTypes {
     | '/register'
     | '/setup'
     | '/stages'
+    | '/team'
     | '/timeline'
+    | '/join/$code'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -209,7 +229,9 @@ export interface FileRouteTypes {
     | '/register'
     | '/setup'
     | '/stages'
+    | '/team'
     | '/timeline'
+    | '/join/$code'
   id:
     | '__root__'
     | '/'
@@ -228,7 +250,9 @@ export interface FileRouteTypes {
     | '/register'
     | '/setup'
     | '/stages'
+    | '/team'
     | '/timeline'
+    | '/join/$code'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -248,7 +272,9 @@ export interface RootRouteChildren {
   RegisterRoute: typeof RegisterRoute
   SetupRoute: typeof SetupRoute
   StagesRoute: typeof StagesRoute
+  TeamRoute: typeof TeamRoute
   TimelineRoute: typeof TimelineRoute
+  JoinCodeRoute: typeof JoinCodeRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -258,6 +284,13 @@ declare module '@tanstack/react-router' {
       path: '/timeline'
       fullPath: '/timeline'
       preLoaderRoute: typeof TimelineRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/team': {
+      id: '/team'
+      path: '/team'
+      fullPath: '/team'
+      preLoaderRoute: typeof TeamRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/stages': {
@@ -372,6 +405,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/join/$code': {
+      id: '/join/$code'
+      path: '/join/$code'
+      fullPath: '/join/$code'
+      preLoaderRoute: typeof JoinCodeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -392,7 +432,9 @@ const rootRouteChildren: RootRouteChildren = {
   RegisterRoute: RegisterRoute,
   SetupRoute: SetupRoute,
   StagesRoute: StagesRoute,
+  TeamRoute: TeamRoute,
   TimelineRoute: TimelineRoute,
+  JoinCodeRoute: JoinCodeRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

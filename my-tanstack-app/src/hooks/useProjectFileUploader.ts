@@ -60,7 +60,16 @@ const optimizeImageFile = async (file: File): Promise<OptimizedFile> => {
     };
   }
 
-  const image = await loadImage(file);
+  let image: HTMLImageElement;
+  try {
+    image = await loadImage(file);
+  } catch {
+    return {
+      blob: file,
+      storedName: file.name,
+      storedMimeType: file.type || 'application/octet-stream',
+    };
+  }
   const originalWidth = image.naturalWidth || image.width;
   const originalHeight = image.naturalHeight || image.height;
   if (!originalWidth || !originalHeight) {

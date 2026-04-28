@@ -10,20 +10,27 @@ import { useAuthActions } from '@convex-dev/auth/react'
 import { api } from '../../convex/_generated/api'
 import { useOnboardingTour } from '~/hooks/useOnboardingTour'
 
+type NavRole = 'owner' | 'manager' | 'inspector' | 'contractor'
+const ALL_ROLES: NavRole[] = ['owner', 'manager', 'inspector', 'contractor']
+const OWNER_MANAGER: NavRole[] = ['owner', 'manager']
+const OWNER_MANAGER_INSPECTOR: NavRole[] = ['owner', 'manager', 'inspector']
+const OWNER_ONLY: NavRole[] = ['owner']
+
 export const NAV = [
-  { id: "/",              label: "לוח בקרה",    icon: "home",      section: "ראשי" },
-  { id: "/projects",      label: "פרויקטים",    icon: "layers",    section: "ראשי" },
-  { id: "/setup",         label: "הגדרות בית",  icon: "settings",  section: "ראשי" },
-  { id: "/stages",        label: "שלבי בנייה", icon: "layers",    section: "ניהול" },
-  { id: "/contractors",   label: "קבלנים",     icon: "users",     section: "ניהול" },
-  { id: "/boq",           label: "כתב כמויות", icon: "clipboard", section: "ניהול" },
-  { id: "/boqwizard",     label: "אשף כמויות", icon: "zoom-in",   section: "ניהול" },
-  { id: "/photos",        label: "תמונות",     icon: "camera",    section: "תיעוד" },
-  { id: "/notes",         label: "הערות",      icon: "message",   section: "תיעוד", badge: 3 },
-  { id: "/personal-files",label: "קבצים אישיים",icon: "file-text", section: "תיעוד", ownerOnly: true },
-  { id: "/budget",        label: "תקציב",      icon: "chart",     section: "פיננסי" },
-  { id: "/quotes",        label: "הצעות מחיר", icon: "clipboard", section: "פיננסי" },
-  { id: "/timeline",      label: "לוח זמנים", icon: "calendar",  section: "פיננסי" },
+  { id: "/",              label: "לוח בקרה",    icon: "home",      section: "ראשי",   roles: ALL_ROLES },
+  { id: "/projects",      label: "פרויקטים",    icon: "layers",    section: "ראשי",   roles: ALL_ROLES },
+  { id: "/setup",         label: "הגדרות בית",  icon: "settings",  section: "ראשי",   roles: OWNER_MANAGER },
+  { id: "/team",          label: "ניהול צוות",  icon: "users",     section: "ראשי",   roles: OWNER_ONLY },
+  { id: "/stages",        label: "שלבי בנייה", icon: "layers",    section: "ניהול",   roles: ALL_ROLES },
+  { id: "/contractors",   label: "קבלנים",     icon: "users",     section: "ניהול",   roles: OWNER_MANAGER },
+  { id: "/boq",           label: "כתב כמויות", icon: "clipboard", section: "ניהול",   roles: OWNER_MANAGER },
+  { id: "/boqwizard",     label: "אשף כמויות", icon: "zoom-in",   section: "ניהול",   roles: OWNER_MANAGER },
+  { id: "/photos",        label: "תמונות",     icon: "camera",    section: "תיעוד",   roles: ALL_ROLES },
+  { id: "/notes",         label: "הערות",      icon: "message",   section: "תיעוד", badge: 3, roles: ALL_ROLES },
+  { id: "/personal-files",label: "קבצים אישיים",icon: "file-text", section: "תיעוד",  roles: OWNER_ONLY },
+  { id: "/budget",        label: "תקציב",      icon: "chart",     section: "פיננסי",  roles: OWNER_MANAGER },
+  { id: "/quotes",        label: "הצעות מחיר", icon: "clipboard", section: "פיננסי",  roles: OWNER_MANAGER },
+  { id: "/timeline",      label: "לוח זמנים", icon: "calendar",  section: "פיננסי",   roles: OWNER_MANAGER_INSPECTOR },
 ]
 
 export const PAGE_TITLES: Record<string, string> = {
@@ -37,6 +44,7 @@ export const PAGE_TITLES: Record<string, string> = {
   "/photos": "תמונות ותיעוד",
   "/notes": "הערות",
   "/personal-files": "קבצים אישיים",
+  "/team": "ניהול צוות",
   "/budget": "תקציב והוצאות",
   "/quotes": "הצעות מחיר והשוואה",
   "/timeline": "לוח זמנים",
@@ -124,11 +132,12 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const sections = Array.from(new Set(NAV.map(n => n.section)))
 
   const publicRoutes = ['/landing', '/register', '/login']
-  const noLayoutRoutes = publicRoutes
+  const isPublicRoute = (path: string) =>
+    publicRoutes.includes(path) || path.startsWith('/join/')
 
   React.useEffect(() => {
     if (isLoading) return
-    if (!isAuthenticated && !publicRoutes.includes(currentPath)) {
+    if (!isAuthenticated && !isPublicRoute(currentPath)) {
       navigate({ to: '/login' })
     }
   }, [currentPath, isAuthenticated, isLoading, navigate])
@@ -142,14 +151,14 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   React.useEffect(() => {
     if (isLoading || isProjectLoading) return
-    if (isAuthenticated && !publicRoutes.includes(currentPath) && currentPath !== '/projects' && projects.length === 0) {
+    if (isAuthenticated && !isPublicRoute(currentPath) && currentPath !== '/projects' && projects.length === 0) {
       navigate({ to: '/projects' })
     }
   }, [currentPath, isAuthenticated, isLoading, isProjectLoading, navigate, projects.length])
 
   React.useEffect(() => {
     if (typeof window === 'undefined' || isLoading || isProjectLoading) return;
-    if (isAuthenticated && !publicRoutes.includes(currentPath)) {
+    if (isAuthenticated && !isPublicRoute(currentPath)) {
       // If user has 0 projects, wait until they are actually on /projects page so the button is mounted
       if (projects.length === 0 && currentPath !== '/projects') return;
 
@@ -164,7 +173,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     }
   }, [isAuthenticated, isLoading, isProjectLoading, currentPath, startTour, projects.length]);
 
-  if (noLayoutRoutes.includes(currentPath)) {
+  if (isPublicRoute(currentPath)) {
     return <>{children}</>
   }
 
@@ -200,7 +209,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
         <div className="sidebar-scroll">
           {sections.map(sec => {
-            const items = NAV.filter(n => n.section === sec && (!n.ownerOnly || identity?.role === 'owner'))
+            const items = NAV.filter(n =>
+              n.section === sec &&
+              (!n.roles || (identity?.role && n.roles.includes(identity.role as any)))
+            )
             if (items.length === 0) return null
             const hasActive = items.some(n => n.id === currentPath)
             const collapsed = collapsedSections.has(sec) && !hasActive

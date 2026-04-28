@@ -10,6 +10,7 @@
 
 import type * as _lib_activity from "../_lib/activity.js";
 import type * as _lib_contractorPaymentSync from "../_lib/contractorPaymentSync.js";
+import type * as _lib_financialSummary from "../_lib/financialSummary.js";
 import type * as _lib_projectAccess from "../_lib/projectAccess.js";
 import type * as _lib_stageSchedule from "../_lib/stageSchedule.js";
 import type * as auth from "../auth.js";
@@ -17,6 +18,7 @@ import type * as budget from "../budget.js";
 import type * as contractorNotes from "../contractorNotes.js";
 import type * as dashboard from "../dashboard.js";
 import type * as http from "../http.js";
+import type * as invitations from "../invitations.js";
 import type * as mutations from "../mutations.js";
 import type * as notes from "../notes.js";
 import type * as personalFiles from "../personalFiles.js";
@@ -40,6 +42,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   "_lib/activity": typeof _lib_activity;
   "_lib/contractorPaymentSync": typeof _lib_contractorPaymentSync;
+  "_lib/financialSummary": typeof _lib_financialSummary;
   "_lib/projectAccess": typeof _lib_projectAccess;
   "_lib/stageSchedule": typeof _lib_stageSchedule;
   auth: typeof auth;
@@ -47,6 +50,7 @@ declare const fullApi: ApiFromModules<{
   contractorNotes: typeof contractorNotes;
   dashboard: typeof dashboard;
   http: typeof http;
+  invitations: typeof invitations;
   mutations: typeof mutations;
   notes: typeof notes;
   personalFiles: typeof personalFiles;

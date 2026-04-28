@@ -21,6 +21,7 @@ export function CreateProjectWizard({ onClose, onSave, saving }: CreateProjectWi
     managerName: '',
     inspectorName: '',
     budgetTotal: 0,
+    floorWastePct: 15,
   });
 
   const STEPS = [
@@ -149,12 +150,12 @@ export function CreateProjectWizard({ onClose, onSave, saving }: CreateProjectWi
               {step === 1 && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
                   <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 4 }}>מבנה ושטח</div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
                     <div>
                       <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>מספר קומות</div>
-                      <select 
-                        className="bp-input" 
-                        value={data.floors} 
+                      <select
+                        className="bp-input"
+                        value={data.floors}
                         onChange={e => update({ floors: Number(e.target.value) })}
                         style={{ width: '100%' }}
                       >
@@ -163,14 +164,35 @@ export function CreateProjectWizard({ onClose, onSave, saving }: CreateProjectWi
                     </div>
                     <div>
                       <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>שטח בנוי משוער (מ"ר)</div>
-                      <input 
-                        className="bp-input" 
+                      <input
+                        className="bp-input"
                         type="number"
-                        value={data.areaSqm || ''} 
+                        value={data.areaSqm || ''}
                         onChange={e => update({ areaSqm: Number(e.target.value) })}
                         placeholder="לדוג׳: 180"
                         style={{ width: '100%' }}
                       />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>אחוז פחת לריצוף (%)</div>
+                      <input
+                        className="bp-input"
+                        type="number"
+                        min={0}
+                        max={50}
+                        value={data.floorWastePct}
+                        onChange={e => update({ floorWastePct: Number(e.target.value) })}
+                        style={{ width: '100%' }}
+                      />
+                      <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4 }}>מומלץ 15%</div>
+                    </div>
+                  </div>
+                  <div style={{ background: '#FEF3C7', padding: 16, borderRadius: 12, border: '1px solid #FCD34D' }}>
+                    <div style={{ display: 'flex', gap: 12 }}>
+                      <Icon n="alert" s={18} c="#B45309" />
+                      <div style={{ fontSize: 13, lineHeight: 1.5, color: '#78350F' }}>
+                        <strong>שים לב:</strong> אחוז הפחת ייקבע פעם אחת ולא ניתן יהיה לשנותו לאחר יצירת הפרויקט. ערך זה משפיע על כל כמויות הריצוף בכל החדרים.
+                      </div>
                     </div>
                   </div>
                   <div style={{ background: 'var(--accent-light)', padding: 16, borderRadius: 12, border: '1px solid var(--border)' }}>

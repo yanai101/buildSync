@@ -1,21 +1,22 @@
 import React from 'react';
-import { motion } from 'framer-motion';
-import { Icon, StatCard, ProgressBar, Btn, Badge, Modal, FeedbackModal } from '../components/Shared';
+import { Icon, ProgressBar, Btn, Badge, Modal, FeedbackModal } from '../components/Shared';
 import { fmtMoney } from '../utils/mockData';
 import { useDataSource } from '../hooks/useDataSource';
 import { useDataMutation } from '../hooks/useDataMutation';
 import { useCurrentProject } from '../hooks/useCurrentProject';
-import { useQuery } from 'convex/react';
+import { useMutation, useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { ScreenBoundary } from '../components/ScreenBoundary';
+import { BudgetSummaryCards } from '../components/BudgetSummaryCards';
+import { useProjectBudgetSummary } from '../hooks/useProjectBudgetSummary';
 
 export const BudgetScreen = () => {
   const { projectId } = useCurrentProject();
-  const dbProject = useQuery(api.queries.getProject, projectId ? { projectId } : "skip");
   const dbCats = useQuery(api.budget.listCategories, projectId ? { projectId } : "skip");
   const dbExps = useQuery(api.budget.listExpenses, projectId ? { projectId } : "skip");
+  const updateBudgetTotal = useMutation(api.projects.updateBudgetTotal);
+  const { summary, isPending: summaryPending } = useProjectBudgetSummary();
 
-  const { data: project } = useDataSource<any>('project', { db: dbProject });
   const { data: categories, loading: catsLoading, error: catsError, refetch: catsRefetch } = useDataSource<any[]>('budget_cats', { db: dbCats as any });
   const { data: expenses, loading: expLoading, error: expError, refetch: expRefetch } = useDataSource<any[]>('expenses', { db: dbExps as any });
   const { mutate } = useDataMutation('expenses');
@@ -24,21 +25,45 @@ export const BudgetScreen = () => {
   const [addCatOpen, setAddCatOpen] = React.useState(false);
   const [newExp, setNewExp] = React.useState({ desc: '', amount: '', cat: '', date: new Date().toISOString().split('T')[0] });
   const [newCat, setNewCat] = React.useState({ name: '', budget: '', color: '#F97316' });
+  const [budgetDraft, setBudgetDraft] = React.useState('');
   const [saving, setSaving] = React.useState(false);
+  const [savingBudget, setSavingBudget] = React.useState(false);
   const [feedback, setFeedback] = React.useState<{ title: string; message: string; type: 'success' | 'error' | 'info' } | null>(null);
 
-  const loading = catsLoading || expLoading || !project;
+  React.useEffect(() => {
+    if (!summary) return;
+    setBudgetDraft(summary.projectBudget > 0 ? String(summary.projectBudget) : '');
+  }, [summary?.projectBudget]);
+
+  const loading = catsLoading || expLoading || summaryPending || !summary;
   const error = catsError || expError;
   const refetch = () => { catsRefetch(); expRefetch(); };
 
   if (loading) return <ScreenBoundary loading={true} onRetry={refetch}><div/></ScreenBoundary>;
   if (error) return <ScreenBoundary error={error} onRetry={refetch}><div/></ScreenBoundary>;
 
-  const categoryBudgetSum = categories?.reduce((a,c)=>a+c.budget,0) || 0;
-  const projectBudget = project?.budgetTotal || 0;
-  const totalBudget = projectBudget > 0 ? projectBudget : categoryBudgetSum;
-  const totalSpent = categories?.reduce((a,c)=>a+c.spent,0) || 0;
-  const committed = project?.committed || 0;
+  const totalBudget = summary.totalBudget;
+  const totalSpent = summary.totalSpent;
+  const committed = summary.committed;
+  const remainingBudget = summary.remainingBudget;
+  const spentPct = totalBudget ? Math.min(100, Math.max(0, totalSpent / totalBudget * 100)) : 0;
+  const committedPct = totalBudget ? Math.min(100, Math.max(0, committed / totalBudget * 100)) : 0;
+  const remainingPct = totalBudget ? Math.round((remainingBudget / totalBudget) * 100) : 0;
+
+  const handleSaveProjectBudget = async () => {
+    if (!projectId) return;
+    const nextBudget = Number(budgetDraft);
+    if (!Number.isFinite(nextBudget) || nextBudget < 0) return;
+    setSavingBudget(true);
+    try {
+      await updateBudgetTotal({ projectId, budgetTotal: nextBudget });
+      setFeedback({ title: "תקציב עודכן", message: `תקציב הפרויקט עודכן ל-${fmtMoney(nextBudget)}.`, type: "success" });
+    } catch (err) {
+      setFeedback({ title: "שגיאה", message: "לא הצלחנו לעדכן את תקציב הפרויקט.", type: "error" });
+    } finally {
+      setSavingBudget(false);
+    }
+  };
 
   const handleAddExpense = async () => {
     if (!newExp.desc || !newExp.amount || !newExp.cat) return;
@@ -102,37 +127,44 @@ export const BudgetScreen = () => {
           </Btn>
         </div>
 
-        {/* Summary cards */}
-        <motion.div
-          className="grid-4"
-          style={{marginBottom:24}}
-          variants={{ show: { transition: { staggerChildren: 0.1 } } }}
-          initial="hidden"
-          animate="show"
-        >
-          {[
-            { label:"תקציב כולל",    value:fmtMoney(totalBudget),                                                      icon:"chart" },
-            { label:"הוצא עד כה",   value:fmtMoney(totalSpent),   accent:"var(--accent)",  sub:`${totalBudget ? Math.round(totalSpent/totalBudget*100) : 0}% מהתקציב`, icon:"arrow-right" },
-            { label:"מחויב (חוזים)",value:fmtMoney(committed), accent:"var(--warning)", icon:"clipboard" },
-            { label:"יתרה פנויה",   value:fmtMoney(totalBudget-totalSpent-committed), accent:"var(--success)", icon:"check-circle" },
-          ].map((card,i) => (
-            <motion.div key={i} variants={{ hidden:{opacity:0,y:20}, show:{opacity:1,y:0,transition:{type:"spring",stiffness:280,damping:24}} }}>
-              <StatCard {...card} />
-            </motion.div>
-          ))}
-        </motion.div>
+        <div className="card" style={{padding:20,marginBottom:20,display:"flex",justifyContent:"space-between",alignItems:"flex-end",gap:16,flexWrap:"wrap"}}>
+          <div>
+            <div style={{fontSize:14,fontWeight:800,color:"var(--text1)",marginBottom:4}}>תקציב פרויקט כולל</div>
+            <div style={{fontSize:12,color:"var(--text3)"}}>
+              {summary.isProjectBudgetDefined
+                ? "זהו מקור התקציב הראשי שמסנכרן את עמוד התקציב ולוח הבקרה."
+                : "לא הוגדר תקציב בפרויקט. הגדירו כאן תקציב כולל כדי לסנכרן את כל הסיכומים."}
+            </div>
+          </div>
+          <div style={{display:"flex",gap:10,alignItems:"center"}}>
+            <input
+              className="bp-input"
+              type="number"
+              min={0}
+              value={budgetDraft}
+              onChange={e=>setBudgetDraft(e.target.value)}
+              placeholder="0"
+              style={{width:180,fontWeight:700}}
+            />
+            <Btn onClick={handleSaveProjectBudget} disabled={savingBudget || !projectId}>
+              {savingBudget ? "שומר..." : "שמור תקציב"}
+            </Btn>
+          </div>
+        </div>
+
+        <BudgetSummaryCards summary={summary} style={{marginBottom:24}} />
 
         {/* Budget bar */}
         <div className="card" style={{marginBottom:20,padding:20}}>
           <div style={{fontWeight:600,fontSize:14,marginBottom:12}}>ניצול תקציב</div>
           <div style={{height:18,background:"var(--bg)",borderRadius:99,overflow:"hidden",display:"flex",marginBottom:12,border:"1px solid var(--border)"}}>
-            <div style={{width:`${totalBudget ? (totalSpent/totalBudget*100) : 0}%`,background:"linear-gradient(90deg, var(--accent) 0%, #c96b30 100%)",transition:"width .6s cubic-bezier(.4,0,.2,1)",borderRadius:"99px 0 0 99px"}}/>
-            <div style={{width:`${totalBudget ? (committed/totalBudget*100) : 0}%`,background:"#FDE68A"}}/>
+            <div style={{width:`${spentPct}%`,background:"linear-gradient(90deg, var(--accent) 0%, #c96b30 100%)",transition:"width .6s cubic-bezier(.4,0,.2,1)",borderRadius:"99px 0 0 99px"}}/>
+            <div style={{width:`${committedPct}%`,background:"#FDE68A"}}/>
           </div>
           <div style={{display:"flex",gap:24,fontSize:12.5}}>
             <span style={{display:"flex",alignItems:"center",gap:6}}><span style={{width:11,height:11,borderRadius:3,background:"var(--accent)",display:"inline-block"}}/> הוצא: <strong>{fmtMoney(totalSpent)}</strong> ({totalBudget ? Math.round(totalSpent/totalBudget*100) : 0}%)</span>
             <span style={{display:"flex",alignItems:"center",gap:6}}><span style={{width:11,height:11,borderRadius:3,background:"#F59E0B",display:"inline-block"}}/> מחויב: <strong>{fmtMoney(committed)}</strong> ({totalBudget ? Math.round(committed/totalBudget*100) : 0}%)</span>
-            <span style={{display:"flex",alignItems:"center",gap:6}}><span style={{width:11,height:11,borderRadius:3,background:"#D1D5DB",display:"inline-block"}}/> נותר: <strong>{fmtMoney(totalBudget-totalSpent-committed)}</strong> ({totalBudget ? Math.round((totalBudget-totalSpent-committed)/totalBudget*100) : 0}%)</span>
+            <span style={{display:"flex",alignItems:"center",gap:6}}><span style={{width:11,height:11,borderRadius:3,background:"#D1D5DB",display:"inline-block"}}/> נותר: <strong>{fmtMoney(remainingBudget)}</strong> ({remainingPct}%)</span>
           </div>
         </div>
 

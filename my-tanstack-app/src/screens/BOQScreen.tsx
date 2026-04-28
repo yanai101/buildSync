@@ -13,12 +13,15 @@ export interface BOQItem {
   unitPrice: number;
   supplier: string;
   spec: string;
+  notes?: string;
   status: "pending" | "approved";
+  isLocked?: boolean;
 }
 
 import { useCurrentProject } from '../hooks/useCurrentProject';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
+import { getAllBoqCatalogCategories, getCatalogForRoom } from '../data/boqCatalog';
 import type { Id } from '../../convex/_generated/dataModel';
 
 const ITEM_FORM_FIELDS = [
@@ -27,7 +30,118 @@ const ITEM_FORM_FIELDS = [
   ["unitPrice", "מחיר ליח'"],
   ["supplier", "ספק"],
   ["spec", "מפרט טכני"],
+  ["notes", "הערות"],
 ] as const;
+
+const BUILT_IN_BOQ_CATEGORIES = [
+  "ריצוף פנים",
+  "ריצוף חוץ",
+  "חיפויי קירות",
+  "קרמיקה וחיפויי חדרים רטובים",
+  "אינסטלציה",
+  "כלים סניטריים",
+  "ברזים ואביזרי מים",
+  "מערכת ביוב וניקוז",
+  "חשמל",
+  "לוחות חשמל",
+  "נקודות חשמל",
+  "תקשורת ואינטרנט",
+  "בית חכם",
+  "תאורה",
+  "גופי תאורה פנים",
+  "גופי תאורה חוץ",
+  "תאורת גינה",
+  "מיזוג אוויר",
+  "חימום תת־רצפתי",
+  "אוורור",
+  "אלומיניום",
+  "חלונות",
+  "ויטרינות",
+  "תריסים ורשתות",
+  "דלתות פנים",
+  "דלתות חוץ",
+  "דלת כניסה",
+  "מסגרות וברזל",
+  "מעקות",
+  "שערים וגדרות",
+  "נגרות",
+  "מטבח",
+  "אי מטבח",
+  "ארונות שירות",
+  "ארונות קיר",
+  "ארונות חדרים",
+  "ארונות אמבטיה",
+  "ספריות ומדפים",
+  "חדרי רחצה",
+  "מקלחונים",
+  "אמבטיות",
+  "אסלות וניאגרות",
+  "כיורים",
+  "משטחי שיש וקוורץ",
+  "חיפויי מטבח",
+  "פרזול",
+  "ידיות",
+  "צבע פנים",
+  "צבע חוץ",
+  "גבס",
+  "הנמכות תקרה",
+  "קירות דקורטיביים",
+  "וילונות ופתרונות הצללה",
+  "פרקטים",
+  "מדרגות",
+  "חיפוי מדרגות",
+  "ריהוט",
+  "ריהוט סלון",
+  "ריהוט פינת אוכל",
+  "ריהוט חדרי שינה",
+  "ריהוט חדרי ילדים",
+  "ריהוט משרד / פינת עבודה",
+  "ריהוט גן",
+  "מטבח חוץ",
+  "בריכה",
+  "חדר מכונות לבריכה",
+  "מערכות סינון לבריכה",
+  "חיפוי וריצוף בריכה",
+  "דק",
+  "פרגולות",
+  "הצללות חוץ",
+  "גינון",
+  "דשא טבעי",
+  "דשא סינטטי",
+  "עצים וצמחייה",
+  "מערכת השקיה",
+  "אדניות וכדים",
+  "שבילי גישה",
+  "חניות",
+  "ריצוף חניה",
+  "קירות תמך",
+  "חומות וגדרות",
+  "שער חשמלי",
+  "מערכת אינטרקום",
+  "מצלמות אבטחה",
+  "אזעקה",
+  "מערכת שמע",
+  "מערכת קולנוע ביתית",
+  "מכשירי חשמל",
+  "מקרר",
+  "תנור",
+  "כיריים",
+  "מדיח",
+  "קולט אדים",
+  "מכונת כביסה",
+  "מייבש",
+  "מערכות סולאריות",
+  "דוד שמש",
+  "דוד חשמל",
+  "משאבות",
+  "מחסן",
+  "חדר שירות",
+  "ממ״ד",
+  "אביזרי בטיחות",
+  "אגרות והיטלים",
+  "בלתי צפוי / רזרבה",
+  "שונות",
+];
 
 const uniqueCategories = (categories: Array<string | null | undefined>) => {
   const seen = new Set<string>();
@@ -175,6 +289,7 @@ export const BOQScreen = () => {
   const dbBoq = useQuery(api.queries.listBoq, projectId ? { projectId } : "skip");
   const dbProject = useQuery(api.projects.getWithDetails, projectId ? { projectId } : "skip");
   const addBoqItem = useMutation(api.mutations.addBoqItem);
+  const updateBoqItem = useMutation(api.mutations.updateBoqItem);
   const updateBoqItemStatus = useMutation(api.mutations.updateBoqItemStatus);
 
   const initialBoq = dbBoq ?? null;
@@ -184,11 +299,12 @@ export const BOQScreen = () => {
   const [items, setItems] = React.useState<Record<string, BOQItem[]>>({});
   const [room, setRoom] = React.useState<string>("");
   const [adding, setAdding] = React.useState(false);
+  const [editingItem, setEditingItem] = React.useState<BOQItem | null>(null);
   const [saving, setSaving] = React.useState(false);
   const [exporting, setExporting] = React.useState(false);
   const [formError, setFormError] = React.useState<string | null>(null);
   const [statusSavingIds, setStatusSavingIds] = React.useState<Set<string | number>>(() => new Set());
-  const [form, setForm] = React.useState<Partial<BOQItem>>({name:"",cat:"ריצוף",qty:1,unit:"יח'",unitPrice:0,supplier:"",spec:"",status:"pending"});
+  const [form, setForm] = React.useState<Partial<BOQItem>>({name:"",cat:"ריצוף פנים",qty:1,unit:"יח'",unitPrice:0,supplier:"",spec:"",notes:"",status:"pending"});
 
   const printRef = React.useRef<HTMLDivElement>(null);
   const rooms = (project as any)?.rooms || [];
@@ -201,9 +317,9 @@ export const BOQScreen = () => {
       const opt = {
         margin: 0,
         filename: `BOQ_${project?.name || 'project'}.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
+        image: { type: 'jpeg' as const, quality: 0.98 },
         html2canvas: { scale: 2, useCORS: true, logging: false },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        jsPDF: { unit: 'mm' as const, format: 'a4' as const, orientation: 'portrait' as const }
       };
       await html2pdf().set(opt).from(element).save();
     } catch (err) {
@@ -230,7 +346,9 @@ export const BOQScreen = () => {
             unitPrice: item.unitPrice,
             supplier: item.supplier,
             spec: item.spec,
+            notes: item.notes,
             status: item.status,
+            isLocked: item.isLocked,
           });
         });
         setItems(grouped);
@@ -247,27 +365,70 @@ export const BOQScreen = () => {
   }, [rooms, room]);
 
   const roomItems = items[room] || [];
+  const currentRoom = rooms.find((r: Room) => r.uid === room);
   const total = roomItems.reduce((a: number, i: BOQItem)=>a+i.qty*i.unitPrice,0);
   const allTotal = Object.values(items).flat().reduce((a: number, i: BOQItem)=>a+i.qty*i.unitPrice,0);
   const categoryOptions = React.useMemo(
     () => uniqueCategories([
+      ...getCatalogForRoom((currentRoom as any)?.type, false).map((item) => item.cat),
+      ...BUILT_IN_BOQ_CATEGORIES,
+      ...getAllBoqCatalogCategories(),
       ...EXAMPLE_BOQ_CATEGORIES,
       ...Object.values(items).flat().map((item) => item.cat),
     ]),
-    [items]
+    [currentRoom, items]
   );
 
   const resetForm = () => {
-    setForm({name:"",cat:"ריצוף",qty:1,unit:"יח'",unitPrice:0,supplier:"",spec:"",status:"pending"});
+    setForm({name:"",cat:"ריצוף פנים",qty:1,unit:"יח'",unitPrice:0,supplier:"",spec:"",notes:"",status:"pending"});
+    setEditingItem(null);
     setFormError(null);
   };
 
-  const addItem = async () => {
+  const startAdding = () => {
+    resetForm();
+    setAdding(true);
+  };
+
+  const startEditing = (item: BOQItem) => {
+    setForm({
+      name: item.name,
+      cat: item.cat,
+      qty: item.qty,
+      unit: item.unit,
+      unitPrice: item.unitPrice,
+      supplier: item.supplier || "",
+      spec: item.spec || "",
+      notes: item.notes || "",
+      status: item.status,
+      isLocked: item.isLocked,
+    });
+    setEditingItem(item);
+    setFormError(null);
+    setAdding(true);
+  };
+
+  const patchLocalItem = (itemId: BOQItem["id"], patch: Partial<BOQItem>) => {
+    setItems(prev => {
+      const next = { ...prev };
+      for (const [roomId, roomBoqItems] of Object.entries(next)) {
+        const itemIndex = roomBoqItems.findIndex(item => item.id === itemId);
+        if (itemIndex === -1) continue;
+        next[roomId] = roomBoqItems.map(item => item.id === itemId ? { ...item, ...patch } : item);
+        break;
+      }
+      return next;
+    });
+  };
+
+  const saveItem = async () => {
     if (!projectId || !room) return;
+    const isEditing = !!editingItem;
+    const isLockedEdit = !!editingItem?.isLocked;
     const category = (form.cat || "").trim();
     const name = (form.name || "").trim();
     const unit = (form.unit || "").trim();
-    if(!name || !category || !unit) {
+    if(!isLockedEdit && (!name || !category || !unit)) {
       setFormError("שם פריט, קטגוריה ויחידה הם שדות חובה");
       return;
     }
@@ -285,6 +446,7 @@ export const BOQScreen = () => {
         unitPrice: number;
         supplier?: string;
         spec?: string;
+        notes?: string;
       } = {
         projectId,
         roomId: room as Id<'projectRooms'>,
@@ -296,14 +458,69 @@ export const BOQScreen = () => {
       };
       const supplier = (form.supplier || "").trim();
       const spec = (form.spec || "").trim();
+      const notes = (form.notes || "").trim();
       if (supplier) payload.supplier = supplier;
       if (spec) payload.spec = spec;
+      if (notes) payload.notes = notes;
 
-      await addBoqItem(payload);
+      if (isEditing && editingItem) {
+        const updatePayload: {
+          itemId: Id<'boqItems'>;
+          category?: string;
+          name?: string;
+          qty?: number;
+          unit?: string;
+          unitPrice?: number;
+          supplier?: string;
+          spec?: string;
+          notes?: string;
+        } = {
+          itemId: editingItem.id as Id<'boqItems'>,
+          unitPrice: Number(form.unitPrice) || 0,
+          supplier,
+          spec,
+          notes,
+        };
+        if (!isLockedEdit) {
+          updatePayload.category = category;
+          updatePayload.name = name;
+          updatePayload.qty = Number(form.qty) || 0;
+          updatePayload.unit = unit;
+        }
+
+        await updateBoqItem(updatePayload);
+        patchLocalItem(editingItem.id, {
+          ...(isLockedEdit ? {} : { cat: category, name, qty: Number(form.qty) || 0, unit }),
+          unitPrice: Number(form.unitPrice) || 0,
+          supplier,
+          spec,
+          notes,
+        });
+      } else {
+        const itemId = await addBoqItem(payload);
+        setItems(prev => ({
+          ...prev,
+          [room]: [
+            ...(prev[room] || []),
+            {
+              id: itemId,
+              name,
+              cat: category,
+              qty: Number(form.qty) || 0,
+              unit,
+              unitPrice: Number(form.unitPrice) || 0,
+              supplier,
+              spec,
+              notes,
+              status: "pending",
+            },
+          ],
+        }));
+      }
       setAdding(false);
       resetForm();
     } catch (err) {
-      console.error('Failed to add BOQ item', err);
+      console.error('Failed to save BOQ item', err);
       setFormError("שמירת הפריט נכשלה. נסה שוב.");
     } finally {
       setSaving(false);
@@ -315,6 +532,7 @@ export const BOQScreen = () => {
     setStatusSavingIds(prev => new Set(prev).add(item.id));
     try {
       await updateBoqItemStatus({ itemId: item.id as any, status: nextStatus });
+      patchLocalItem(item.id, { status: nextStatus });
     } catch (err) {
       console.error('Failed to update BOQ item status', err);
     } finally {
@@ -342,36 +560,59 @@ export const BOQScreen = () => {
             <Btn size="sm" variant="ghost" onClick={handleExportPDF} disabled={exporting}>
               <Icon n={exporting ? "loader" : "download"} s={13}/> {exporting ? "מייצא..." : "ייצוא PDF"}
             </Btn>
-            <Btn size="sm" onClick={()=>{resetForm();setAdding(true)}} disabled={!projectId || !room}><Icon n="plus" s={13}/> פריט חדש</Btn>
+            <Btn size="sm" onClick={startAdding} disabled={!projectId || !room}><Icon n="plus" s={13}/> פריט חדש</Btn>
           </div>
         </div>
 
         {adding && (
           <div className="card" style={{padding:16,marginBottom:16,border:"2px solid var(--accent)"}}>
-            <div style={{fontWeight:600,fontSize:14,marginBottom:12}}>הוספת פריט חדש — {rooms.find((r: Room)=>r.uid===room)?.name}</div>
+            <div style={{fontWeight:600,fontSize:14,marginBottom:12}}>
+              {editingItem ? "עריכת פריט" : "הוספת פריט חדש"} — {currentRoom?.name}
+              {editingItem?.isLocked && (
+                <span style={{fontWeight:400,fontSize:12,color:"var(--text3)",marginRight:8}}>
+                  פריט מהאשף: ניתן לערוך מחיר, ספק, מפרט והערות
+                </span>
+              )}
+            </div>
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:10}}>
               <div>
                 <div style={{fontSize:11,color:"var(--text2)",marginBottom:3}}>שם פריט</div>
-                <input className="bp-input" value={form.name || ""} onChange={e=>setForm(f=>({...f,name:e.target.value}))} style={{width:"100%"}}/>
+                <input
+                  className="bp-input"
+                  value={form.name || ""}
+                  onChange={e=>setForm(f=>({...f,name:e.target.value}))}
+                  disabled={!!editingItem?.isLocked}
+                  style={{width:"100%"}}
+                />
               </div>
               <div>
                 <div style={{fontSize:11,color:"var(--text2)",marginBottom:3}}>קטגוריה</div>
-                <CategoryAutocomplete
-                  value={form.cat || ""}
-                  onChange={cat => setForm(f => ({...f, cat}))}
-                  options={categoryOptions}
-                />
+                {editingItem?.isLocked ? (
+                  <input className="bp-input" value={form.cat || ""} disabled style={{width:"100%"}}/>
+                ) : (
+                  <CategoryAutocomplete
+                    value={form.cat || ""}
+                    onChange={cat => setForm(f => ({...f, cat}))}
+                    options={categoryOptions}
+                  />
+                )}
               </div>
               {ITEM_FORM_FIELDS.map(([k,label])=>(
                 <div key={k}>
                   <div style={{fontSize:11,color:"var(--text2)",marginBottom:3}}>{label}</div>
-                  <input className="bp-input" value={(form as any)[k]} onChange={e=>setForm(f=>({...f,[k]:e.target.value}))} style={{width:"100%"}}/>
+                  <input
+                    className="bp-input"
+                    value={(form as any)[k]}
+                    onChange={e=>setForm(f=>({...f,[k]:e.target.value}))}
+                    disabled={!!editingItem?.isLocked && (k === "qty" || k === "unit")}
+                    style={{width:"100%"}}
+                  />
                 </div>
               ))}
             </div>
             {formError && <div style={{marginTop:10,fontSize:12,color:"var(--danger)",fontWeight:600}}>{formError}</div>}
             <div style={{marginTop:12,display:"flex",gap:8}}>
-              <Btn onClick={addItem} disabled={saving}>{saving ? "שומר..." : "שמור"}</Btn>
+              <Btn onClick={saveItem} disabled={saving}>{saving ? "שומר..." : "שמור"}</Btn>
               <Btn variant="ghost" onClick={()=>{setAdding(false);resetForm()}} disabled={saving}>ביטול</Btn>
             </div>
           </div>
@@ -387,7 +628,7 @@ export const BOQScreen = () => {
               description="הוסיפו פריטים ידנית או השתמשו באשף הכמויות ליצירה אוטומטית של רשימת קניות על בסיס סוג החדר."
               action={
                 <div style={{display: 'flex', gap: 12}}>
-                  <Btn size="lg" onClick={()=>{resetForm();setAdding(true)}} disabled={!projectId || !room}>
+                  <Btn size="lg" onClick={startAdding} disabled={!projectId || !room}>
                     <Icon n="plus" s={18} /> פריט חדש
                   </Btn>
                   <Btn size="lg" variant="ghost" onClick={() => (window as any).location.href='/boqwizard'}>
@@ -406,13 +647,17 @@ export const BOQScreen = () => {
               </div>
               <div style={{overflowX:"auto"}}>
                 <table className="bp-table" style={{width:"100%"}}>
-                  <thead><tr><th>פריט / מפרט</th><th>כמות</th><th>מחיר יח'</th><th>סה"כ</th><th>ספק</th><th>סטטוס</th></tr></thead>
+                  <thead><tr><th>פריט / מפרט</th><th>כמות</th><th>מחיר יח'</th><th>סה"כ</th><th>ספק</th><th>סטטוס</th><th></th></tr></thead>
                   <tbody>
                     {roomItems.filter(i=>i.cat===cat).map(i=>(
                       <tr key={i.id}>
                         <td>
-                          <div style={{fontWeight:600,fontSize:13}}>{i.name}</div>
+                          <div style={{fontWeight:600,fontSize:13,display:"flex",alignItems:"center",gap:6}}>
+                            {i.isLocked && <Icon n="lock" s={12} c="var(--text3)"/>}
+                            <span>{i.name}</span>
+                          </div>
                           <div style={{fontSize:11,color:"var(--text3)",marginTop:2}}>{i.spec}</div>
+                          {i.notes && <div style={{fontSize:11,color:"var(--text3)",marginTop:2}}>הערות: {i.notes}</div>}
                         </td>
                         <td style={{fontSize:13}}>{i.qty} {i.unit}</td>
                         <td style={{fontSize:13}}>{fmtMoney(i.unitPrice)}</td>
@@ -427,6 +672,11 @@ export const BOQScreen = () => {
                           >
                             <Badge type={i.status === 'approved' ? 'done' : 'pending'}>{i.status === 'approved' ? 'מאושר' : 'ממתין'}</Badge>
                           </button>
+                        </td>
+                        <td style={{textAlign:"left"}}>
+                          <Btn size="sm" variant="ghost" onClick={() => startEditing(i)}>
+                            <Icon n="edit" s={13}/> עריכה
+                          </Btn>
                         </td>
                       </tr>
                     ))}

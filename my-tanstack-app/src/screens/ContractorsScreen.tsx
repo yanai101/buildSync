@@ -450,6 +450,7 @@ export const ContractorsScreen = () => {
   const { loading, error, refetch, mode } = contractorsSource;
   const contractors = contractorsSource.data ?? [];
   const createContractor = useMutation(api.mutations.createContractor);
+  const deleteContractor = useMutation(api.mutations.deleteContractor);
   const saveSchedule = useMutation(api.mutations.saveContractorPaymentSchedule);
   const setMilestonePaid = useMutation(api.mutations.setContractorPaymentMilestonePaid);
   const setContractorStages = useMutation(api.stages.setContractorStages);
@@ -457,6 +458,8 @@ export const ContractorsScreen = () => {
   const [selectedId, setSelectedId] = React.useState<string | null>(null);
   const [adding, setAdding] = React.useState(false);
   const [savingContractor, setSavingContractor] = React.useState(false);
+  const [deletingContractor, setDeletingContractor] = React.useState(false);
+  const [deleteTarget, setDeleteTarget] = React.useState<Contractor | null>(null);
   const [savingPayment, setSavingPayment] = React.useState(false);
   const [pendingPayment, setPendingPayment] = React.useState<{ contractor: Contractor; milestone: Milestone; paid: boolean } | null>(null);
   const [feedback, setFeedback] = React.useState<{ title: string; message: string; type: 'success' | 'error' | 'info' } | null>(null);
@@ -487,6 +490,12 @@ export const ContractorsScreen = () => {
       });
       setAdding(false);
       setForm(emptyForm);
+    } catch (err) {
+      setFeedback({
+        title: "שגיאה",
+        message: err instanceof Error ? err.message : "לא הצלחנו להוסיף את הקבלן. אנא נסו שוב.",
+        type: "error",
+      });
     } finally {
       setSavingContractor(false);
     }
@@ -566,17 +575,64 @@ export const ContractorsScreen = () => {
     }
   };
 
+  const contractorHasPaidPayments = (contractor: Contractor) =>
+    contractor.paid > 0 || normalizeMilestones(contractor).some(milestone => Boolean(milestone.paid));
+
+  const requestDeleteContractor = (contractor: Contractor) => {
+    if (mode !== 'db') return;
+    setDeleteTarget(contractor);
+  };
+
+  const confirmDeleteContractor = async () => {
+    if (!deleteTarget) return;
+    setDeletingContractor(true);
+    try {
+      const result = await deleteContractor({ contractorId: contractorDbId(deleteTarget) as any });
+      setFeedback({
+        title: "הקבלן נמחק",
+        message: result.paidMilestonesPreserved > 0
+          ? `הקבלן נמחק מהפרויקט. ${result.paidMilestonesPreserved} תשלומים ששולמו נשמרו בהיסטוריית התשלומים וההוצאות.`
+          : "הקבלן נמחק מהפרויקט.",
+        type: "success",
+      });
+      if (selectedId && (selectedId === String(deleteTarget.id) || selectedId === String(deleteTarget._id))) {
+        setSelectedId(null);
+      }
+      setDeleteTarget(null);
+    } catch (err) {
+      setFeedback({
+        title: "שגיאה",
+        message: err instanceof Error ? err.message : "לא הצלחנו למחוק את הקבלן. אנא נסו שוב.",
+        type: "error",
+      });
+    } finally {
+      setDeletingContractor(false);
+    }
+  };
+
   const c = selected;
   const selectedPaymentStarted = c
     ? c.paid > 0 || normalizeMilestones(c).some(milestone => Boolean(milestone.paid))
     : false;
 
   if (c) return (
-    <ScreenBoundary loading={loading} error={error} onRetry={refetch}>
-      <div className="page-content">
-        <button onClick={()=>setSelectedId(null)} style={{display:"flex",alignItems:"center",gap:6,background:"none",border:"none",cursor:"pointer",color:"var(--text2)",fontSize:13,marginBottom:16,padding:0}}>
-          <Icon n="arrow-right" s={14}/> חזרה לרשימה
-        </button>
+    <>
+      <ScreenBoundary loading={loading} error={error} onRetry={refetch}>
+        <div className="page-content">
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,gap:12}}>
+            <button onClick={()=>setSelectedId(null)} style={{display:"flex",alignItems:"center",gap:6,background:"none",border:"none",cursor:"pointer",color:"var(--text2)",fontSize:13,padding:0}}>
+              <Icon n="arrow-right" s={14}/> חזרה לרשימה
+            </button>
+            <Btn
+              size="sm"
+              variant="ghost"
+              onClick={()=>requestDeleteContractor(c)}
+              disabled={deletingContractor || mode !== 'db'}
+              style={{color:"var(--danger)"}}
+            >
+              <Icon n="trash" s={13}/> מחק קבלן
+            </Btn>
+          </div>
         <div style={{display:"grid",gridTemplateColumns:"280px 1fr",gap:20}}>
           <div style={{display:"flex",flexDirection:"column",gap:16}}>
             <div className="card" style={{padding:20,textAlign:"center"}}>
@@ -718,32 +774,50 @@ export const ContractorsScreen = () => {
             onClose={() => savingPayment ? undefined : setPendingPayment(null)}
           />
         )}
-        {feedback && (
-          <FeedbackModal
-            title={feedback.title}
-            message={feedback.message}
-            type={feedback.type}
-            onClose={() => setFeedback(null)}
-          />
-        )}
-      </div>
-    </ScreenBoundary>
+        </div>
+      </ScreenBoundary>
+      {deleteTarget && (
+        <ConfirmDialog
+          title="מחיקת קבלן"
+          message={
+            contractorHasPaidPayments(deleteTarget)
+              ? `למחוק את ${deleteTarget.name}? קיימים תשלומים שכבר שולמו. הקבלן, שיוכי השלבים ותשלומים שלא שולמו יימחקו, אבל תשלומים והוצאות שכבר שולמו יישארו בבסיס הנתונים.`
+              : `למחוק את ${deleteTarget.name}? הקבלן, שיוכי השלבים ולוח התשלומים שלא שולם יימחקו מהפרויקט.`
+          }
+          confirmText={deletingContractor ? "מוחק..." : "מחק קבלן"}
+          cancelText="ביטול"
+          loading={deletingContractor}
+          type={contractorHasPaidPayments(deleteTarget) ? "warning" : "error"}
+          onConfirm={confirmDeleteContractor}
+          onClose={() => deletingContractor ? undefined : setDeleteTarget(null)}
+        />
+      )}
+      {feedback && (
+        <FeedbackModal
+          title={feedback.title}
+          message={feedback.message}
+          type={feedback.type}
+          onClose={() => setFeedback(null)}
+        />
+      )}
+    </>
   );
 
   return (
-    <ScreenBoundary 
-      loading={loading} 
-      error={error} 
-      onRetry={refetch}
-      isEmpty={contractors.length === 0}
-      emptyTitle="לא נמצאו קבלנים בפרויקט"
-      emptyDesc="הוסיפו קבלנים, הגדירו עבורם לוח תשלומים המחובר להתקדמות הבנייה, ועקבו אחר התקציב."
-      emptyIcon="users"
-      emptyImage="/empty_states/contractors.png"
-      emptyAction={() => setAdding(true)}
-      emptyActionLabel="קבלן חדש"
-    >
-      <div className="page-content">
+    <>
+      <ScreenBoundary 
+        loading={loading} 
+        error={error} 
+        onRetry={refetch}
+        isEmpty={contractors.length === 0}
+        emptyTitle="לא נמצאו קבלנים בפרויקט"
+        emptyDesc="הוסיפו קבלנים, הגדירו עבורם לוח תשלומים המחובר להתקדמות הבנייה, ועקבו אחר התקציב."
+        emptyIcon="users"
+        emptyImage="/empty_states/contractors.png"
+        emptyAction={() => setAdding(true)}
+        emptyActionLabel="קבלן חדש"
+      >
+        <div className="page-content">
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
           <div style={{fontSize:13,color:"var(--text2)"}}>{contractors.length} קבלנים בפרויקט</div>
           <Btn size="sm" onClick={()=>setAdding(true)} disabled={!projectId || mode !== 'db'}><Icon n="plus" s={14}/> קבלן חדש</Btn>
@@ -773,7 +847,21 @@ export const ContractorsScreen = () => {
                       <div style={{fontWeight:700,fontSize:15,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.name}</div>
                       <div style={{fontSize:12.5,color:"var(--text2)",marginTop:2}}>{c.role}</div>
                     </div>
-                    <div style={{marginRight:"auto"}}><Badge type={c.status}/></div>
+                    <div style={{marginRight:"auto",display:"flex",alignItems:"center",gap:6}}>
+                      <Badge type={c.status}/>
+                      <button
+                        type="button"
+                        disabled={deletingContractor || mode !== 'db'}
+                        onClick={(e)=>{
+                          e.stopPropagation();
+                          requestDeleteContractor(c);
+                        }}
+                        style={{width:28,height:28,border:"1px solid var(--border)",borderRadius:6,background:"#fff",display:"flex",alignItems:"center",justifyContent:"center",cursor:deletingContractor||mode!=='db'?"not-allowed":"pointer",color:"var(--danger)",opacity:deletingContractor||mode!=='db'?0.55:1}}
+                        title="מחק קבלן"
+                      >
+                        <Icon n="trash" s={13}/>
+                      </button>
+                    </div>
                   </div>
                   {c.role==="קבלן עד מפתח" && (
                     <div style={{fontSize:11,background:"#EEF2FF",color:"#3730A3",borderRadius:4,padding:"2px 6px",marginBottom:8,display:"inline-block",fontWeight:600}}>עד מפתח · 9 שלבים</div>
@@ -797,51 +885,76 @@ export const ContractorsScreen = () => {
               ))}
             </div>
           </>
-        {adding && (
-          <Modal onClose={()=>setAdding(false)} title="הוספת קבלן חדש" width={520}>
-            <div style={{display:"flex",flexDirection:"column",gap:14}}>
-              <div>
-                <div style={{fontSize:12,color:"var(--text2)",marginBottom:4,fontWeight:600}}>סוג קבלן</div>
-                <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:4}}>
-                  {ContractorRoles.map(r=>(
-                    <button key={r} onClick={()=>setForm(f=>({...f,role:r}))} style={{padding:"5px 10px",borderRadius:20,border:"1px solid",borderColor:form.role===r?"var(--accent)":"var(--border)",background:form.role===r?"var(--accent-light)":"var(--surface)",color:form.role===r?"var(--accent)":"var(--text2)",fontSize:12,cursor:"pointer",fontFamily:"'Heebo',sans-serif",fontWeight:form.role===r?700:400,transition:"all .12s"}}>
-                      {r}
-                    </button>
-                  ))}
-                </div>
-                {form.role==="קבלן עד מפתח" && (
-                  <div style={{fontSize:11,color:"#3730A3",background:"#EEF2FF",borderRadius:6,padding:"6px 10px",marginTop:4}}>
-                    לוח תשלומים של 9 שלבים לפי התקדמות הבנייה יוגדר אוטומטית
-                  </div>
-                )}
-              </div>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-                {[
-                  ["name","שם הקבלן"],
-                  ["company","שם חברה"],
-                  ["phone","טלפון"],
-                  ["email","אימייל"],
-                ].map(([k,label])=>(
-                  <div key={k}>
-                    <div style={{fontSize:12,color:"var(--text2)",marginBottom:3,fontWeight:500}}>{label}</div>
-                    <input className="bp-input" value={form[k as keyof ContractorForm]} onChange={e=>setForm(f=>({...f,[k]:e.target.value}))}/>
-                  </div>
+        </div>
+      </ScreenBoundary>
+      {adding && (
+        <Modal onClose={()=>setAdding(false)} title="הוספת קבלן חדש" width={520}>
+          <div style={{display:"flex",flexDirection:"column",gap:14}}>
+            <div>
+              <div style={{fontSize:12,color:"var(--text2)",marginBottom:4,fontWeight:600}}>סוג קבלן</div>
+              <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:4}}>
+                {ContractorRoles.map(r=>(
+                  <button key={r} onClick={()=>setForm(f=>({...f,role:r}))} style={{padding:"5px 10px",borderRadius:20,border:"1px solid",borderColor:form.role===r?"var(--accent)":"var(--border)",background:form.role===r?"var(--accent-light)":"var(--surface)",color:form.role===r?"var(--accent)":"var(--text2)",fontSize:12,cursor:"pointer",fontFamily:"'Heebo',sans-serif",fontWeight:form.role===r?700:400,transition:"all .12s"}}>
+                    {r}
+                  </button>
                 ))}
-                <div>
-                  <div style={{fontSize:12,color:"var(--text2)",marginBottom:3,fontWeight:500}}>תקציב מוסכם (₪)</div>
-                  <input className="bp-input" type="number" value={form.budget} onChange={e=>setForm(f=>({...f,budget:Number(e.target.value)}))}/>
-                </div>
               </div>
-              <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:4}}>
-                <Btn variant="ghost" onClick={()=>setAdding(false)} disabled={savingContractor}>ביטול</Btn>
-                <Btn onClick={addContractor} disabled={savingContractor || !form.name.trim()}>
-                  <Icon n="plus" s={13}/> הוסף קבלן
-                </Btn>
+              {form.role==="קבלן עד מפתח" && (
+                <div style={{fontSize:11,color:"#3730A3",background:"#EEF2FF",borderRadius:6,padding:"6px 10px",marginTop:4}}>
+                  לוח תשלומים של 9 שלבים לפי התקדמות הבנייה יוגדר אוטומטית
+                </div>
+              )}
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+              {[
+                ["name","שם הקבלן"],
+                ["company","שם חברה"],
+                ["phone","טלפון"],
+                ["email","אימייל"],
+              ].map(([k,label])=>(
+                <div key={k}>
+                  <div style={{fontSize:12,color:"var(--text2)",marginBottom:3,fontWeight:500}}>{label}</div>
+                  <input className="bp-input" value={form[k as keyof ContractorForm]} onChange={e=>setForm(f=>({...f,[k]:e.target.value}))}/>
+                </div>
+              ))}
+              <div>
+                <div style={{fontSize:12,color:"var(--text2)",marginBottom:3,fontWeight:500}}>תקציב מוסכם (₪)</div>
+                <input className="bp-input" type="number" value={form.budget} onChange={e=>setForm(f=>({...f,budget:Number(e.target.value)}))}/>
               </div>
             </div>
-          </Modal>
-        )}
-      </div>
-    </ScreenBoundary>
+            <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:4}}>
+              <Btn variant="ghost" onClick={()=>setAdding(false)} disabled={savingContractor}>ביטול</Btn>
+              <Btn onClick={addContractor} disabled={savingContractor || !form.name.trim()}>
+                <Icon n="plus" s={13}/> הוסף קבלן
+              </Btn>
+            </div>
+          </div>
+        </Modal>
+      )}
+      {deleteTarget && (
+        <ConfirmDialog
+          title="מחיקת קבלן"
+          message={
+            contractorHasPaidPayments(deleteTarget)
+              ? `למחוק את ${deleteTarget.name}? קיימים תשלומים שכבר שולמו. הקבלן, שיוכי השלבים ותשלומים שלא שולמו יימחקו, אבל תשלומים והוצאות שכבר שולמו יישארו בבסיס הנתונים.`
+              : `למחוק את ${deleteTarget.name}? הקבלן, שיוכי השלבים ולוח התשלומים שלא שולם יימחקו מהפרויקט.`
+          }
+          confirmText={deletingContractor ? "מוחק..." : "מחק קבלן"}
+          cancelText="ביטול"
+          loading={deletingContractor}
+          type={contractorHasPaidPayments(deleteTarget) ? "warning" : "error"}
+          onConfirm={confirmDeleteContractor}
+          onClose={() => deletingContractor ? undefined : setDeleteTarget(null)}
+        />
+      )}
+      {feedback && (
+        <FeedbackModal
+          title={feedback.title}
+          message={feedback.message}
+          type={feedback.type}
+          onClose={() => setFeedback(null)}
+        />
+      )}
+    </>
   );
 };

@@ -46,3 +46,25 @@ export const requireProjectFileManager = async (ctx: Ctx, projectId: Id<'project
 
   return { userId, user, project };
 };
+
+export const requireProjectOwner = async (ctx: Ctx, projectId: Id<'projects'>) => {
+  const userId = await getAuthUserId(ctx);
+  if (!userId) {
+    throw new Error('Not authenticated');
+  }
+
+  const [user, project] = await Promise.all([
+    ctx.db.get(userId),
+    ctx.db.get(projectId),
+  ]);
+
+  if (!project) {
+    throw new Error('Project not found');
+  }
+
+  if (project.ownerUserId !== userId) {
+    throw new Error('Only the project owner can perform this action');
+  }
+
+  return { userId, user, project };
+};

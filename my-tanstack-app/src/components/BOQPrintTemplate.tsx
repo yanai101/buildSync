@@ -4,7 +4,7 @@ import { fmtMoney } from '../utils/mockData';
 
 export interface BOQPrintTemplateProps {
   project?: Project | null;
-  itemsGroupedByCategory?: Record<string, {name: string, cat: string, unit: string, total: number, rooms: {name: string, qty: number}[]}>;
+  itemsGroupedByCategory?: Record<string, {name: string, cat: string, unit: string, total: number, rooms: {name: string, qty: number, notes?: string}[], notes?: string[]}>;
   itemsGroupedByRoom?: Record<string, any[]>;
   rooms?: Room[];
   totalCost?: number;
@@ -14,6 +14,24 @@ export interface BOQPrintTemplateProps {
 export const BOQPrintTemplate = React.forwardRef<HTMLDivElement, BOQPrintTemplateProps>(
   ({ project, itemsGroupedByCategory, itemsGroupedByRoom, rooms, totalCost, title = "רשימת כמויות (BOQ)" }, ref) => {
     const date = new Date().toLocaleDateString('he-IL');
+    const notesBoxStyle: React.CSSProperties = {
+      marginTop: '6px',
+      padding: '7px 9px',
+      background: '#FFF7ED',
+      border: '1px solid #FED7AA',
+      borderRadius: '7px',
+      color: '#7C2D12',
+      fontSize: '10.5px',
+      lineHeight: 1.55,
+      fontWeight: 400,
+      whiteSpace: 'pre-wrap',
+    };
+    const notesLabelStyle: React.CSSProperties = {
+      display: 'inline-block',
+      marginInlineEnd: '5px',
+      color: '#9A3412',
+      fontWeight: 800,
+    };
     
     // Calculate total cost if not provided but we have room items
     let calculatedTotal = totalCost || 0;
@@ -89,19 +107,32 @@ export const BOQPrintTemplate = React.forwardRef<HTMLDivElement, BOQPrintTemplat
                   <thead>
                     <tr style={{ background: '#F9FAFB', borderBottom: '1px solid #D1D5DB' }}>
                       <th style={{ padding: '10px 8px', textAlign: 'right', fontWeight: 700, color: '#374151', width: '30%' }}>פריט</th>
-                      <th style={{ padding: '10px 8px', textAlign: 'center', fontWeight: 700, color: '#374151', width: '15%' }}>סה"כ</th>
-                      <th style={{ padding: '10px 8px', textAlign: 'center', fontWeight: 700, color: '#374151', width: '15%' }}>יחידה</th>
-                      <th style={{ padding: '10px 8px', textAlign: 'right', fontWeight: 700, color: '#374151', width: '40%' }}>פירוט לפי חדר</th>
+                      <th style={{ padding: '10px 8px', textAlign: 'center', fontWeight: 700, color: '#374151', width: '13%' }}>סה"כ</th>
+                      <th style={{ padding: '10px 8px', textAlign: 'center', fontWeight: 700, color: '#374151', width: '12%' }}>יחידה</th>
+                      <th style={{ padding: '10px 8px', textAlign: 'right', fontWeight: 700, color: '#374151', width: '45%' }}>פירוט לפי חדר והערות</th>
                     </tr>
                   </thead>
                   <tbody>
                     {Object.values(itemsGroupedByCategory).filter(i => i.cat === cat).map((item, i) => (
                       <tr key={i} style={{ borderBottom: '1px solid #E5E7EB', background: i % 2 === 0 ? '#FFFFFF' : '#F9FAFB' }}>
-                        <td style={{ padding: '12px 8px', fontWeight: 600, color: '#111827' }}>{item.name}</td>
+                        <td style={{ padding: '12px 8px', fontWeight: 700, color: '#111827', verticalAlign: 'top' }}>{item.name}</td>
                         <td style={{ padding: '12px 8px', textAlign: 'center', fontWeight: 800, color: '#EA580C' }}>{item.total}</td>
                         <td style={{ padding: '12px 8px', textAlign: 'center', color: '#6B7280' }}>{item.unit}</td>
-                        <td style={{ padding: '12px 8px', color: '#4B5563', fontSize: '11px' }}>
-                          {item.rooms.filter(r => r.qty > 0).map(r => `${r.name} (${r.qty})`).join(' · ')}
+                        <td style={{ padding: '12px 8px', color: '#4B5563', fontSize: '11px', verticalAlign: 'top' }}>
+                          <div style={{display: 'flex', flexDirection: 'column', gap: '5px'}}>
+                            {item.rooms.filter(r => r.qty > 0).map((r, roomIndex) => (
+                              <div key={roomIndex} style={{breakInside: 'avoid'}}>
+                                <span style={{fontWeight: 700, color: '#374151'}}>{r.name}</span>
+                                <span> ({r.qty})</span>
+                                {r.notes && (
+                                  <div style={notesBoxStyle}>
+                                    <span style={notesLabelStyle}>הערות:</span>
+                                    {r.notes}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -135,9 +166,19 @@ export const BOQPrintTemplate = React.forwardRef<HTMLDivElement, BOQPrintTemplat
                       <tbody>
                         {roomItems.map((item: any, i: number) => (
                           <tr key={i} style={{ borderBottom: i === roomItems.length - 1 ? 'none' : '1px solid #F3F4F6' }}>
-                            <td style={{ padding: '10px 16px', fontWeight: 600 }}>
+                            <td style={{ padding: '10px 16px', fontWeight: 600, verticalAlign: 'top' }}>
                               {item.name}
-                              {item.spec && <div style={{ fontSize: '10px', color: '#9CA3AF', marginTop: '2px', fontWeight: 400 }}>{item.spec}</div>}
+                              {item.spec && (
+                                <div style={{ fontSize: '10px', color: '#6B7280', marginTop: '3px', fontWeight: 400, lineHeight: 1.45 }}>
+                                  <span style={{fontWeight: 700, color: '#4B5563'}}>מפרט:</span> {item.spec}
+                                </div>
+                              )}
+                              {item.notes && (
+                                <div style={notesBoxStyle}>
+                                  <span style={notesLabelStyle}>הערות:</span>
+                                  {item.notes}
+                                </div>
+                              )}
                             </td>
                             <td style={{ padding: '10px 16px' }}>{item.qty} {item.unit}</td>
                             <td style={{ padding: '10px 16px' }}>{fmtMoney(item.unitPrice)}</td>

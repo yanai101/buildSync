@@ -47,17 +47,17 @@ export const useDataMutation = (resource: MutationResource) => {
         case 'saveBoq':
           return await saveBoqMutation({ projectId: payload.projectId, items: payload.items });
         case 'saveProjectSetup':
-          return await saveProjectSetupMutation({ 
-            projectId: payload.projectId, 
-            name: payload.name, 
-            address: payload.address, 
+          return await saveProjectSetupMutation({
+            projectId: payload.projectId,
+            name: payload.name,
+            address: payload.address,
             ownerName: payload.ownerName,
             managerName: payload.managerName,
             inspectorName: payload.inspectorName,
             floors: payload.floors,
             areaSqm: payload.areaSqm,
             budgetTotal: payload.budgetTotal,
-            rooms: payload.rooms 
+            rooms: payload.rooms
           });
         case 'addExpense':
           return await addExpenseMutation({ projectId: payload.projectId, description: payload.description, amount: payload.amount, category: payload.category, date: payload.date, status: payload.status });
@@ -78,8 +78,8 @@ export const useDataMutation = (resource: MutationResource) => {
         case 'updatePhotoTag':
           return await updatePhotoTagMutation({ photoId: payload.photoId, tag: payload.tag });
         case 'createProject':
-          return await createProjectMutation({ 
-            name: payload.name, 
+          return await createProjectMutation({
+            name: payload.name,
             address: payload.address,
             ownerName: payload.ownerName,
             managerName: payload.managerName,
@@ -88,7 +88,8 @@ export const useDataMutation = (resource: MutationResource) => {
             areaSqm: payload.areaSqm,
             budgetTotal: payload.budgetTotal,
             startDate: payload.startDate,
-            expectedEnd: payload.expectedEnd
+            expectedEnd: payload.expectedEnd,
+            ...(payload.floorWastePct !== undefined ? { floorWastePct: payload.floorWastePct } : {}),
           });
         case 'deleteProject':
           return await deleteProjectMutation({ projectId: payload.id });

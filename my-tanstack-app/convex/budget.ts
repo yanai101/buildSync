@@ -1,5 +1,15 @@
 import { query, mutation } from './_generated/server';
 import { v } from 'convex/values';
+import { getFinancialSummary } from './_lib/financialSummary';
+
+export const getSummary = query({
+  args: { projectId: v.id('projects') },
+  handler: async (ctx, args) => {
+    const project = await ctx.db.get(args.projectId);
+    if (!project) return null;
+    return await getFinancialSummary(ctx, project);
+  },
+});
 
 export const listCategories = query({
   args: { projectId: v.id('projects') },
@@ -85,7 +95,7 @@ export const addExpense = mutation({
       categoryId: category?._id,
     });
 
-    if (category) {
+    if (category && args.status === 'שולם') {
       await ctx.db.patch(category._id, {
         spent: category.spent + args.amount
       });

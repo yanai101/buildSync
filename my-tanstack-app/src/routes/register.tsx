@@ -19,6 +19,15 @@ function RegisterPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // If an invite code was passed via ?code=, redirect to the join flow.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const code = new URLSearchParams(window.location.search).get('code')
+    if (code) {
+      navigate({ to: '/join/$code', params: { code } })
+    }
+  }, [navigate])
+
   useEffect(() => {
     if (isAuthLoading || !isAuthenticated) return
     window.location.replace('/')
