@@ -490,11 +490,35 @@ export const deleteContractor = mutation({
       throw new Error('Contractor not found');
     }
 
+    // Handle expenses related to this contractor
+    const allExpenses = await ctx.db
+      .query('expenses')
+      .withIndex('by_project', (q) => q.eq('projectId', contractor.projectId))
+      .collect();
+    
+    const contractorExpenses = allExpenses.filter(e => e.contractorId === args.contractorId);
+    let paidAmountPreserved = 0;
+    let paidCountPreserved = 0;
+
+    for (const expense of contractorExpenses) {
+      if (expense.status === 'שולם') {
+        // Keep paid expenses but unlink them from the deleted contractor
+        await ctx.db.patch(expense._id, {
+          contractorId: undefined,
+          milestoneId: undefined,
+        });
+        paidAmountPreserved += expense.amount;
+        paidCountPreserved++;
+      } else {
+        // Delete unpaid (pending) expenses linked to this contractor
+        await ctx.db.delete(expense._id);
+      }
+    }
+
     const milestones = await ctx.db
       .query('contractorPaymentMilestones')
       .withIndex('by_contractor', (q) => q.eq('contractorId', args.contractorId))
       .take(200);
-    const paidMilestones = milestones.filter((milestone) => milestone.paid);
 
     const stageLinks = await ctx.db
       .query('stageContractors')
@@ -529,10 +553,9 @@ export const deleteContractor = mutation({
       });
     }
 
+    // Delete ALL milestones (the paid value is now preserved in the detached expenses)
     for (const milestone of milestones) {
-      if (!milestone.paid) {
-        await ctx.db.delete(milestone._id);
-      }
+      await ctx.db.delete(milestone._id);
     }
 
     const files = await ctx.db
@@ -559,8 +582,8 @@ export const deleteContractor = mutation({
     });
 
     return {
-      paidMilestonesPreserved: paidMilestones.length,
-      paidAmountPreserved: paidMilestones.reduce((sum, milestone) => sum + milestone.amount, 0),
+      paidMilestonesPreserved: paidCountPreserved,
+      paidAmountPreserved,
     };
   },
 });

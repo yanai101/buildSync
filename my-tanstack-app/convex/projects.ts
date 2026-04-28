@@ -174,27 +174,112 @@ export const deleteProject = mutation({
        throw new Error("Unauthorized");
     }
 
+    // 1. Delete stages and their descendants
     const stages = await ctx.db
       .query('stages')
       .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
       .collect();
     
     for (const stage of stages) {
+      const milestones = await ctx.db
+        .query('stageMilestones')
+        .withIndex('by_stage', (q) => q.eq('stageId', stage._id))
+        .collect();
+      for (const m of milestones) {
+        const links = await ctx.db
+          .query('stageMilestoneTasks')
+          .withIndex('by_milestone', (q) => q.eq('milestoneId', m._id))
+          .collect();
+        for (const l of links) await ctx.db.delete(l._id);
+        await ctx.db.delete(m._id);
+      }
+
       const tasks = await ctx.db
         .query('stageTasks')
         .withIndex('by_stage', (q) => q.eq('stageId', stage._id))
         .collect();
       for (const t of tasks) await ctx.db.delete(t._id);
+
+      const stageContractors = await ctx.db
+        .query('stageContractors')
+        .withIndex('by_stage', (q) => q.eq('stageId', stage._id))
+        .collect();
+      for (const sc of stageContractors) await ctx.db.delete(sc._id);
+
       await ctx.db.delete(stage._id);
     }
 
-    const tables = [
-      'projectRooms', 'boqItems', 'expenses', 'notes', 'messages',
-      'photos', 'budgetCategories', 'activityFeed', 
-      'timelineBars', 'priceQuotes', 'contractors'
-    ];
+    // 2. Delete contractors and their descendants
+    const contractors = await ctx.db
+      .query('contractors')
+      .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
+      .collect();
+    
+    for (const contractor of contractors) {
+      const cmilestones = await ctx.db
+        .query('contractorPaymentMilestones')
+        .withIndex('by_contractor', (q) => q.eq('contractorId', contractor._id))
+        .collect();
+      for (const m of cmilestones) await ctx.db.delete(m._id);
 
-    for (const table of tables) {
+      const cnotes = await ctx.db
+        .query('contractorNotes')
+        .withIndex('by_contractor', (q) => q.eq('contractorId', contractor._id))
+        .collect();
+      for (const n of cnotes) await ctx.db.delete(n._id);
+
+      await ctx.db.delete(contractor._id);
+    }
+
+    // 3. Delete photos and their descendants
+    const photos = await ctx.db
+      .query('photos')
+      .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
+      .collect();
+    
+    for (const photo of photos) {
+      const pnotes = await ctx.db
+        .query('photoNotes')
+        .withIndex('by_photo', (q) => q.eq('photoId', photo._id))
+        .collect();
+      for (const n of pnotes) await ctx.db.delete(n._id);
+
+      const pannotations = await ctx.db
+        .query('photoAnnotations')
+        .withIndex('by_photo', (q) => q.eq('photoId', photo._id))
+        .collect();
+      for (const a of pannotations) await ctx.db.delete(a._id);
+
+      const versions = await ctx.db
+        .query('photoFileVersions')
+        .withIndex('by_photo', (q) => q.eq('photoId', photo._id))
+        .collect();
+      for (const v of versions) {
+        // we'll delete project files and storage globally in step 4
+        await ctx.db.delete(v._id);
+      }
+      await ctx.db.delete(photo._id);
+    }
+
+    // 4. Delete project files and storage
+    const projectFiles = await ctx.db
+      .query('projectFiles')
+      .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
+      .collect();
+    
+    for (const pf of projectFiles) {
+      try { await ctx.storage.delete(pf.storageId); } catch {}
+      await ctx.db.delete(pf._id);
+    }
+
+    // 5. Delete other project-level tables
+    const projectTables = [
+      'projectRooms', 'boqItems', 'expenses', 'messages',
+      'budgetCategories', 'activityFeed', 'timelineBars', 
+      'priceQuotes', 'projectInvitations'
+    ] as const;
+
+    for (const table of projectTables) {
       try {
         const records = await ctx.db
           .query(table as any)

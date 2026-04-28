@@ -26,7 +26,7 @@ export const NAV = [
   { id: "/boq",           label: "כתב כמויות", icon: "clipboard", section: "ניהול",   roles: OWNER_MANAGER },
   { id: "/boqwizard",     label: "אשף כמויות", icon: "zoom-in",   section: "ניהול",   roles: OWNER_MANAGER },
   { id: "/photos",        label: "תמונות",     icon: "camera",    section: "תיעוד",   roles: ALL_ROLES },
-  { id: "/notes",         label: "הערות",      icon: "message",   section: "תיעוד", badge: 3, roles: ALL_ROLES },
+  { id: "/notes",         label: "הערות",      icon: "message",   section: "תיעוד",   roles: ALL_ROLES },
   { id: "/personal-files",label: "קבצים אישיים",icon: "file-text", section: "תיעוד",  roles: OWNER_ONLY },
   { id: "/budget",        label: "תקציב",      icon: "chart",     section: "פיננסי",  roles: OWNER_MANAGER },
   { id: "/quotes",        label: "הצעות מחיר", icon: "clipboard", section: "פיננסי",  roles: OWNER_MANAGER },
@@ -72,6 +72,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const [menuOpen, setMenuOpen] = React.useState(false)
   const menuRef = React.useRef<HTMLDivElement>(null)
   const { startTour } = useOnboardingTour()
+  const dbNotes = useQuery(api.queries.listNotes, project?._id ? { projectId: project._id } : "skip")
+  const unreadNotesCount = dbNotes?.filter(n => !n.resolved).length || 0;
 
   const COLLAPSED_KEY = 'buildsync:sidebar-collapsed-sections'
   const [collapsedSections, setCollapsedSections] = React.useState<Set<string>>(new Set())
@@ -209,9 +211,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
         <div className="sidebar-scroll">
           {sections.map(sec => {
+            const userRole = identity?.role ?? 'owner'
             const items = NAV.filter(n =>
               n.section === sec &&
-              (!n.roles || (identity?.role && n.roles.includes(identity.role as any)))
+              (!n.roles || n.roles.includes(userRole as any))
             )
             if (items.length === 0) return null
             const hasActive = items.some(n => n.id === currentPath)
@@ -245,6 +248,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                     >
                       {items.map(n => {
                         const isDisabled = projects.length === 0 && n.id !== '/projects';
+                        const badgeVal = n.id === '/notes' && unreadNotesCount > 0 ? unreadNotesCount : n.badge;
                         return (
                           <Link
                             id={`tour-nav-${n.id.replace('/', '') || 'dashboard'}`}
@@ -263,7 +267,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                             )}
                             <Icon n={n.icon} s={18} />
                             <span style={{flex:1}}>{n.label}</span>
-                            {n.badge && <span className="nav-item-badge">{n.badge}</span>}
+                            {badgeVal ? <span className="nav-item-badge">{badgeVal}</span> : null}
                           </Link>
                         )
                       })}

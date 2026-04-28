@@ -20,6 +20,16 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
         };
       },
     }),
-    Google,
+    Google({
+      profile(googleProfile) {
+        return {
+          id: googleProfile.sub,
+          name: googleProfile.name,
+          email: googleProfile.email,
+          image: googleProfile.picture,
+          role: 'owner' as const,
+        };
+      },
+    }),
   ],
 });
