@@ -3,7 +3,7 @@ import { useCurrentProject } from '../hooks/useCurrentProject';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { ScreenBoundary } from '../components/ScreenBoundary';
-import { PageBackground, EmptyState, Btn, Icon } from '../components/Shared';
+import { PageBackground, EmptyState, Btn, Icon, ConfirmDialog } from '../components/Shared';
 import type { Id } from '../../convex/_generated/dataModel';
 
 export const PermitsScreen = () => {
@@ -16,6 +16,9 @@ export const PermitsScreen = () => {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  const [permitToDelete, setPermitToDelete] = useState<{ id: Id<'permits'>, title: string } | null>(null);
+  const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
+  const noteTimers = useRef<Record<string, number>>({});
 
   const handlePick = () => {
     if (uploading) return;
@@ -61,14 +64,29 @@ export const PermitsScreen = () => {
     }
   };
 
-  const handleDelete = async (permitId: Id<'permits'>, title: string) => {
-    if (!window.confirm(`למחוק את "${title}"?`)) return;
+  const confirmDeletePermit = async () => {
+    if (!permitToDelete) return;
     try {
-      await deletePermit({ permitId });
+      await deletePermit({ permitId: permitToDelete.id });
+      setPermitToDelete(null);
     } catch (e) {
       console.error(e);
       alert('שגיאה במחיקת הקובץ');
     }
+  };
+
+  const handleNoteChange = (permitId: Id<'permits'>, value: string) => {
+    const key = String(permitId);
+    setNoteDrafts((prev) => ({ ...prev, [key]: value }));
+    const existing = noteTimers.current[key];
+    if (existing) window.clearTimeout(existing);
+    noteTimers.current[key] = window.setTimeout(async () => {
+      try {
+        await updatePermit({ permitId, notes: value });
+      } catch (err) {
+        console.error(err);
+      }
+    }, 600);
   };
 
   const isLoading = permits === undefined;
@@ -126,6 +144,24 @@ export const PermitsScreen = () => {
                   </div>
                 </div>
 
+                <textarea
+                  className="bp-input"
+                  value={noteDrafts[permit._id] ?? permit.notes ?? ''}
+                  placeholder="הוסף הערה למסמך..."
+                  onChange={(e) => handleNoteChange(permit._id, e.target.value)}
+                  rows={2}
+                  style={{
+                    width: '100%',
+                    resize: 'vertical',
+                    fontFamily: "'Heebo',sans-serif",
+                    fontSize: 13,
+                    padding: '8px 10px',
+                    border: '1px solid var(--border)',
+                    borderRadius: 8,
+                    background: 'var(--bg)',
+                  }}
+                />
+
                 {permit.url && (
                   <div style={{ display: 'flex', gap: 8, marginTop: 'auto' }}>
                     <a
@@ -140,7 +176,7 @@ export const PermitsScreen = () => {
                     </a>
                     <button
                       type="button"
-                      onClick={() => handleDelete(permit._id, permit.title)}
+                      onClick={() => setPermitToDelete({ id: permit._id, title: permit.title })}
                       style={{
                         background: 'none',
                         border: '1px solid var(--border)',
@@ -161,6 +197,17 @@ export const PermitsScreen = () => {
               </div>
             ))}
           </div>
+        )}
+
+        {permitToDelete && (
+          <ConfirmDialog
+            title="מחיקת מסמך"
+            message={`האם אתה בטוח שברצונך למחוק את המסמך "${permitToDelete.title}"? הקובץ יימחק גם משרתי האחסון.`}
+            confirmText="מחק"
+            cancelText="ביטול"
+            onConfirm={confirmDeletePermit}
+            onClose={() => setPermitToDelete(null)}
+          />
         )}
       </div>
     </ScreenBoundary>
