@@ -157,3 +157,23 @@ export const deleteChecklistItem = mutation({
     await ctx.db.delete(args.itemId);
   },
 });
+
+export const updateChecklistItem = mutation({
+  args: { 
+    itemId: v.id('checklistItems'),
+    text: v.string()
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.itemId, { text: args.text });
+  },
+});
+
+export const updateChecklistTitle = mutation({
+  args: {
+    checklistId: v.id('checklists'),
+    title: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.checklistId, { title: args.title });
+  }
+});

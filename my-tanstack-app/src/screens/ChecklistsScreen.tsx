@@ -58,6 +58,12 @@ export const ChecklistsScreen = () => {
   const [addingCustom, setAddingCustom] = useState(false);
   const [customTitle, setCustomTitle] = useState('');
   const [newItemText, setNewItemText] = useState<{ [key: string]: string }>({});
+  
+  const [editingTitleId, setEditingTitleId] = useState<string | null>(null);
+  const [editingTitleText, setEditingTitleText] = useState('');
+
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  const [editingItemText, setEditingItemText] = useState('');
 
   const handleAddTemplate = async (template: typeof PREDEFINED_CHECKLISTS[0]) => {
     if (!projectId) return;
@@ -106,6 +112,26 @@ export const ChecklistsScreen = () => {
   const handleDeleteItem = async (itemId: string) => {
     try {
       await mutate('deleteChecklistItem', { itemId });
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleUpdateItem = async (itemId: string) => {
+    if (!editingItemText.trim()) return;
+    try {
+      await mutate('updateChecklistItem', { itemId, text: editingItemText.trim() });
+      setEditingItemId(null);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleUpdateTitle = async (checklistId: string) => {
+    if (!editingTitleText.trim()) return;
+    try {
+      await mutate('updateChecklistTitle', { checklistId, title: editingTitleText.trim() });
+      setEditingTitleId(null);
     } catch (e) {
       console.error(e);
     }
@@ -230,7 +256,26 @@ export const ChecklistsScreen = () => {
                         <span style={{ fontSize: 12, background: 'var(--border)', padding: '2px 8px', borderRadius: 12, color: 'var(--text2)' }}>
                           {list.category || 'כללי'}
                         </span>
-                        <span style={{ fontSize: 16, fontWeight: 600, color: 'var(--text1)' }}>{list.title}</span>
+                        {editingTitleId === list.id ? (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1 }} onClick={e => e.stopPropagation()}>
+                            <input 
+                              type="text" 
+                              className="input" 
+                              value={editingTitleText}
+                              onChange={e => setEditingTitleText(e.target.value)}
+                              onKeyDown={e => {
+                                if (e.key === 'Enter') handleUpdateTitle(list.id as string);
+                                if (e.key === 'Escape') setEditingTitleId(null);
+                              }}
+                              style={{ fontSize: 14, padding: '4px 8px', flex: 1 }}
+                              autoFocus
+                            />
+                            <Btn size="sm" onClick={() => handleUpdateTitle(list.id as string)}><Icon n="check" s={14} /></Btn>
+                            <Btn size="sm" variant="secondary" onClick={() => setEditingTitleId(null)}><Icon n="x" s={14} /></Btn>
+                          </div>
+                        ) : (
+                          <span style={{ fontSize: 16, fontWeight: 600, color: 'var(--text1)' }}>{list.title}</span>
+                        )}
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                         <div style={{ flex: 1, height: 6, background: 'var(--border)', borderRadius: 3, overflow: 'hidden' }}>
@@ -242,6 +287,16 @@ export const ChecklistsScreen = () => {
                       </div>
                     </div>
                     
+                    <button 
+                      onClick={(e) => { 
+                        e.stopPropagation(); 
+                        setEditingTitleText(list.title);
+                        setEditingTitleId(list.id as string);
+                      }}
+                      style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', padding: 8 }}
+                    >
+                      <Icon n="edit-2" s={16} />
+                    </button>
                     <button 
                       onClick={(e) => { e.stopPropagation(); handleDelete(list.id as string, list.title); }}
                       style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', padding: 8 }}
@@ -276,16 +331,48 @@ export const ChecklistsScreen = () => {
                                     onChange={() => handleToggleItem(item.id, item.isCompleted)}
                                     style={{ width: 18, height: 18, accentColor: 'var(--accent)', cursor: 'pointer' }}
                                   />
-                                  <span style={{ fontSize: 14, color: item.isCompleted ? 'var(--text3)' : 'var(--text1)', textDecoration: item.isCompleted ? 'line-through' : 'none', transition: 'all 0.2s' }}>
-                                    {item.text}
-                                  </span>
+                                  {editingItemId === item.id ? (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
+                                      <input 
+                                        type="text" 
+                                        className="input" 
+                                        value={editingItemText}
+                                        onChange={e => setEditingItemText(e.target.value)}
+                                        onKeyDown={e => {
+                                          if (e.key === 'Enter') handleUpdateItem(item.id);
+                                          if (e.key === 'Escape') setEditingItemId(null);
+                                        }}
+                                        style={{ fontSize: 14, padding: '4px 8px', flex: 1 }}
+                                        autoFocus
+                                      />
+                                      <Btn size="sm" onClick={(e: any) => { e.preventDefault(); handleUpdateItem(item.id); }}><Icon n="check" s={14} /></Btn>
+                                      <Btn size="sm" variant="secondary" onClick={(e: any) => { e.preventDefault(); setEditingItemId(null); }}><Icon n="x" s={14} /></Btn>
+                                    </div>
+                                  ) : (
+                                    <span style={{ fontSize: 14, color: item.isCompleted ? 'var(--text3)' : 'var(--text1)', textDecoration: item.isCompleted ? 'line-through' : 'none', transition: 'all 0.2s' }}>
+                                      {item.text}
+                                    </span>
+                                  )}
                                 </label>
-                                <button 
-                                  onClick={() => handleDeleteItem(item.id)}
-                                  style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', padding: 4 }}
-                                >
-                                  <Icon n="trash-2" s={14} />
-                                </button>
+                                {editingItemId !== item.id && (
+                                  <>
+                                    <button 
+                                      onClick={() => {
+                                        setEditingItemText(item.text);
+                                        setEditingItemId(item.id);
+                                      }}
+                                      style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', padding: 4 }}
+                                    >
+                                      <Icon n="edit-2" s={14} />
+                                    </button>
+                                    <button 
+                                      onClick={() => handleDeleteItem(item.id)}
+                                      style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', padding: 4 }}
+                                    >
+                                      <Icon n="trash-2" s={14} />
+                                    </button>
+                                  </>
+                                )}
                               </div>
                             ))}
                           </div>

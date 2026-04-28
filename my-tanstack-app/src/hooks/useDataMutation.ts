@@ -29,12 +29,14 @@ export const useDataMutation = (resource: MutationResource) => {
   const addChecklistItemMutation = useMutation(api.checklists.addChecklistItem);
   const toggleChecklistItemMutation = useMutation(api.checklists.toggleChecklistItem);
   const deleteChecklistItemMutation = useMutation(api.checklists.deleteChecklistItem);
+  const updateChecklistItemMutation = useMutation(api.checklists.updateChecklistItem);
+  const updateChecklistTitleMutation = useMutation(api.checklists.updateChecklistTitle);
 
   const defaultDbResources: MutationResource[] = ['contractors', 'photos', 'notes', 'project', 'projects', 'expenses', 'budget', 'quotes', 'checklists'];
   const savedMode = localStorage.getItem(`buildsync:ds:${resource}`);
   const isMock = savedMode ? savedMode !== 'db' : !defaultDbResources.includes(resource);
 
-  const mutate = useCallback(async (action: 'add' | 'update' | 'delete' | 'toggleTask' | 'saveBoq' | 'saveProjectSetup' | 'addExpense' | 'saveNote' | 'savePhotoAnnotation' | 'deletePhoto' | 'updatePhotoTag' | 'createProject' | 'deleteProject' | 'addBudgetCategory' | 'saveQuote' | 'deleteQuote' | 'addQuoteTopic' | 'addChecklist' | 'deleteChecklist' | 'addChecklistItem' | 'toggleChecklistItem' | 'deleteChecklistItem', payload: any) => {
+  const mutate = useCallback(async (action: 'add' | 'update' | 'delete' | 'toggleTask' | 'saveBoq' | 'saveProjectSetup' | 'addExpense' | 'saveNote' | 'savePhotoAnnotation' | 'deletePhoto' | 'updatePhotoTag' | 'createProject' | 'deleteProject' | 'addBudgetCategory' | 'saveQuote' | 'deleteQuote' | 'addQuoteTopic' | 'addChecklist' | 'deleteChecklist' | 'addChecklistItem' | 'toggleChecklistItem' | 'deleteChecklistItem' | 'updateChecklistItem' | 'updateChecklistTitle', payload: any) => {
     if (isMock) {
       console.log(`[MOCK MUTATION] ${resource}:${action}`, payload);
       return { success: true, mock: true };
@@ -109,6 +111,10 @@ export const useDataMutation = (resource: MutationResource) => {
           return await toggleChecklistItemMutation(payload);
         case 'deleteChecklistItem':
           return await deleteChecklistItemMutation(payload);
+        case 'updateChecklistItem':
+          return await updateChecklistItemMutation(payload);
+        case 'updateChecklistTitle':
+          return await updateChecklistTitleMutation(payload);
         default:
           throw new Error(`Unknown mutation action: ${action}`);
       }
@@ -116,7 +122,7 @@ export const useDataMutation = (resource: MutationResource) => {
       console.error(`[DB MUTATION ERROR] ${resource}:${action}`, err);
       throw err;
     }
-  }, [isMock, resource, genericUpdate, genericAdd, genericRemove, toggleTaskMutation, saveBoqMutation, saveProjectSetupMutation, addExpenseMutation, saveNoteMutation, savePhotoAnnotationMutation, deletePhotoMutation, updatePhotoTagMutation, createProjectMutation, deleteProjectMutation, addChecklistMutation, deleteChecklistMutation, addChecklistItemMutation, toggleChecklistItemMutation, deleteChecklistItemMutation]);
+  }, [isMock, resource, genericUpdate, genericAdd, genericRemove, toggleTaskMutation, saveBoqMutation, saveProjectSetupMutation, addExpenseMutation, saveNoteMutation, savePhotoAnnotationMutation, deletePhotoMutation, updatePhotoTagMutation, createProjectMutation, deleteProjectMutation, addChecklistMutation, deleteChecklistMutation, addChecklistItemMutation, toggleChecklistItemMutation, deleteChecklistItemMutation, updateChecklistItemMutation, updateChecklistTitleMutation]);
 
   return { mutate };
 };
