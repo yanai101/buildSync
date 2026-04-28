@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Icon, Btn, EmptyState, PageBackground, FeedbackModal } from '../components/Shared';
+import { Icon, Btn, EmptyState, PageBackground, FeedbackModal, ConfirmDialog } from '../components/Shared';
 import { useCurrentProject } from '../hooks/useCurrentProject';
 import { useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
@@ -67,6 +67,8 @@ export const ChecklistsScreen = () => {
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [editingItemText, setEditingItemText] = useState('');
 
+  const [checklistToDelete, setChecklistToDelete] = useState<{ id: string; title: string } | null>(null);
+
   const handleAddTemplate = async (template: typeof PREDEFINED_CHECKLISTS[0]) => {
     if (!projectId) return;
     try {
@@ -92,11 +94,17 @@ export const ChecklistsScreen = () => {
   };
 
   const handleDelete = async (checklistId: string, title: string) => {
-    if (!confirm(`האם למחוק את הצ'קליסט "${title}"?`)) return;
+    setChecklistToDelete({ id: checklistId, title });
+  };
+
+  const confirmDeleteChecklist = async () => {
+    if (!checklistToDelete) return;
     try {
-      await mutate('deleteChecklist', { checklistId });
+      await mutate('deleteChecklist', { checklistId: checklistToDelete.id });
+      setChecklistToDelete(null);
     } catch (e) {
       console.error(e);
+      setFeedback({ title: 'שגיאה', message: 'לא הצלחנו למחוק את הצ\'קליסט.', type: 'error' });
     }
   };
 
@@ -226,7 +234,7 @@ export const ChecklistsScreen = () => {
             <PageBackground image="/empty_states/checklists.png" />
             <div style={{ width: '100%' }}>
               <EmptyState
-                icon="check-square"
+                icon="file-text"
                 title="אין צ'קליסטים עדיין"
                 description="הוסף צ'קליסטים מקצועיים כדי לוודא ששום דבר לא מתפספס במהלך הבנייה."
                 action={
@@ -298,14 +306,14 @@ export const ChecklistsScreen = () => {
                         }}
                         style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', padding: 8 }}
                       >
-                        <Icon n="edit-2" s={16} />
+                        <Icon n="edit" s={16} />
                       </button>
                     )}
                     <button 
                       onClick={(e) => { e.stopPropagation(); handleDelete(list.id as string, list.title); }}
                       style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', padding: 8 }}
                     >
-                      <Icon n="trash-2" s={16} />
+                      <Icon n="trash" s={16} />
                     </button>
                     <motion.div animate={{ rotate: isExpanded ? 180 : 0 }}>
                       <Icon n="chevron-down" s={20} c="var(--text3)" />
@@ -369,13 +377,13 @@ export const ChecklistsScreen = () => {
                                         }}
                                         style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', padding: 4 }}
                                       >
-                                        <Icon n="edit-2" s={14} />
+                                        <Icon n="edit" s={14} />
                                       </button>
                                       <button 
                                         onClick={() => handleDeleteItem(item.id)}
                                         style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', padding: 4 }}
                                       >
-                                        <Icon n="trash-2" s={14} />
+                                        <Icon n="trash" s={14} />
                                       </button>
                                     </>
                                   )}
@@ -415,6 +423,18 @@ export const ChecklistsScreen = () => {
             onClose={() => setFeedback(null)}
           />
         )}
+
+        {checklistToDelete && (
+          <ConfirmDialog
+            title="מחיקת צ'קליסט"
+            message={`האם אתה בטוח שברצונך למחוק את הצ'קליסט "${checklistToDelete.title}"?`}
+            confirmText="מחק"
+            cancelText="ביטול"
+            onConfirm={confirmDeleteChecklist}
+            onClose={() => setChecklistToDelete(null)}
+          />
+        )}
+
       </div>
     </ScreenBoundary>
   );
