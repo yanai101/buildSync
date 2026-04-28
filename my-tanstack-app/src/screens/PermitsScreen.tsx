@@ -19,6 +19,8 @@ export const PermitsScreen = () => {
   const [permitToDelete, setPermitToDelete] = useState<{ id: Id<'permits'>, title: string } | null>(null);
   const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
   const noteTimers = useRef<Record<string, number>>({});
+  const [authorityDrafts, setAuthorityDrafts] = useState<Record<string, string>>({});
+  const authorityTimers = useRef<Record<string, number>>({});
 
   const handlePick = () => {
     if (uploading) return;
@@ -89,10 +91,34 @@ export const PermitsScreen = () => {
     }, 600);
   };
 
+  const handleAuthorityChange = (permitId: Id<'permits'>, value: string) => {
+    const key = String(permitId);
+    setAuthorityDrafts((prev) => ({ ...prev, [key]: value }));
+    const existing = authorityTimers.current[key];
+    if (existing) window.clearTimeout(existing);
+    authorityTimers.current[key] = window.setTimeout(async () => {
+      try {
+        await updatePermit({ permitId, authority: value });
+      } catch (err) {
+        console.error(err);
+      }
+    }, 600);
+  };
+
   const isLoading = permits === undefined;
 
   return (
     <ScreenBoundary loading={isLoading}>
+      <datalist id="authorities-list">
+        <option value="עירייה - ועדה מקומית" />
+        <option value="חברת חשמל" />
+        <option value="תאגיד מים וביוב" />
+        <option value="כיבוי אש" />
+        <option value="פיקוד העורף" />
+        <option value="הג״א" />
+        <option value="רשות העתיקות" />
+        <option value="רשות מקרקעי ישראל" />
+      </datalist>
       <div className="page-content" style={{ display: 'flex', flexDirection: 'column', gap: 24, paddingBottom: 60, minHeight: 'calc(100vh - 130px)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h1 style={{ margin: 0, fontSize: 24 }}>בירוקרטיה והיתרים</h1>
@@ -138,9 +164,35 @@ export const PermitsScreen = () => {
                     <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text1)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {permit.title}
                     </div>
-                    <div style={{ fontSize: 13, color: 'var(--text3)' }}>
-                      {permit.authority || 'ללא רשות מוגדרת'}
-                    </div>
+                    <input
+                      list="authorities-list"
+                      className="bp-input"
+                      value={authorityDrafts[permit._id] ?? permit.authority ?? ''}
+                      placeholder="הגדר רשות (עירייה, תאגיד...)"
+                      onChange={(e) => handleAuthorityChange(permit._id, e.target.value)}
+                      style={{
+                        width: '100%',
+                        fontSize: 13,
+                        padding: '4px 8px',
+                        marginTop: 4,
+                        border: '1px solid transparent',
+                        borderRadius: 6,
+                        background: 'transparent',
+                        color: 'var(--text2)',
+                        transition: 'all 0.2s',
+                        height: 28,
+                      }}
+                      onFocus={(e) => {
+                        e.target.style.background = 'var(--bg)';
+                        e.target.style.borderColor = 'var(--border)';
+                      }}
+                      onBlur={(e) => {
+                        if (!e.target.value) {
+                          e.target.style.background = 'transparent';
+                          e.target.style.borderColor = 'transparent';
+                        }
+                      }}
+                    />
                   </div>
                 </div>
 
