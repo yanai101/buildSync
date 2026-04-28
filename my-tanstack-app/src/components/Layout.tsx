@@ -221,7 +221,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             )
             if (items.length === 0) return null
             const hasActive = items.some(n => n.id === currentPath)
-            const collapsed = collapsedSections.has(sec) && !hasActive
+            const collapsed = collapsedSections.has(sec)
             return (
               <div key={sec}>
                 <button
