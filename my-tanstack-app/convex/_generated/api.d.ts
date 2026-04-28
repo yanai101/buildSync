@@ -22,6 +22,7 @@ import type * as http from "../http.js";
 import type * as invitations from "../invitations.js";
 import type * as mutations from "../mutations.js";
 import type * as notes from "../notes.js";
+import type * as permits from "../permits.js";
 import type * as personalFiles from "../personalFiles.js";
 import type * as photos from "../photos.js";
 import type * as projectFiles from "../projectFiles.js";
@@ -55,6 +56,7 @@ declare const fullApi: ApiFromModules<{
   invitations: typeof invitations;
   mutations: typeof mutations;
   notes: typeof notes;
+  permits: typeof permits;
   personalFiles: typeof personalFiles;
   photos: typeof photos;
   projectFiles: typeof projectFiles;

@@ -452,3 +452,15 @@ export const zChecklistItem = {
   isCompleted: z.boolean().default(false),
   sortOrder: z.number(),
 };
+
+export const zPermitStatus = z.enum(['not_started', 'in_progress', 'approved', 'expired']);
+
+export const zPermit = {
+  projectId: zid('projects'),
+  title: z.string(),
+  authority: z.string().optional(),
+  status: zPermitStatus,
+  expirationDate: z.string().optional(),
+  notes: z.string().optional(),
+  fileId: zid('_storage').optional(),
+};

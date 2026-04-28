@@ -18,6 +18,7 @@ import { Route as QuotesRouteImport } from './routes/quotes'
 import { Route as ProjectsRouteImport } from './routes/projects'
 import { Route as PhotosRouteImport } from './routes/photos'
 import { Route as PersonalFilesRouteImport } from './routes/personal-files'
+import { Route as PermitsRouteImport } from './routes/permits'
 import { Route as NotesRouteImport } from './routes/notes'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as LandingRouteImport } from './routes/landing'
@@ -73,6 +74,11 @@ const PhotosRoute = PhotosRouteImport.update({
 const PersonalFilesRoute = PersonalFilesRouteImport.update({
   id: '/personal-files',
   path: '/personal-files',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PermitsRoute = PermitsRouteImport.update({
+  id: '/permits',
+  path: '/permits',
   getParentRoute: () => rootRouteImport,
 } as any)
 const NotesRoute = NotesRouteImport.update({
@@ -142,6 +148,7 @@ export interface FileRoutesByFullPath {
   '/landing': typeof LandingRoute
   '/login': typeof LoginRoute
   '/notes': typeof NotesRoute
+  '/permits': typeof PermitsRoute
   '/personal-files': typeof PersonalFilesRoute
   '/photos': typeof PhotosRoute
   '/projects': typeof ProjectsRoute
@@ -164,6 +171,7 @@ export interface FileRoutesByTo {
   '/landing': typeof LandingRoute
   '/login': typeof LoginRoute
   '/notes': typeof NotesRoute
+  '/permits': typeof PermitsRoute
   '/personal-files': typeof PersonalFilesRoute
   '/photos': typeof PhotosRoute
   '/projects': typeof ProjectsRoute
@@ -187,6 +195,7 @@ export interface FileRoutesById {
   '/landing': typeof LandingRoute
   '/login': typeof LoginRoute
   '/notes': typeof NotesRoute
+  '/permits': typeof PermitsRoute
   '/personal-files': typeof PersonalFilesRoute
   '/photos': typeof PhotosRoute
   '/projects': typeof ProjectsRoute
@@ -211,6 +220,7 @@ export interface FileRouteTypes {
     | '/landing'
     | '/login'
     | '/notes'
+    | '/permits'
     | '/personal-files'
     | '/photos'
     | '/projects'
@@ -233,6 +243,7 @@ export interface FileRouteTypes {
     | '/landing'
     | '/login'
     | '/notes'
+    | '/permits'
     | '/personal-files'
     | '/photos'
     | '/projects'
@@ -255,6 +266,7 @@ export interface FileRouteTypes {
     | '/landing'
     | '/login'
     | '/notes'
+    | '/permits'
     | '/personal-files'
     | '/photos'
     | '/projects'
@@ -278,6 +290,7 @@ export interface RootRouteChildren {
   LandingRoute: typeof LandingRoute
   LoginRoute: typeof LoginRoute
   NotesRoute: typeof NotesRoute
+  PermitsRoute: typeof PermitsRoute
   PersonalFilesRoute: typeof PersonalFilesRoute
   PhotosRoute: typeof PhotosRoute
   ProjectsRoute: typeof ProjectsRoute
@@ -353,6 +366,13 @@ declare module '@tanstack/react-router' {
       path: '/personal-files'
       fullPath: '/personal-files'
       preLoaderRoute: typeof PersonalFilesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/permits': {
+      id: '/permits'
+      path: '/permits'
+      fullPath: '/permits'
+      preLoaderRoute: typeof PermitsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/notes': {
@@ -446,6 +466,7 @@ const rootRouteChildren: RootRouteChildren = {
   LandingRoute: LandingRoute,
   LoginRoute: LoginRoute,
   NotesRoute: NotesRoute,
+  PermitsRoute: PermitsRoute,
   PersonalFilesRoute: PersonalFilesRoute,
   PhotosRoute: PhotosRoute,
   ProjectsRoute: ProjectsRoute,

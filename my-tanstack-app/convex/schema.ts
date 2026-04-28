@@ -139,4 +139,7 @@ export default defineSchema({
 
   checklistItems: defineTable(zodToConvexFields(s.zChecklistItem))
     .index('by_checklist', ['checklistId']),
+
+  permits: defineTable(zodToConvexFields(s.zPermit))
+    .index('by_project', ['projectId']),
 });
