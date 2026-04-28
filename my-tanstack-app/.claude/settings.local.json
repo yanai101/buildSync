@@ -15,7 +15,19 @@
       "Bash(awk 'NR>=510 && NR<=560' /Users/yanaiedri/projects/BuildPro/my-tanstack-app/convex/mutations.ts)",
       "Bash(awk '/^const ICONS|paths.*=|\"[a-z-]+\":\\\\[/ && NR<60' /Users/yanaiedri/projects/BuildPro/my-tanstack-app/src/components/Shared.tsx)",
       "Bash(awk 'NR>=1019 && NR<=1110' /Users/yanaiedri/projects/BuildPro/my-tanstack-app/src/screens/StagesScreen.tsx)",
-      "Bash(awk NR>=1100 && NR<=1130 *)"
+      "Bash(awk NR>=1100 && NR<=1130 *)",
+      "Bash(grep -E \"\\\\.ts$\")",
+      "Bash(git stash *)",
+      "Bash(git worktree *)",
+      "Bash(git -C /Users/yanaiedri/projects/BuildPro/my-tanstack-app-personal-files stash pop)",
+      "Bash(git -C /Users/yanaiedri/projects/BuildPro/my-tanstack-app-personal-files status --short)",
+      "Bash(npm install *)",
+      "Bash(npx tsr *)",
+      "Bash(timeout 15 npx vite dev --port 3010)",
+      "Bash(npx vite *)",
+      "Bash(git -C /Users/yanaiedri/projects/BuildPro/my-tanstack-app-personal-files status --short --ignored my-tanstack-app/package-lock.json)",
+      "Bash(git *)",
+      "Bash(echo \"EXIT=$?\")"
     ]
   }
 }

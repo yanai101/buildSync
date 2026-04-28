@@ -2,7 +2,7 @@ import { useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { useCallback } from 'react';
 
-export type MutationResource = 'stages' | 'tasks' | 'boq' | 'photos' | 'project' | 'projects' | 'notes' | 'budget' | 'quotes' | 'timeline' | 'contractors' | 'expenses';
+export type MutationResource = 'stages' | 'tasks' | 'boq' | 'photos' | 'project' | 'projects' | 'notes' | 'budget' | 'quotes' | 'timeline' | 'contractors' | 'expenses' | 'checklists';
 
 export const useDataMutation = (resource: MutationResource) => {
   // Convex Mutations
@@ -24,11 +24,17 @@ export const useDataMutation = (resource: MutationResource) => {
   const createProjectMutation = useMutation(api.projects.createProject);
   const deleteProjectMutation = useMutation(api.projects.deleteProject);
 
-  const defaultDbResources: MutationResource[] = ['contractors', 'photos', 'notes', 'project', 'projects', 'expenses', 'budget', 'quotes'];
+  const addChecklistMutation = useMutation(api.checklists.addChecklist);
+  const deleteChecklistMutation = useMutation(api.checklists.deleteChecklist);
+  const addChecklistItemMutation = useMutation(api.checklists.addChecklistItem);
+  const toggleChecklistItemMutation = useMutation(api.checklists.toggleChecklistItem);
+  const deleteChecklistItemMutation = useMutation(api.checklists.deleteChecklistItem);
+
+  const defaultDbResources: MutationResource[] = ['contractors', 'photos', 'notes', 'project', 'projects', 'expenses', 'budget', 'quotes', 'checklists'];
   const savedMode = localStorage.getItem(`buildsync:ds:${resource}`);
   const isMock = savedMode ? savedMode !== 'db' : !defaultDbResources.includes(resource);
 
-  const mutate = useCallback(async (action: 'add' | 'update' | 'delete' | 'toggleTask' | 'saveBoq' | 'saveProjectSetup' | 'addExpense' | 'saveNote' | 'savePhotoAnnotation' | 'deletePhoto' | 'updatePhotoTag' | 'createProject' | 'deleteProject' | 'addBudgetCategory' | 'saveQuote' | 'deleteQuote' | 'addQuoteTopic', payload: any) => {
+  const mutate = useCallback(async (action: 'add' | 'update' | 'delete' | 'toggleTask' | 'saveBoq' | 'saveProjectSetup' | 'addExpense' | 'saveNote' | 'savePhotoAnnotation' | 'deletePhoto' | 'updatePhotoTag' | 'createProject' | 'deleteProject' | 'addBudgetCategory' | 'saveQuote' | 'deleteQuote' | 'addQuoteTopic' | 'addChecklist' | 'deleteChecklist' | 'addChecklistItem' | 'toggleChecklistItem' | 'deleteChecklistItem', payload: any) => {
     if (isMock) {
       console.log(`[MOCK MUTATION] ${resource}:${action}`, payload);
       return { success: true, mock: true };
@@ -93,6 +99,16 @@ export const useDataMutation = (resource: MutationResource) => {
           });
         case 'deleteProject':
           return await deleteProjectMutation({ projectId: payload.id });
+        case 'addChecklist':
+          return await addChecklistMutation(payload);
+        case 'deleteChecklist':
+          return await deleteChecklistMutation(payload);
+        case 'addChecklistItem':
+          return await addChecklistItemMutation(payload);
+        case 'toggleChecklistItem':
+          return await toggleChecklistItemMutation(payload);
+        case 'deleteChecklistItem':
+          return await deleteChecklistItemMutation(payload);
         default:
           throw new Error(`Unknown mutation action: ${action}`);
       }
@@ -100,7 +116,7 @@ export const useDataMutation = (resource: MutationResource) => {
       console.error(`[DB MUTATION ERROR] ${resource}:${action}`, err);
       throw err;
     }
-  }, [isMock, resource, genericUpdate, genericAdd, genericRemove, toggleTaskMutation, saveBoqMutation, saveProjectSetupMutation, addExpenseMutation, saveNoteMutation, savePhotoAnnotationMutation, deletePhotoMutation, updatePhotoTagMutation, createProjectMutation, deleteProjectMutation]);
+  }, [isMock, resource, genericUpdate, genericAdd, genericRemove, toggleTaskMutation, saveBoqMutation, saveProjectSetupMutation, addExpenseMutation, saveNoteMutation, savePhotoAnnotationMutation, deletePhotoMutation, updatePhotoTagMutation, createProjectMutation, deleteProjectMutation, addChecklistMutation, deleteChecklistMutation, addChecklistItemMutation, toggleChecklistItemMutation, deleteChecklistItemMutation]);
 
   return { mutate };
 };

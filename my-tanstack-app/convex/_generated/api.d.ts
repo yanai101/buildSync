@@ -15,6 +15,7 @@ import type * as _lib_projectAccess from "../_lib/projectAccess.js";
 import type * as _lib_stageSchedule from "../_lib/stageSchedule.js";
 import type * as auth from "../auth.js";
 import type * as budget from "../budget.js";
+import type * as checklists from "../checklists.js";
 import type * as contractorNotes from "../contractorNotes.js";
 import type * as dashboard from "../dashboard.js";
 import type * as http from "../http.js";
@@ -47,6 +48,7 @@ declare const fullApi: ApiFromModules<{
   "_lib/stageSchedule": typeof _lib_stageSchedule;
   auth: typeof auth;
   budget: typeof budget;
+  checklists: typeof checklists;
   contractorNotes: typeof contractorNotes;
   dashboard: typeof dashboard;
   http: typeof http;

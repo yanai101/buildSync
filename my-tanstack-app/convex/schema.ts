@@ -133,4 +133,10 @@ export default defineSchema({
 
   activityFeed: defineTable(zodToConvexFields(s.zActivityFeedItem))
     .index('by_project', ['projectId']),
+
+  checklists: defineTable(zodToConvexFields(s.zChecklist))
+    .index('by_project', ['projectId']),
+
+  checklistItems: defineTable(zodToConvexFields(s.zChecklistItem))
+    .index('by_checklist', ['checklistId']),
 });

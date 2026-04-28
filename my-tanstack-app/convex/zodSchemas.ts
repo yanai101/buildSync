@@ -435,3 +435,20 @@ export const zActivityFeedItem = {
     .optional(),
   createdAt: z.number(),
 };
+
+export const zChecklist = {
+  projectId: zid('projects'),
+  title: z.string(),
+  description: z.string().optional(),
+  category: z.string().optional(), // e.g. "שלד", "גמרים"
+  sortOrder: z.number(),
+  status: z.enum(['pending', 'in_progress', 'done']).default('pending'),
+  createdAt: z.number(),
+};
+
+export const zChecklistItem = {
+  checklistId: zid('checklists'),
+  text: z.string(),
+  isCompleted: z.boolean().default(false),
+  sortOrder: z.number(),
+};

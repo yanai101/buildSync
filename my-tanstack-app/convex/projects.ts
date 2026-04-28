@@ -272,11 +272,25 @@ export const deleteProject = mutation({
       await ctx.db.delete(pf._id);
     }
 
+    const checklists = await ctx.db
+      .query('checklists')
+      .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
+      .collect();
+    
+    for (const checklist of checklists) {
+      const cItems = await ctx.db
+        .query('checklistItems')
+        .withIndex('by_checklist', (q) => q.eq('checklistId', checklist._id))
+        .collect();
+      for (const ci of cItems) await ctx.db.delete(ci._id);
+      // checklists themselves are deleted in the next step
+    }
+
     // 5. Delete other project-level tables
     const projectTables = [
       'projectRooms', 'boqItems', 'expenses', 'messages',
       'budgetCategories', 'activityFeed', 'timelineBars', 
-      'priceQuotes', 'projectInvitations'
+      'priceQuotes', 'projectInvitations', 'checklists'
     ] as const;
 
     for (const table of projectTables) {

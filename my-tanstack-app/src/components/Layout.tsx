@@ -25,6 +25,7 @@ export const NAV = [
   { id: "/contractors",   label: "קבלנים",     icon: "users",     section: "ניהול",   roles: OWNER_MANAGER },
   { id: "/boq",           label: "כתב כמויות", icon: "clipboard", section: "ניהול",   roles: OWNER_MANAGER },
   { id: "/boqwizard",     label: "אשף כמויות", icon: "zoom-in",   section: "ניהול",   roles: OWNER_MANAGER },
+  { id: "/checklists",    label: "צ'קליסטים",  icon: "check-circle", section: "ניהול", roles: ALL_ROLES },
   { id: "/photos",        label: "תמונות",     icon: "camera",    section: "תיעוד",   roles: ALL_ROLES },
   { id: "/notes",         label: "הערות",      icon: "message",   section: "תיעוד",   roles: ALL_ROLES },
   { id: "/personal-files",label: "קבצים אישיים",icon: "file-text", section: "תיעוד",  roles: OWNER_ONLY },
@@ -41,6 +42,7 @@ export const PAGE_TITLES: Record<string, string> = {
   "/contractors": "ניהול קבלנים",
   "/boq": "כתב כמויות",
   "/boqwizard": "אשף כתב כמויות",
+  "/checklists": "צ'קליסטים ופרוטוקולים",
   "/photos": "תמונות ותיעוד",
   "/notes": "הערות",
   "/personal-files": "קבצים אישיים",
@@ -54,6 +56,7 @@ export const PAGE_TITLES: Record<string, string> = {
 export const PAGE_SUBTITLES: Record<string, string> = {
   "/setup": "הגדרת מבנה הבית, חדרים וצוות",
   "/boqwizard": "עבור חדר-חדר ובנה רשימת כמויות לרכישה / יבוא",
+  "/checklists": "רשימות תיוג מקצועיות לכל שלב בבנייה",
   "/quotes": "הוסיפו הצעות לפי נושא והשוו ביניהן",
   "/account": "עדכון פרטים אישיים וסיסמה",
 }
