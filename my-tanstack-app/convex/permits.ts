@@ -7,10 +7,23 @@ import { zodToConvex } from 'convex-helpers/server/zod3';
 export const list = query({
   args: { projectId: v.id('projects') },
   handler: async (ctx, args) => {
-    return await ctx.db
+    const records = await ctx.db
       .query('permits')
       .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
       .collect();
+      
+    return await Promise.all(records.map(async (p) => ({
+      ...p,
+      url: p.fileId ? await ctx.storage.getUrl(p.fileId) : null,
+    })));
+  },
+});
+
+export const generateUploadUrl = mutation({
+  args: { projectId: v.id('projects') },
+  handler: async (ctx) => {
+    // Basic auth check can go here if needed
+    return await ctx.storage.generateUploadUrl();
   },
 });
 
@@ -22,6 +35,7 @@ export const addPermit = mutation({
     status: zodToConvex(zPermitStatus),
     expirationDate: v.optional(v.string()),
     notes: v.optional(v.string()),
+    fileId: v.optional(v.id('_storage')),
   },
   handler: async (ctx, args) => {
     
@@ -32,6 +46,7 @@ export const addPermit = mutation({
       status: args.status,
       expirationDate: args.expirationDate,
       notes: args.notes,
+      fileId: args.fileId,
     });
 
     await insertActivity(ctx, {
