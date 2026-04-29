@@ -149,14 +149,16 @@ function ProjectsRoute() {
                 </div>
 
                 <div style={{ display: 'flex', gap: 12 }}>
-                  <button 
-                    onClick={() => handleDelete(project._id)}
-                    style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', padding: 8, opacity: deleting ? 0.5 : 1, display: 'flex', alignItems: 'center', gap: 4, fontSize: 13 }}
-                    disabled={deleting}
-                  >
-                    <Icon n="trash" s={16} />
-                    {deleting ? 'מוחק...' : 'מחק'}
-                  </button>
+                  {user?._id === project.ownerUserId && (
+                    <button 
+                      onClick={() => handleDelete(project._id)}
+                      style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', padding: 8, opacity: deleting ? 0.5 : 1, display: 'flex', alignItems: 'center', gap: 4, fontSize: 13 }}
+                      disabled={deleting}
+                    >
+                      <Icon n="trash" s={16} />
+                      {deleting ? 'מוחק...' : 'מחק'}
+                    </button>
+                  )}
 
                   <Btn
                     disabled={isActive}
