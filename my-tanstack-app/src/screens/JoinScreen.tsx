@@ -27,21 +27,11 @@ const REASON_TEXT: Record<string, string> = {
 
 type Props = { code: string };
 
-/* ─── Blueprint Grid Pattern as inline SVG background ─── */
+/* ─── Animated construction background ─── */
 const BlueprintBg = () => (
-  <div
-    style={{
-      position: 'fixed',
-      inset: 0,
-      background: 'linear-gradient(135deg, #0D1B2A 0%, #1A2E42 50%, #0F2030 100%)',
-      zIndex: 0,
-    }}
-  >
-    {/* Grid lines */}
-    <svg
-      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0.15 }}
-      xmlns="http://www.w3.org/2000/svg"
-    >
+  <div style={{ position: 'fixed', inset: 0, background: 'linear-gradient(135deg, #0D1B2A 0%, #1A2E42 50%, #0F2030 100%)', zIndex: 0 }}>
+    {/* Blueprint grid */}
+    <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0.15 }} xmlns="http://www.w3.org/2000/svg">
       <defs>
         <pattern id="smallGrid" width="24" height="24" patternUnits="userSpaceOnUse">
           <path d="M 24 0 L 0 0 0 24" fill="none" stroke="#4A9EDB" strokeWidth="0.4" />
@@ -53,20 +43,85 @@ const BlueprintBg = () => (
       </defs>
       <rect width="100%" height="100%" fill="url(#bigGrid)" />
     </svg>
-    {/* Glowing orb top-right */}
-    <div style={{
-      position: 'absolute', top: -120, right: -120,
-      width: 500, height: 500, borderRadius: '50%',
-      background: 'radial-gradient(circle, rgba(224,122,56,0.18) 0%, transparent 70%)',
-      pointerEvents: 'none',
-    }} />
-    {/* Glowing orb bottom-left */}
-    <div style={{
-      position: 'absolute', bottom: -160, left: -160,
-      width: 600, height: 600, borderRadius: '50%',
-      background: 'radial-gradient(circle, rgba(74,158,219,0.14) 0%, transparent 70%)',
-      pointerEvents: 'none',
-    }} />
+
+    {/* Glow orbs */}
+    <div style={{ position: 'absolute', top: -120, right: -120, width: 500, height: 500, borderRadius: '50%', background: 'radial-gradient(circle, rgba(224,122,56,0.18) 0%, transparent 70%)', pointerEvents: 'none' }} />
+    <div style={{ position: 'absolute', bottom: -160, left: -160, width: 600, height: 600, borderRadius: '50%', background: 'radial-gradient(circle, rgba(74,158,219,0.14) 0%, transparent 70%)', pointerEvents: 'none' }} />
+
+    {/* ── CRANE (bottom-left) ── */}
+    <svg viewBox="0 0 180 240" style={{ position: 'absolute', bottom: 24, left: 10, width: 150, opacity: 0.5, pointerEvents: 'none' }}>
+      {/* Tower */}
+      <rect x="72" y="60" width="18" height="180" fill="#4A9EDB" rx="3" />
+      {/* Cross-bracing */}
+      <line x1="72" y1="80" x2="90" y2="110" stroke="#2563EB" strokeWidth="1.5" />
+      <line x1="90" y1="80" x2="72" y2="110" stroke="#2563EB" strokeWidth="1.5" />
+      <line x1="72" y1="110" x2="90" y2="140" stroke="#2563EB" strokeWidth="1.5" />
+      <line x1="90" y1="110" x2="72" y2="140" stroke="#2563EB" strokeWidth="1.5" />
+      {/* Counter-jib (fixed) */}
+      <rect x="40" y="62" width="40" height="8" fill="#4A9EDB" rx="2" />
+      <rect x="40" y="62" width="8" height="20" fill="#4A9EDB" rx="2" />
+      <rect x="34" y="82" width="20" height="10" fill="#2563EB" rx="2" />{/* counterweight */}
+      {/* Swinging jib + hook */}
+      <g style={{ transformOrigin: '81px 62px', animation: 'craneSway 6s ease-in-out infinite' }}>
+        <rect x="81" y="56" width="90" height="9" fill="#E07A38" rx="2" />
+        {/* Trolley on jib */}
+        <rect x="148" y="56" width="16" height="7" fill="#F59E0B" rx="1" style={{ animation: 'trolleySlide 6s ease-in-out infinite' }} />
+        {/* Cable */}
+        <line x1="156" y1="63" x2="156" y2="120" stroke="rgba(255,255,255,0.6)" strokeWidth="1.5" strokeDasharray="3 2" style={{ animation: 'trolleySlide 6s ease-in-out infinite' }} />
+        {/* Hook + load */}
+        <rect x="148" y="120" width="16" height="10" fill="#F59E0B" rx="2" style={{ animation: 'trolleySlide 6s ease-in-out infinite' }} />
+        <rect x="144" y="130" width="24" height="16" fill="#4A9EDB" rx="2" style={{ animation: 'trolleySlide 6s ease-in-out infinite' }} />
+      </g>
+      {/* Building rising at base */}
+      <rect x="20" y="240" width="44" height="14" fill="#1D4ED8" rx="2" style={{ animation: 'riseFloor 9s linear infinite', animationDelay: '0s' }} />
+      <rect x="20" y="225" width="44" height="14" fill="#2563EB" rx="2" style={{ animation: 'riseFloor 9s linear infinite', animationDelay: '1s' }} />
+      <rect x="20" y="210" width="44" height="14" fill="#3B82F6" rx="2" style={{ animation: 'riseFloor 9s linear infinite', animationDelay: '2s' }} />
+      <rect x="20" y="195" width="44" height="14" fill="#60A5FA" rx="2" style={{ animation: 'riseFloor 9s linear infinite', animationDelay: '3s' }} />
+      {/* Windows on visible floors */}
+      <rect x="26" y="230" width="7" height="6" fill="rgba(255,255,255,0.25)" rx="1" style={{ animation: 'riseFloor 9s linear infinite', animationDelay: '0s' }} />
+      <rect x="36" y="230" width="7" height="6" fill="rgba(255,255,255,0.25)" rx="1" style={{ animation: 'riseFloor 9s linear infinite', animationDelay: '0s' }} />
+      <rect x="48" y="230" width="7" height="6" fill="rgba(255,255,255,0.25)" rx="1" style={{ animation: 'riseFloor 9s linear infinite', animationDelay: '0s' }} />
+    </svg>
+
+    {/* ── SPINNING GEAR top-right ── */}
+    <div style={{ position: 'absolute', top: 28, right: 28, animation: 'spinGear 14s linear infinite', pointerEvents: 'none', opacity: 0.28 }}>
+      <svg viewBox="0 0 60 60" width="54">
+        <path d="M30 20a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm16.2-1.4-2.8-2.8-3.5 3.5a14 14 0 0 0-3.7-1.5V14h-4v3.8a14 14 0 0 0-3.7 1.5l-3.5-3.5-2.8 2.8 3.5 3.5a14 14 0 0 0-1.5 3.7H14v4h3.8a14 14 0 0 0 1.5 3.7l-3.5 3.5 2.8 2.8 3.5-3.5a14 14 0 0 0 3.7 1.5V46h4v-3.8a14 14 0 0 0 3.7-1.5l3.5 3.5 2.8-2.8-3.5-3.5a14 14 0 0 0 1.5-3.7H46v-4h-3.8a14 14 0 0 0-1.5-3.7l3.5-3.5z" fill="#4A9EDB" />
+      </svg>
+    </div>
+
+    {/* ── SPINNING GEAR bottom-right (reverse) ── */}
+    <div style={{ position: 'absolute', bottom: 60, right: 50, animation: 'spinGearReverse 9s linear infinite', pointerEvents: 'none', opacity: 0.20 }}>
+      <svg viewBox="0 0 60 60" width="34">
+        <path d="M30 20a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm16.2-1.4-2.8-2.8-3.5 3.5a14 14 0 0 0-3.7-1.5V14h-4v3.8a14 14 0 0 0-3.7 1.5l-3.5-3.5-2.8 2.8 3.5 3.5a14 14 0 0 0-1.5 3.7H14v4h3.8a14 14 0 0 0 1.5 3.7l-3.5 3.5 2.8 2.8 3.5-3.5a14 14 0 0 0 3.7 1.5V46h4v-3.8a14 14 0 0 0 3.7-1.5l3.5 3.5 2.8-2.8-3.5-3.5a14 14 0 0 0 1.5-3.7H46v-4h-3.8a14 14 0 0 0-1.5-3.7l3.5-3.5z" fill="#E07A38" />
+      </svg>
+    </div>
+
+    {/* ── BOUNCING HARD HAT top-left ── */}
+    <div style={{ position: 'absolute', top: 26, left: 26, fontSize: 38, animation: 'bounceHat 3.4s ease-in-out infinite', pointerEvents: 'none', userSelect: 'none', filter: 'drop-shadow(0 0 10px rgba(224,122,56,0.55))' }}>👷</div>
+
+    {/* ── FLOATING WRENCH top-center-right ── */}
+    <div style={{ position: 'absolute', top: '18%', right: '18%', fontSize: 22, animation: 'floatTool 7s ease-in-out infinite', animationDelay: '1.2s', pointerEvents: 'none', userSelect: 'none', opacity: 0.45 }}>🔧</div>
+
+    {/* ── FLOATING BLUEPRINT PARTICLES ── */}
+    {[
+      { size: 18, top: '14%', left: '22%', delay: '0s',   dur: '9s'  },
+      { size: 12, top: '68%', left: '7%',  delay: '2s',   dur: '11s' },
+      { size: 22, top: '38%', left: '87%', delay: '1s',   dur: '13s' },
+      { size: 10, top: '78%', left: '74%', delay: '3.5s', dur: '8s'  },
+      { size: 15, top: '24%', left: '60%', delay: '0.5s', dur: '10s' },
+      { size: 8,  top: '53%', left: '33%', delay: '4s',   dur: '12s' },
+      { size: 14, top: '45%', left: '5%',  delay: '2.5s', dur: '10s' },
+    ].map((p, i) => (
+      <div key={i} style={{ position: 'absolute', top: p.top, left: p.left, width: p.size, height: p.size, border: '1.5px solid rgba(74,158,219,0.5)', borderRadius: 3, background: 'rgba(74,158,219,0.06)', animation: `floatParticle ${p.dur} ease-in-out infinite`, animationDelay: p.delay, pointerEvents: 'none' }} />
+    ))}
+
+    {/* ── MEASUREMENT RULER at bottom ── */}
+    <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 24, background: 'rgba(74,158,219,0.07)', borderTop: '1px solid rgba(74,158,219,0.2)', display: 'flex', alignItems: 'flex-end', paddingBottom: 2, pointerEvents: 'none' }}>
+      {Array.from({ length: 80 }).map((_, i) => (
+        <div key={i} style={{ flex: 1, borderRight: '1px solid rgba(74,158,219,0.22)', height: i % 5 === 0 ? 12 : 5 }} />
+      ))}
+    </div>
   </div>
 );
 
@@ -389,7 +444,38 @@ export const JoinScreen = ({ code }: Props) => {
       </div>
 
       <style>{`
-        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes spin            { to { transform: rotate(360deg); } }
+        @keyframes spinGear        { to { transform: rotate(360deg); } }
+        @keyframes spinGearReverse { to { transform: rotate(-360deg); } }
+        @keyframes bounceHat {
+          0%, 100% { transform: translateY(0) rotate(-6deg); }
+          40%       { transform: translateY(-14px) rotate(6deg); }
+          60%       { transform: translateY(-8px) rotate(-3deg); }
+        }
+        @keyframes floatTool {
+          0%, 100% { transform: translateY(0) rotate(-10deg); }
+          50%       { transform: translateY(-18px) rotate(14deg); }
+        }
+        @keyframes craneSway {
+          0%, 100% { transform: rotate(0deg); }
+          35%       { transform: rotate(6deg); }
+          65%       { transform: rotate(-4deg); }
+        }
+        @keyframes trolleySlide {
+          0%, 100% { transform: translateX(0); }
+          40%       { transform: translateX(-22px); }
+        }
+        @keyframes riseFloor {
+          0%   { transform: translateY(0);    opacity: 0; }
+          5%   { opacity: 1; }
+          80%  { transform: translateY(-60px); opacity: 0.9; }
+          100% { transform: translateY(-80px); opacity: 0; }
+        }
+        @keyframes floatParticle {
+          0%, 100% { transform: translate(0, 0) rotate(0deg);     opacity: 0.4; }
+          33%       { transform: translate(8px, -14px) rotate(20deg); opacity: 0.7; }
+          66%       { transform: translate(-6px, -8px) rotate(-10deg); opacity: 0.5; }
+        }
       `}</style>
     </div>
   );
