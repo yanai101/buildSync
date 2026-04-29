@@ -9,6 +9,7 @@ import { useConvexAuth, useQuery } from 'convex/react'
 import { useAuthActions } from '@convex-dev/auth/react'
 import { api } from '../../convex/_generated/api'
 import { useOnboardingTour } from '~/hooks/useOnboardingTour'
+import { useRequireRole } from '~/hooks/useRequireRole'
 
 type NavRole = 'owner' | 'manager' | 'inspector' | 'contractor'
 const ALL_ROLES: NavRole[] = ['owner', 'manager', 'inspector', 'contractor']
@@ -20,19 +21,19 @@ export const NAV = [
   { id: "/",              label: "לוח בקרה",    icon: "home",      section: "ראשי",   roles: ALL_ROLES },
   { id: "/projects",      label: "פרויקטים",    icon: "layers",    section: "ראשי",   roles: ALL_ROLES },
   { id: "/setup",         label: "הגדרות בית",  icon: "settings",  section: "ראשי",   roles: OWNER_MANAGER },
-  { id: "/team",          label: "ניהול צוות",  icon: "users",     section: "ראשי",   roles: OWNER_ONLY },
+  { id: "/team",          label: "ניהול צוות",  icon: "users",     section: "ראשי",   roles: OWNER_MANAGER_INSPECTOR },
   { id: "/stages",        label: "שלבי בנייה", icon: "layers",    section: "ניהול",   roles: ALL_ROLES },
-  { id: "/contractors",   label: "קבלנים",     icon: "users",     section: "ניהול",   roles: OWNER_MANAGER },
-  { id: "/boq",           label: "כתב כמויות", icon: "clipboard", section: "ניהול",   roles: OWNER_MANAGER },
+  { id: "/contractors",   label: "קבלנים",     icon: "users",     section: "ניהול",   roles: ALL_ROLES },
+  { id: "/boq",           label: "כתב כמויות", icon: "clipboard", section: "ניהול",   roles: OWNER_MANAGER_INSPECTOR },
   { id: "/boqwizard",     label: "אשף כמויות", icon: "zoom-in",   section: "ניהול",   roles: OWNER_MANAGER },
   { id: "/checklists",    label: "צ'קליסטים",  icon: "check-circle", section: "ניהול", roles: ALL_ROLES },
-  { id: "/permits",       label: "היתרים",     icon: "clipboard", section: "ניהול", roles: ALL_ROLES },
+  { id: "/permits",       label: "היתרים",     icon: "clipboard", section: "ניהול", roles: OWNER_MANAGER_INSPECTOR },
   { id: "/photos",        label: "תמונות",     icon: "camera",    section: "תיעוד",   roles: ALL_ROLES },
-  { id: "/notes",         label: "הערות",      icon: "message",   section: "תיעוד",   roles: ALL_ROLES },
+  { id: "/notes",         label: "הערות",      icon: "message",   section: "תיעוד",   roles: OWNER_MANAGER_INSPECTOR },
   { id: "/personal-files",label: "קבצים אישיים",icon: "file-text", section: "תיעוד",  roles: OWNER_ONLY },
-  { id: "/budget",        label: "תקציב",      icon: "chart",     section: "פיננסי",  roles: OWNER_MANAGER },
-  { id: "/quotes",        label: "הצעות מחיר", icon: "clipboard", section: "פיננסי",  roles: OWNER_MANAGER },
-  { id: "/timeline",      label: "לוח זמנים", icon: "calendar",  section: "פיננסי",   roles: OWNER_MANAGER_INSPECTOR },
+  { id: "/budget",        label: "תקציב",      icon: "chart",     section: "פיננסי",  roles: OWNER_ONLY },
+  { id: "/quotes",        label: "הצעות מחיר", icon: "clipboard", section: "פיננסי",  roles: OWNER_ONLY },
+  { id: "/timeline",      label: "לוח זמנים", icon: "calendar",  section: "פיננסי",   roles: ALL_ROLES },
 ]
 
 export const PAGE_TITLES: Record<string, string> = {
@@ -72,6 +73,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const [tweaksOpen, setTweaksOpen] = React.useState(false)
   const { project, projects, hasMultipleProjects, isLoading: isProjectLoading } = useCurrentProject()
   const { isAuthenticated, isLoading } = useConvexAuth()
+  const { role: resolvedRole } = useRequireRole(ALL_ROLES)
   const { signOut } = useAuthActions()
   const identity = useQuery(api.users.currentIdentity, {})
   const [menuOpen, setMenuOpen] = React.useState(false)
@@ -216,7 +218,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
         <div className="sidebar-scroll">
           {sections.map(sec => {
-            const userRole = identity?.role ?? 'owner'
+            const userRole = resolvedRole ?? 'owner'
             const items = NAV.filter(n =>
               n.section === sec &&
               (!n.roles || n.roles.includes(userRole as any))
