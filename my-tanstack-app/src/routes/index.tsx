@@ -185,7 +185,7 @@ function LandingPage() {
           {Array(4).fill([
             { text: "חריגה צפויה של 2% בתקציב אינסטלציה", icon: "alert", color: "var(--warning)" },
             { text: "המפקח אישר את שלב יציקת הרצפה", icon: "check-circle", color: "var(--success)" },
-            { text: "יומן עבודה יומי ננעל ונחתם משפטית", icon: "file-text", color: "#3B82F6" },
+            { text: "יומן עבודה יומי אושר וננעל לשינויים", icon: "file-text", color: "#3B82F6" },
             { text: "התקבלה תמונה חדשה עם הערת ביצוע", icon: "camera", color: "var(--accent)" }
           ]).flat().map((item: any, i) => (
             <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(255,255,255,0.03)', padding: '8px 16px', borderRadius: 20, border: '1px solid rgba(255,255,255,0.05)' }}>
@@ -387,14 +387,14 @@ function LandingPage() {
       <section className="section-padding" style={{ background: '#111115', borderTop: '1px solid rgba(255,255,255,0.02)' }}>
         <div className="content-width split-layout reversed">
           <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeIn} className="split-text">
-            <span className="feature-badge" style={{color: '#3B82F6'}}>הגנה משפטית אולטימטיבית</span>
-            <h2 className="feature-title">יומן עבודה חתום שסוגר פינות.</h2>
+            <span className="feature-badge" style={{color: '#3B82F6'}}>תיעוד אמין ומוגן משינויים</span>
+            <h2 className="feature-title">יומן עבודה יומי שמגן עליכם.</h2>
             <p className="feature-desc">
-              אל תישארו חשופים במקרה של תביעה. המערכת מחוללת אוטומטית קובץ PDF חתום, עם תמונות, מזג אוויר ונוכחות פועלים שמונע סכסוכי קבלנים.
+              אל תשאירו מקום לספקות או ויכוחים. המערכת מחוללת אוטומטית דוח PDF מקיף ונעול לשינויים, עם תמונות, מזג אוויר ונוכחות פועלים שמונע סכסוכי קבלנים.
             </p>
             <ul className="bullet-list">
               <li className="bullet-item"><Icon n="file-text" s={28} c="#3B82F6" style={{marginTop:4}} /> <div><strong>תיעוד אוטומטי:</strong> מזג אוויר, נוכחות קבלנים, אישורי מפקח ותמונות מצורפות אוטומטית לקובץ יומי.</div></li>
-              <li className="bullet-item"><Icon n="lock" s={28} c="#3B82F6" style={{marginTop:4}} /> <div><strong>נעילת יומן:</strong> ברגע שהיומן ננעל אי אפשר לערוך אותו יותר, מה שהופך אותו לראייה קבילה ומוצקה.</div></li>
+              <li className="bullet-item"><Icon n="lock" s={28} c="#3B82F6" style={{marginTop:4}} /> <div><strong>נעילת יומן:</strong> ברגע שהיומן ננעל אי אפשר לערוך אותו יותר, מה שהופך אותו למסמך אמין שאינו ניתן לעריכה בדיעבד.</div></li>
             </ul>
           </motion.div>
           
@@ -423,7 +423,7 @@ function LandingPage() {
               {!logSigned ? (
                 <div style={{ background: '#3B82F6', color: '#fff', textAlign: 'center', padding: 16, borderRadius: 8, fontWeight: 'bold', boxShadow: '0 10px 20px rgba(59,130,246,0.3)', transition: 'all 0.2s', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8 }}>
                   <Icon n="lock" s={18} />
-                  לחץ כדי לנעול ולחתום
+                  לחץ כדי לאשר ולנעול
                 </div>
               ) : (
                 <div style={{ background: '#f3f4f6', color: '#aaa', textAlign: 'center', padding: 16, borderRadius: 8, fontWeight: 'bold', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8 }}>
@@ -434,7 +434,7 @@ function LandingPage() {
 
               {logSigned && (
                 <motion.div initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: "spring", stiffness: 200, damping: 15 }} style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%) rotate(-15deg)', border: '6px solid #DC2626', color: '#DC2626', padding: '10px 20px', borderRadius: 8, fontSize: 32, fontWeight: 900, textTransform: 'uppercase', letterSpacing: 2, pointerEvents: 'none', background: 'rgba(255,255,255,0.9)', boxShadow: '0 10px 30px rgba(0,0,0,0.2)' }}>
-                  נחתם משפטית
+                  אושר וננעל
                 </motion.div>
               )}
             </div>
