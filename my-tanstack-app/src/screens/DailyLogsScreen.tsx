@@ -23,6 +23,7 @@ export const DailyLogsScreen = () => {
 
   const [feedback, setFeedback] = useState<{title: string, message: string, type: 'success' | 'error' | 'info'} | null>(null);
   const [saving, setSaving] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   // Local state for the form so we can edit before saving
   const [form, setForm] = useState({
@@ -94,6 +95,87 @@ export const DailyLogsScreen = () => {
     }
   };
 
+  const exportPDF = async (targetLog: any) => {
+    if (exporting || !targetLog) return;
+    setExporting(true);
+    try {
+      // @ts-ignore
+      const html2pdf = (await import('html2pdf.js')).default;
+      
+      const container = document.createElement('div');
+      container.style.padding = '40px';
+      container.style.fontFamily = "'Heebo', sans-serif";
+      container.style.direction = "rtl";
+      container.style.textAlign = "right";
+      container.style.color = "#000";
+      container.style.background = "#fff";
+
+      const formattedDate = new Date(targetLog.date).toLocaleDateString('he-IL');
+      const logIsLocked = targetLog.status === 'locked';
+
+      let html = `
+        <div style="border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: flex-end;">
+          <div>
+            <h1 style="margin: 0; font-size: 28px; color: #111;">יומן עבודה יומי</h1>
+            <p style="margin: 4px 0 0 0; color: #555; font-size: 14px;">תאריך: ${formattedDate} | סטטוס: ${logIsLocked ? 'נעול (מסמך משפטי)' : 'טיוטה'}</p>
+          </div>
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <div style="font-size: 26px; font-weight: 800; letter-spacing: -0.5px;">Build<span style="color: #FF9500;">Sync</span></div>
+            <img src="/logo.png" style="height: 48px; width: auto; object-fit: contain;" />
+          </div>
+        </div>
+      `;
+
+      html += `<div style="margin-bottom: 20px; font-size: 14px;">
+        <strong>תנאי שטח:</strong> מזג אוויר: ${targetLog.weather || '-'} | טמפרטורה: ${targetLog.temperature || '-'}
+      </div>`;
+
+      if (targetLog.activities?.length > 0) {
+        html += `<h2 style="font-size: 18px; margin-bottom: 10px; border-bottom: 1px solid #ccc; padding-bottom: 4px;">עבודות שבוצעו</h2>
+        <ul style="font-size: 14px; line-height: 1.6;">`;
+        for (const act of targetLog.activities) {
+          const statusText = act.status === 'completed' ? 'הושלם' : act.status === 'delayed' ? 'באיחור' : 'בביצוע';
+          html += `<li>${act.description} <strong style="color: #555;">[${statusText}]</strong></li>`;
+        }
+        html += `</ul>`;
+      }
+
+      if (targetLog.issues?.length > 0) {
+        html += `<h2 style="font-size: 18px; margin-bottom: 10px; border-bottom: 1px solid #ccc; padding-bottom: 4px; margin-top: 20px; color: #D32F2F;">חריגות ועיכובים</h2>
+        <ul style="font-size: 14px; line-height: 1.6;">`;
+        for (const iss of targetLog.issues) {
+          html += `<li>${iss.description} ${iss.financialImpact ? '<strong style="color: #D32F2F;">(השפעה כספית)</strong>' : ''}</li>`;
+        }
+        html += `</ul>`;
+      }
+
+      if (logIsLocked) {
+        html += `
+          <div style="margin-top: 40px; padding-top: 20px; border-top: 1px dashed #ccc; text-align: left; font-size: 12px; color: #666;">
+            מסמך זה ננעל ואושר במערכת BuildSync ומהווה מסמך משפטי מחייב ליום העבודה.
+          </div>
+        `;
+      }
+
+      container.innerHTML = html;
+
+      const opt = {
+        margin: 10,
+        filename: \`daily-log-\${targetLog.date}.pdf\`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      };
+
+      await html2pdf().set(opt).from(container).save();
+    } catch (error) {
+      console.error("PDF Export failed:", error);
+      setFeedback({ title: "שגיאה", message: "שגיאה בהפקת הדוח. נסה שנית.", type: "error" });
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const renderSectionHeader = (title: string, icon: string) => (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: "12px 16px", background: "var(--bg)", borderBottom: "1px solid var(--border)", fontWeight: 600, color: "var(--text1)" }}>
       <Icon n={icon} s={16} c="var(--accent)" />
@@ -147,8 +229,12 @@ export const DailyLogsScreen = () => {
             
             {/* Action Buttons */}
             <div style={{ display: "flex", gap: 12 }}>
-              <Btn variant="outline" onClick={() => setFeedback({ title: "הדפסת דוח", message: "פיצ'ר ה-PDF ליומן עבודה יומי יתווסף בהמשך. הדוח יכלול את הנתונים, התמונות וחתימות הדיגיטליות.", type: 'info' })}>
-                <Icon n="download" s={16}/> הפק PDF משפטי
+              <Btn 
+                variant="outline" 
+                onClick={() => exportPDF(log)}
+                disabled={exporting || !log || log.activities.length === 0}
+              >
+                <Icon n="download" s={16}/> {exporting ? 'מפיק PDF...' : 'הפק PDF משפטי'}
               </Btn>
 
               {canEditBasic && <Btn variant="primary" onClick={handleSave} disabled={saving}>
@@ -274,8 +360,8 @@ export const DailyLogsScreen = () => {
                     }}>
                       <Icon n="eye" s={14} /> צפה ביומן
                     </Btn>
-                    <Btn variant="outline" size="sm" onClick={() => setFeedback({ title: "הדפסת דוח", message: "פיצ'ר ה-PDF ליומן עבודה יומי יתווסף בהמשך.", type: 'info' })}>
-                      <Icon n="download" s={14}/> PDF
+                    <Btn variant="outline" size="sm" onClick={() => exportPDF(l)} disabled={exporting}>
+                      <Icon n="download" s={14}/> {exporting ? 'מפיק...' : 'PDF'}
                     </Btn>
                   </div>
                 </div>
