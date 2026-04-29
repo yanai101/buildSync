@@ -19,20 +19,29 @@ export const requireProjectFileUser = async (ctx: Ctx, projectId: Id<'projects'>
     throw new Error('Project not found');
   }
 
+  const contractorRecord = await ctx.db
+    .query('contractors')
+    .withIndex('by_project', (q) => q.eq('projectId', projectId))
+    .filter((q) => q.eq(q.field('userId'), userId))
+    .first();
+
   const isProjectMember =
     project.ownerUserId === userId ||
     project.managerUserId === userId ||
-    project.inspectorUserId === userId;
+    project.inspectorUserId === userId ||
+    contractorRecord !== null;
+
   const hasProjectTeamRole =
     user?.role === 'owner' ||
     user?.role === 'manager' ||
-    user?.role === 'inspector';
+    user?.role === 'inspector' ||
+    user?.role === 'contractor';
 
   if (!isProjectMember && !hasProjectTeamRole) {
-    throw new Error('Only project team members can upload files');
+    throw new Error('Only project team members can access files');
   }
 
-  return { userId, user, project };
+  return { userId, user, project, isContractor: contractorRecord !== null };
 };
 
 export const requireProjectFileManager = async (ctx: Ctx, projectId: Id<'projects'>) => {
