@@ -43,16 +43,13 @@ export const NotesScreen = () => {
   const activeRole = mode === 'db'
     ? currentIdentity?.role ?? 'manager'
     : myRole;
-  const canSeeAllChats = activeRole === 'owner';
+  const canSeeAllChats = activeRole !== 'contractor';
   const allowedThreads = React.useMemo(() => {
     if (canSeeAllChats) {
       return [{id:"all",label:"הכל"},{id:"internal",label:"פנימי"},{id:"contractor",label:"לקבלן"}];
     }
-    if (activeRole === 'contractor') {
-      return [{id:"contractor",label:"לקבלן"}];
-    }
-    return [{id:"internal",label:"פנימי"}];
-  }, [activeRole, canSeeAllChats]);
+    return [{id:"contractor",label:"לקבלן"}];
+  }, [canSeeAllChats]);
   const targetThreadOptions = allowedThreads.filter(t => t.id !== 'all');
   const threads = allowedThreads;
 

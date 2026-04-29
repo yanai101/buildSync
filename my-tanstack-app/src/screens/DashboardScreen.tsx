@@ -6,8 +6,10 @@ import { useDataSource } from '../hooks/useDataSource';
 import { ScreenBoundary } from '../components/ScreenBoundary';
 import { useDashboardOverview } from '../hooks/useDashboardOverview';
 import { BudgetSummaryCards } from '../components/BudgetSummaryCards';
+import { useRequireRole } from '../hooks/useRequireRole';
 
 export const DashboardScreen = () => {
+  const { role } = useRequireRole(['owner', 'manager', 'inspector', 'contractor']);
   const [showAllStages, setShowAllStages] = React.useState(false);
   const { overview } = useDashboardOverview();
   
@@ -44,7 +46,7 @@ export const DashboardScreen = () => {
           </div>
         </div>
 
-        <BudgetSummaryCards summary={stats} style={{marginBottom:24}} />
+        {role !== 'contractor' && <BudgetSummaryCards summary={stats} style={{marginBottom:24}} />}
 
         <div style={{display:"grid",gridTemplateColumns:"1fr 340px",gap:20}}>
           {/* Left col */}
@@ -76,6 +78,7 @@ export const DashboardScreen = () => {
             </div>
 
             {/* Budget overview */}
+            {role !== 'contractor' && (
               <div className="card">
               <div className="card-header" style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                 <span>תקציב ותשלומים</span>
@@ -100,7 +103,9 @@ export const DashboardScreen = () => {
                 </div>
               </div>
             </div>
+            )}
 
+            {role !== 'contractor' && (
             <div className="card">
               <div className="card-header">חריגות מובילות</div>
               <div className="card-body" style={{paddingTop:12}}>
@@ -114,6 +119,7 @@ export const DashboardScreen = () => {
                 )}
               </div>
             </div>
+            )}
           </div>
 
           {/* Right col */}
