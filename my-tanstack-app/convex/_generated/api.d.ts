@@ -17,6 +17,7 @@ import type * as auth from "../auth.js";
 import type * as budget from "../budget.js";
 import type * as checklists from "../checklists.js";
 import type * as contractorNotes from "../contractorNotes.js";
+import type * as dailyLogs from "../dailyLogs.js";
 import type * as dashboard from "../dashboard.js";
 import type * as http from "../http.js";
 import type * as invitations from "../invitations.js";
@@ -51,6 +52,7 @@ declare const fullApi: ApiFromModules<{
   budget: typeof budget;
   checklists: typeof checklists;
   contractorNotes: typeof contractorNotes;
+  dailyLogs: typeof dailyLogs;
   dashboard: typeof dashboard;
   http: typeof http;
   invitations: typeof invitations;

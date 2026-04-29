@@ -142,4 +142,8 @@ export default defineSchema({
 
   permits: defineTable(zodToConvexFields(s.zPermit))
     .index('by_project', ['projectId']),
+
+  dailyLogs: defineTable(zodToConvexFields(s.zDailyLog))
+    .index('by_project', ['projectId'])
+    .index('by_project_date', ['projectId', 'date']),
 });

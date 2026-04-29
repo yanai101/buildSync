@@ -472,3 +472,45 @@ export const zPermit = {
   notes: z.string().optional(),
   fileId: zid('_storage').optional(),
 };
+
+export const zDailyLog = {
+  projectId: zid('projects'),
+  date: z.string(),
+  weather: z.string().optional(),
+  temperature: z.string().optional(),
+  status: z.enum(['draft', 'locked']),
+  lockedBy: zid('users').optional(),
+  lockedAt: z.number().optional(),
+  createdBy: zid('users'),
+  updatedAt: z.number(),
+
+  workforce: z.array(z.object({
+    contractorId: zid('contractors').optional(),
+    contractorName: z.string().optional(),
+    workersCount: z.number(),
+    notes: z.string().optional()
+  })),
+
+  activities: z.array(z.object({
+    description: z.string(),
+    status: z.enum(['in_progress', 'completed', 'delayed']),
+    contractorId: zid('contractors').optional(),
+  })),
+
+  deliveries: z.array(z.object({
+    type: z.enum(['material', 'equipment']),
+    description: z.string()
+  })),
+
+  issues: z.array(z.object({
+    type: z.enum(['safety', 'delay', 'quality', 'other']),
+    description: z.string(),
+    financialImpact: z.boolean(),
+    responsiblePartyId: zid('contractors').optional(),
+  })),
+
+  instructions: z.array(z.object({
+    text: z.string(),
+    givenToId: zid('contractors').optional(),
+  })),
+};

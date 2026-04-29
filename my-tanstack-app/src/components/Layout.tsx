@@ -28,6 +28,7 @@ export const NAV = [
   { id: "/boqwizard",     label: "אשף כמויות", icon: "zoom-in",   section: "ניהול",   roles: OWNER_MANAGER },
   { id: "/checklists",    label: "צ'קליסטים",  icon: "check-circle", section: "ניהול", roles: ALL_ROLES },
   { id: "/permits",       label: "היתרים",     icon: "clipboard", section: "ניהול", roles: OWNER_MANAGER_INSPECTOR },
+  { id: "/daily-logs",    label: "יומן עבודה", icon: "calendar",  section: "תיעוד",   roles: ALL_ROLES },
   { id: "/photos",        label: "תמונות",     icon: "camera",    section: "תיעוד",   roles: ALL_ROLES },
   { id: "/notes",         label: "הערות",      icon: "message",   section: "תיעוד",   roles: OWNER_MANAGER_INSPECTOR },
   { id: "/personal-files",label: "קבצים אישיים",icon: "file-text", section: "תיעוד",  roles: OWNER_ONLY },
@@ -46,6 +47,7 @@ export const PAGE_TITLES: Record<string, string> = {
   "/boqwizard": "אשף כתב כמויות",
   "/checklists": "צ'קליסטים ופרוטוקולים",
   "/permits": "בירוקרטיה והיתרים",
+  "/daily-logs": "יומן עבודה יומי",
   "/photos": "תמונות ותיעוד",
   "/notes": "הערות",
   "/personal-files": "קבצים אישיים",
@@ -60,6 +62,7 @@ export const PAGE_SUBTITLES: Record<string, string> = {
   "/setup": "הגדרת מבנה הבית, חדרים וצוות",
   "/boqwizard": "עבור חדר-חדר ובנה רשימת כמויות לרכישה / יבוא",
   "/checklists": "רשימות תיוג מקצועיות לכל שלב בבנייה",
+  "/daily-logs": "תיעוד יומי של התקדמות, כוח אדם, חריגות ואישורים משפטיים",
   "/quotes": "הוסיפו הצעות לפי נושא והשוו ביניהן",
   "/account": "עדכון פרטים אישיים וסיסמה",
 }
