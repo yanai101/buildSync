@@ -59,9 +59,10 @@
 - [ ] **Step 11** — `/quotes` + quote topics (server-side approve-rejects-others txn)
 - [ ] **Step 12** — `/timeline` (read-only)
 
-**Phase C — Cleanup**
-- [ ] **Step 13** — Default `useDataSource` to `db` everywhere, delete mock branches, remove dev toggle
-- [ ] **Step 14** — Grep sweeps (`mockData` / empty handlers) clean; `src/utils/mockData.ts` stays only as `convex/seed.ts` input
+**Phase C — Cleanup & Access Control**
+- [ ] **Step 13** — Implement strict Role-Based Access Control (RBAC) across all screens as defined in `ROLES_AND_PERMISSIONS.md`. Enforce UI restrictions for `inspector` and `contractor`.
+- [ ] **Step 14** — Default `useDataSource` to `db` everywhere, delete mock branches, remove dev toggle.
+- [ ] **Step 15** — Grep sweeps (`mockData` / empty handlers) clean; `src/utils/mockData.ts` stays only as `convex/seed.ts` input.
 
 ---
 

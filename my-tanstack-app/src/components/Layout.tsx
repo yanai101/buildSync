@@ -482,6 +482,40 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                         );
                       })}
                       <div style={{ height: 1, background: "var(--border)", margin: "6px 0" }} />
+                      <div style={{ padding: "4px 10px", fontSize: 10, fontWeight: 700, color: "var(--text3)", textTransform: "uppercase" }}>
+                        Role Override (Dev)
+                      </div>
+                      <div style={{ padding: "4px 10px", display: "flex", flexWrap: "wrap", gap: 4 }}>
+                        {['owner', 'manager', 'inspector', 'contractor', 'none'].map(r => {
+                          const isCurrent = (typeof window !== 'undefined' ? localStorage.getItem('buildsync:dev-role-override') : '') === (r === 'none' ? null : r);
+                          return (
+                            <button
+                              key={r}
+                              onClick={() => {
+                                if (r === 'none') {
+                                  localStorage.removeItem('buildsync:dev-role-override');
+                                } else {
+                                  localStorage.setItem('buildsync:dev-role-override', r);
+                                }
+                                window.location.reload();
+                              }}
+                              style={{
+                                fontSize: 10,
+                                padding: "4px 8px",
+                                borderRadius: 4,
+                                border: "1px solid var(--border)",
+                                background: isCurrent ? "var(--accent)" : "var(--bg)",
+                                color: isCurrent ? "#fff" : "var(--text1)",
+                                cursor: "pointer",
+                                flex: "1 1 40%"
+                              }}
+                            >
+                              {r}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <div style={{ height: 1, background: "var(--border)", margin: "6px 0" }} />
                     </>
                   )}
                   <Btn
