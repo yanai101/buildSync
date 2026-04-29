@@ -77,6 +77,125 @@ const uniqueContractorIds = (ids: Id<'contractors'>[]) => {
   });
 };
 
+const findStagePaymentExpense = async (
+  ctx: MutationCtx,
+  projectId: Id<'projects'>,
+  stageId: Id<'stages'>,
+) => {
+  return await ctx.db
+    .query('expenses')
+    .withIndex('by_project', (q) => q.eq('projectId', projectId))
+    .filter((q) => q.eq(q.field('stageId'), stageId))
+    .first();
+};
+
+const findStageMilestoneExpense = async (
+  ctx: MutationCtx,
+  projectId: Id<'projects'>,
+  milestoneId: Id<'stageMilestones'>,
+) => {
+  return await ctx.db
+    .query('expenses')
+    .withIndex('by_project', (q) => q.eq('projectId', projectId))
+    .filter((q) => q.eq(q.field('stageMilestoneId'), milestoneId))
+    .first();
+};
+
+const findBudgetCategoryForStage = async (
+  ctx: MutationCtx,
+  projectId: Id<'projects'>,
+  stageName: string,
+) => {
+  return await ctx.db
+    .query('budgetCategories')
+    .withIndex('by_project', (q) => q.eq('projectId', projectId))
+    .filter((q) => q.eq(q.field('name'), stageName))
+    .first();
+};
+
+const adjustBudgetCategorySpent = async (
+  ctx: MutationCtx,
+  categoryId: Id<'budgetCategories'> | undefined,
+  amountDelta: number,
+) => {
+  if (!categoryId) return;
+  const category = await ctx.db.get(categoryId);
+  if (!category) return;
+  await ctx.db.patch(category._id, {
+    spent: Math.max(0, category.spent + amountDelta),
+  });
+};
+
+const getDirectStagePaymentMismatch = async (
+  ctx: MutationCtx,
+  stageId: Id<'stages'>,
+  stageAmount: number,
+) => {
+  const links = await ctx.db
+    .query('stageContractors')
+    .withIndex('by_stage', (q) => q.eq('stageId', stageId))
+    .take(100);
+
+  if (links.length === 0) {
+    return {
+      hasContractors: false,
+      hasSyncedContractors: false,
+      mismatch: false,
+      contractorBudgetTotal: 0,
+      reason: null as string | null,
+    };
+  }
+
+  const hasSyncedContractors = links.some((link) => (link.paymentMode ?? 'stage_synced') === 'stage_synced');
+  const directLinks = links.filter((link) => (link.paymentMode ?? 'stage_synced') !== 'stage_synced');
+  let contractorBudgetTotal = 0;
+  for (const link of directLinks) {
+    const contractor = await ctx.db.get(link.contractorId);
+    if (contractor) {
+      contractorBudgetTotal += contractor.budget;
+    }
+  }
+
+  const mismatch =
+    directLinks.length > 0 &&
+    Math.round(stageAmount || 0) !== Math.round(contractorBudgetTotal);
+
+  return {
+    hasContractors: true,
+    hasSyncedContractors,
+    mismatch,
+    contractorBudgetTotal,
+    reason: mismatch
+      ? `סכום השלב ${Math.round(stageAmount || 0).toLocaleString('he-IL')} ₪ לא תואם לסכום החוזה של הקבלנים ${Math.round(contractorBudgetTotal).toLocaleString('he-IL')} ₪`
+      : null,
+  };
+};
+
+const hasPaidContractorPaymentForStageMilestone = async (
+  ctx: MutationCtx,
+  stageId: Id<'stages'>,
+  milestoneId: Id<'stageMilestones'>,
+) => {
+  const links = await ctx.db
+    .query('stageContractors')
+    .withIndex('by_stage', (q) => q.eq('stageId', stageId))
+    .take(100);
+
+  for (const link of links) {
+    const contractorMilestones = await ctx.db
+      .query('contractorPaymentMilestones')
+      .withIndex('by_contractor', (q) => q.eq('contractorId', link.contractorId))
+      .take(200);
+    if (contractorMilestones.some((milestone) =>
+      milestone.paid && milestone.sourceStageMilestoneId === milestoneId
+    )) {
+      return true;
+    }
+  }
+
+  return false;
+};
+
 const syncStageContractors = async (
   ctx: MutationCtx,
   projectId: Id<'projects'>,
@@ -412,6 +531,19 @@ export const updateStageAdvanced = mutation({
       .withIndex('by_stage', (q) => q.eq('stageId', args.stageId))
       .collect();
 
+    const existingMilestones = await ctx.db
+      .query('stageMilestones')
+      .withIndex('by_stage', (q) => q.eq('stageId', args.stageId))
+      .collect();
+
+    for (const milestone of existingMilestones) {
+      if (!milestone.legacyKey?.startsWith('task-')) continue;
+      const hasPaidLinkedContractorPayment = await hasPaidContractorPaymentForStageMilestone(ctx, args.stageId, milestone._id);
+      if (milestone.status === 'paid' || hasPaidLinkedContractorPayment) {
+        throw new Error('אי אפשר לערוך או להחליף אבני דרך שכבר שולמו');
+      }
+    }
+
     const incomingIds = new Set(args.tasks.map(t => t._id).filter(Boolean));
     
     // Delete missing tasks
@@ -448,11 +580,6 @@ export const updateStageAdvanced = mutation({
     }
 
     // 2. Re-create task payment milestones (only if not paymentAtEnd)
-    const existingMilestones = await ctx.db
-      .query('stageMilestones')
-      .withIndex('by_stage', (q) => q.eq('stageId', args.stageId))
-      .collect();
-
     // Delete existing task-based milestones
     for (const m of existingMilestones) {
       if (m.legacyKey?.startsWith('task-')) {
@@ -673,23 +800,26 @@ export const setStagePaymentPaid = mutation({
       throw new Error('Stage not found');
     }
     if (args.paid) {
-      const linkedContractors = await ctx.db
-        .query('stageContractors')
-        .withIndex('by_stage', (q) => q.eq('stageId', args.stageId))
-        .take(1);
-      if (linkedContractors.length === 0) {
+      const paymentCheck = await getDirectStagePaymentMismatch(ctx, args.stageId, stage.payment.amount);
+      if (!paymentCheck.hasContractors) {
         throw new Error('אי אפשר לשלם — לא קושר קבלן לשלב');
+      }
+      if (paymentCheck.mismatch) {
+        throw new Error(paymentCheck.reason ?? 'סכום השלב לא תואם לסכום החוזה של הקבלנים');
       }
     }
     if (await hasSyncedStageContractorLinks(ctx, args.stageId)) {
       throw new Error('Pay synced contractor stage payments from the contractor payment schedule');
     }
 
+    const existingExpense = await findStagePaymentExpense(ctx, stage.projectId, args.stageId);
+    const today = new Date().toISOString().slice(0, 10);
+
     await ctx.db.patch(args.stageId, {
       payment: {
         ...stage.payment,
         status: args.paid ? 'paid' : 'draft',
-        paidAt: args.paid ? new Date().toISOString().slice(0, 10) : undefined,
+        paidAt: args.paid ? today : undefined,
         ...(args.receipts && args.receipts.length > 0 ? { receipts: args.receipts } : {}),
       },
     });
@@ -701,26 +831,22 @@ export const setStagePaymentPaid = mutation({
       });
       
       // Create expense
-      const category = await ctx.db
-        .query('budgetCategories')
-        .withIndex('by_project', (q) => q.eq('projectId', stage.projectId))
-        .filter(q => q.eq(q.field('name'), stage.name))
-        .first();
-
-      const expenseId = await ctx.db.insert('expenses', {
-        projectId: stage.projectId,
-        description: `תשלום שלב: ${stage.name}`,
-        amount: stage.payment.amount,
-        expenseDate: new Date().toISOString().slice(0, 10),
-        status: 'שולם',
-        categoryId: category?._id,
-      });
-
-      if (category) {
-        await ctx.db.patch(category._id, {
-          spent: category.spent + stage.payment.amount,
+      if (!existingExpense) {
+        const category = await findBudgetCategoryForStage(ctx, stage.projectId, stage.name);
+        await ctx.db.insert('expenses', {
+          projectId: stage.projectId,
+          description: `תשלום שלב: ${stage.name}`,
+          amount: stage.payment.amount,
+          expenseDate: today,
+          status: 'שולם',
+          categoryId: category?._id,
+          stageId: args.stageId,
         });
+        await adjustBudgetCategorySpent(ctx, category?._id, stage.payment.amount);
       }
+    } else if (existingExpense) {
+      await ctx.db.delete(existingExpense._id);
+      await adjustBudgetCategorySpent(ctx, existingExpense.categoryId, -existingExpense.amount);
     }
   },
 });
@@ -740,21 +866,24 @@ export const setStageMilestonePaid = mutation({
     const stage = await ctx.db.get(milestone.stageId);
     if (!stage) throw new Error('Stage not found');
     if (args.paid) {
-      const linkedContractors = await ctx.db
-        .query('stageContractors')
-        .withIndex('by_stage', (q) => q.eq('stageId', stage._id))
-        .take(1);
-      if (linkedContractors.length === 0) {
+      const paymentCheck = await getDirectStagePaymentMismatch(ctx, stage._id, stage.payment.amount);
+      if (!paymentCheck.hasContractors) {
         throw new Error('אי אפשר לשלם — לא קושר קבלן לשלב');
+      }
+      if (paymentCheck.mismatch) {
+        throw new Error(paymentCheck.reason ?? 'סכום השלב לא תואם לסכום החוזה של הקבלנים');
       }
     }
     if (await hasSyncedStageContractorLinks(ctx, stage._id)) {
       throw new Error('Pay synced contractor stage payments from the contractor payment schedule');
     }
 
+    const existingExpense = await findStageMilestoneExpense(ctx, stage.projectId, args.milestoneId);
+    const today = new Date().toISOString().slice(0, 10);
+
     await ctx.db.patch(args.milestoneId, {
       status: args.paid ? 'paid' : 'draft',
-      paidAt: args.paid ? new Date().toISOString().slice(0, 10) : undefined,
+      paidAt: args.paid ? today : undefined,
       ...(args.receipts && args.receipts.length > 0 ? { receipts: args.receipts } : {}),
     });
 
@@ -765,26 +894,23 @@ export const setStageMilestonePaid = mutation({
       });
 
       // Create expense
-      const category = await ctx.db
-        .query('budgetCategories')
-        .withIndex('by_project', (q) => q.eq('projectId', stage.projectId))
-        .filter(q => q.eq(q.field('name'), stage.name))
-        .first();
-
-      const expenseId = await ctx.db.insert('expenses', {
-        projectId: stage.projectId,
-        description: `תשלום אבן דרך: ${milestone.name} (${stage.name})`,
-        amount: milestone.amount,
-        expenseDate: new Date().toISOString().slice(0, 10),
-        status: 'שולם',
-        categoryId: category?._id,
-      });
-
-      if (category) {
-        await ctx.db.patch(category._id, {
-          spent: category.spent + milestone.amount,
+      if (!existingExpense) {
+        const category = await findBudgetCategoryForStage(ctx, stage.projectId, stage.name);
+        await ctx.db.insert('expenses', {
+          projectId: stage.projectId,
+          description: `תשלום אבן דרך: ${milestone.name} (${stage.name})`,
+          amount: milestone.amount,
+          expenseDate: today,
+          status: 'שולם',
+          categoryId: category?._id,
+          stageId: stage._id,
+          stageMilestoneId: args.milestoneId,
         });
+        await adjustBudgetCategorySpent(ctx, category?._id, milestone.amount);
       }
+    } else if (existingExpense) {
+      await ctx.db.delete(existingExpense._id);
+      await adjustBudgetCategorySpent(ctx, existingExpense.categoryId, -existingExpense.amount);
     }
   },
 });

@@ -3,7 +3,7 @@ import type { MutationCtx } from './_generated/server';
 import type { Id } from './_generated/dataModel';
 import { v } from 'convex/values';
 import { getAuthUserId } from '@convex-dev/auth/server';
-import { syncContractorStagePayments } from './_lib/contractorPaymentSync';
+import { getSyncedPaymentReadiness, syncContractorStagePayments } from './_lib/contractorPaymentSync';
 
 const contractorRoleValidator = v.union(
   v.literal('קבלן עד מפתח'),
@@ -439,6 +439,13 @@ export const setContractorPaymentMilestonePaid = mutation({
     const existingExpense = await findContractorPaymentExpense(ctx, contractor.projectId, args.milestoneId);
     const category = await findBudgetCategoryForContractor(ctx, contractor.projectId, contractor.role);
     const today = new Date().toISOString().slice(0, 10);
+
+    if (args.paid) {
+      const readiness = await getSyncedPaymentReadiness(ctx, milestone);
+      if (!readiness.ready) {
+        throw new Error(readiness.reason ?? 'התשלום עדיין לא מוכן');
+      }
+    }
 
     await ctx.db.patch(args.milestoneId, {
       paid: args.paid,
@@ -952,4 +959,3 @@ export const updatePhotoDefect = mutation({
     return { updated: true };
   },
 });
-

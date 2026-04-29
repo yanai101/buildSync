@@ -103,6 +103,73 @@ export const getContractorSyncedPaymentItems = async (
   );
 };
 
+export const getSyncedPaymentReadiness = async (
+  ctx: DbCtx,
+  milestone: {
+    sourceMode?: 'stage_synced' | 'custom';
+    sourceStageId?: Id<'stages'>;
+    sourceStageMilestoneId?: Id<'stageMilestones'>;
+    sourceTaskId?: Id<'stageTasks'>;
+  },
+) => {
+  if (milestone.sourceMode !== 'stage_synced') {
+    return { ready: true, reason: null as string | null };
+  }
+
+  if (!milestone.sourceStageId) {
+    return { ready: false, reason: 'חסר קישור לשלב המקור' };
+  }
+
+  const stage = await ctx.db.get(milestone.sourceStageId);
+  if (!stage) {
+    return { ready: false, reason: 'שלב המקור לא נמצא' };
+  }
+
+  if (milestone.sourceStageMilestoneId) {
+    const stageMilestone = await ctx.db.get(milestone.sourceStageMilestoneId);
+    if (!stageMilestone) {
+      return { ready: false, reason: 'אבן דרך המקור לא נמצאה' };
+    }
+
+    const taskLinks = await ctx.db
+      .query('stageMilestoneTasks')
+      .withIndex('by_milestone', (q) => q.eq('milestoneId', milestone.sourceStageMilestoneId!))
+      .take(100);
+    const taskIds = taskLinks.map((link) => link.taskId);
+    if (taskIds.length === 0 && milestone.sourceTaskId) {
+      taskIds.push(milestone.sourceTaskId);
+    }
+
+    if (taskIds.length > 0) {
+      const tasks = [];
+      for (const taskId of taskIds) {
+        const task = await ctx.db.get(taskId);
+        if (task) tasks.push(task);
+      }
+      const missing = tasks.filter((task) => task.required !== false && !task.done).length;
+      if (missing > 0) {
+        return { ready: false, reason: `חסרות ${missing} משימות` };
+      }
+      return { ready: true, reason: null };
+    }
+  }
+
+  const stageTasks = await ctx.db
+    .query('stageTasks')
+    .withIndex('by_stage', (q) => q.eq('stageId', milestone.sourceStageId!))
+    .take(100);
+  const requiredTasks = stageTasks.filter((task) => task.required !== false);
+  const missing = requiredTasks.filter((task) => !task.done).length;
+  if (missing > 0) {
+    return { ready: false, reason: `חסרות ${missing} משימות בשלב` };
+  }
+  if (stage.status !== 'done' && stage.progressPct < 100) {
+    return { ready: false, reason: 'השלב עדיין לא הושלם' };
+  }
+
+  return { ready: true, reason: null };
+};
+
 export const syncContractorStagePayments = async (
   ctx: MutationCtx,
   contractorId: Id<'contractors'>,

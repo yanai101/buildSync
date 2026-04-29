@@ -115,6 +115,21 @@ const normalizeMilestones = (contractor: Contractor): Milestone[] => {
   return withAmounts(contractor, rawMilestones as DraftMilestone[]) as Milestone[];
 };
 
+const paymentScheduleKey = (contractor: Contractor) =>
+  [
+    contractorDbId(contractor),
+    contractor.budget,
+    contractor.paid,
+    contractor.paymentMode ?? 'custom',
+    ...(contractor.milestones ?? []).map((milestone) => [
+      milestone.id,
+      milestone.pct,
+      milestone.amount,
+      milestone.paid ? 'paid' : 'pending',
+      milestone.readyToPay === false ? milestone.lockedReason ?? 'locked' : 'ready',
+    ].join(':')),
+  ].join('|');
+
 const balanceMilestones = (milestones: DraftMilestone[], changedIndex: number): DraftMilestone[] => {
   const next = milestones.map(m => ({ ...m, pct: clampPct(m.pct) }));
   if (next.length === 0) return next;
@@ -194,10 +209,6 @@ const PaymentSchedule = ({
   const [savingNew, setSavingNew] = React.useState(false);
   const [savingSchedule, setSavingSchedule] = React.useState(false);
 
-  React.useEffect(() => {
-    setMilestones(sourceMilestones);
-  }, [sourceMilestones]);
-
   const totalPaid = milestones.filter(m=>m.paid).reduce((a,m)=>a+m.amount,0);
   const totalPct = milestones.filter(m=>m.paid).reduce((a,m)=>a+m.pct,0);
   const totalPctAll = milestones.reduce((a,m)=>a+m.pct,0);
@@ -272,6 +283,9 @@ const PaymentSchedule = ({
   };
 
   const renderMilestoneCells = (m: DraftMilestone, i: number, gripStarter?: (e: React.PointerEvent) => void) => (
+    (() => {
+      const syncedLocked = m.sourceMode === 'stage_synced' && !m.paid && m.readyToPay === false;
+      return (
     <>
       <td style={{fontSize:12,color:"var(--text3)",fontWeight:700,whiteSpace:"nowrap"}}>
         {gripStarter && (
@@ -330,12 +344,17 @@ const PaymentSchedule = ({
           <input
             type="checkbox"
             checked={Boolean(m.paid)}
-            disabled={pendingId === String(m.id) || m.isNew}
+            disabled={pendingId === String(m.id) || m.isNew || syncedLocked}
             onChange={()=>toggle(m)}
             style={{accentColor:"var(--success)",width:14,height:14}}
           />
           <span className={`badge ${m.paid?"badge-done":"badge-pending"}`}>{m.paid?"שולם":"ממתין"}</span>
         </label>
+        {syncedLocked && (
+          <div style={{fontSize:10,color:"#B45309",fontWeight:700,marginTop:3}}>
+            {m.lockedReason || "השלב עדיין לא מוכן לתשלום"}
+          </div>
+        )}
       </td>
       <td>
         <Btn
@@ -349,6 +368,8 @@ const PaymentSchedule = ({
         </Btn>
       </td>
     </>
+      );
+    })()
   );
 
   const removeMilestone = async (index: number) => {
@@ -554,7 +575,11 @@ export const ContractorsScreen = () => {
       });
       setPendingPayment(null);
     } catch (err) {
-      setFeedback({ title: "שגיאה", message: "לא הצלחנו לעדכן את התשלום. אנא נסו שוב.", type: "error" });
+      setFeedback({
+        title: "שגיאה",
+        message: err instanceof Error ? err.message : "לא הצלחנו לעדכן את התשלום. אנא נסו שוב.",
+        type: "error",
+      });
     } finally {
       setSavingPayment(false);
     }
@@ -675,9 +700,12 @@ export const ContractorsScreen = () => {
               <div style={{marginTop:8}}><Stars rating={c.rating}/></div>
             </div>
             <div className="card card-body">
-              {[[<Icon n="phone" s={14}/>,c.phone || "—"],[<Icon n="mail" s={14}/>,c.email || "—"]].map(([icon,val],i)=>(
-                <div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 0",borderBottom:i===0?"1px solid var(--border)":"none",fontSize:13}}>
-                  <span style={{color:"var(--text3)"}}>{icon}</span>{val}
+              {[
+                { key: 'phone', icon: 'phone', value: c.phone || "—" },
+                { key: 'mail', icon: 'mail', value: c.email || "—" },
+              ].map((item,i)=>(
+                <div key={item.key} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 0",borderBottom:i===0?"1px solid var(--border)":"none",fontSize:13}}>
+                  <span style={{color:"var(--text3)"}}><Icon n={item.icon} s={14}/></span>{item.value}
                 </div>
               ))}
             </div>
@@ -705,6 +733,11 @@ export const ContractorsScreen = () => {
                   <ProgressBar value={c.stageProgressPct ?? 0} color="var(--accent)" height={6}/>
                   <div style={{fontSize:11,color:"var(--text3)",marginTop:5,textAlign:"left"}}>התקדמות ממוצעת לפי השלבים המשויכים</div>
                 </div>
+                {c.stagePaymentMismatch && (
+                  <div style={{border:"1px solid #FCD34D",background:"#FFFBEB",color:"#92400E",borderRadius:8,padding:"8px 10px",fontSize:12,fontWeight:700,lineHeight:1.45}}>
+                    {c.stagePaymentMismatchReason || `סכום השלבים המשויכים לקבלן (${fmtMoney(c.stagePaymentTotal || 0)}) לא תואם לסכום החוזה (${fmtMoney(c.budget)}).`}
+                  </div>
+                )}
                 <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(210px,1fr))",gap:8}}>
                   {stages.length ? stages.map(stage => {
                     const id = stageDbId(stage);
@@ -776,6 +809,7 @@ export const ContractorsScreen = () => {
               </div>
             </div>
             <PaymentSchedule
+              key={paymentScheduleKey(c)}
               contractor={c}
               locked={c.paymentMode === 'stage_synced'}
               onTogglePaid={handleTogglePaid}

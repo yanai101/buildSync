@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence, Reorder } from 'framer-motion';
-import { Icon, Btn, ProgressBar, Badge, Modal, ConfirmDialog } from '../components/Shared';
+import { Icon, Btn, ProgressBar, Badge, Modal, ConfirmDialog, FeedbackModal } from '../components/Shared';
 import { PaymentGatesPanel, PaymentBadge, computeGates, resolveStatus, aggregateStageStatus, ReleasePaymentModal } from '../components/PaymentControl';
 import { Stage, Milestone } from '../types';
 import { useDataMutation } from '../hooks/useDataMutation';
@@ -593,9 +593,59 @@ export const StagesScreen = () => {
   const [savingEdit, setSavingEdit] = React.useState(false);
   const [deleteTarget, setDeleteTarget] = React.useState<Stage | null>(null);
   const [deletingStage, setDeletingStage] = React.useState(false);
+  const [feedback, setFeedback] = React.useState<{ title: string; message: string; type: 'success' | 'error' | 'info' } | null>(null);
 
   const contractors = useQuery(api.queries.listContractors, projectId ? { projectId } : 'skip');
   const contractorOptions = contractors ?? [];
+  const editContractorBudgetTotal = React.useMemo(() => {
+    return editForm.contractorIds.reduce((sum, id) => {
+      const contractor = contractorOptions.find((item) => contractorKey(item) === id);
+      return sum + Number(contractor?.budget || 0);
+    }, 0);
+  }, [contractorOptions, editForm.contractorIds]);
+  const editPaymentAmountMismatch =
+    editForm.contractorIds.length > 0 &&
+    Math.round(Number(editForm.amount) || 0) !== Math.round(editContractorBudgetTotal);
+  const editContractorPaymentWarnings = React.useMemo(() => {
+    if (!editingStage) return [];
+    const editingStageDbId = String((editingStage as any)._id ?? '');
+
+    return editForm.contractorIds
+      .map((contractorId) => {
+        const contractor = contractorOptions.find((item) => contractorKey(item) === contractorId);
+        if (!contractor) return null;
+
+        let stagePaymentTotal = 0;
+        let hasAttributableStage = false;
+
+        for (const stage of stages) {
+          const isEditingStage = String((stage as any)._id ?? '') === editingStageDbId;
+          const directContractorIds = isEditingStage
+            ? editForm.contractorIds
+            : (stage.contractors ?? [])
+                .filter((stageContractor) => stageContractor.paymentMode !== 'stage_synced')
+                .map((stageContractor) => String(stageContractor._id ?? stageContractor.id));
+
+          if (directContractorIds.length === 1 && directContractorIds[0] === contractorId) {
+            stagePaymentTotal += isEditingStage
+              ? Number(editForm.amount) || 0
+              : stage.payment?.amount || 0;
+            hasAttributableStage = true;
+          }
+        }
+
+        if (!hasAttributableStage || Math.round(stagePaymentTotal) === Math.round(contractor.budget)) {
+          return null;
+        }
+
+        return {
+          contractorName: contractor.name,
+          stagePaymentTotal,
+          contractorBudget: contractor.budget,
+        };
+      })
+      .filter((warning): warning is { contractorName: string; stagePaymentTotal: number; contractorBudget: number } => Boolean(warning));
+  }, [contractorOptions, editForm.amount, editForm.contractorIds, editingStage, stages]);
 
   React.useEffect(() => {
     if (initialData) setStages(initialData);
@@ -674,6 +724,7 @@ export const StagesScreen = () => {
     const id = rStage.id;
     const dbId = (rStage as any)._id;
     const today = new Date().toISOString().slice(0, 10);
+    const previousStages = stages;
     
     updateStageState(id, s => {
       if (milestoneId) {
@@ -693,14 +744,22 @@ export const StagesScreen = () => {
       };
     });
 
-    if (milestoneId) {
-      await setStageMilestonePaid({ milestoneId: milestoneId as any, paid: true, receipts });
-    } else if (dbId) {
-      await setStagePaymentPaid({ stageId: dbId, paid: true, receipts });
+    try {
+      if (milestoneId) {
+        await setStageMilestonePaid({ milestoneId: milestoneId as any, paid: true, receipts });
+      } else if (dbId) {
+        await setStagePaymentPaid({ stageId: dbId, paid: true, receipts });
+      }
+      setReleaseFor(null);
+      refetch();
+    } catch (err) {
+      setStages(previousStages);
+      setFeedback({
+        title: "שגיאה באישור תשלום",
+        message: err instanceof Error ? err.message : "לא הצלחנו לאשר את התשלום. השינוי בוטל.",
+        type: "error",
+      });
     }
-    
-    setReleaseFor(null);
-    refetch();
   };
 
   const toggleTask = async (stageId: number, taskId: number, taskDbId?: string) => {
@@ -709,6 +768,7 @@ export const StagesScreen = () => {
     if (!task) return;
 
     const newDone = !task.done;
+    const previousStages = stages;
 
     // Optimistic UI update
     setStages(prev=>prev.map(s=>{
@@ -723,7 +783,16 @@ export const StagesScreen = () => {
 
     // DB Mutation
     if (taskDbId) {
-      await mutate('toggleTask', { id: taskDbId, done: newDone });
+      try {
+        await mutate('toggleTask', { id: taskDbId, done: newDone });
+      } catch (err) {
+        setStages(previousStages);
+        setFeedback({
+          title: "שגיאה בעדכון משימה",
+          message: err instanceof Error ? err.message : "לא הצלחנו לעדכן את המשימה. השינוי בוטל.",
+          type: "error",
+        });
+      }
     }
   };
 
@@ -853,6 +922,7 @@ export const StagesScreen = () => {
             company: contractor.company,
             avatar: contractor.avatar,
             color: contractor.color,
+            budget: contractor.budget,
           })),
         start: editForm.startDate,
         end: editForm.endDate,
@@ -861,6 +931,12 @@ export const StagesScreen = () => {
       } : stage));
       setEditingStage(null);
       refetch();
+    } catch (err) {
+      setFeedback({
+        title: "שגיאה בשמירת השלב",
+        message: err instanceof Error ? err.message : "לא הצלחנו לשמור את השינויים בשלב.",
+        type: "error",
+      });
     } finally {
       setSavingEdit(false);
     }
@@ -1090,6 +1166,15 @@ export const StagesScreen = () => {
 
                         <div>
                           <div style={{fontSize:13,fontWeight:700,color:"var(--text2)",marginBottom:12}}>תשלום ואישור</div>
+                          {(s.contractorPaymentWarnings?.length ?? 0) > 0 && (
+                            <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:10}}>
+                              {s.contractorPaymentWarnings!.map(warning => (
+                                <div key={warning.contractorId} style={{border:"1px solid #FCD34D",background:"#FFFBEB",color:"#92400E",borderRadius:8,padding:"8px 10px",fontSize:12,fontWeight:700,lineHeight:1.45}}>
+                                  {warning.reason}
+                                </div>
+                              ))}
+                            </div>
+                          )}
                           {s.hasSyncedContractorPayments ? (
                             <div className="card" style={{background:"#fff"}}>
                               <div className="card-body" style={{display:"flex",flexDirection:"column",gap:10}}>
@@ -1104,8 +1189,8 @@ export const StagesScreen = () => {
                                       {contractorPayment.milestones.map(milestone => (
                                         <div key={milestone.id} style={{display:"flex",justifyContent:"space-between",gap:8,alignItems:"center",fontSize:12}}>
                                           <span style={{fontWeight:700}}>{milestone.name}</span>
-                                          <span style={{color:milestone.paid?"var(--success)":"var(--text2)",fontWeight:800}}>
-                                            {milestone.paid ? "שולם" : "ממתין"} · {fmtMoney(milestone.amount)}
+                                          <span style={{color:milestone.paid?"var(--success)":milestone.readyToPay === false?"#B45309":"var(--text2)",fontWeight:800,textAlign:"left"}}>
+                                            {milestone.paid ? "שולם" : milestone.readyToPay === false ? (milestone.lockedReason || "לא מוכן") : "ממתין"} · {fmtMoney(milestone.amount)}
                                           </span>
                                         </div>
                                       ))}
@@ -1182,6 +1267,33 @@ export const StagesScreen = () => {
             <div style={{fontSize:12,color:"var(--text2)",marginBottom:4,fontWeight:600}}>סכום תשלום</div>
             <input className="bp-input" type="number" value={editForm.amount} onChange={e=>setEditForm(f=>({...f,amount:Number(e.target.value)}))}/>
           </label>
+          {editForm.contractorIds.length > 0 && (
+            <div style={{
+              gridColumn:"1 / -1",
+              border:"1px solid",
+              borderColor:editPaymentAmountMismatch ? "#FCA5A5" : "#BBF7D0",
+              background:editPaymentAmountMismatch ? "#FEF2F2" : "#F0FDF4",
+              color:editPaymentAmountMismatch ? "#991B1B" : "#065F46",
+              borderRadius:8,
+              padding:"8px 10px",
+              fontSize:12,
+              fontWeight:700,
+              lineHeight:1.45,
+            }}>
+              {editPaymentAmountMismatch
+                ? `סכום השלב ${fmtMoney(Number(editForm.amount) || 0)} לא תואם לסכום החוזה של הקבלנים ${fmtMoney(editContractorBudgetTotal)}. אפשר לשמור, אבל אישור תשלום ייחסם עד לתיקון.`
+                : `סכום השלב תואם לסכום החוזה של הקבלנים (${fmtMoney(editContractorBudgetTotal)}).`}
+            </div>
+          )}
+          {editContractorPaymentWarnings.length > 0 && (
+            <div style={{gridColumn:"1 / -1",display:"flex",flexDirection:"column",gap:6}}>
+              {editContractorPaymentWarnings.map(warning => (
+                <div key={warning.contractorName} style={{border:"1px solid #FCD34D",background:"#FFFBEB",color:"#92400E",borderRadius:8,padding:"8px 10px",fontSize:12,fontWeight:700,lineHeight:1.45}}>
+                  סכום השלבים של {warning.contractorName} ({fmtMoney(warning.stagePaymentTotal)}) לא תואם לסכום החוזה ({fmtMoney(warning.contractorBudget)}). אפשר לשמור, אבל כדאי לתקן לפני תשלום.
+                </div>
+              ))}
+            </div>
+          )}
           <label>
             <div style={{fontSize:12,color:"var(--text2)",marginBottom:4,fontWeight:600}}>תאריך התחלה</div>
             <input className="bp-input" type="date" value={editForm.startDate} onChange={e=>setEditForm(f=>({...f,startDate:e.target.value}))}/>
@@ -1294,6 +1406,14 @@ export const StagesScreen = () => {
           </Btn>
         </div>
       </Modal>
+    )}
+    {feedback && (
+      <FeedbackModal
+        title={feedback.title}
+        message={feedback.message}
+        type={feedback.type}
+        onClose={() => setFeedback(null)}
+      />
     )}
     {deleteTarget && (
       <ConfirmDialog

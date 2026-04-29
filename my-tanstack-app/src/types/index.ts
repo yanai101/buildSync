@@ -24,6 +24,8 @@ export interface Milestone {
   sourceStageId?: string;
   sourceStageMilestoneId?: string;
   sourceTaskId?: string;
+  readyToPay?: boolean;
+  lockedReason?: string | null;
 }
 
 export interface Payment {
@@ -40,6 +42,7 @@ export interface StageContractorRef {
   name: string;
   role?: string;
   company?: string;
+  budget?: number;
   avatar?: string;
   color?: string;
   paymentMode?: 'stage_synced' | 'custom';
@@ -61,6 +64,16 @@ export interface Stage {
   supervisorApproval?: { by: string; at: string } | null;
   payment?: Payment;
   hasSyncedContractorPayments?: boolean;
+  linkedContractorBudgetTotal?: number;
+  paymentAmountMismatch?: boolean;
+  paymentMismatchReason?: string | null;
+  contractorPaymentWarnings?: Array<{
+    contractorId: string;
+    contractorName: string;
+    stagePaymentTotal: number;
+    contractorBudget: number;
+    reason: string;
+  }>;
   contractorPayments?: Array<{
     contractorId: string;
     contractorName: string;
@@ -104,6 +117,9 @@ export interface Contractor {
   milestones?: Milestone[];
   paymentMode?: 'stage_synced' | 'custom';
   stageProgressPct?: number;
+  stagePaymentTotal?: number;
+  stagePaymentMismatch?: boolean;
+  stagePaymentMismatchReason?: string | null;
   stages?: Array<{
     id: string;
     stageId?: string;

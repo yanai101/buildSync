@@ -1,6 +1,7 @@
 import { query } from './_generated/server';
 import { v } from 'convex/values';
 import { getAuthUserId } from '@convex-dev/auth/server';
+import { getSyncedPaymentReadiness } from './_lib/contractorPaymentSync';
 
 const formatMessageDate = (creationTime: number) => {
   const date = new Date(creationTime);
@@ -22,6 +23,49 @@ export const listStages = query({
       .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
       .take(200);
     const contractorById = new Map(projectContractors.map((contractor) => [String(contractor._id), contractor]));
+    const allStageContractorLinks = await ctx.db
+      .query('stageContractors')
+      .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
+      .take(1000);
+    const directLinksByStageId = new Map<string, typeof allStageContractorLinks>();
+    for (const link of allStageContractorLinks) {
+      if ((link.paymentMode ?? 'stage_synced') === 'stage_synced') continue;
+      const key = String(link.stageId);
+      const current = directLinksByStageId.get(key) ?? [];
+      current.push(link);
+      directLinksByStageId.set(key, current);
+    }
+    const stageById = new Map(stages.map((stage) => [String(stage._id), stage]));
+    const contractorStagePaymentTotalById = new Map<string, number>();
+    for (const [stageId, links] of directLinksByStageId) {
+      if (links.length !== 1) continue;
+      const stage = stageById.get(stageId);
+      if (!stage) continue;
+      const contractorId = String(links[0].contractorId);
+      contractorStagePaymentTotalById.set(
+        contractorId,
+        (contractorStagePaymentTotalById.get(contractorId) ?? 0) + (stage.payment.amount || 0),
+      );
+    }
+    const contractorStagePaymentWarningById = new Map<string, {
+      contractorId: string;
+      contractorName: string;
+      stagePaymentTotal: number;
+      contractorBudget: number;
+      reason: string;
+    }>();
+    for (const contractor of projectContractors) {
+      const stagePaymentTotal = contractorStagePaymentTotalById.get(String(contractor._id));
+      if (stagePaymentTotal === undefined) continue;
+      if (Math.round(stagePaymentTotal) === Math.round(contractor.budget)) continue;
+      contractorStagePaymentWarningById.set(String(contractor._id), {
+        contractorId: String(contractor._id),
+        contractorName: contractor.name,
+        stagePaymentTotal,
+        contractorBudget: contractor.budget,
+        reason: `סכום השלבים של ${contractor.name} (${stagePaymentTotal.toLocaleString('he-IL')} ₪) לא תואם לסכום החוזה (${contractor.budget.toLocaleString('he-IL')} ₪)`,
+      });
+    }
 
     const normalized = await Promise.all(stages.map(async (stage) => {
       const tasks = await ctx.db
@@ -65,10 +109,25 @@ export const listStages = query({
         name: contractor.name,
         role: contractor.role,
         company: contractor.company ?? '',
+        budget: contractor.budget,
         avatar: contractor.avatarLetter ?? contractor.name[0] ?? '',
         color: contractor.avatarColor ?? '#E07A38',
         paymentMode: contractorLinks.find((link) => link.contractorId === contractor._id)?.paymentMode ?? 'stage_synced',
       }));
+      const directPaymentContractors = contractorRefs.filter((contractor) => contractor.paymentMode !== 'stage_synced');
+      const linkedContractorBudgetTotal = directPaymentContractors.reduce(
+        (sum, contractor) => sum + (contractor.budget ?? 0),
+        0,
+      );
+      const paymentAmountMismatch =
+        directPaymentContractors.length > 0 &&
+        Math.round(stage.payment.amount || 0) !== Math.round(linkedContractorBudgetTotal);
+      const paymentMismatchReason = paymentAmountMismatch
+        ? `סכום השלב ${stage.payment.amount.toLocaleString('he-IL')} ₪ לא תואם לסכום החוזה של הקבלנים ${linkedContractorBudgetTotal.toLocaleString('he-IL')} ₪`
+        : null;
+      const contractorPaymentWarnings = directPaymentContractors
+        .map((contractor) => contractorStagePaymentWarningById.get(String(contractor._id)))
+        .filter((warning): warning is NonNullable<typeof warning> => Boolean(warning));
       const syncedContractorPayments = await Promise.all(
         contractorLinks
           .filter((link) => (link.paymentMode ?? 'stage_synced') === 'stage_synced')
@@ -81,15 +140,20 @@ export const listStages = query({
             return {
               contractorId: link.contractorId,
               contractorName: contractor?.name ?? '',
-              milestones: contractorMilestones
+              milestones: await Promise.all(contractorMilestones
                 .filter((milestone) => milestone.sourceMode === 'stage_synced' && milestone.sourceStageId === stage._id)
                 .sort((a, b) => a.sortOrder - b.sortOrder)
-                .map((milestone) => ({
-                  ...milestone,
-                  id: milestone._id,
-                  taskIds: [],
-                  status: milestone.paid ? 'paid' : 'pending',
-                  paidAt: milestone.paidAt ?? null,
+                .map(async (milestone) => {
+                  const readiness = await getSyncedPaymentReadiness(ctx, milestone);
+                  return {
+                    ...milestone,
+                    id: milestone._id,
+                    taskIds: [],
+                    status: milestone.paid ? 'paid' : 'pending',
+                    paidAt: milestone.paidAt ?? null,
+                    readyToPay: readiness.ready,
+                    lockedReason: readiness.reason,
+                  };
                 })),
             };
           }),
@@ -129,6 +193,10 @@ export const listStages = query({
         contractorIds: contractorRefs.map((contractor) => contractor._id),
         contractors: contractorRefs,
         hasSyncedContractorPayments: syncedContractorPayments.length > 0,
+        linkedContractorBudgetTotal,
+        paymentAmountMismatch,
+        paymentMismatchReason,
+        contractorPaymentWarnings,
         contractorPayments: syncedContractorPayments,
         icon: stage.icon ?? '',
         tasks: sortedTasks.map((task, index) => ({
@@ -306,6 +374,18 @@ export const listContractors = query({
       .withIndex('by_project_sort', (q) => q.eq('projectId', args.projectId))
       .take(200);
     const stageById = new Map(projectStages.map((stage) => [String(stage._id), stage]));
+    const allStageContractorLinks = await ctx.db
+      .query('stageContractors')
+      .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
+      .take(1000);
+    const directLinksByStageId = new Map<string, typeof allStageContractorLinks>();
+    for (const link of allStageContractorLinks) {
+      if ((link.paymentMode ?? 'stage_synced') === 'stage_synced') continue;
+      const key = String(link.stageId);
+      const current = directLinksByStageId.get(key) ?? [];
+      current.push(link);
+      directLinksByStageId.set(key, current);
+    }
 
     return await Promise.all(contractors.map(async (contractor) => {
       const milestones = await ctx.db
@@ -343,6 +423,23 @@ export const listContractors = query({
         : linkedPaymentModes.some((mode) => mode === 'stage_synced')
           ? 'stage_synced'
           : 'custom';
+      const stagePaymentTotal = sortedLinkedStages.reduce((sum, stage) => {
+        const directLinks = directLinksByStageId.get(String(stage._id)) ?? [];
+        const isOnlyDirectContractor =
+          directLinks.length === 1 &&
+          directLinks[0].contractorId === contractor._id;
+        return isOnlyDirectContractor ? sum + (stage.payment.amount || 0) : sum;
+      }, 0);
+      const hasDirectStagePayment = sortedLinkedStages.some((stage) => {
+        const directLinks = directLinksByStageId.get(String(stage._id)) ?? [];
+        return directLinks.length === 1 && directLinks[0].contractorId === contractor._id;
+      });
+      const stagePaymentMismatch =
+        hasDirectStagePayment &&
+        Math.round(stagePaymentTotal) !== Math.round(contractor.budget);
+      const stagePaymentMismatchReason = stagePaymentMismatch
+        ? `סכום השלבים המשויכים לקבלן (${stagePaymentTotal.toLocaleString('he-IL')} ₪) לא תואם לסכום החוזה (${contractor.budget.toLocaleString('he-IL')} ₪)`
+        : null;
 
       return {
         ...contractor,
@@ -354,6 +451,9 @@ export const listContractors = query({
         email: contractor.email ?? '',
         paymentMode,
         stageProgressPct,
+        stagePaymentTotal,
+        stagePaymentMismatch,
+        stagePaymentMismatchReason,
         stages: sortedLinkedStages.map((stage) => ({
           id: stage._id,
           stageId: stage._id,
@@ -365,18 +465,23 @@ export const listContractors = query({
           sortOrder: stage.sortOrder,
           paymentMode: stageLinkByStageId.get(String(stage._id))?.paymentMode ?? 'stage_synced',
         })),
-        milestones: milestones
+        milestones: await Promise.all(milestones
           .sort((a, b) => a.sortOrder - b.sortOrder)
-          .map((milestone) => ({
-            ...milestone,
-            id: milestone._id,
-            taskIds: [],
-            status: milestone.paid ? 'paid' : 'pending',
-            paidAt: milestone.paidAt ?? null,
-            sourceMode: milestone.sourceMode ?? 'custom',
-            sourceStageId: milestone.sourceStageId,
-            sourceStageMilestoneId: milestone.sourceStageMilestoneId,
-            sourceTaskId: milestone.sourceTaskId,
+          .map(async (milestone) => {
+            const readiness = await getSyncedPaymentReadiness(ctx, milestone);
+            return {
+              ...milestone,
+              id: milestone._id,
+              taskIds: [],
+              status: milestone.paid ? 'paid' : 'pending',
+              paidAt: milestone.paidAt ?? null,
+              sourceMode: milestone.sourceMode ?? 'custom',
+              sourceStageId: milestone.sourceStageId,
+              sourceStageMilestoneId: milestone.sourceStageMilestoneId,
+              sourceTaskId: milestone.sourceTaskId,
+              readyToPay: readiness.ready,
+              lockedReason: readiness.reason,
+            };
           })),
       };
     }));

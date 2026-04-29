@@ -139,6 +139,12 @@ const buildHeadlineAndCTA = (stage: Stage, gates: Gates, handlers: { onSuperviso
       cta: null,
     };
   }
+  if (stage.paymentAmountMismatch) {
+    return {
+      headline: stage.paymentMismatchReason || 'סכום השלב לא תואם לסכום החוזה של הקבלנים',
+      cta: null,
+    };
+  }
   if (!gates.tasks.passed) {
     return {
       headline: `חסרות ${gates.tasks.missing} משימות — סיים אותן למעלה`,
@@ -278,6 +284,21 @@ export const PaymentGatesPanel = ({
           <PaymentBadge status={status} />
         </span>
       </div>
+      {stage.paymentAmountMismatch && (
+        <div style={{
+          marginBottom: 10,
+          border: '1px solid #FCA5A5',
+          background: '#FEF2F2',
+          color: '#991B1B',
+          borderRadius: 8,
+          padding: '8px 10px',
+          fontSize: 12,
+          fontWeight: 700,
+          lineHeight: 1.45,
+        }}>
+          {stage.paymentMismatchReason || 'סכום השלב לא תואם לסכום החוזה של הקבלנים'}
+        </div>
+      )}
 
       {simple === 'paid' ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -313,7 +334,7 @@ export const PaymentGatesPanel = ({
               <>
                 <div style={{
                   fontSize: 15, fontWeight: 600,
-                  color: ready ? '#065F46' : 'var(--text1)',
+                  color: stage.paymentAmountMismatch ? '#991B1B' : ready ? '#065F46' : 'var(--text1)',
                   marginBottom: 12,
                 }}>
                   {headline}
@@ -415,7 +436,7 @@ const MilestoneItem = ({
       </div>
       <div style={{
         fontSize: 14, fontWeight: 600,
-        color: ready ? '#065F46' : 'var(--text1)',
+        color: stage.paymentAmountMismatch ? '#991B1B' : ready ? '#065F46' : 'var(--text1)',
         marginBottom: 12,
       }}>
         {headline}
@@ -465,6 +486,21 @@ export const MilestonesPanel = ({
       borderRadius: 10,
       padding: 14,
     }}>
+      {stage.paymentAmountMismatch && (
+        <div style={{
+          marginBottom: 12,
+          border: '1px solid #FCA5A5',
+          background: '#FEF2F2',
+          color: '#991B1B',
+          borderRadius: 8,
+          padding: '8px 10px',
+          fontSize: 12,
+          fontWeight: 700,
+          lineHeight: 1.45,
+        }}>
+          {stage.paymentMismatchReason || 'סכום השלב לא תואם לסכום החוזה של הקבלנים'}
+        </div>
+      )}
       {/* Progress summary */}
       <div style={{ marginBottom: 14 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>

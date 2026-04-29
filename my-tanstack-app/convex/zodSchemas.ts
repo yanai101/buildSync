@@ -389,6 +389,8 @@ export const zExpense = {
   status: zExpenseStatus,
   contractorId: zid('contractors').optional(),
   milestoneId: zid('contractorPaymentMilestones').optional(),
+  stageId: zid('stages').optional(),
+  stageMilestoneId: zid('stageMilestones').optional(),
 };
 
 export const zTimelineBar = {
