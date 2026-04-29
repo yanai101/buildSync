@@ -67,6 +67,47 @@ const stageTemplateValidator = v.object({
   milestones: v.array(milestoneTemplateValidator),
 });
 
+const newStageValidator = v.object({
+  name: v.string(),
+  icon: v.optional(v.string()),
+  contractorRole: v.optional(v.string()),
+  contractorIds: v.optional(v.array(v.id('contractors'))),
+  startDate: v.string(),
+  endDate: v.string(),
+  dependsOnPrevious: v.optional(v.boolean()),
+  amount: v.number(),
+  paymentAtEnd: v.optional(v.boolean()),
+  tasks: v.array(taskTemplateValidator),
+  milestones: v.array(milestoneTemplateValidator),
+});
+
+type StageTemplateInput = {
+  legacyId: number;
+  name: string;
+  icon?: string;
+  contractorRole?: string;
+  contractorIds?: Id<'contractors'>[];
+  startDate: string;
+  endDate: string;
+  dependsOnPrevious?: boolean;
+  amount: number;
+  paymentAtEnd?: boolean;
+  tasks: Array<{
+    legacyId: number;
+    name: string;
+    assignee: string;
+    required: boolean;
+    paymentRequired?: boolean;
+    paymentAmount?: number;
+  }>;
+  milestones: Array<{
+    legacyKey: string;
+    name: string;
+    pct: number;
+    taskLegacyIds: number[];
+  }>;
+};
+
 const uniqueContractorIds = (ids: Id<'contractors'>[]) => {
   const seen = new Set<string>();
   return ids.filter((id) => {
@@ -305,6 +346,116 @@ const ensureLegacyContractorStageLinks = async (
   return created;
 };
 
+const validateStageTemplateInput = (stage: StageTemplateInput) => {
+  if (!stage.name.trim()) {
+    throw new Error('Every stage must have a name');
+  }
+  if (stage.tasks.length === 0) {
+    throw new Error('Every stage must include at least one task');
+  }
+
+  const taskIds = new Set(stage.tasks.map((task) => task.legacyId));
+  for (const milestone of stage.milestones) {
+    for (const taskLegacyId of milestone.taskLegacyIds) {
+      if (!taskIds.has(taskLegacyId)) {
+        throw new Error('Milestone task links must reference tasks in the same stage');
+      }
+    }
+  }
+  for (const task of stage.tasks) {
+    if (task.paymentRequired && (!task.paymentAmount || task.paymentAmount <= 0)) {
+      throw new Error('Paid tasks must include a positive payment amount');
+    }
+  }
+};
+
+const insertStageFromTemplate = async (
+  ctx: MutationCtx,
+  projectId: Id<'projects'>,
+  stage: StageTemplateInput,
+  sortOrder: number,
+) => {
+  const stageId = await ctx.db.insert('stages', {
+    projectId,
+    legacyId: stage.legacyId,
+    sortOrder,
+    name: stage.name.trim(),
+    ...(stage.icon ? { icon: stage.icon } : {}),
+    status: 'pending',
+    progressPct: 0,
+    startDate: stage.startDate,
+    endDate: stage.endDate,
+    dependsOnPrevious: sortOrder > 0 && Boolean(stage.dependsOnPrevious),
+    ...(stage.contractorRole ? { contractorRole: stage.contractorRole } : {}),
+    payment: {
+      amount: stage.amount,
+      status: 'draft',
+    },
+  });
+
+  if (stage.contractorIds?.length) {
+    await syncStageContractors(ctx, projectId, stageId, stage.contractorIds);
+  }
+
+  const taskIdByLegacyId = new Map<number, Id<'stageTasks'>>();
+  for (let j = 0; j < stage.tasks.length; j++) {
+    const task = stage.tasks[j];
+    const taskId = await ctx.db.insert('stageTasks', {
+      stageId,
+      legacyId: task.legacyId,
+      name: task.name.trim(),
+      done: false,
+      assignee: task.assignee.trim() || 'לא הוגדר',
+      required: task.required,
+      sortOrder: j,
+    });
+    taskIdByLegacyId.set(task.legacyId, taskId);
+  }
+
+  const taskPaymentMilestones = stage.paymentAtEnd
+    ? []
+    : stage.tasks
+        .filter((task) => task.paymentRequired && (task.paymentAmount || 0) > 0)
+        .map((task) => ({
+          legacyKey: `task-${task.legacyId}`,
+          name: task.name.trim(),
+          pct: stage.amount > 0 ? Math.round(((task.paymentAmount || 0) / stage.amount) * 10000) / 100 : 0,
+          amount: Math.round(task.paymentAmount || 0),
+          taskLegacyIds: [task.legacyId],
+        }));
+  const paymentMilestones = [
+    ...taskPaymentMilestones,
+    ...stage.milestones.map((milestone) => ({
+      ...milestone,
+      amount: Math.round((stage.amount * milestone.pct) / 100),
+    })),
+  ];
+
+  for (let k = 0; k < paymentMilestones.length; k++) {
+    const milestone = paymentMilestones[k];
+    const milestoneId = await ctx.db.insert('stageMilestones', {
+      stageId,
+      legacyKey: milestone.legacyKey,
+      sortOrder: k,
+      name: milestone.name.trim(),
+      pct: milestone.pct,
+      amount: milestone.amount,
+      status: 'draft',
+    });
+
+    for (const taskLegacyId of milestone.taskLegacyIds) {
+      const taskId = taskIdByLegacyId.get(taskLegacyId);
+      if (taskId) {
+        await ctx.db.insert('stageMilestoneTasks', { milestoneId, taskId });
+      }
+    }
+  }
+
+  await syncStageLinkedContractorPayments(ctx, stageId);
+
+  return stageId;
+};
+
 export const createFromTemplate = mutation({
   args: {
     projectId: v.id('projects'),
@@ -325,108 +476,11 @@ export const createFromTemplate = mutation({
     }
 
     for (let i = 0; i < args.stages.length; i++) {
-      const stage = args.stages[i];
-      if (!stage.name.trim()) {
-        throw new Error('Every stage must have a name');
-      }
-      if (stage.tasks.length === 0) {
-        throw new Error('Every stage must include at least one task');
-      }
-
-      const taskIds = new Set(stage.tasks.map((task) => task.legacyId));
-      for (const milestone of stage.milestones) {
-        for (const taskLegacyId of milestone.taskLegacyIds) {
-          if (!taskIds.has(taskLegacyId)) {
-            throw new Error('Milestone task links must reference tasks in the same stage');
-          }
-        }
-      }
-      for (const task of stage.tasks) {
-        if (task.paymentRequired && (!task.paymentAmount || task.paymentAmount <= 0)) {
-          throw new Error('Paid tasks must include a positive payment amount');
-        }
-      }
+      validateStageTemplateInput(args.stages[i]);
     }
 
     for (let i = 0; i < args.stages.length; i++) {
-      const stage = args.stages[i];
-      const stageId = await ctx.db.insert('stages', {
-        projectId: args.projectId,
-        legacyId: stage.legacyId,
-        sortOrder: i,
-        name: stage.name.trim(),
-        ...(stage.icon ? { icon: stage.icon } : {}),
-        status: 'pending',
-        progressPct: 0,
-        startDate: stage.startDate,
-        endDate: stage.endDate,
-        dependsOnPrevious: i > 0 && Boolean(stage.dependsOnPrevious),
-        ...(stage.contractorRole ? { contractorRole: stage.contractorRole } : {}),
-        payment: {
-          amount: stage.amount,
-          status: 'draft',
-        },
-      });
-
-      if (stage.contractorIds?.length) {
-        await syncStageContractors(ctx, args.projectId, stageId, stage.contractorIds);
-      }
-
-      const taskIdByLegacyId = new Map<number, Id<'stageTasks'>>();
-      for (let j = 0; j < stage.tasks.length; j++) {
-        const task = stage.tasks[j];
-        const taskId = await ctx.db.insert('stageTasks', {
-          stageId,
-          legacyId: task.legacyId,
-          name: task.name.trim(),
-          done: false,
-          assignee: task.assignee.trim() || 'לא הוגדר',
-          required: task.required,
-          sortOrder: j,
-        });
-        taskIdByLegacyId.set(task.legacyId, taskId);
-      }
-
-      const taskPaymentMilestones = stage.paymentAtEnd 
-        ? [] 
-        : stage.tasks
-            .filter((task) => task.paymentRequired && (task.paymentAmount || 0) > 0)
-            .map((task) => ({
-              legacyKey: `task-${task.legacyId}`,
-              name: task.name.trim(),
-              pct: stage.amount > 0 ? Math.round(((task.paymentAmount || 0) / stage.amount) * 10000) / 100 : 0,
-              amount: Math.round(task.paymentAmount || 0),
-              taskLegacyIds: [task.legacyId],
-            }));
-      const paymentMilestones = [
-        ...taskPaymentMilestones,
-        ...stage.milestones.map((milestone) => ({
-          ...milestone,
-          amount: Math.round((stage.amount * milestone.pct) / 100),
-        })),
-      ];
-
-      for (let k = 0; k < paymentMilestones.length; k++) {
-        const milestone = paymentMilestones[k];
-        const milestoneId = await ctx.db.insert('stageMilestones', {
-          stageId,
-          legacyKey: milestone.legacyKey,
-          sortOrder: k,
-          name: milestone.name.trim(),
-          pct: milestone.pct,
-          amount: milestone.amount,
-          status: 'draft',
-        });
-
-        for (const taskLegacyId of milestone.taskLegacyIds) {
-          const taskId = taskIdByLegacyId.get(taskLegacyId);
-          if (taskId) {
-            await ctx.db.insert('stageMilestoneTasks', { milestoneId, taskId });
-          }
-        }
-      }
-
-      await syncStageLinkedContractorPayments(ctx, stageId);
+      await insertStageFromTemplate(ctx, args.projectId, args.stages[i], i);
     }
 
     await ctx.db.patch(args.projectId, {
@@ -435,6 +489,48 @@ export const createFromTemplate = mutation({
     });
 
     return { created: args.stages.length };
+  },
+});
+
+export const addStage = mutation({
+  args: {
+    projectId: v.id('projects'),
+    stage: newStageValidator,
+  },
+  handler: async (ctx, args) => {
+    validateStageTemplateInput({ ...args.stage, legacyId: 1 });
+
+    const existingStages = await ctx.db
+      .query('stages')
+      .withIndex('by_project_sort', (q) => q.eq('projectId', args.projectId))
+      .collect();
+
+    const nextSortOrder = existingStages.length
+      ? Math.max(...existingStages.map((stage) => stage.sortOrder)) + 1
+      : 0;
+    const nextLegacyId = existingStages.length
+      ? Math.max(...existingStages.map((stage) => stage.legacyId ?? stage.sortOrder + 1)) + 1
+      : 1;
+
+    const stageId = await insertStageFromTemplate(
+      ctx,
+      args.projectId,
+      {
+        ...args.stage,
+        legacyId: nextLegacyId,
+        dependsOnPrevious: nextSortOrder > 0 && Boolean(args.stage.dependsOnPrevious),
+      },
+      nextSortOrder,
+    );
+
+    if (existingStages.length === 0) {
+      await ctx.db.patch(args.projectId, {
+        currentStageName: args.stage.name.trim(),
+        progressPct: 0,
+      });
+    }
+
+    return { stageId, sortOrder: nextSortOrder, legacyId: nextLegacyId };
   },
 });
 

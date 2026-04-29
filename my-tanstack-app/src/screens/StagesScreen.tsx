@@ -85,6 +85,40 @@ const makeStageTemplate = (projectStartDate?: string): StageGuideStage[] => {
   }));
 };
 
+const makeSingleStageTemplate = (stages: Stage[], projectStartDate?: string): StageGuideStage[] => {
+  const lastStage = stages[stages.length - 1];
+  const usableProjectStart = projectStartDate && ISO_DATE_RE.test(projectStartDate.slice(0, 10))
+    ? projectStartDate.slice(0, 10)
+    : '';
+  const startDate = lastStage?.end && ISO_DATE_RE.test(lastStage.end.slice(0, 10))
+    ? shiftIsoDate(lastStage.end.slice(0, 10), 1)
+    : usableProjectStart;
+  const endDate = startDate ? shiftIsoDate(startDate, 7) : '';
+  const legacyId = Math.max(0, ...stages.map(stage => Number(stage.id) || 0)) + 1;
+
+  return [{
+    legacyId,
+    name: 'שלב חדש',
+    icon: '📌',
+    contractorRole: 'לא הוגדר',
+    contractorIds: [],
+    startDate,
+    endDate,
+    dependsOnPrevious: stages.length > 0,
+    amount: 0,
+    paymentAtEnd: false,
+    tasks: [{
+      legacyId: legacyId * 10 + 1,
+      name: 'משימה ראשונה',
+      assignee: 'לא הוגדר',
+      required: true,
+      paymentRequired: false,
+      paymentAmount: 0,
+    }],
+    milestones: [],
+  }];
+};
+
 const nextLegacyId = (items: { legacyId: number }[], fallback: number) =>
   Math.max(fallback, ...items.map(item => item.legacyId)) + 1;
 
@@ -150,15 +184,22 @@ const StageCreationGuide = ({
   saving,
   projectId,
   projectStartDate,
+  mode = 'template',
+  initialStages,
+  hasPreviousStage = false,
 }: {
   onClose: () => void;
   onCreate: (stages: StageGuideStage[]) => Promise<void>;
   saving: boolean;
   projectId: any;
   projectStartDate?: string;
+  mode?: 'template' | 'single';
+  initialStages?: StageGuideStage[];
+  hasPreviousStage?: boolean;
 }) => {
   const contractors = useQuery(api.queries.listContractors, { projectId });
-  const [draft, setDraft] = React.useState<StageGuideStage[]>(() => makeStageTemplate(projectStartDate));
+  const isSingle = mode === 'single';
+  const [draft, setDraft] = React.useState<StageGuideStage[]>(() => initialStages ?? makeStageTemplate(projectStartDate));
   const [selected, setSelected] = React.useState(0);
 
   const current = draft[selected] ?? draft[0];
@@ -310,8 +351,9 @@ const StageCreationGuide = ({
   };
 
   return (
-    <Modal title="יצירת שלבי בנייה מתבנית" onClose={onClose} width={1040}>
-      <div style={{display:"grid",gridTemplateColumns:"280px minmax(0,1fr)",gap:18,height:"min(72vh, 720px)",overflow:"hidden"}}>
+    <Modal title={isSingle ? "הוספת שלב חדש" : "יצירת שלבי בנייה מתבנית"} onClose={onClose} width={isSingle ? 760 : 1040}>
+      <div style={{display:"grid",gridTemplateColumns:isSingle ? "minmax(0,1fr)" : "280px minmax(0,1fr)",gap:18,height:"min(72vh, 720px)",overflow:"hidden"}}>
+        {!isSingle && (
         <div style={{display:"flex",flexDirection:"column",gap:10,minHeight:0}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
             <div style={{fontSize:13,fontWeight:800}}>תבנית מאסטר</div>
@@ -369,6 +411,7 @@ const StageCreationGuide = ({
             </Reorder.Group>
           </ScrollShadow>
         </div>
+        )}
 
         {current && (
           <ScrollShadow>
@@ -376,7 +419,11 @@ const StageCreationGuide = ({
             <div style={{display:"flex",justifyContent:"space-between",gap:10,alignItems:"center",marginBottom:14}}>
               <div>
                 <div style={{fontSize:18,fontWeight:800}}>עריכת שלב</div>
-                <div style={{fontSize:12,color:"var(--text3)"}}>כל השלבים ייווצרו כחדשים, עם משימות לא מסומנות ותשלום במצב טיוטה.</div>
+                <div style={{fontSize:12,color:"var(--text3)"}}>
+                  {isSingle
+                    ? "השלב יתווסף לסוף הרשימה, עם משימות לא מסומנות ותשלום במצב טיוטה."
+                    : "כל השלבים ייווצרו כחדשים, עם משימות לא מסומנות ותשלום במצב טיוטה."}
+                </div>
               </div>
             </div>
 
@@ -429,19 +476,26 @@ const StageCreationGuide = ({
                     }}/>
                     תשלום גלובלי בסיום השלב
                   </label>
-                  <label style={{display:"flex",alignItems:"center",gap:8,fontSize:13,cursor:selected===0?"not-allowed":"pointer",marginTop:14,color:selected===0?"var(--text3)":"var(--text2)"}}>
+                  {(() => {
+                    const dependencyDisabled = !hasPreviousStage && selected === 0;
+                    return (
+                  <label style={{display:"flex",alignItems:"center",gap:8,fontSize:13,cursor:dependencyDisabled?"not-allowed":"pointer",marginTop:14,color:dependencyDisabled?"var(--text3)":"var(--text2)"}}>
                     <input
                       type="checkbox"
-                      checked={selected > 0 && Boolean(current.dependsOnPrevious)}
-                      disabled={selected === 0}
+                      checked={!dependencyDisabled && Boolean(current.dependsOnPrevious)}
+                      disabled={dependencyDisabled}
                       onChange={e=>updateStage({dependsOnPrevious:e.target.checked})}
                     />
                     מחובר לשלב הקודם
                   </label>
+                    );
+                  })()}
                 </div>
+                {!isSingle && (
                 <Btn size="sm" variant="ghost" onClick={()=>removeStage(selected)} disabled={draft.length<=1} style={{color:"var(--danger)"}}>
                   <Icon n="trash" s={14}/> הסר שלב
                 </Btn>
+                )}
               </div>
             </div>
 
@@ -556,7 +610,7 @@ const StageCreationGuide = ({
       <div style={{display:"flex",justifyContent:"flex-end",gap:10,marginTop:18}}>
         <Btn variant="ghost" onClick={onClose} disabled={saving}>ביטול</Btn>
         <Btn onClick={()=>onCreate(draft)} disabled={saving || Boolean(validation)}>
-          <Icon n="check" s={14}/> {saving ? "יוצר..." : "צור שלבי בנייה"}
+          <Icon n="check" s={14}/> {saving ? "יוצר..." : isSingle ? "הוסף שלב" : "צור שלבי בנייה"}
         </Btn>
       </div>
     </Modal>
@@ -573,6 +627,7 @@ export const StagesScreen = () => {
   const refetch = React.useCallback(() => {}, []);
   const { mutate } = useDataMutation('stages');
   const createStagesFromTemplate = useMutation(api.stages.createFromTemplate);
+  const addStageMutation = useMutation(api.stages.addStage);
   const updateStageDetails = useMutation(api.stages.updateStageDetails);
   const updateStageAdvanced = useMutation(api.stages.updateStageAdvanced);
   const deleteStageMutation = useMutation(api.stages.deleteStage);
@@ -583,6 +638,7 @@ export const StagesScreen = () => {
   const [expanded, setExpanded] = React.useState<number | null>(null);
   const [releaseFor, setReleaseFor] = React.useState<{stage: Stage; milestoneId: string | null; amount: number; milestoneName: string | null} | null>(null);
   const [guideOpen, setGuideOpen] = React.useState(false);
+  const [addStageOpen, setAddStageOpen] = React.useState(false);
   const { role } = useRequireRole(['owner', 'manager', 'inspector', 'contractor']);
   const isContractor = role === 'contractor';
   const currentIdentity = useQuery(api.users.currentIdentity, {});
@@ -1006,6 +1062,52 @@ export const StagesScreen = () => {
     }
   };
 
+  const createSingleStage = async (draftStages: StageGuideStage[]) => {
+    if (!projectId || !draftStages[0]) return;
+    const stage = draftStages[0];
+    setSavingGuide(true);
+    try {
+      await addStageMutation({
+        projectId,
+        stage: {
+          name: stage.name,
+          ...(stage.icon ? { icon: stage.icon } : {}),
+          ...(stage.contractorRole ? { contractorRole: stage.contractorRole } : {}),
+          ...(stage.contractorIds?.length ? { contractorIds: stage.contractorIds as any[] } : {}),
+          startDate: stage.startDate,
+          endDate: stage.endDate,
+          dependsOnPrevious: stage.dependsOnPrevious,
+          amount: Number(stage.amount) || 0,
+          paymentAtEnd: stage.paymentAtEnd,
+          tasks: stage.tasks.map(task => ({
+            legacyId: task.legacyId,
+            name: task.name,
+            assignee: task.assignee,
+            required: task.required,
+            paymentRequired: task.paymentRequired,
+            paymentAmount: Number(task.paymentAmount) || 0,
+          })),
+          milestones: stage.milestones.map(milestone => ({
+            legacyKey: milestone.legacyKey,
+            name: milestone.name,
+            pct: Number(milestone.pct) || 0,
+            taskLegacyIds: milestone.taskLegacyIds,
+          })),
+        },
+      });
+      setAddStageOpen(false);
+      refetch();
+    } catch (err) {
+      setFeedback({
+        title: "שגיאה בהוספת שלב",
+        message: err instanceof Error ? err.message : "לא הצלחנו להוסיף את השלב.",
+        type: "error",
+      });
+    } finally {
+      setSavingGuide(false);
+    }
+  };
+
   return (
     <>
     <ScreenBoundary
@@ -1031,6 +1133,11 @@ export const StagesScreen = () => {
               <div style={{fontSize:13,color:"var(--text3)",marginTop:2}}>ניהול משימות, אישורים ותשלומים לפי שלבים</div>
             </div>
           </div>
+          {!isContractor && (
+            <Btn onClick={() => setAddStageOpen(true)}>
+              <Icon n="plus" s={14}/> שלב חדש
+            </Btn>
+          )}
         </div>
 
         {!isContractor && (
@@ -1434,6 +1541,18 @@ export const StagesScreen = () => {
         onCreate={async (stages) => {
           await createStages(stages);
         }}
+        saving={savingGuide}
+      />
+    )}
+    {addStageOpen && (
+      <StageCreationGuide
+        mode="single"
+        projectId={projectId}
+        projectStartDate={project?.startDate}
+        initialStages={makeSingleStageTemplate(stages, project?.startDate)}
+        hasPreviousStage={stages.length > 0}
+        onClose={() => setAddStageOpen(false)}
+        onCreate={createSingleStage}
         saving={savingGuide}
       />
     )}
