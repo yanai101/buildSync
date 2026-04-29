@@ -244,9 +244,6 @@ export const DailyLogsScreen = () => {
               {canEditAdvanced && <Btn size="sm" variant="outline" style={{ alignSelf: "flex-start", marginTop: 8 }} onClick={()=>setForm({...form, issues: [...form.issues, { type: 'delay', description: '', financialImpact: false }]})}><Icon n="plus" s={14}/> דווח חריגה</Btn>}
             </div>
           </div>
-
-          </div>
-
         </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
