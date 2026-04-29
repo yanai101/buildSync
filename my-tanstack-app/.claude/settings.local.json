@@ -27,7 +27,12 @@
       "Bash(npx vite *)",
       "Bash(git -C /Users/yanaiedri/projects/BuildPro/my-tanstack-app-personal-files status --short --ignored my-tanstack-app/package-lock.json)",
       "Bash(git *)",
-      "Bash(echo \"EXIT=$?\")"
+      "Bash(echo \"EXIT=$?\")",
+      "Bash(awk '{print $9, $5}')",
+      "Bash(xargs -I {} basename {})",
+      "Bash(npx --yes create-video@latest --yes --blank --no-tailwind remotion)",
+      "Bash(npx remotion *)",
+      "Bash(env)"
     ]
   }
 }

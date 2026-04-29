@@ -234,7 +234,7 @@ export const DailyLogsScreen = () => {
                 onClick={() => exportPDF(log)}
                 disabled={exporting || !log || log.activities.length === 0}
               >
-                <Icon n="download" s={16}/> {exporting ? 'מפיק PDF...' : 'הפק PDF משפטי'}
+                <Icon n="download" s={16}/> {exporting ? 'מפיק PDF...' : 'הפק PDF'}
               </Btn>
 
               {canEditBasic && <Btn variant="primary" onClick={handleSave} disabled={saving}>
@@ -342,7 +342,7 @@ export const DailyLogsScreen = () => {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
                       <span style={{ fontSize: 16, fontWeight: 700 }}>{new Date(l.date).toLocaleDateString('he-IL')}</span>
                       {l.status === 'locked' ? (
-                        <span className="badge" style={{ background: 'rgba(255,59,48,0.1)', color: '#FF3B30' }}><Icon n="lock" s={12}/> נעול (מסמך משפטי)</span>
+                        <span className="badge" style={{ background: 'rgba(255,59,48,0.1)', color: '#FF3B30' }}><Icon n="lock" s={12}/> נעול (מסמך)</span>
                       ) : (
                         <span className="badge badge-draft">טיוטה</span>
                       )}
