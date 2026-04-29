@@ -9,6 +9,8 @@ import { useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { ScreenBoundary } from '../components/ScreenBoundary';
 import { useProjectFileUploader } from '../hooks/useProjectFileUploader';
+import { useRequireRole } from '../hooks/useRequireRole';
+import { AccessDenied, AccessLoading } from '../components/AccessDenied';
 import type { Id } from '../../convex/_generated/dataModel';
 
 export interface Quote {
@@ -36,11 +38,12 @@ export interface QuoteTopic {
 }
 
 export const QuotesScreen = () => {
+  const { allowed, loading: roleLoading } = useRequireRole(['owner']);
   const { projectId } = useCurrentProject();
   
   // DB Queries
-  const dbQuotes = useQuery(api.quotes.listQuotes, projectId ? { projectId } : "skip");
-  const dbTopics = useQuery(api.quotes.listTopics, projectId ? { projectId } : "skip");
+  const dbQuotes = useQuery(api.quotes.listQuotes, projectId && allowed ? { projectId } : "skip");
+  const dbTopics = useQuery(api.quotes.listTopics, projectId && allowed ? { projectId } : "skip");
 
   // Data Sources
   const { data: initialQuotes, loading: quotesLoading, error: quotesError, refetch: quotesRefetch } = useDataSource<any[]>('quotes', { db: dbQuotes as any });
@@ -76,6 +79,9 @@ export const QuotesScreen = () => {
   const loading = quotesLoading || topicsLoading || !projectId;
   const error = quotesError;
   const refetch = () => { quotesRefetch(); };
+
+  if (roleLoading) return <AccessLoading />;
+  if (!allowed) return <AccessDenied message="הצעות מחיר זמינות ליזם הפרויקט בלבד." />;
 
   const topics = React.useMemo(() => {
     const raw = initialTopics || QUOTE_TOPICS;

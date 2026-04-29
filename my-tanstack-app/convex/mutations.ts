@@ -925,3 +925,31 @@ export const updatePhotoTag = mutation({
     return { updated: true, tag: args.tag };
   },
 });
+
+export const updatePhotoDefect = mutation({
+  args: {
+    photoId: v.id('photos'),
+    defectStatus: v.optional(v.union(v.literal('פתוח'), v.literal('בטיפול'), v.literal('תוקן'), v.literal('אושר'))),
+    priority: v.optional(v.union(v.literal('נמוכה'), v.literal('רגילה'), v.literal('קריטית'))),
+    assigneeId: v.optional(v.id('contractors')),
+    dueDate: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await requirePhotoManager(ctx);
+
+    const photo = await ctx.db.get(args.photoId);
+    if (!photo) {
+      throw new Error('Photo not found');
+    }
+
+    const updates: any = {};
+    if (args.defectStatus !== undefined) updates.defectStatus = args.defectStatus;
+    if (args.priority !== undefined) updates.priority = args.priority;
+    if (args.assigneeId !== undefined) updates.assigneeId = args.assigneeId;
+    if (args.dueDate !== undefined) updates.dueDate = args.dueDate;
+
+    await ctx.db.patch(args.photoId, updates);
+    return { updated: true };
+  },
+});
+

@@ -8,6 +8,8 @@ import { useCurrentProject } from '../hooks/useCurrentProject';
 import { useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { ScreenBoundary } from '../components/ScreenBoundary';
+import { useRequireRole } from '../hooks/useRequireRole';
+import { AccessDenied, AccessLoading } from '../components/AccessDenied';
 
 export interface ProjectConfig {
   name: string;
@@ -22,8 +24,9 @@ export interface ProjectConfig {
 }
 
 export const ProjectSetupScreen = () => {
+  const { allowed, loading: roleLoading } = useRequireRole(['owner', 'manager']);
   const { projectId } = useCurrentProject();
-  const dbProject = useQuery(api.projects.getWithDetails, projectId ? { projectId } : "skip");
+  const dbProject = useQuery(api.projects.getWithDetails, projectId && allowed ? { projectId } : "skip");
   const { data: project, loading, error, refetch } = useDataSource<Project>('project', { db: dbProject as any });
   const { mutate } = useDataMutation('projects');
 
@@ -88,6 +91,9 @@ export const ProjectSetupScreen = () => {
       setSaving(false);
     }
   };
+
+  if (roleLoading) return <AccessLoading />;
+  if (!allowed) return <AccessDenied message="הגדרות פרויקט זמינות ליזם ולמנהל הפרויקט בלבד." />;
 
   if(!cfg) return null;
 

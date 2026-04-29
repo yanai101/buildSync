@@ -283,11 +283,14 @@ const CategoryAutocomplete = ({
 
 import html2pdf from 'html2pdf.js';
 import { BOQPrintTemplate } from '../components/BOQPrintTemplate';
+import { useRequireRole } from '../hooks/useRequireRole';
+import { AccessDenied, AccessLoading } from '../components/AccessDenied';
 
 export const BOQScreen = () => {
+  const { allowed, loading: roleLoading } = useRequireRole(['owner', 'manager', 'inspector']);
   const { projectId } = useCurrentProject();
-  const dbBoq = useQuery(api.queries.listBoq, projectId ? { projectId } : "skip");
-  const dbProject = useQuery(api.projects.getWithDetails, projectId ? { projectId } : "skip");
+  const dbBoq = useQuery(api.queries.listBoq, projectId && allowed ? { projectId } : "skip");
+  const dbProject = useQuery(api.projects.getWithDetails, projectId && allowed ? { projectId } : "skip");
   const addBoqItem = useMutation(api.mutations.addBoqItem);
   const updateBoqItem = useMutation(api.mutations.updateBoqItem);
   const updateBoqItemStatus = useMutation(api.mutations.updateBoqItemStatus);
@@ -545,6 +548,9 @@ export const BOQScreen = () => {
   };
 
   const cats = [...new Set(roomItems.map((i)=>i.cat))];
+
+  if (roleLoading) return <AccessLoading />;
+  if (!allowed) return <AccessDenied message="כתב כמויות וניהול BoQ מורשים לצוות הניהול והפיקוח בלבד." />;
 
   return (
     <ScreenBoundary loading={loading} error={null} onRetry={() => window.location.reload()}>

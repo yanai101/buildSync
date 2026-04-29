@@ -12,6 +12,8 @@ import html2pdf from 'html2pdf.js';
 import { BOQPrintTemplate } from '../components/BOQPrintTemplate';
 import { useProjectFileUploader } from '../hooks/useProjectFileUploader';
 import { getCatalogForRoom } from '../data/boqCatalog';
+import { useRequireRole } from '../hooks/useRequireRole';
+import { AccessDenied, AccessLoading } from '../components/AccessDenied';
 import type { Id } from '../../convex/_generated/dataModel';
 
 // ── CONSTANTS & CATALOG ───────────────────────────────────────────────────────
@@ -253,8 +255,9 @@ const AddItemWidget = ({
 // ── BOQ WIZARD SCREEN ───────────────────────────────────────────────────────
 
 export const BOQWizardScreen = () => {
+  const { allowed, loading: roleLoading } = useRequireRole(['owner', 'manager']);
   const { projectId } = useCurrentProject();
-  const dbProject = useQuery(api.projects.getWithDetails, projectId ? { projectId } : "skip");
+  const dbProject = useQuery(api.projects.getWithDetails, projectId && allowed ? { projectId } : "skip");
   const { data: project, loading, error, refetch } = useDataSource<Project>('project', { db: dbProject as any });
   const { mutate } = useDataMutation('boq');
   const uploadProjectFile = useProjectFileUploader();
@@ -746,6 +749,9 @@ export const BOQWizardScreen = () => {
       setExporting(false);
     }
   };
+
+  if (roleLoading) return <AccessLoading />;
+  if (!allowed) return <AccessDenied message="אשף הכמויות וניהול ה-BoQ מורשים ליזם ומנהל הפרויקט בלבד." />;
 
   if (!project) return <ScreenBoundary loading={loading} error={error} onRetry={refetch}><div/></ScreenBoundary>;
 

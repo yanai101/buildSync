@@ -430,60 +430,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                   {/* Dev-only Data Source Toggle */}
                   {import.meta.env.DEV && (
                     <>
-                      <div style={{ padding: "4px 10px", fontSize: 10, fontWeight: 700, color: "var(--text3)", textTransform: "uppercase", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                        <span>Data Sources</span>
-                        <div style={{ display: "flex", gap: 4 }}>
-                          <button 
-                            onClick={() => {
-                              const resources = ['project', 'projects', 'stages', 'contractors', 'boq', 'photos', 'notes', 'budget_cats', 'timeline', 'quotes', 'expenses'];
-                              resources.forEach(r => localStorage.setItem(`buildsync:ds:${r}`, 'mock'));
-                              window.location.reload();
-                            }}
-                            style={{ fontSize: 9, padding: "2px 4px", borderRadius: 4, border: "1px solid var(--border)", background: "var(--bg)", cursor: "pointer" }}
-                          >ALL MOCK</button>
-                          <button 
-                            onClick={() => {
-                              const resources = ['project', 'projects', 'stages', 'contractors', 'boq', 'photos', 'notes', 'budget_cats', 'timeline', 'quotes', 'expenses'];
-                              resources.forEach(r => localStorage.setItem(`buildsync:ds:${r}`, 'db'));
-                              window.location.reload();
-                            }}
-                            style={{ fontSize: 9, padding: "2px 4px", borderRadius: 4, border: "1px solid var(--border)", background: "var(--bg)", cursor: "pointer" }}
-                          >ALL DB</button>
-                        </div>
-                      </div>
-                      {['project', 'projects', 'stages', 'contractors', 'boq', 'photos', 'notes', 'budget_cats', 'timeline', 'quotes', 'expenses'].map(key => {
-                        const dsKey = `buildsync:ds:${key}`;
-                        const current = typeof window !== 'undefined' ? localStorage.getItem(dsKey) || 'mock' : 'mock';
-                        return (
-                          <div key={key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "4px 10px" }}>
-                            <span style={{ fontSize: 11, color: "var(--text2)" }}>{key}</span>
-                            <div style={{ display: "flex", background: "var(--bg)", borderRadius: 6, padding: 2 }}>
-                              {['mock', 'db'].map(m => (
-                                <button
-                                  key={m}
-                                  onClick={() => {
-                                    localStorage.setItem(dsKey, m);
-                                    window.location.reload();
-                                  }}
-                                  style={{
-                                    padding: "2px 6px",
-                                    fontSize: 10,
-                                    borderRadius: 4,
-                                    border: "none",
-                                    background: current === m ? "var(--accent)" : "transparent",
-                                    color: current === m ? "#fff" : "var(--text3)",
-                                    cursor: "pointer",
-                                    fontWeight: 700
-                                  }}
-                                >
-                                  {m.toUpperCase()}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                        );
-                      })}
-                      <div style={{ height: 1, background: "var(--border)", margin: "6px 0" }} />
                       <div style={{ padding: "4px 10px", fontSize: 10, fontWeight: 700, color: "var(--text3)", textTransform: "uppercase" }}>
                         Role Override (Dev)
                       </div>

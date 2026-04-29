@@ -45,12 +45,148 @@ const ApprovedBadge = ({ compact = false }: { compact?: boolean }) => (
   </div>
 );
 
+const DefectsTable = ({ photos, onSelect, contractors, setFeedback }: { photos: any[], onSelect: (p: any) => void, contractors: any[], setFeedback: (f: any) => void }) => {
+  const getContractorName = (id?: string) => contractors.find(c => c._id === id)?.name || "לא שויך";
+  const getPriorityColor = (p?: string) => p === 'קריטית' ? 'var(--danger)' : p === 'נמוכה' ? 'var(--text3)' : 'var(--warning)';
+  const getStatusColor = (s?: string) => s === 'תוקן' ? '#34C759' : s === 'אושר' ? '#137946' : s === 'בטיפול' ? '#007AFF' : '#FF9500';
+  const [exporting, setExporting] = React.useState(false);
+
+  const performExport = async () => {
+    if (exporting) return;
+    setExporting(true);
+    try {
+      // @ts-ignore
+      const html2pdf = (await import('html2pdf.js')).default;
+      
+      const container = document.createElement('div');
+      container.style.padding = '40px';
+      container.style.fontFamily = "'Heebo', sans-serif";
+      container.style.direction = "rtl";
+      container.style.textAlign = "right";
+      container.style.color = "#000";
+      container.style.background = "#fff";
+
+      let html = `
+        <div style="border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: flex-end;">
+          <div>
+            <h1 style="margin: 0; font-size: 28px; color: #111;">דוח ליקויים (Snagging)</h1>
+            <p style="margin: 4px 0 0 0; color: #555; font-size: 14px;">הופק בתאריך: ${new Date().toLocaleDateString('he-IL')}</p>
+          </div>
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <div style="font-size: 26px; font-weight: 800; letter-spacing: -0.5px;">Build<span style="color: #FF9500;">Sync</span></div>
+            <img src="/logo.png" style="height: 48px; width: auto; object-fit: contain;" />
+          </div>
+        </div>
+      `;
+
+      for (const p of photos) {
+        html += `
+          <div style="display: flex; gap: 20px; border: 1px solid #ddd; border-radius: 12px; padding: 16px; margin-bottom: 20px; page-break-inside: avoid;">
+            <div style="flex: 0 0 160px; height: 120px; background: #eee; border-radius: 8px; overflow: hidden;">
+              ${p.fileUrl ? `<img src="${p.fileUrl}" style="width: 100%; height: 100%; object-fit: cover;" crossorigin="anonymous"/>` : ''}
+            </div>
+            <div style="flex: 1;">
+              <h3 style="margin: 0 0 8px 0; font-size: 18px;">${p.label || 'ללא תיאור'}</h3>
+              <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                <tr>
+                  <td style="padding: 4px 0; color: #666; width: 100px;">מיקום:</td>
+                  <td style="padding: 4px 0; font-weight: 600;">${p.location || '-'}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 4px 0; color: #666;">קבלן מבצע:</td>
+                  <td style="padding: 4px 0; font-weight: 600;">${getContractorName(p.assigneeId)}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 4px 0; color: #666;">עדיפות:</td>
+                  <td style="padding: 4px 0; font-weight: 600; color: ${getPriorityColor(p.priority)};">${p.priority || 'רגילה'}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 4px 0; color: #666;">סטטוס:</td>
+                  <td style="padding: 4px 0; font-weight: 600; color: ${getStatusColor(p.defectStatus)};">${p.defectStatus || 'פתוח'}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 4px 0; color: #666;">יעד לתיקון:</td>
+                  <td style="padding: 4px 0; font-weight: 600;">${p.dueDate ? new Date(p.dueDate).toLocaleDateString('he-IL') : 'לא הוגדר'}</td>
+                </tr>
+              </table>
+            </div>
+          </div>
+        `;
+      }
+
+      container.innerHTML = html;
+
+      const opt = {
+        margin: 10,
+        filename: `defect-report-${new Date().toISOString().split('T')[0]}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      };
+
+      await html2pdf().set(opt).from(container).save();
+      setFeedback({ title: "הדוח הופק בהצלחה", message: "דוח הליקויים נשמר במכשירך.", type: "success" });
+    } catch (error) {
+      console.error("PDF Export failed:", error);
+      setFeedback({ title: "שגיאה", message: "שגיאה בהפקת הדוח. נסה שנית.", type: "error" });
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  if (photos.length === 0) return <EmptyState icon="check-circle" title="אין ליקויים פתוחים" description="לא נמצאו תמונות שתוייגו כ'בעיה' או 'בדיקה'." />;
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <h3 style={{ margin: 0, fontSize: 16 }}>ניהול ליקויים ({photos.length})</h3>
+        <Btn size="sm" onClick={performExport} variant="outline" disabled={exporting}>
+          <Icon n={exporting ? "loader" : "download"} s={14}/> {exporting ? "מכין דוח..." : "ייצוא דוח PDF"}
+        </Btn>
+      </div>
+      <div style={{ background: "var(--surface)", borderRadius: 12, border: "1px solid var(--border)", overflow: "hidden" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "right" }}>
+          <thead>
+            <tr style={{ background: "var(--bg)", borderBottom: "1px solid var(--border)", fontSize: 12, color: "var(--text2)" }}>
+              <th style={{ padding: "12px 16px", fontWeight: 600 }}>תמונה</th>
+              <th style={{ padding: "12px 16px", fontWeight: 600 }}>תיאור ליקוי</th>
+              <th style={{ padding: "12px 16px", fontWeight: 600 }}>מיקום</th>
+              <th style={{ padding: "12px 16px", fontWeight: 600 }}>קבלן מבצע</th>
+              <th style={{ padding: "12px 16px", fontWeight: 600 }}>עדיפות</th>
+              <th style={{ padding: "12px 16px", fontWeight: 600 }}>סטטוס</th>
+              <th style={{ padding: "12px 16px", fontWeight: 600 }}>תאריך יעד</th>
+            </tr>
+          </thead>
+          <tbody>
+            {photos.map(p => (
+              <tr key={p._id} onClick={() => onSelect(p)} style={{ borderBottom: "1px solid var(--border)", cursor: "pointer", transition: "background 0.2s" }} onMouseOver={e => e.currentTarget.style.background = "var(--bg)"} onMouseOut={e => e.currentTarget.style.background = "transparent"}>
+                <td style={{ padding: "12px 16px" }}>
+                  <div style={{ width: 40, height: 40, borderRadius: 6, background: "var(--border)", overflow: "hidden" }}>
+                    {p.fileUrl && <img src={p.fileUrl} style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
+                  </div>
+                </td>
+                <td style={{ padding: "12px 16px", fontSize: 13, fontWeight: 500 }}>{p.label}</td>
+                <td style={{ padding: "12px 16px", fontSize: 12, color: "var(--text2)" }}>{p.location}</td>
+                <td style={{ padding: "12px 16px", fontSize: 12 }}>{getContractorName(p.assigneeId)}</td>
+                <td style={{ padding: "12px 16px", fontSize: 12, color: getPriorityColor(p.priority), fontWeight: 600 }}>{p.priority || "רגילה"}</td>
+                <td style={{ padding: "12px 16px" }}><span style={{ padding: "4px 8px", borderRadius: 20, fontSize: 11, fontWeight: 700, background: `${getStatusColor(p.defectStatus || "פתוח")}22`, color: getStatusColor(p.defectStatus || "פתוח") }}>{p.defectStatus || "פתוח"}</span></td>
+                <td style={{ padding: "12px 16px", fontSize: 12, color: "var(--text2)" }}>{p.dueDate ? new Date(p.dueDate).toLocaleDateString('he-IL') : "-"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+
 export const PhotosScreen = () => {
   const { projectId } = useCurrentProject();
   const dbPhotos = useQuery(api.queries.listPhotos, projectId ? { projectId } : "skip");
   const currentIdentity = useQuery(api.users.currentIdentity, {});
   const { data: initialPhotos, loading, error, refetch, mode } = useDataSource<any[]>('photos', { db: dbPhotos as any });
   const { mutate } = useDataMutation('photos');
+  const [viewMode, setViewMode] = React.useState<"gallery" | "snagging">("gallery");
   const [photos, setPhotos] = React.useState<any[]>([]);
   const [selected, setSelected] = React.useState<any>(null);
   const [filter, setFilter] = React.useState("הכל");
@@ -58,6 +194,10 @@ export const PhotosScreen = () => {
   const createPhotoFromProjectFile = useMutation(api.photos.createFromProjectFile);
   const createAnnotatedVersion = useMutation(api.photos.createAnnotatedVersion);
   const deleteProjectFile = useMutation(api.projectFiles.deleteProjectFile);
+  const updatePhotoDefect = useMutation(api.mutations.updatePhotoDefect);
+  
+  const contractorsData = useQuery(api.queries.listContractors, projectId ? { projectId } : "skip");
+  const contractors = React.useMemo(() => contractorsData || [], [contractorsData]);
   const selectedPhotoId = typeof (selected?._id || selected?.id) === 'string'
     ? (selected._id || selected.id) as Id<'photos'>
     : null;
@@ -534,9 +674,17 @@ export const PhotosScreen = () => {
         </div>
       ) : (
       <div className="page-content">
-      {uploadInput}
-      {/* Filter + upload */}
-      <div style={{display:"flex",gap:8,marginBottom:16,alignItems:"center",flexWrap:"wrap"}}>
+      {/* View Mode Tabs */}
+      <div style={{ display: "flex", gap: 4, background: "var(--surface)", padding: 4, borderRadius: 12, border: "1px solid var(--border)", width: "fit-content", marginBottom: 24 }}>
+        <button onClick={()=>setViewMode("gallery")} style={{ padding: "8px 20px", borderRadius: 8, fontSize: 13, fontWeight: 600, background: viewMode === "gallery" ? "var(--bg)" : "transparent", color: viewMode === "gallery" ? "var(--text1)" : "var(--text2)", border: viewMode === "gallery" ? "1px solid var(--border)" : "1px solid transparent", cursor: "pointer", transition: "all 0.2s", boxShadow: viewMode === "gallery" ? "0 2px 8px rgba(0,0,0,0.04)" : "none" }}>🖼️ גלריה</button>
+        <button onClick={()=>setViewMode("snagging")} style={{ padding: "8px 20px", borderRadius: 8, fontSize: 13, fontWeight: 600, background: viewMode === "snagging" ? "var(--bg)" : "transparent", color: viewMode === "snagging" ? "var(--text1)" : "var(--text2)", border: viewMode === "snagging" ? "1px solid var(--border)" : "1px solid transparent", cursor: "pointer", transition: "all 0.2s", boxShadow: viewMode === "snagging" ? "0 2px 8px rgba(0,0,0,0.04)" : "none" }}>📋 ניהול ליקויים (Snagging)</button>
+      </div>
+
+      {viewMode === "gallery" ? (
+        <>
+        {uploadInput}
+        {/* Filter + upload */}
+        <div style={{display:"flex",gap:8,marginBottom:16,alignItems:"center",flexWrap:"wrap"}}>
         {tags.map(t=>(
           <button key={t} onClick={()=>setFilter(t)} style={{padding:"5px 12px",border:"1px solid",borderColor:filter===t?"var(--accent)":"var(--border)",borderRadius:20,fontSize:12,background:filter===t?"var(--accent-light)":"var(--surface)",color:filter===t?"var(--accent)":"var(--text2)",cursor:"pointer",fontFamily:"'Heebo',sans-serif",fontWeight:filter===t?600:400}}>
             {t}
@@ -584,6 +732,15 @@ export const PhotosScreen = () => {
           </motion.div>
         ))}
       </motion.div>
+      </>
+      ) : (
+        <DefectsTable 
+          photos={photos.filter(p => p.tag === 'בעיה' || p.tag === 'בדיקה')} 
+          onSelect={setSelected} 
+          contractors={contractors} 
+          setFeedback={setFeedback}
+        />
+      )}
 
       {selected && (
         <Modal onClose={()=>setSelected(null)} title={`${selected.label} — ${selected.date}`} width={760}>
@@ -644,6 +801,30 @@ export const PhotosScreen = () => {
                       <option key={tag} value={tag}>{tag}</option>
                     ))}
                   </Select>
+                </div>
+              )}
+              { (selected.tag === 'בעיה' || selected.tag === 'בדיקה') && canManagePhotos && (
+                <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:8,background:"var(--surface)",padding:8,borderRadius:8,border:"1px solid var(--border)"}}>
+                  <div style={{fontWeight:600,fontSize:12}}>פרטי ליקוי (Snagging)</div>
+                  <Select value={selected.defectStatus || "פתוח"} onChange={v=>updatePhotoDefect({photoId:selectedPhotoId!, defectStatus: v as any}).then(refetch)} style={{fontSize:11}}>
+                    <option value="פתוח">סטטוס: פתוח</option>
+                    <option value="בטיפול">סטטוס: בטיפול</option>
+                    <option value="תוקן">סטטוס: תוקן</option>
+                    <option value="אושר">סטטוס: אושר</option>
+                  </Select>
+                  <Select value={selected.priority || "רגילה"} onChange={v=>updatePhotoDefect({photoId:selectedPhotoId!, priority: v as any}).then(refetch)} style={{fontSize:11}}>
+                    <option value="נמוכה">עדיפות: נמוכה</option>
+                    <option value="רגילה">עדיפות: רגילה</option>
+                    <option value="קריטית">עדיפות: קריטית</option>
+                  </Select>
+                  <Select value={selected.assigneeId || ""} onChange={v=>updatePhotoDefect({photoId:selectedPhotoId!, assigneeId: v ? (v as any) : undefined}).then(refetch)} style={{fontSize:11}}>
+                    <option value="">ללא שיוך לקבלן</option>
+                    {contractors.map((c: any) => <option key={c._id} value={c._id}>{c.name}</option>)}
+                  </Select>
+                  <div style={{display:"flex",flexDirection:"column",gap:4}}>
+                    <span style={{fontSize:11,color:"var(--text2)"}}>תאריך יעד לתיקון:</span>
+                    <input type="date" value={selected.dueDate || ""} onChange={e=>updatePhotoDefect({photoId:selectedPhotoId!, dueDate: e.target.value || undefined}).then(refetch)} style={{fontSize:11,padding:"6px",borderRadius:6,border:"1px solid var(--border)"}}/>
+                  </div>
                 </div>
               )}
               <div style={{fontWeight:600,fontSize:13,marginBottom:4}}>הערות ({selectedNotes.length || selected.notesCount || 0})</div>

@@ -247,6 +247,9 @@ export const zBoqItem = {
   isEnabled: z.boolean().optional(),
 };
 
+export const zDefectStatus = z.enum(['פתוח', 'בטיפול', 'תוקן', 'אושר']);
+export const zPriority = z.enum(['נמוכה', 'רגילה', 'קריטית']);
+
 export const zPhoto = {
   projectId: zid('projects'),
   legacyId: z.number().optional(),
@@ -260,6 +263,11 @@ export const zPhoto = {
   color: z.string().optional(),
   fileUrl: z.string().optional(),
   uploaderUserId: zid('users').optional(),
+  // Snagging / Defect fields
+  defectStatus: zDefectStatus.optional(),
+  priority: zPriority.optional(),
+  assigneeId: zid('contractors').optional(),
+  dueDate: z.string().optional(),
 };
 
 export const zProjectFile = {

@@ -4,11 +4,14 @@ import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { ScreenBoundary } from '../components/ScreenBoundary';
 import { PageBackground, EmptyState, Btn, Icon, ConfirmDialog } from '../components/Shared';
+import { useRequireRole } from '../hooks/useRequireRole';
+import { AccessDenied, AccessLoading } from '../components/AccessDenied';
 import type { Id } from '../../convex/_generated/dataModel';
 
 export const PermitsScreen = () => {
+  const { allowed, loading: roleLoading } = useRequireRole(['owner', 'manager', 'inspector']);
   const { projectId } = useCurrentProject();
-  const permits = useQuery(api.permits.list, projectId ? { projectId } : 'skip');
+  const permits = useQuery(api.permits.list, projectId && allowed ? { projectId } : 'skip');
   const generateUploadUrl = useMutation(api.permits.generateUploadUrl);
   const addPermit = useMutation(api.permits.addPermit);
   const deletePermit = useMutation(api.permits.deletePermit);
@@ -106,6 +109,9 @@ export const PermitsScreen = () => {
   };
 
   const isLoading = permits === undefined;
+
+  if (roleLoading) return <AccessLoading />;
+  if (!allowed) return <AccessDenied message="מסמכים ואישורים זמינים לצוות הניהול בלבד." />;
 
   return (
     <ScreenBoundary loading={isLoading}>

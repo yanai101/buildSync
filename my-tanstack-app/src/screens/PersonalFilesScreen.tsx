@@ -7,6 +7,8 @@ import type { Id } from '../../convex/_generated/dataModel';
 import { Btn, Icon } from '../components/Shared';
 import { usePersonalFileUploader } from '../hooks/usePersonalFileUploader';
 import { useAppNotify } from '../hooks/useAppNotify';
+import { useRequireRole } from '../hooks/useRequireRole';
+import { AccessDenied, AccessLoading } from '../components/AccessDenied';
 
 const MAX_FILES = 20;
 
@@ -32,12 +34,12 @@ const decompress = (bytes: Uint8Array): Promise<Uint8Array> =>
   });
 
 export const PersonalFilesScreen = () => {
+  const { allowed, loading: roleLoading } = useRequireRole(['owner']);
   const identity = useQuery(api.users.currentIdentity, {});
-  const isOwner = identity?.role === 'owner';
 
   const files = useQuery(
     api.personalFiles.listMyPersonalFiles,
-    isOwner ? {} : 'skip',
+    allowed ? {} : 'skip',
   );
   const updateNote = useMutation(api.personalFiles.updatePersonalFileNote);
   const deleteFile = useMutation(api.personalFiles.deletePersonalFile);
@@ -153,24 +155,12 @@ export const PersonalFilesScreen = () => {
     }
   };
 
-  if (identity === undefined) {
-    return <div style={{ padding: 24, color: 'var(--text2)' }}>טוען...</div>;
+  if (identity === undefined || roleLoading) {
+    return <AccessLoading />;
   }
 
-  if (!isOwner) {
-    return (
-      <div className="page-content">
-        <div className="card">
-          <div className="card-body" style={{ padding: 32, textAlign: 'center' }}>
-            <Icon n="alert" s={28} c="var(--danger)" />
-            <div style={{ fontSize: 16, fontWeight: 700, marginTop: 12 }}>אין לך גישה</div>
-            <div style={{ fontSize: 13, color: 'var(--text2)', marginTop: 6 }}>
-              הדף הזה זמין רק לבעלי הפרויקט.
-            </div>
-          </div>
-        </div>
-      </div>
-    );
+  if (!allowed) {
+    return <AccessDenied message="המסמכים האישיים (כספת) זמינים ליזם הפרויקט בלבד." />;
   }
 
   return (

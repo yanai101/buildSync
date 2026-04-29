@@ -9,11 +9,14 @@ import { api } from '../../convex/_generated/api';
 import { ScreenBoundary } from '../components/ScreenBoundary';
 import { BudgetSummaryCards } from '../components/BudgetSummaryCards';
 import { useProjectBudgetSummary } from '../hooks/useProjectBudgetSummary';
+import { useRequireRole } from '../hooks/useRequireRole';
+import { AccessDenied, AccessLoading } from '../components/AccessDenied';
 
 export const BudgetScreen = () => {
+  const { allowed, loading: roleLoading } = useRequireRole(['owner']);
   const { projectId } = useCurrentProject();
-  const dbCats = useQuery(api.budget.listCategories, projectId ? { projectId } : "skip");
-  const dbExps = useQuery(api.budget.listExpenses, projectId ? { projectId } : "skip");
+  const dbCats = useQuery(api.budget.listCategories, projectId && allowed ? { projectId } : "skip");
+  const dbExps = useQuery(api.budget.listExpenses, projectId && allowed ? { projectId } : "skip");
   const updateBudgetTotal = useMutation(api.projects.updateBudgetTotal);
   const { summary, isPending: summaryPending } = useProjectBudgetSummary();
 
@@ -38,6 +41,9 @@ export const BudgetScreen = () => {
   const loading = catsLoading || expLoading || summaryPending || !summary;
   const error = catsError || expError;
   const refetch = () => { catsRefetch(); expRefetch(); };
+
+  if (roleLoading) return <AccessLoading />;
+  if (!allowed) return <AccessDenied message="צפייה וניהול תקציב מורשים ליזם הפרויקט בלבד." />;
 
   if (loading) return <ScreenBoundary loading={true} onRetry={refetch}><div/></ScreenBoundary>;
   if (error) return <ScreenBoundary error={error} onRetry={refetch}><div/></ScreenBoundary>;
