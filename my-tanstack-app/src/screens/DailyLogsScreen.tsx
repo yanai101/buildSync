@@ -153,9 +153,13 @@ export const DailyLogsScreen = () => {
                     <option value="completed">הושלם</option>
                     <option value="delayed">באיחור</option>
                   </select>
-                  {canEditBasic && <Btn size="sm" variant="outline" style={{borderColor:"#FF3B30", color:"#FF3B30"}} onClick={()=>{
-                    const newArr = [...form.activities]; newArr.splice(i, 1); setForm({...form, activities: newArr});
-                  }}><Icon n="trash" s={14}/></Btn>}
+                  {canEditBasic && (
+                    <button onClick={()=>{
+                      const newArr = [...form.activities]; newArr.splice(i, 1); setForm({...form, activities: newArr});
+                    }} style={{ background: "rgba(255,59,48,0.1)", border: "none", borderRadius: 8, padding: "8px 12px", cursor: "pointer", color: "#FF3B30", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }} onMouseOver={e=>e.currentTarget.style.background="rgba(255,59,48,0.2)"} onMouseOut={e=>e.currentTarget.style.background="rgba(255,59,48,0.1)"}>
+                      <Icon n="trash" s={14}/>
+                    </button>
+                  )}
                 </div>
               ))}
               {canEditBasic && <Btn size="sm" variant="outline" style={{ alignSelf: "flex-start", marginTop: 8 }} onClick={()=>setForm({...form, activities: [...form.activities, { description: '', status: 'in_progress' }]})}><Icon n="plus" s={14}/> הוסף עבודה</Btn>}
@@ -190,9 +194,13 @@ export const DailyLogsScreen = () => {
                       </label>
                     </div>
                   </div>
-                  {canEditAdvanced && <Btn size="sm" variant="outline" style={{borderColor:"#FF3B30", color:"#FF3B30"}} onClick={()=>{
-                    const newArr = [...form.issues]; newArr.splice(i, 1); setForm({...form, issues: newArr});
-                  }}><Icon n="trash" s={14}/></Btn>}
+                  {canEditAdvanced && (
+                    <button onClick={()=>{
+                      const newArr = [...form.issues]; newArr.splice(i, 1); setForm({...form, issues: newArr});
+                    }} style={{ background: "rgba(255,59,48,0.1)", border: "none", borderRadius: 8, padding: "8px 12px", cursor: "pointer", color: "#FF3B30", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }} onMouseOver={e=>e.currentTarget.style.background="rgba(255,59,48,0.2)"} onMouseOut={e=>e.currentTarget.style.background="rgba(255,59,48,0.1)"}>
+                      <Icon n="trash" s={14}/>
+                    </button>
+                  )}
                 </div>
               ))}
               {canEditAdvanced && <Btn size="sm" variant="outline" style={{ alignSelf: "flex-start", marginTop: 8 }} onClick={()=>setForm({...form, issues: [...form.issues, { type: 'delay', description: '', financialImpact: false }]})}><Icon n="plus" s={14}/> דווח חריגה</Btn>}
