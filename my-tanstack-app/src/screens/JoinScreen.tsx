@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { Link, useNavigate } from '@tanstack/react-router';
-import { useAction, useQuery } from 'convex/react';
+import { useAction, useQuery, useMutation, useConvexAuth } from 'convex/react';
 import { useAuthActions } from '@convex-dev/auth/react';
 
 import { api } from '../../convex/_generated/api';
@@ -24,7 +24,9 @@ type Props = { code: string };
 export const JoinScreen = ({ code }: Props) => {
   const peek = useQuery(api.invitations.peekInvitation, { code });
   const redeem = useAction(api.invitations.redeemInvitation);
+  const redeemExisting = useMutation(api.invitations.redeemInvitationExistingUser);
   const { signIn } = useAuthActions();
+  const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
   const navigate = useNavigate();
 
   const [form, setForm] = React.useState({ name: '', email: '', phone: '', password: '' });
@@ -79,12 +81,25 @@ export const JoinScreen = ({ code }: Props) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.name || !form.email || !form.password) {
-      setError('יש למלא שם, אימייל וסיסמה');
-      return;
-    }
     setSubmitting(true);
     setError(null);
+
+    if (isAuthenticated) {
+      try {
+        await redeemExisting({ code });
+        navigate({ to: '/' });
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'הצטרפות נכשלה');
+        setSubmitting(false);
+      }
+      return;
+    }
+
+    if (!form.name || !form.email || !form.password) {
+      setError('יש למלא שם, אימייל וסיסמה');
+      setSubmitting(false);
+      return;
+    }
     try {
       await redeem({
         code,
@@ -150,11 +165,25 @@ export const JoinScreen = ({ code }: Props) => {
             הצטרף לפרויקט {peek.projectName}
           </h1>
           <p style={{ color: 'var(--text2)', fontSize: 14 }}>
-            צור חשבון אישי כדי להתחיל לעבוד על הפרויקט.
+            {isAuthenticated 
+              ? 'אתה כבר מחובר למערכת. לחץ על הכפתור כדי להצטרף לפרויקט זה.'
+              : 'צור חשבון אישי כדי להתחיל לעבוד על הפרויקט.'}
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        {isAuthenticated ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {error && (
+              <div style={{ fontSize: 13, color: 'var(--danger)', background: '#FEE2E2', border: '1px solid #FCA5A5', borderRadius: 8, padding: '8px 12px' }}>
+                {error}
+              </div>
+            )}
+            <Btn onClick={handleSubmit} disabled={submitting} style={{ width: '100%', justifyContent: 'center', padding: '14px', fontSize: 15 }}>
+              {submitting ? 'מצטרף...' : `הצטרף לפרויקט עכשיו`}
+            </Btn>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div>
             <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>שם מלא</label>
             <Input
@@ -218,13 +247,16 @@ export const JoinScreen = ({ code }: Props) => {
             {submitting ? 'מצטרף...' : 'צור חשבון והצטרף'}
           </Btn>
         </form>
+        )}
 
-        <p style={{ textAlign: 'center', marginTop: 20, fontSize: 13, color: 'var(--text3)' }}>
-          יש לך כבר חשבון?{' '}
-          <Link to="/login" style={{ color: 'var(--accent)', fontWeight: 600, textDecoration: 'none' }}>
-            התחבר
-          </Link>
-        </p>
+        {!isAuthenticated && (
+          <p style={{ textAlign: 'center', marginTop: 20, fontSize: 13, color: 'var(--text3)' }}>
+            יש לך כבר חשבון?{' '}
+            <Link to="/login" style={{ color: 'var(--accent)', fontWeight: 600, textDecoration: 'none' }}>
+              התחבר
+            </Link>
+          </p>
+        )}
       </div>
     </div>
   );

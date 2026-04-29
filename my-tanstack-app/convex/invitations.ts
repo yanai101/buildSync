@@ -273,6 +273,58 @@ export const redeemInvitation = action({
   },
 });
 
+export const redeemInvitationExistingUser = mutation({
+  args: {
+    code: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const { getAuthUserId } = await import('@convex-dev/auth/server');
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error('Unauthenticated');
+    
+    const user = await ctx.db.get(userId);
+    if (!user) throw new Error('User not found');
+
+    const inv = await ctx.db
+      .query('projectInvitations')
+      .withIndex('by_code', (q) => q.eq('code', args.code))
+      .unique();
+    
+    if (!inv) throw new Error('הקוד לא נמצא');
+    if (inv.consumedAt) throw new Error('ההזמנה כבר נוצלה');
+    if (inv.revokedAt) throw new Error('ההזמנה בוטלה');
+    if (inv.expiresAt <= Date.now()) throw new Error('ההזמנה פגה');
+
+    if (inv.role === 'manager') {
+      await ctx.db.patch(inv.projectId, { managerUserId: userId });
+    } else if (inv.role === 'inspector') {
+      await ctx.db.patch(inv.projectId, { inspectorUserId: userId });
+    } else if (inv.role === 'contractor') {
+      if (inv.contractorId) {
+        await ctx.db.patch(inv.contractorId, { userId: userId });
+      } else {
+        await ctx.db.insert('contractors', {
+          projectId: inv.projectId,
+          name: user.name || user.email || 'קבלן',
+          role: 'אחר',
+          status: 'pending',
+          rating: 0,
+          budget: 0,
+          paid: 0,
+          userId: userId,
+        });
+      }
+    }
+
+    await ctx.db.patch(inv._id, {
+      consumedByUserId: userId,
+      consumedAt: Date.now(),
+    });
+
+    return { ok: true };
+  },
+});
+
 export const removeMember = mutation({
   args: {
     projectId: v.id('projects'),

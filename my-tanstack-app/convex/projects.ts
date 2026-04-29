@@ -10,11 +10,27 @@ export const listMine = query({
       return [];
     }
 
-    return await ctx.db
-      .query('projects')
-      .withIndex('by_ownerUserId', (q) => q.eq('ownerUserId', userId))
-      .order('desc')
+    // A user can be associated with a project in 4 ways:
+    // 1. ownerUserId
+    // 2. managerUserId
+    // 3. inspectorUserId
+    // 4. they are a contractor in the project
+
+    const allProjects = await ctx.db.query('projects').collect();
+    
+    // We also need to check contractors table for this user
+    const userContractorRoles = await ctx.db
+      .query('contractors')
+      .filter((q) => q.eq(q.field('userId'), userId))
       .collect();
+    const contractorProjectIds = new Set(userContractorRoles.map(c => c.projectId));
+
+    return allProjects.filter(p => 
+      p.ownerUserId === userId || 
+      p.managerUserId === userId || 
+      p.inspectorUserId === userId || 
+      contractorProjectIds.has(p._id)
+    ).sort((a, b) => b._creationTime - a._creationTime);
   },
 });
 
