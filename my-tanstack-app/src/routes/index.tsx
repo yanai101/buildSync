@@ -17,6 +17,8 @@ function LandingPage() {
     { id: 2, text: "שכבת טיח מיישר בסלון", done: false },
     { id: 3, text: "אישור מפקח לטיח (אבי כהן)", done: false }
   ]);
+  const [logSigned, setLogSigned] = useState(false);
+  const [isOwnerView, setIsOwnerView] = useState(true);
 
   const toggleTask = (id: number) => {
     setTasks(tasks.map(t => t.id === id ? { ...t, done: !t.done } : t));
@@ -171,6 +173,29 @@ function LandingPage() {
         </motion.div>
       </section>
 
+      {/* 1.5 LIVE ALERTS MARQUEE */}
+      <div style={{ background: '#0a0a0c', overflow: 'hidden', padding: '16px 0', borderTop: '1px solid rgba(255,255,255,0.05)', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', position: 'relative' }}>
+         <div style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 100, background: 'linear-gradient(to right, transparent, #0a0a0c)', zIndex: 2 }} />
+         <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 100, background: 'linear-gradient(to left, transparent, #0a0a0c)', zIndex: 2 }} />
+        <motion.div 
+          animate={{ x: [0, -1500] }} 
+          transition={{ repeat: Infinity, duration: 25, ease: 'linear' }}
+          style={{ display: 'flex', whiteSpace: 'nowrap', gap: 40, fontWeight: 600, fontSize: 14 }}
+        >
+          {Array(4).fill([
+            { text: "חריגה צפויה של 2% בתקציב אינסטלציה", icon: "alert", color: "var(--warning)" },
+            { text: "המפקח אישר את שלב יציקת הרצפה", icon: "check-circle", color: "var(--success)" },
+            { text: "יומן עבודה יומי ננעל ונחתם משפטית", icon: "file-text", color: "#3B82F6" },
+            { text: "התקבלה תמונה חדשה עם הערת ביצוע", icon: "camera", color: "var(--accent)" }
+          ]).flat().map((item: any, i) => (
+            <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(255,255,255,0.03)', padding: '8px 16px', borderRadius: 20, border: '1px solid rgba(255,255,255,0.05)' }}>
+              <Icon n={item.icon} s={16} c={item.color} />
+              {item.text}
+            </span>
+          ))}
+        </motion.div>
+      </div>
+
       {/* 2. CORE TRIAD (Quick Highlights) */}
       <section className="section-padding" style={{ background: '#0a0a0c', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingTop: 60 }}>
         <div className="content-width">
@@ -246,19 +271,43 @@ function LandingPage() {
             <div className="mockup-container">
               <img src="/blueprints.png" className="mockup-img" alt="Budget and BOQ Features" />
             </div>
-            <motion.div animate={{ y: [0, -10, 0] }} transition={{ repeat: Infinity, duration: 5, ease: "easeInOut", delay: 1 }} className="floating-card" style={{ top: -30, right: -20, minWidth: 320 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
-                 <span style={{ color: '#aaa', fontSize: 14 }}> תקציב כולל שנוצל</span>
-                 <span style={{ fontWeight: 800, color: '#fff', fontSize: '1.2rem' }}>₪ 840,000</span>
-              </div>
-              <div style={{ width: '100%', height: 10, background: 'rgba(0,0,0,0.5)', borderRadius: 5, overflow: 'hidden', display: 'flex', boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.8)' }}>
-                 <motion.div initial={{ width: 0 }} whileInView={{ width: '45%' }} transition={{ duration: 1.5, delay: 0.5 }} viewport={{ once: true }} style={{ height: '100%', background: 'var(--accent)' }}></motion.div>
-                 <motion.div initial={{ width: 0 }} whileInView={{ width: '20%' }} transition={{ duration: 1.5, delay: 2 }} viewport={{ once: true }} style={{ height: '100%', background: '#FDE68A' }}></motion.div>
-              </div>
-              <div style={{ display: 'flex', gap: 16, marginTop: 12, fontSize: 13, color: '#aaa' }}>
-                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{width: 10, height: 10, borderRadius: 3, background: 'var(--accent)'}}></span> הוצא 45%</span>
-                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{width: 10, height: 10, borderRadius: 3, background: '#FDE68A'}}></span> מחויב 20%</span>
-              </div>
+            <motion.div className="floating-card" style={{ top: -30, right: -20, minWidth: 340, padding: 0, overflow: 'hidden' }}>
+               <div style={{ padding: '16px 24px', background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                 <span style={{ fontSize: 12, fontWeight: 800, color: '#aaa', textTransform: 'uppercase', letterSpacing: 1 }}>שקיפות סלקטיבית</span>
+                 <div style={{ display: 'flex', background: 'rgba(0,0,0,0.4)', borderRadius: 20, padding: 4, cursor: 'pointer' }} onClick={() => setIsOwnerView(!isOwnerView)}>
+                   <div style={{ padding: '4px 12px', fontSize: 12, borderRadius: 16, background: isOwnerView ? 'var(--accent)' : 'transparent', color: isOwnerView ? '#fff' : '#888', fontWeight: isOwnerView ? 'bold' : 'normal', transition: 'all 0.2s' }}>יזם/מפקח</div>
+                   <div style={{ padding: '4px 12px', fontSize: 12, borderRadius: 16, background: !isOwnerView ? '#333' : 'transparent', color: !isOwnerView ? '#fff' : '#888', fontWeight: !isOwnerView ? 'bold' : 'normal', transition: 'all 0.2s' }}>קבלן שטח</div>
+                 </div>
+               </div>
+               
+               <div style={{ padding: 24 }}>
+                 {isOwnerView ? (
+                   <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
+                        <span style={{ color: '#aaa', fontSize: 14 }}> תקציב כולל שנוצל</span>
+                        <span style={{ fontWeight: 800, color: '#fff', fontSize: '1.2rem' }}>₪ 840,000</span>
+                     </div>
+                     <div style={{ width: '100%', height: 10, background: 'rgba(0,0,0,0.5)', borderRadius: 5, overflow: 'hidden', display: 'flex', boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.8)' }}>
+                        <motion.div initial={{ width: 0 }} animate={{ width: '45%' }} style={{ height: '100%', background: 'var(--accent)' }}></motion.div>
+                        <motion.div initial={{ width: 0 }} animate={{ width: '20%' }} style={{ height: '100%', background: '#FDE68A' }}></motion.div>
+                     </div>
+                     <div style={{ display: 'flex', gap: 16, marginTop: 12, fontSize: 13, color: '#aaa' }}>
+                       <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{width: 10, height: 10, borderRadius: 3, background: 'var(--accent)'}}></span> שולם: ₪378K</span>
+                       <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{width: 10, height: 10, borderRadius: 3, background: 'var(--warning)'}}></span> חריגה: ₪12K</span>
+                     </div>
+                   </motion.div>
+                 ) : (
+                   <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ textAlign: 'center' }}>
+                     <div style={{ width: 48, height: 48, background: 'rgba(255,255,255,0.05)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+                       <Icon n="lock" s={24} c="#888" />
+                     </div>
+                     <div style={{ fontSize: 15, fontWeight: 600, color: '#fff', marginBottom: 8 }}>הנתונים הפיננסיים מוסתרים</div>
+                     <div style={{ fontSize: 13, color: '#888', lineHeight: 1.5 }}>
+                       הקבלן לא נחשף לתקציב, עלויות או קבלנים אחרים, אלא רק למשימות הביצוע שלו.
+                     </div>
+                   </motion.div>
+                 )}
+               </div>
             </motion.div>
           </motion.div>
         </div>
@@ -330,6 +379,65 @@ function LandingPage() {
                  </div>
                </div>
              </div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* 5.5 FEATURE DEEP DIVE: LEGAL DAILY LOGS */}
+      <section className="section-padding" style={{ background: '#111115', borderTop: '1px solid rgba(255,255,255,0.02)' }}>
+        <div className="content-width split-layout reversed">
+          <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeIn} className="split-text">
+            <span className="feature-badge" style={{color: '#3B82F6'}}>הגנה משפטית אולטימטיבית</span>
+            <h2 className="feature-title">יומן עבודה חתום שסוגר פינות.</h2>
+            <p className="feature-desc">
+              אל תישארו חשופים במקרה של תביעה. המערכת מחוללת אוטומטית קובץ PDF חתום, עם תמונות, מזג אוויר ונוכחות פועלים שמונע סכסוכי קבלנים.
+            </p>
+            <ul className="bullet-list">
+              <li className="bullet-item"><Icon n="file-text" s={28} c="#3B82F6" style={{marginTop:4}} /> <div><strong>תיעוד אוטומטי:</strong> מזג אוויר, נוכחות קבלנים, אישורי מפקח ותמונות מצורפות אוטומטית לקובץ יומי.</div></li>
+              <li className="bullet-item"><Icon n="lock" s={28} c="#3B82F6" style={{marginTop:4}} /> <div><strong>נעילת יומן:</strong> ברגע שהיומן ננעל אי אפשר לערוך אותו יותר, מה שהופך אותו לראייה קבילה ומוצקה.</div></li>
+            </ul>
+          </motion.div>
+          
+          <motion.div initial={{ opacity: 0, x: 50 }} whileInView={{ opacity: 1, x: 0 }} transition={{ duration: 0.8 }} viewport={{ once: true }} className="split-media" style={{ display: 'flex', justifyContent: 'center' }}>
+            <div style={{ width: '100%', maxWidth: 400, background: '#fff', borderRadius: 12, padding: 32, color: '#000', position: 'relative', boxShadow: '0 40px 80px rgba(0,0,0,0.5)', cursor: 'pointer', transition: 'all 0.3s' }} onClick={() => setLogSigned(true)} className="info-card">
+              <div style={{ borderBottom: '2px solid #eee', paddingBottom: 16, marginBottom: 24, textAlign: 'center' }}>
+                <h3 style={{ fontSize: 24, fontWeight: 900, color: '#111' }}>יומן עבודה יומי</h3>
+                <div style={{ color: '#666', fontSize: 14 }}>12 באפריל, 2026 • אתר "וילה כהן"</div>
+              </div>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 40, color: '#333' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed #eee', paddingBottom: 8 }}>
+                  <span style={{ color: '#666' }}>מזג אוויר</span>
+                  <strong>24°C, שמש מלאה</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed #eee', paddingBottom: 8 }}>
+                  <span style={{ color: '#666' }}>כוח אדם</span>
+                  <strong>4 פועלי שלד, 2 רצפים</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed #eee', paddingBottom: 8 }}>
+                  <span style={{ color: '#666' }}>אישורי בטיחות</span>
+                  <strong style={{ color: '#16A34A' }}>תקין. ציוד אושר.</strong>
+                </div>
+              </div>
+
+              {!logSigned ? (
+                <div style={{ background: '#3B82F6', color: '#fff', textAlign: 'center', padding: 16, borderRadius: 8, fontWeight: 'bold', boxShadow: '0 10px 20px rgba(59,130,246,0.3)', transition: 'all 0.2s', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8 }}>
+                  <Icon n="lock" s={18} />
+                  לחץ כדי לנעול ולחתום
+                </div>
+              ) : (
+                <div style={{ background: '#f3f4f6', color: '#aaa', textAlign: 'center', padding: 16, borderRadius: 8, fontWeight: 'bold', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8 }}>
+                  <Icon n="lock" s={18} />
+                  ננעל
+                </div>
+              )}
+
+              {logSigned && (
+                <motion.div initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: "spring", stiffness: 200, damping: 15 }} style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%) rotate(-15deg)', border: '6px solid #DC2626', color: '#DC2626', padding: '10px 20px', borderRadius: 8, fontSize: 32, fontWeight: 900, textTransform: 'uppercase', letterSpacing: 2, pointerEvents: 'none', background: 'rgba(255,255,255,0.9)', boxShadow: '0 10px 30px rgba(0,0,0,0.2)' }}>
+                  נחתם משפטית
+                </motion.div>
+              )}
+            </div>
           </motion.div>
         </div>
       </section>
