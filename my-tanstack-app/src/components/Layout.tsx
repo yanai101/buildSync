@@ -18,7 +18,7 @@ const OWNER_MANAGER_INSPECTOR: NavRole[] = ['owner', 'manager', 'inspector']
 const OWNER_ONLY: NavRole[] = ['owner']
 
 export const NAV = [
-  { id: "/",              label: "לוח בקרה",    icon: "home",      section: "ראשי",   roles: ALL_ROLES },
+  { id: "/dashboard",     label: "לוח בקרה",    icon: "home",      section: "ראשי",   roles: ALL_ROLES },
   { id: "/projects",      label: "פרויקטים",    icon: "layers",    section: "ראשי",   roles: ALL_ROLES },
   { id: "/setup",         label: "הגדרות בית",  icon: "settings",  section: "ראשי",   roles: OWNER_MANAGER },
   { id: "/team",          label: "ניהול צוות",  icon: "users",     section: "ראשי",   roles: OWNER_MANAGER_INSPECTOR },
@@ -38,7 +38,7 @@ export const NAV = [
 ]
 
 export const PAGE_TITLES: Record<string, string> = {
-  "/": "לוח בקרה",
+  "/dashboard": "לוח בקרה",
   "/projects": "בחירת פרויקט",
   "/setup": "הגדרות בית",
   "/stages": "שלבי בנייה",
@@ -67,7 +67,7 @@ export const PAGE_SUBTITLES: Record<string, string> = {
   "/account": "עדכון פרטים אישיים וסיסמה",
 }
 
-const BOTTOM_NAV = ["/", "/setup", "/boqwizard", "/photos", "/notes"].map(id => NAV.find(n => n.id === id)!)
+const BOTTOM_NAV = ["/dashboard", "/setup", "/boqwizard", "/photos", "/notes"].map(id => NAV.find(n => n.id === id)!)
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const routerState = useRouterState()
@@ -143,7 +143,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   // group nav sections
   const sections = Array.from(new Set(NAV.map(n => n.section)))
 
-  const publicRoutes = ['/landing', '/register', '/login']
+  const publicRoutes = ['/', '/register', '/login']
   const isPublicRoute = (path: string) =>
     publicRoutes.includes(path) || path.startsWith('/join/')
 
@@ -156,8 +156,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   React.useEffect(() => {
     if (isLoading) return
-    if (isAuthenticated && currentPath === '/login') {
-      navigate({ to: '/' })
+    if (isAuthenticated && (currentPath === '/login' || currentPath === '/')) {
+      navigate({ to: '/dashboard' })
     }
   }, [currentPath, isAuthenticated, isLoading, navigate])
 

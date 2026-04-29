@@ -81,7 +81,7 @@ export function NotFound({ children }: { children?: any }) {
             <Icon n="arrow-right" s={16} />
             חזור אחורה
           </Btn>
-          <Link to="/">
+          <Link to="/dashboard">
             <Btn>
               <Icon n="home" s={16} />
               חזרה ללוח הבקרה

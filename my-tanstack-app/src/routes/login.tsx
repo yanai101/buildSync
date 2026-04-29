@@ -18,7 +18,7 @@ function LoginPage() {
 
   useEffect(() => {
     if (isAuthLoading || !isAuthenticated) return
-    window.location.replace('/')
+    window.location.replace('/dashboard')
   }, [isAuthenticated, isAuthLoading, navigate])
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -32,7 +32,7 @@ function LoginPage() {
         email: form.email,
         password: form.password,
       })
-      window.location.assign('/')
+      window.location.assign('/dashboard')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'ההתחברות נכשלה. נסה שוב.')
     } finally {
