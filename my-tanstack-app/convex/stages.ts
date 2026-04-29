@@ -603,6 +603,11 @@ export const setContractorPaymentMode = mutation({
     }
 
     if (args.paymentMode === 'stage_synced') {
+      for (const milestone of existingMilestones) {
+        if (!milestone.paid && milestone.sourceMode !== 'stage_synced') {
+          await ctx.db.delete(milestone._id);
+        }
+      }
       await syncContractorStagePayments(ctx, args.contractorId);
     } else {
       for (const milestone of existingMilestones) {

@@ -602,8 +602,8 @@ export const StagesScreen = () => {
   }, [initialData]);
 
   const myContractorRecord = React.useMemo(() => {
-    if (!isContractor || !currentIdentity?._id || !contractors) return null;
-    return contractors.find(c => c.userId === currentIdentity._id);
+    if (!isContractor || !currentIdentity?.userId || !contractors) return null;
+    return contractors.find(c => c.userId === currentIdentity.userId);
   }, [isContractor, currentIdentity, contractors]);
 
   const visibleStages = React.useMemo(() => {

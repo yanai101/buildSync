@@ -146,9 +146,10 @@ export const syncContractorStagePayments = async (
   for (const milestone of milestones) {
     const key = milestoneKey(milestone);
     const isSynced = milestone.sourceMode === 'stage_synced';
+    const isCustom = milestone.sourceMode !== 'stage_synced';
     const shouldDelete =
       !milestone.paid &&
-      ((isSynced && !targetKeys.has(key)) || (!milestone.sourceMode && items.length > 0));
+      ((isSynced && !targetKeys.has(key)) || (isCustom && items.length > 0));
     if (shouldDelete) {
       await ctx.db.delete(milestone._id);
     }
