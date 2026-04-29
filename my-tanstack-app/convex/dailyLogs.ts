@@ -1,5 +1,6 @@
 import { mutation, query } from './_generated/server';
 import { v } from 'convex/values';
+import { getAuthUserId } from '@convex-dev/auth/server';
 
 export const getLogByDate = query({
   args: { projectId: v.id('projects'), date: v.string() },
@@ -57,9 +58,9 @@ export const saveLog = mutation({
     })),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Unauthenticated");
-    const user = await ctx.db.query("users").withIndex("email", q => q.eq("email", identity.email!)).first();
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Unauthenticated");
+    const user = await ctx.db.get(userId);
     if (!user) throw new Error("User not found");
 
     if (args.logId) {
@@ -102,9 +103,9 @@ export const lockLog = mutation({
     logId: v.id('dailyLogs'),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Unauthenticated");
-    const user = await ctx.db.query("users").withIndex("email", q => q.eq("email", identity.email!)).first();
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Unauthenticated");
+    const user = await ctx.db.get(userId);
     if (!user) throw new Error("User not found");
 
     // Must be inspector or manager to lock a log. Assuming this check will be done or UI handled.
