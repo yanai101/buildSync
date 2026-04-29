@@ -30,7 +30,7 @@ export const NAV = [
   { id: "/permits",       label: "היתרים",     icon: "clipboard", section: "ניהול", roles: OWNER_MANAGER_INSPECTOR },
   { id: "/daily-logs",    label: "יומן עבודה", icon: "calendar",  section: "תיעוד",   roles: ALL_ROLES },
   { id: "/photos",        label: "תמונות",     icon: "camera",    section: "תיעוד",   roles: ALL_ROLES },
-  { id: "/notes",         label: "הערות",      icon: "message",   section: "תיעוד",   roles: OWNER_MANAGER_INSPECTOR },
+  { id: "/notes",         label: "הערות",      icon: "message",   section: "תיעוד",   roles: ALL_ROLES },
   { id: "/personal-files",label: "קבצים אישיים",icon: "file-text", section: "תיעוד",  roles: OWNER_ONLY },
   { id: "/budget",        label: "תקציב",      icon: "chart",     section: "פיננסי",  roles: OWNER_ONLY },
   { id: "/quotes",        label: "הצעות מחיר", icon: "clipboard", section: "פיננסי",  roles: OWNER_ONLY },
