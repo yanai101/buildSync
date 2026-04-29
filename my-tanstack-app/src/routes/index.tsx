@@ -140,10 +140,9 @@ function LandingPage() {
             <div className="sidebar-logo-text" style={{ fontSize: 28, color: '#fff', margin: 0 }}>Build<span style={{color: 'var(--accent)'}}>Sync</span></div>
           </div>
           <div style={{ display: 'flex', gap: 24, alignItems: 'center' }}>
-            <Link to="/dashboard" style={{ color: '#ddd', fontWeight: 600, fontSize: 16, textDecoration: 'none', transition: 'color 0.2s' }}
-              onMouseEnter={e => e.currentTarget.style.color = '#fff'} onMouseLeave={e => e.currentTarget.style.color = '#ddd'}>
-              היכנס למערכת
-            </Link>
+            <div style={{ color: '#aaa', fontWeight: 600, fontSize: 14, border: '1px solid rgba(255,255,255,0.1)', padding: '6px 16px', borderRadius: 20, background: 'rgba(255,255,255,0.05)' }}>
+              השקה בקרוב
+            </div>
           </div>
         </header>
 
@@ -166,8 +165,8 @@ function LandingPage() {
           </motion.p>
           
           <motion.div variants={fadeIn} style={{ display: 'flex', gap: 24, justifyContent: 'center', flexWrap: 'wrap' }}>
-            <Link to="/register" className="cta-btn">הקם פרויקט חדש עכשיו</Link>
-            <Link to="/dashboard" className="cta-secondary">צפה בתצוגת תכלית (דמו)</Link>
+            <div className="cta-btn" style={{ opacity: 0.6, cursor: 'not-allowed', filter: 'grayscale(100%)' }}>הקם פרויקט - בקרוב</div>
+            <div className="cta-secondary" style={{ opacity: 0.5, cursor: 'not-allowed' }}>תצוגת תכלית - בקרוב</div>
           </motion.div>
         </motion.div>
       </section>
@@ -375,9 +374,9 @@ function LandingPage() {
             הצטרף לעשרות המפקחים והחברות שכבר מנהלים את אתרי העבודה שלהם עם BuildSync. שלט על כל האספקטים הפיננסיים, התפעוליים והתקשורתיים מבוססי מובייל ודסקטופ בסביבה אחת מאובטחת וחכמה.
           </p>
           <div style={{ display: 'flex', justifyContent: 'center', gap: 20, flexWrap: 'wrap' }}>
-            <Link to="/register" className="cta-btn" style={{ background: '#fff', color: 'var(--accent)', boxShadow: '0 20px 50px rgba(0,0,0,0.3)', border: 'none' }}>
-              פתח חשבון ונסה חינם
-            </Link>
+            <div className="cta-btn" style={{ background: 'rgba(255,255,255,0.2)', color: '#fff', boxShadow: 'none', border: 'none', opacity: 0.8, cursor: 'not-allowed' }}>
+              פתיחת חשבון - בקרוב
+            </div>
           </div>
         </motion.div>
       </section>
