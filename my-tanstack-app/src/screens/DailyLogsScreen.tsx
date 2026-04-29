@@ -12,8 +12,10 @@ export const DailyLogsScreen = () => {
   const { role, allowed, loading: roleLoading } = useRequireRole(['owner', 'manager', 'inspector', 'contractor']);
   const { projectId } = useCurrentProject();
   const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [activeTab, setActiveTab] = useState<'log' | 'history'>('log');
   
   const log = useQuery(api.dailyLogs.getLogByDate, projectId ? { projectId, date: selectedDate } : 'skip');
+  const allLogs = useQuery(api.dailyLogs.getLogs, projectId && activeTab === 'history' ? { projectId } : 'skip') || [];
   const contractors = useQuery(api.queries.listContractors, projectId ? { projectId } : 'skip') || [];
   
   const saveLog = useMutation(api.dailyLogs.saveLog);
@@ -110,17 +112,53 @@ export const DailyLogsScreen = () => {
           </div>
           
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <input 
-              type="date" 
-              value={selectedDate} 
-              onChange={e => setSelectedDate(e.target.value)}
-              style={{ padding: "10px 16px", borderRadius: 12, border: "1px solid var(--border)", background: "var(--surface)", fontSize: 14, fontWeight: 600, color: "var(--text1)", outline: "none" }}
-            />
-            {isLocked && <div style={{ background: "rgba(255, 59, 48, 0.1)", color: "#FF3B30", padding: "10px 16px", borderRadius: 12, fontSize: 13, fontWeight: 700, display: "flex", alignItems: "center", gap: 6 }}><Icon n="lock" s={14}/> דוח נעול</div>}
+            <div style={{ display: 'flex', background: 'var(--surface)', padding: 4, borderRadius: 12, border: '1px solid var(--border)' }}>
+              <button 
+                onClick={() => setActiveTab('log')}
+                style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: activeTab === 'log' ? 'var(--accent)' : 'transparent', color: activeTab === 'log' ? '#fff' : 'var(--text2)', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s', fontSize: 13 }}
+              >
+                יומן יומי
+              </button>
+              <button 
+                onClick={() => setActiveTab('history')}
+                style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: activeTab === 'history' ? 'var(--accent)' : 'transparent', color: activeTab === 'history' ? '#fff' : 'var(--text2)', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s', fontSize: 13 }}
+              >
+                היסטוריית יומנים
+              </button>
+            </div>
           </div>
         </div>
 
+        {activeTab === 'log' ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+          
+          {/* Header Row for Log */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--surface)', padding: 16, borderRadius: 12, border: '1px solid var(--border)' }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <span style={{ fontSize: 14, fontWeight: 600 }}>בחר תאריך:</span>
+              <input 
+                type="date" 
+                value={selectedDate} 
+                onChange={e => setSelectedDate(e.target.value)}
+                style={{ padding: "8px 16px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg)", fontSize: 14, fontWeight: 600, color: "var(--text1)", outline: "none" }}
+              />
+              {isLocked && <div style={{ background: "rgba(255, 59, 48, 0.1)", color: "#FF3B30", padding: "8px 12px", borderRadius: 8, fontSize: 13, fontWeight: 700, display: "flex", alignItems: "center", gap: 6 }}><Icon n="lock" s={14}/> דוח נעול</div>}
+            </div>
+            
+            {/* Action Buttons */}
+            <div style={{ display: "flex", gap: 12 }}>
+              <Btn variant="outline" onClick={() => setFeedback({ title: "הדפסת דוח", message: "פיצ'ר ה-PDF ליומן עבודה יומי יתווסף בהמשך. הדוח יכלול את הנתונים, התמונות וחתימות הדיגיטליות.", type: 'info' })}>
+                <Icon n="download" s={16}/> הפק PDF משפטי
+              </Btn>
+
+              {canEditBasic && <Btn variant="primary" onClick={handleSave} disabled={saving}>
+                <Icon n="save" s={16}/> {saving ? "שומר..." : "שמור טיוטה"}
+              </Btn>}
+              {canEditAdvanced && log && !isLocked && <Btn onClick={handleLock} disabled={saving} style={{ background: "#FF3B30", color: "#fff" }}>
+                <Icon n="lock" s={16}/> נעל דוח יום
+              </Btn>}
+            </div>
+          </div>
           
           {/* General */}
           <div style={{ background: "var(--surface)", borderRadius: 12, border: "1px solid var(--border)", overflow: "hidden" }}>
@@ -207,23 +245,47 @@ export const DailyLogsScreen = () => {
             </div>
           </div>
 
-          {/* Action Buttons */}
-          <div style={{ display: "flex", justifyContent: "space-between", marginTop: 16 }}>
-             <Btn variant="outline" onClick={() => setFeedback({ title: "הדפסת דוח", message: "פיצ'ר ה-PDF ליומן עבודה יומי יתווסף בהמשך. הדוח יכלול את הנתונים, התמונות וחתימות הדיגיטליות.", type: 'info' })}>
-               <Icon n="download" s={16}/> הפק PDF משפטי
-             </Btn>
-
-             <div style={{ display: "flex", gap: 12 }}>
-                {canEditBasic && <Btn variant="primary" onClick={handleSave} disabled={saving}>
-                  <Icon n="save" s={16}/> {saving ? "שומר..." : "שמור טיוטה"}
-                </Btn>}
-                {canEditAdvanced && log && !isLocked && <Btn onClick={handleLock} disabled={saving} style={{ background: "#FF3B30", color: "#fff" }}>
-                  <Icon n="lock" s={16}/> נעל דוח יום
-                </Btn>}
-             </div>
           </div>
 
         </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {allLogs.length === 0 ? (
+              <EmptyState title="אין היסטוריית יומנים" description="עדיין לא נוצרו יומני עבודה בפרויקט זה." icon="file-text" />
+            ) : (
+              allLogs.map(l => (
+                <div key={l._id} style={{ background: 'var(--surface)', padding: 16, borderRadius: 12, border: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+                      <span style={{ fontSize: 16, fontWeight: 700 }}>{new Date(l.date).toLocaleDateString('he-IL')}</span>
+                      {l.status === 'locked' ? (
+                        <span className="badge" style={{ background: 'rgba(255,59,48,0.1)', color: '#FF3B30' }}><Icon n="lock" s={12}/> נעול (מסמך משפטי)</span>
+                      ) : (
+                        <span className="badge badge-draft">טיוטה</span>
+                      )}
+                    </div>
+                    <div style={{ fontSize: 13, color: 'var(--text2)' }}>
+                      <span>פעילויות: {l.activities.length}</span>
+                      <span style={{ margin: '0 8px' }}>·</span>
+                      <span>חריגות: {l.issues.length}</span>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 12 }}>
+                    <Btn variant="outline" size="sm" onClick={() => {
+                      setSelectedDate(l.date);
+                      setActiveTab('log');
+                    }}>
+                      <Icon n="eye" s={14} /> צפה ביומן
+                    </Btn>
+                    <Btn variant="outline" size="sm" onClick={() => setFeedback({ title: "הדפסת דוח", message: "פיצ'ר ה-PDF ליומן עבודה יומי יתווסף בהמשך.", type: 'info' })}>
+                      <Icon n="download" s={14}/> PDF
+                    </Btn>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        )}
       </div>
 
       {feedback && (
