@@ -27,103 +27,236 @@ const REASON_TEXT: Record<string, string> = {
 
 type Props = { code: string };
 
-/* ─── Animated construction background ─── */
-const BlueprintBg = () => (
-  <div style={{ position: 'fixed', inset: 0, background: 'linear-gradient(135deg, #0D1B2A 0%, #1A2E42 50%, #0F2030 100%)', zIndex: 0 }}>
-    {/* Blueprint grid */}
-    <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0.15 }} xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <pattern id="smallGrid" width="24" height="24" patternUnits="userSpaceOnUse">
-          <path d="M 24 0 L 0 0 0 24" fill="none" stroke="#4A9EDB" strokeWidth="0.4" />
-        </pattern>
-        <pattern id="bigGrid" width="120" height="120" patternUnits="userSpaceOnUse">
-          <rect width="120" height="120" fill="url(#smallGrid)" />
-          <path d="M 120 0 L 0 0 0 120" fill="none" stroke="#4A9EDB" strokeWidth="1" />
-        </pattern>
-      </defs>
-      <rect width="100%" height="100%" fill="url(#bigGrid)" />
-    </svg>
+/* ─── Full-screen animated construction scene ─── */
+const BlueprintBg = () => {
+  // deterministic lit-window helper
+  const lit = (col: number, row: number) => (col * 7 + row * 13) % 19 > 9;
 
-    {/* Glow orbs */}
-    <div style={{ position: 'absolute', top: -120, right: -120, width: 500, height: 500, borderRadius: '50%', background: 'radial-gradient(circle, rgba(224,122,56,0.18) 0%, transparent 70%)', pointerEvents: 'none' }} />
-    <div style={{ position: 'absolute', bottom: -160, left: -160, width: 600, height: 600, borderRadius: '50%', background: 'radial-gradient(circle, rgba(74,158,219,0.14) 0%, transparent 70%)', pointerEvents: 'none' }} />
+  // gear tooth path (star polygon) centered at 0,0
+  const gearPath = (teeth: number, outer: number, inner: number) => {
+    const pts: string[] = [];
+    for (let i = 0; i < teeth * 2; i++) {
+      const a = (i * Math.PI) / teeth - Math.PI / 2;
+      const r = i % 2 === 0 ? outer : inner;
+      pts.push(`${(Math.cos(a) * r).toFixed(1)},${(Math.sin(a) * r).toFixed(1)}`);
+    }
+    return `M${pts.join('L')}Z`;
+  };
 
-    {/* ── CRANE (bottom-left) ── */}
-    <svg viewBox="0 0 180 240" style={{ position: 'absolute', bottom: 24, left: 10, width: 150, opacity: 0.5, pointerEvents: 'none' }}>
-      {/* Tower */}
-      <rect x="72" y="60" width="18" height="180" fill="#4A9EDB" rx="3" />
-      {/* Cross-bracing */}
-      <line x1="72" y1="80" x2="90" y2="110" stroke="#2563EB" strokeWidth="1.5" />
-      <line x1="90" y1="80" x2="72" y2="110" stroke="#2563EB" strokeWidth="1.5" />
-      <line x1="72" y1="110" x2="90" y2="140" stroke="#2563EB" strokeWidth="1.5" />
-      <line x1="90" y1="110" x2="72" y2="140" stroke="#2563EB" strokeWidth="1.5" />
-      {/* Counter-jib (fixed) */}
-      <rect x="40" y="62" width="40" height="8" fill="#4A9EDB" rx="2" />
-      <rect x="40" y="62" width="8" height="20" fill="#4A9EDB" rx="2" />
-      <rect x="34" y="82" width="20" height="10" fill="#2563EB" rx="2" />{/* counterweight */}
-      {/* Swinging jib + hook */}
-      <g style={{ transformOrigin: '81px 62px', animation: 'craneSway 6s ease-in-out infinite' }}>
-        <rect x="81" y="56" width="90" height="9" fill="#E07A38" rx="2" />
-        {/* Trolley on jib */}
-        <rect x="148" y="56" width="16" height="7" fill="#F59E0B" rx="1" style={{ animation: 'trolleySlide 6s ease-in-out infinite' }} />
-        {/* Cable */}
-        <line x1="156" y1="63" x2="156" y2="120" stroke="rgba(255,255,255,0.6)" strokeWidth="1.5" strokeDasharray="3 2" style={{ animation: 'trolleySlide 6s ease-in-out infinite' }} />
-        {/* Hook + load */}
-        <rect x="148" y="120" width="16" height="10" fill="#F59E0B" rx="2" style={{ animation: 'trolleySlide 6s ease-in-out infinite' }} />
-        <rect x="144" y="130" width="24" height="16" fill="#4A9EDB" rx="2" style={{ animation: 'trolleySlide 6s ease-in-out infinite' }} />
-      </g>
-      {/* Building rising at base */}
-      <rect x="20" y="240" width="44" height="14" fill="#1D4ED8" rx="2" style={{ animation: 'riseFloor 9s linear infinite', animationDelay: '0s' }} />
-      <rect x="20" y="225" width="44" height="14" fill="#2563EB" rx="2" style={{ animation: 'riseFloor 9s linear infinite', animationDelay: '1s' }} />
-      <rect x="20" y="210" width="44" height="14" fill="#3B82F6" rx="2" style={{ animation: 'riseFloor 9s linear infinite', animationDelay: '2s' }} />
-      <rect x="20" y="195" width="44" height="14" fill="#60A5FA" rx="2" style={{ animation: 'riseFloor 9s linear infinite', animationDelay: '3s' }} />
-      {/* Windows on visible floors */}
-      <rect x="26" y="230" width="7" height="6" fill="rgba(255,255,255,0.25)" rx="1" style={{ animation: 'riseFloor 9s linear infinite', animationDelay: '0s' }} />
-      <rect x="36" y="230" width="7" height="6" fill="rgba(255,255,255,0.25)" rx="1" style={{ animation: 'riseFloor 9s linear infinite', animationDelay: '0s' }} />
-      <rect x="48" y="230" width="7" height="6" fill="rgba(255,255,255,0.25)" rx="1" style={{ animation: 'riseFloor 9s linear infinite', animationDelay: '0s' }} />
-    </svg>
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'linear-gradient(160deg,#081524 0%,#0D2035 55%,#091B2E 100%)', zIndex: 0, overflow: 'hidden' }}>
 
-    {/* ── SPINNING GEAR top-right ── */}
-    <div style={{ position: 'absolute', top: 28, right: 28, animation: 'spinGear 14s linear infinite', pointerEvents: 'none', opacity: 0.28 }}>
-      <svg viewBox="0 0 60 60" width="54">
-        <path d="M30 20a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm16.2-1.4-2.8-2.8-3.5 3.5a14 14 0 0 0-3.7-1.5V14h-4v3.8a14 14 0 0 0-3.7 1.5l-3.5-3.5-2.8 2.8 3.5 3.5a14 14 0 0 0-1.5 3.7H14v4h3.8a14 14 0 0 0 1.5 3.7l-3.5 3.5 2.8 2.8 3.5-3.5a14 14 0 0 0 3.7 1.5V46h4v-3.8a14 14 0 0 0 3.7-1.5l3.5 3.5 2.8-2.8-3.5-3.5a14 14 0 0 0 1.5-3.7H46v-4h-3.8a14 14 0 0 0-1.5-3.7l3.5-3.5z" fill="#4A9EDB" />
+      {/* ── SINGLE FULL-SCREEN SVG ── */}
+      <svg
+        viewBox="0 0 1440 900"
+        preserveAspectRatio="xMidYMid slice"
+        style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <defs>
+          <pattern id="bp24" width="24" height="24" patternUnits="userSpaceOnUse">
+            <path d="M24 0L0 0 0 24" fill="none" stroke="#3A7EBB" strokeWidth="0.35"/>
+          </pattern>
+          <pattern id="bp120" width="120" height="120" patternUnits="userSpaceOnUse">
+            <rect width="120" height="120" fill="url(#bp24)"/>
+            <path d="M120 0L0 0 0 120" fill="none" stroke="#3A7EBB" strokeWidth="0.9"/>
+          </pattern>
+          <radialGradient id="glow1" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="#E07A38" stopOpacity="0.2"/>
+            <stop offset="100%" stopColor="#E07A38" stopOpacity="0"/>
+          </radialGradient>
+          <radialGradient id="glow2" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="#4A9EDB" stopOpacity="0.15"/>
+            <stop offset="100%" stopColor="#4A9EDB" stopOpacity="0"/>
+          </radialGradient>
+        </defs>
+
+        {/* Blueprint grid */}
+        <rect width="1440" height="900" fill="url(#bp120)" opacity="0.18"/>
+
+        {/* Ambient glow spots */}
+        <ellipse cx="1300" cy="100" rx="280" ry="200" fill="url(#glow1)" opacity="0.7"/>
+        <ellipse cx="80" cy="800" rx="300" ry="220" fill="url(#glow2)" opacity="0.6"/>
+
+        {/* ══════════ SKYLINE BUILDINGS ══════════ */}
+        {/* B1 */}
+        <rect x="0" y="660" width="100" height="240" fill="#0C2035" stroke="#2A6090" strokeWidth="0.6"/>
+        {[0,1,2,3,4,5].map(r=>[0,1,2].map(c=>(
+          <rect key={`b1-${r}-${c}`} x={10+c*32} y={670+r*28} width="20" height="16"
+            fill={lit(c,r)?'rgba(74,158,219,0.22)':'rgba(0,0,0,0.3)'} stroke="rgba(74,158,219,0.2)" strokeWidth="0.4"/>
+        )))}
+
+        {/* B2 */}
+        <rect x="110" y="490" width="140" height="410" fill="#0A1D30" stroke="#2A6090" strokeWidth="0.6"/>
+        {[0,1,2,3,4,5,6,7].map(r=>[0,1,2,3].map(c=>(
+          <rect key={`b2-${r}-${c}`} x={120+c*32} y={500+r*44} width="20" height="28"
+            fill={lit(c+4,r)?'rgba(74,158,219,0.2)':'rgba(0,0,0,0.3)'} stroke="rgba(74,158,219,0.2)" strokeWidth="0.4"/>
+        )))}
+
+        {/* B3 — tallest, left of crane */}
+        <rect x="260" y="280" width="160" height="620" fill="#0C2035" stroke="#2A6090" strokeWidth="0.6"/>
+        {[0,1,2,3,4,5,6,7,8,9,10].map(r=>[0,1,2,3].map(c=>(
+          <rect key={`b3-${r}-${c}`} x={270+c*36} y={290+r*50} width="22" height="30"
+            fill={lit(c+8,r)?'rgba(74,158,219,0.22)':'rgba(0,0,0,0.3)'} stroke="rgba(74,158,219,0.2)" strokeWidth="0.4"/>
+        )))}
+
+        {/* B4 — under construction (short, open top) */}
+        <rect x="440" y="640" width="120" height="260" fill="#0A1D30" stroke="#2A6090" strokeWidth="0.6"/>
+        {[0,1,2,3].map(r=>[0,1,2].map(c=>(
+          <rect key={`b4-${r}-${c}`} x={450+c*36} y={650+r*52} width="22" height="30"
+            fill={lit(c+2,r+5)?'rgba(74,158,219,0.18)':'rgba(0,0,0,0.3)'} stroke="rgba(74,158,219,0.2)" strokeWidth="0.4"/>
+        )))}
+        {/* Rising floor blocks on B4 */}
+        {[0,1,2,3].map(i=>(
+          <rect key={`rf-${i}`} x="444" y={636} width="112" height="18"
+            fill={`rgba(${29+i*10},${78+i*20},${216-i*20},${0.9-i*0.1})`} rx="1"
+            style={{ animation:'riseFloor 10s linear infinite', animationDelay:`${i*1.2}s` }}/>
+        ))}
+
+        {/* B5 — scaffolding building */}
+        <rect x="580" y="410" width="160" height="490" fill="#0B1E31" stroke="#2A6090" strokeWidth="0.6"/>
+        {[0,1,2,3,4,5,6,7].map(r=>[0,1,2,3].map(c=>(
+          <rect key={`b5-${r}-${c}`} x={590+c*36} y={420+r*56} width="22" height="34"
+            fill={lit(c+1,r+2)?'rgba(74,158,219,0.2)':'rgba(0,0,0,0.3)'} stroke="rgba(74,158,219,0.2)" strokeWidth="0.4"/>
+        )))}
+        {/* Scaffolding overlay on B5 */}
+        {[0,1,2,3,4,5,6,7,8].map(r=>(
+          <line key={`ssh-${r}`} x1="580" y1={410+r*55} x2="740" y2={410+r*55}
+            stroke="#4A9EDB" strokeWidth="1.2" opacity="0.3"/>
+        ))}
+        {[580,620,660,700,740].map(x=>(
+          <line key={`ssv-${x}`} x1={x} y1="410" x2={x} y2="900"
+            stroke="#4A9EDB" strokeWidth="1" opacity="0.25"/>
+        ))}
+
+        {/* B6 */}
+        <rect x="760" y="480" width="150" height="420" fill="#0C2035" stroke="#2A6090" strokeWidth="0.6"/>
+        {[0,1,2,3,4,5,6].map(r=>[0,1,2,3].map(c=>(
+          <rect key={`b6-${r}-${c}`} x={770+c*34} y={490+r*56} width="20" height="34"
+            fill={lit(c+6,r+3)?'rgba(74,158,219,0.2)':'rgba(0,0,0,0.3)'} stroke="rgba(74,158,219,0.2)" strokeWidth="0.4"/>
+        )))}
+
+        {/* B7 — tall right center */}
+        <rect x="930" y="340" width="180" height="560" fill="#0A1D30" stroke="#2A6090" strokeWidth="0.6"/>
+        {[0,1,2,3,4,5,6,7,8,9].map(r=>[0,1,2,3,4].map(c=>(
+          <rect key={`b7-${r}-${c}`} x={940+c*33} y={350+r*52} width="20" height="30"
+            fill={lit(c+3,r+1)?'rgba(74,158,219,0.22)':'rgba(0,0,0,0.3)'} stroke="rgba(74,158,219,0.2)" strokeWidth="0.4"/>
+        )))}
+
+        {/* B8 */}
+        <rect x="1130" y="520" width="150" height="380" fill="#0C2035" stroke="#2A6090" strokeWidth="0.6"/>
+        {[0,1,2,3,4,5].map(r=>[0,1,2,3].map(c=>(
+          <rect key={`b8-${r}-${c}`} x={1140+c*34} y={530+r*54} width="20" height="32"
+            fill={lit(c+9,r+4)?'rgba(74,158,219,0.2)':'rgba(0,0,0,0.3)'} stroke="rgba(74,158,219,0.2)" strokeWidth="0.4"/>
+        )))}
+
+        {/* B9 */}
+        <rect x="1300" y="580" width="140" height="320" fill="#0A1D30" stroke="#2A6090" strokeWidth="0.6"/>
+        {[0,1,2,3,4].map(r=>[0,1,2].map(c=>(
+          <rect key={`b9-${r}-${c}`} x={1312+c*40} y={592+r*54} width="24" height="32"
+            fill={lit(c+11,r+7)?'rgba(74,158,219,0.2)':'rgba(0,0,0,0.3)'} stroke="rgba(74,158,219,0.2)" strokeWidth="0.4"/>
+        )))}
+
+        {/* Ground line */}
+        <rect x="0" y="896" width="1440" height="4" fill="#1D4ED8" opacity="0.4"/>
+
+        {/* ══════════ LARGE CRANE ══════════ */}
+        {/* Crane positioned at x=380, tower top at y=120 */}
+        <g transform="translate(380,120)">
+          {/* Tower */}
+          <rect x="-9" y="0" width="18" height="780" fill="#1D4ED8" rx="2"/>
+          {/* Cross-bracing on tower */}
+          {[0,1,2,3,4,5,6].map(i=>(
+            <g key={i}>
+              <line x1="-9" y1={i*110} x2="9" y2={i*110+70} stroke="#2563EB" strokeWidth="2.5"/>
+              <line x1="9" y1={i*110} x2="-9" y2={i*110+70} stroke="#2563EB" strokeWidth="2.5"/>
+            </g>
+          ))}
+          {/* Counter-jib (left, fixed) */}
+          <rect x="-140" y="-6" width="140" height="12" fill="#1D4ED8" rx="2"/>
+          <rect x="-140" y="6" width="18" height="32" fill="#1D4ED8" rx="2"/>
+          {/* Counter-weight */}
+          <rect x="-152" y="38" width="30" height="20" fill="#0F2A45" stroke="#4A9EDB" strokeWidth="1" rx="2"/>
+          {/* Tower cap */}
+          <rect x="-20" y="-20" width="40" height="20" fill="#1D4ED8" rx="2"/>
+          <line x1="0" y1="-20" x2="0" y2="-40" stroke="#4A9EDB" strokeWidth="2"/>
+          <circle cx="0" cy="-44" r="6" fill="#E07A38"/>
+
+          {/* Swinging main jib */}
+          <g style={{ transformOrigin:'0px 0px', animation:'craneSway 7s ease-in-out infinite' }}>
+            <rect x="0" y="-6" width="280" height="12" fill="#E07A38" rx="2"/>
+            {/* Support cables from tower cap to jib */}
+            <line x1="0" y1="-18" x2="240" y2="6" stroke="rgba(255,255,255,0.35)" strokeWidth="1.5"/>
+            <line x1="0" y1="-18" x2="140" y2="6" stroke="rgba(255,255,255,0.25)" strokeWidth="1.2"/>
+            {/* Trolley */}
+            <rect x="200" y="-4" width="24" height="10" fill="#F59E0B" rx="2"/>
+            {/* Hanging cable */}
+            <line x1="212" y1="6" x2="212" y2="160" stroke="rgba(255,255,255,0.5)" strokeWidth="2" strokeDasharray="4 3"/>
+            {/* Hook */}
+            <rect x="204" y="160" width="16" height="12" fill="#F59E0B" rx="2"/>
+            {/* Load block */}
+            <rect x="196" y="172" width="32" height="22" fill="#0F2A45" stroke="#4A9EDB" strokeWidth="1" rx="2"/>
+            <rect x="200" y="176" width="10" height="14" fill="rgba(74,158,219,0.3)" rx="1"/>
+            <rect x="218" y="176" width="6" height="14" fill="rgba(74,158,219,0.2)" rx="1"/>
+          </g>
+        </g>
+
+        {/* ══════════ LARGE GEARS ══════════ */}
+        {/* Top-right large gear */}
+        <g transform="translate(1360,90)" style={{ animation:'spinGear 16s linear infinite' }}>
+          <path d={gearPath(12, 76, 58)} fill="none" stroke="#4A9EDB" strokeWidth="2.5" opacity="0.35"/>
+          <circle cx="0" cy="0" r="26" fill="none" stroke="#4A9EDB" strokeWidth="2.5" opacity="0.35"/>
+          {[0,60,120,180,240,300].map(deg=>(
+            <line key={deg}
+              x1={Math.cos(deg*Math.PI/180)*28} y1={Math.sin(deg*Math.PI/180)*28}
+              x2={Math.cos(deg*Math.PI/180)*56} y2={Math.sin(deg*Math.PI/180)*56}
+              stroke="#4A9EDB" strokeWidth="9" strokeLinecap="round" opacity="0.3"/>
+          ))}
+        </g>
+
+        {/* Bottom-right smaller gear (counter-rotate) */}
+        <g transform="translate(1400,820)" style={{ animation:'spinGearReverse 10s linear infinite' }}>
+          <path d={gearPath(10, 46, 34)} fill="none" stroke="#E07A38" strokeWidth="2" opacity="0.25"/>
+          <circle cx="0" cy="0" r="16" fill="none" stroke="#E07A38" strokeWidth="2" opacity="0.25"/>
+          {[0,72,144,216,288].map(deg=>(
+            <line key={deg}
+              x1={Math.cos(deg*Math.PI/180)*18} y1={Math.sin(deg*Math.PI/180)*18}
+              x2={Math.cos(deg*Math.PI/180)*32} y2={Math.sin(deg*Math.PI/180)*32}
+              stroke="#E07A38" strokeWidth="6" strokeLinecap="round" opacity="0.22"/>
+          ))}
+        </g>
+
+        {/* Bottom-left medium gear */}
+        <g transform="translate(60,860)" style={{ animation:'spinGear 12s linear infinite' }}>
+          <path d={gearPath(8, 52, 38)} fill="none" stroke="#4A9EDB" strokeWidth="2" opacity="0.2"/>
+          <circle cx="0" cy="0" r="18" fill="none" stroke="#4A9EDB" strokeWidth="2" opacity="0.2"/>
+          {[0,90,180,270].map(deg=>(
+            <line key={deg}
+              x1={Math.cos(deg*Math.PI/180)*20} y1={Math.sin(deg*Math.PI/180)*20}
+              x2={Math.cos(deg*Math.PI/180)*36} y2={Math.sin(deg*Math.PI/180)*36}
+              stroke="#4A9EDB" strokeWidth="7" strokeLinecap="round" opacity="0.18"/>
+          ))}
+        </g>
+
+        {/* ══════════ RULER at bottom ══════════ */}
+        <rect x="0" y="890" width="1440" height="10" fill="rgba(74,158,219,0.07)"/>
+        {Array.from({length:120},(_,i)=>(
+          <line key={i} x1={i*12} y1="890" x2={i*12} y2={i%5===0?878:885}
+            stroke="#4A9EDB" strokeWidth="0.7" opacity="0.3"/>
+        ))}
+
+        {/* ══════════ SCAN LINE ══════════ */}
+        <rect x="0" y="0" width="1440" height="3" fill="rgba(74,158,219,0.18)"
+          style={{ animation:'scanLine 8s linear infinite' }}/>
+
       </svg>
+
+      {/* Extra glow orbs via CSS (outside SVG for performance) */}
+      <div style={{ position:'absolute', top:-80, right:-80, width:400, height:400, borderRadius:'50%', background:'radial-gradient(circle, rgba(224,122,56,0.14) 0%, transparent 70%)', pointerEvents:'none' }}/>
     </div>
+  );
+};
 
-    {/* ── SPINNING GEAR bottom-right (reverse) ── */}
-    <div style={{ position: 'absolute', bottom: 60, right: 50, animation: 'spinGearReverse 9s linear infinite', pointerEvents: 'none', opacity: 0.20 }}>
-      <svg viewBox="0 0 60 60" width="34">
-        <path d="M30 20a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm16.2-1.4-2.8-2.8-3.5 3.5a14 14 0 0 0-3.7-1.5V14h-4v3.8a14 14 0 0 0-3.7 1.5l-3.5-3.5-2.8 2.8 3.5 3.5a14 14 0 0 0-1.5 3.7H14v4h3.8a14 14 0 0 0 1.5 3.7l-3.5 3.5 2.8 2.8 3.5-3.5a14 14 0 0 0 3.7 1.5V46h4v-3.8a14 14 0 0 0 3.7-1.5l3.5 3.5 2.8-2.8-3.5-3.5a14 14 0 0 0 1.5-3.7H46v-4h-3.8a14 14 0 0 0-1.5-3.7l3.5-3.5z" fill="#E07A38" />
-      </svg>
-    </div>
-
-    {/* ── BOUNCING HARD HAT top-left ── */}
-    <div style={{ position: 'absolute', top: 26, left: 26, fontSize: 38, animation: 'bounceHat 3.4s ease-in-out infinite', pointerEvents: 'none', userSelect: 'none', filter: 'drop-shadow(0 0 10px rgba(224,122,56,0.55))' }}>👷</div>
-
-    {/* ── FLOATING WRENCH top-center-right ── */}
-    <div style={{ position: 'absolute', top: '18%', right: '18%', fontSize: 22, animation: 'floatTool 7s ease-in-out infinite', animationDelay: '1.2s', pointerEvents: 'none', userSelect: 'none', opacity: 0.45 }}>🔧</div>
-
-    {/* ── FLOATING BLUEPRINT PARTICLES ── */}
-    {[
-      { size: 18, top: '14%', left: '22%', delay: '0s',   dur: '9s'  },
-      { size: 12, top: '68%', left: '7%',  delay: '2s',   dur: '11s' },
-      { size: 22, top: '38%', left: '87%', delay: '1s',   dur: '13s' },
-      { size: 10, top: '78%', left: '74%', delay: '3.5s', dur: '8s'  },
-      { size: 15, top: '24%', left: '60%', delay: '0.5s', dur: '10s' },
-      { size: 8,  top: '53%', left: '33%', delay: '4s',   dur: '12s' },
-      { size: 14, top: '45%', left: '5%',  delay: '2.5s', dur: '10s' },
-    ].map((p, i) => (
-      <div key={i} style={{ position: 'absolute', top: p.top, left: p.left, width: p.size, height: p.size, border: '1.5px solid rgba(74,158,219,0.5)', borderRadius: 3, background: 'rgba(74,158,219,0.06)', animation: `floatParticle ${p.dur} ease-in-out infinite`, animationDelay: p.delay, pointerEvents: 'none' }} />
-    ))}
-
-    {/* ── MEASUREMENT RULER at bottom ── */}
-    <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 24, background: 'rgba(74,158,219,0.07)', borderTop: '1px solid rgba(74,158,219,0.2)', display: 'flex', alignItems: 'flex-end', paddingBottom: 2, pointerEvents: 'none' }}>
-      {Array.from({ length: 80 }).map((_, i) => (
-        <div key={i} style={{ flex: 1, borderRight: '1px solid rgba(74,158,219,0.22)', height: i % 5 === 0 ? 12 : 5 }} />
-      ))}
-    </div>
-  </div>
-);
 
 export const JoinScreen = ({ code }: Props) => {
   const peek = useQuery(api.invitations.peekInvitation, { code });
