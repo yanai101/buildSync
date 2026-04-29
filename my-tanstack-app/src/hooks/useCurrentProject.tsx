@@ -74,11 +74,12 @@ export function useCurrentProject() {
         address: PROJECT.address, 
         areaSqm: PROJECT.area,
         currentStageName: PROJECT.currentStage,
-        status: 'active'
-      }];
+        status: 'active',
+        ownerUserId: user?._id
+      }] as any[];
     }
     return dbProjects ?? [];
-  }, [isMock, dbProjects]);
+  }, [isMock, dbProjects, user?._id]);
 
   const isLoading = !isInitialized || (!isMock && (dbProjects === undefined || user === undefined));
 

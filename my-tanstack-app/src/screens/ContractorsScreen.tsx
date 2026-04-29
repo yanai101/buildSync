@@ -57,33 +57,6 @@ const emptyForm: ContractorForm = {
   budget: 0,
 };
 
-const normalizeMilestones = (contractor: Contractor): Milestone[] => {
-  if (contractor.milestones?.length) {
-    return contractor.milestones.map(m => ({
-      ...m,
-      status: m.paid ? 'paid' : m.status,
-      paidAt: m.paidAt ?? null,
-    }));
-  }
-
-  const base = DEFAULT_PAYMENT_SCHEDULES[contractor.role] || DEFAULT_SCHEDULE;
-  return base.map((m, i) => {
-    const cumulativePct = base.slice(0, i + 1).reduce((total, step) => total + step.pct, 0);
-    const paid = contractor.paid >= contractor.budget * (cumulativePct / 100);
-    return {
-      id: `${contractor.id}-${i}`,
-      name: m.name,
-      pct: m.pct,
-      taskIds: [],
-      amount: Math.round(contractor.budget * m.pct / 100),
-      triggerText: m.triggerText,
-      paid,
-      status: paid ? 'paid' : 'pending',
-      paidAt: null,
-    };
-  });
-};
-
 const contractorDbId = (contractor: Contractor) => String(contractor._id ?? contractor.id);
 const stageDbId = (stage: { id?: unknown; _id?: unknown; stageId?: unknown }) => String(stage._id ?? stage.stageId ?? stage.id);
 
@@ -91,11 +64,56 @@ type DraftMilestone = Milestone & { isNew?: boolean };
 
 const clampPct = (pct: number) => Math.max(0, Math.min(100, Math.round(Number.isFinite(pct) ? pct : 0)));
 
-const withAmounts = (contractor: Contractor, milestones: DraftMilestone[]): DraftMilestone[] =>
-  milestones.map(m => ({
-    ...m,
-    amount: Math.round(contractor.budget * m.pct / 100),
-  }));
+const withAmounts = (contractor: Contractor, milestones: DraftMilestone[]): DraftMilestone[] => {
+  let sumAmount = 0;
+  const totalPct = milestones.reduce((sum, m) => sum + m.pct, 0);
+
+  return milestones.map((m, i) => {
+    if (i === milestones.length - 1 && totalPct === 100 && contractor.budget > 0) {
+      return {
+        ...m,
+        amount: Math.max(0, contractor.budget - sumAmount),
+      };
+    }
+    const amount = Math.round(contractor.budget * m.pct / 100);
+    sumAmount += amount;
+    return {
+      ...m,
+      amount,
+    };
+  });
+};
+
+const normalizeMilestones = (contractor: Contractor): Milestone[] => {
+  let rawMilestones;
+  if (contractor.milestones?.length) {
+    rawMilestones = contractor.milestones.map(m => ({
+      ...m,
+      status: m.paid ? 'paid' : m.status,
+      paidAt: m.paidAt ?? null,
+      amount: 0,
+    }));
+  } else {
+    const base = DEFAULT_PAYMENT_SCHEDULES[contractor.role] || DEFAULT_SCHEDULE;
+    rawMilestones = base.map((m, i) => {
+      const cumulativePct = base.slice(0, i + 1).reduce((total, step) => total + step.pct, 0);
+      const paid = contractor.paid >= contractor.budget * (cumulativePct / 100);
+      return {
+        id: `${contractor.id}-${i}`,
+        name: m.name,
+        pct: m.pct,
+        taskIds: [],
+        amount: 0,
+        triggerText: m.triggerText,
+        paid,
+        status: paid ? 'paid' : 'pending',
+        paidAt: null,
+      };
+    });
+  }
+  
+  return withAmounts(contractor, rawMilestones as DraftMilestone[]) as Milestone[];
+};
 
 const balanceMilestones = (milestones: DraftMilestone[], changedIndex: number): DraftMilestone[] => {
   const next = milestones.map(m => ({ ...m, pct: clampPct(m.pct) }));
@@ -476,6 +494,20 @@ export const ContractorsScreen = () => {
 
   const addContractor = async () => {
     if (!projectId || !form.name.trim()) return;
+
+    if (!form.budget || form.budget <= 0) {
+      setFeedback({ title: "שגיאה בשמירה", message: "חובה להזין את סכום התקציב שנסגר מול הקבלן כדי שלוח התשלומים יתחלק נכון.", type: "error" });
+      return;
+    }
+    if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
+      setFeedback({ title: "שגיאה", message: "כתובת האימייל שהוזנה אינה תקינה.", type: "error" });
+      return;
+    }
+    if (form.phone && !/^[0-9\-\+]{9,15}$/.test(form.phone)) {
+      setFeedback({ title: "שגיאה", message: "מספר הטלפון שהוזן אינו תקין.", type: "error" });
+      return;
+    }
+
     setSavingContractor(true);
     try {
       await createContractor({

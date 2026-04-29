@@ -119,9 +119,9 @@ const DefectsTable = ({ photos, onSelect, contractors, setFeedback }: { photos: 
       const opt = {
         margin: 10,
         filename: `defect-report-${new Date().toISOString().split('T')[0]}.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
+        image: { type: 'jpeg' as const, quality: 0.98 },
         html2canvas: { scale: 2, useCORS: true },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' as const }
       };
 
       await html2pdf().set(opt).from(container).save();
@@ -806,18 +806,18 @@ export const PhotosScreen = () => {
               { (selected.tag === 'בעיה' || selected.tag === 'בדיקה') && canManagePhotos && (
                 <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:8,background:"var(--surface)",padding:8,borderRadius:8,border:"1px solid var(--border)"}}>
                   <div style={{fontWeight:600,fontSize:12}}>פרטי ליקוי (Snagging)</div>
-                  <Select value={selected.defectStatus || "פתוח"} onChange={v=>updatePhotoDefect({photoId:selectedPhotoId!, defectStatus: v as any}).then(refetch)} style={{fontSize:11}}>
+                  <Select value={selected.defectStatus || "פתוח"} onChange={(v: string)=>updatePhotoDefect({photoId:selectedPhotoId!, defectStatus: v as any}).then(refetch)} style={{fontSize:11}}>
                     <option value="פתוח">סטטוס: פתוח</option>
                     <option value="בטיפול">סטטוס: בטיפול</option>
                     <option value="תוקן">סטטוס: תוקן</option>
                     <option value="אושר">סטטוס: אושר</option>
                   </Select>
-                  <Select value={selected.priority || "רגילה"} onChange={v=>updatePhotoDefect({photoId:selectedPhotoId!, priority: v as any}).then(refetch)} style={{fontSize:11}}>
+                  <Select value={selected.priority || "רגילה"} onChange={(v: string)=>updatePhotoDefect({photoId:selectedPhotoId!, priority: v as any}).then(refetch)} style={{fontSize:11}}>
                     <option value="נמוכה">עדיפות: נמוכה</option>
                     <option value="רגילה">עדיפות: רגילה</option>
                     <option value="קריטית">עדיפות: קריטית</option>
                   </Select>
-                  <Select value={selected.assigneeId || ""} onChange={v=>updatePhotoDefect({photoId:selectedPhotoId!, assigneeId: v ? (v as any) : undefined}).then(refetch)} style={{fontSize:11}}>
+                  <Select value={selected.assigneeId || ""} onChange={(v: string)=>updatePhotoDefect({photoId:selectedPhotoId!, assigneeId: v ? (v as any) : undefined}).then(refetch)} style={{fontSize:11}}>
                     <option value="">ללא שיוך לקבלן</option>
                     {contractors.map((c: any) => <option key={c._id} value={c._id}>{c.name}</option>)}
                   </Select>
