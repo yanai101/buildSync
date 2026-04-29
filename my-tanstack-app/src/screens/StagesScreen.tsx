@@ -9,6 +9,7 @@ import { useMutation, useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { ScreenBoundary } from '../components/ScreenBoundary';
 import { STAGES, fmtMoney } from '../utils/mockData';
+import { useRequireRole } from '../hooks/useRequireRole';
 
 type StageGuideTask = {
   legacyId: number;
@@ -582,6 +583,9 @@ export const StagesScreen = () => {
   const [expanded, setExpanded] = React.useState<number | null>(null);
   const [releaseFor, setReleaseFor] = React.useState<{stage: Stage; milestoneId: string | null; amount: number; milestoneName: string | null} | null>(null);
   const [guideOpen, setGuideOpen] = React.useState(false);
+  const { role } = useRequireRole(['owner', 'manager', 'inspector', 'contractor']);
+  const isContractor = role === 'contractor';
+  const currentIdentity = useQuery(api.users.currentIdentity, {});
   const [savingGuide, setSavingGuide] = React.useState(false);
   const [editingStage, setEditingStage] = React.useState<Stage | null>(null);
   const [isAdvancedEdit, setIsAdvancedEdit] = React.useState(false);
@@ -596,6 +600,20 @@ export const StagesScreen = () => {
   React.useEffect(() => {
     if (initialData) setStages(initialData);
   }, [initialData]);
+
+  const myContractorRecord = React.useMemo(() => {
+    if (!isContractor || !currentIdentity?._id || !contractors) return null;
+    return contractors.find(c => c.userId === currentIdentity._id);
+  }, [isContractor, currentIdentity, contractors]);
+
+  const visibleStages = React.useMemo(() => {
+    if (!isContractor) return stages;
+    if (!myContractorRecord) return [];
+    return stages.filter(s => {
+      const contractorIds = s.contractorIds || (s.contractors?.map(c => String((c as any)._id ?? c.id)) || []);
+      return contractorIds.includes(myContractorRecord._id) || s.contractor === myContractorRecord.name;
+    });
+  }, [stages, isContractor, myContractorRecord]);
 
   const updateStageState = (stageId: number, updater: (s: Stage) => Stage) => {
     setStages(prev => prev.map(s => s.id === stageId ? updater(s) : s));
@@ -939,6 +957,7 @@ export const StagesScreen = () => {
           </div>
         </div>
 
+        {!isContractor && (
         <div className="card" style={{marginBottom:20,borderColor:paymentSummary.isOverLimit ? "var(--danger)" : paymentSummary.isNearLimit ? "var(--warning)" : "var(--border)"}}>
           <div className="card-header" style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12}}>
             <span>מעקב תשלומי שלבים</span>
@@ -981,9 +1000,10 @@ export const StagesScreen = () => {
             </div>
           </div>
         </div>
+        )}
 
         <div style={{display:"flex",flexDirection:"column",gap:16}}>
-          {stages.map(s=>(
+          {visibleStages.map(s=>(
             <div key={s.id} className="card" style={{border:expanded===s.id?"1px solid var(--accent)":"1px solid var(--border)",boxShadow:expanded===s.id?"var(--shadow-md)":"none"}}>
               <div onClick={()=>toggleStage(s.id)} style={{padding:"16px 20px",display:"flex",alignItems:"center",gap:16,cursor:"pointer"}}>
                 <div style={{width:24,textAlign:"center",fontSize:12,fontWeight:700,color:"var(--text3)"}}>{s.id}</div>
