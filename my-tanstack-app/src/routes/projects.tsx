@@ -12,7 +12,7 @@ export const Route = createFileRoute('/projects')({
 
 function ProjectsRoute() {
   const navigate = useNavigate();
-  const { projects, projectId, setCurrentProject, isMock } = useCurrentProject();
+  const { user, projects, projectId, setCurrentProject, isMock } = useCurrentProject();
   const { mutate } = useDataMutation('project');
   
   const [isWizardOpen, setIsWizardOpen] = React.useState(false);
