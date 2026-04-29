@@ -87,7 +87,7 @@ export const DailyLogsScreen = () => {
     setSaving(true);
     try {
       await lockLog({ logId: log._id });
-      setFeedback({ title: "הדוח ננעל 🔒", message: "הדוח היומי ננעל ולא ניתן לשינוי. הוא עכשיו מהווה מסמך משפטי מחייב.", type: 'success' });
+      setFeedback({ title: "הדוח ננעל 🔒", message: "הדוח היומי ננעל ולא ניתן לשינוי. הוא עכשיו מסמך חתום ומאושר.", type: 'success' });
     } catch (err: any) {
       setFeedback({ title: "שגיאה בנעילה", message: err.message, type: 'error' });
     } finally {
@@ -117,7 +117,7 @@ export const DailyLogsScreen = () => {
         <div style="border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: flex-end;">
           <div>
             <h1 style="margin: 0; font-size: 28px; color: #111;">יומן עבודה יומי</h1>
-            <p style="margin: 4px 0 0 0; color: #555; font-size: 14px;">תאריך: ${formattedDate} | סטטוס: ${logIsLocked ? 'נעול (מסמך משפטי)' : 'טיוטה'}</p>
+            <p style="margin: 4px 0 0 0; color: #555; font-size: 14px;">תאריך: ${formattedDate} | סטטוס: ${logIsLocked ? 'נעול (מסמך חתום)' : 'טיוטה'}</p>
           </div>
           <div style="display: flex; align-items: center; gap: 12px;">
             <div style="font-size: 26px; font-weight: 800; letter-spacing: -0.5px;">Build<span style="color: #FF9500;">Sync</span></div>
@@ -152,7 +152,7 @@ export const DailyLogsScreen = () => {
       if (logIsLocked) {
         html += `
           <div style="margin-top: 40px; padding-top: 20px; border-top: 1px dashed #ccc; text-align: left; font-size: 12px; color: #666;">
-            מסמך זה ננעל ואושר במערכת BuildSync ומהווה מסמך משפטי מחייב ליום העבודה.
+            מסמך זה ננעל ואושר במערכת BuildSync. הדוח נחתם ואינו ניתן לעריכה.
           </div>
         `;
       }
@@ -295,7 +295,7 @@ export const DailyLogsScreen = () => {
           <div style={{ background: "var(--surface)", borderRadius: 12, border: "1px solid var(--border)", overflow: "hidden" }}>
             {renderSectionHeader("עיכובים ובעיות ⚠️", "alert-triangle")}
             <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
-              {!isInspectorOrManager && !isOwner && <div style={{ fontSize: 13, color: "var(--text3)" }}>רק מפקח מורשה להזין ולנהל עיכובים משפטיים וכספיים.</div>}
+              {!isInspectorOrManager && !isOwner && <div style={{ fontSize: 13, color: "var(--text3)" }}>רק מפקח מורשה להזין ולנהל עיכובים וחריגות כספיות.</div>}
               {form.issues.map((iss, i) => (
                 <div key={i} style={{ display: "flex", gap: 8, padding: 12, background: "rgba(255,59,48,0.05)", borderRadius: 8, border: "1px solid rgba(255,59,48,0.2)" }}>
                   <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8 }}>
