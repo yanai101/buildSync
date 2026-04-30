@@ -29,12 +29,18 @@ export const currentIdentity = query({
     }
 
     const user = await ctx.db.get(userId);
+    const now = Date.now();
+    const isExpired = user?.subscriptionExpiresAt && now > user.subscriptionExpiresAt;
+    
     return {
       userId,
       email: user?.email ?? null,
       name: user?.name ?? null,
       role: user?.role ?? null,
       isSuperAdmin: user?.isSuperAdmin ?? false,
+      subscriptionTier: isExpired ? undefined : user?.subscriptionTier,
+      subscriptionExpiresAt: user?.subscriptionExpiresAt,
+      isSubscriptionExpired: isExpired,
     };
   },
 });
@@ -128,21 +134,43 @@ export const redeemPromoCode = mutation({
       return { success: false, error: 'קוד ההרשמה אינו קיים' };
     }
     
-    if (promo.isUsed) {
-      return { success: false, error: 'קוד ההרשמה כבר נוצל' };
+    if (promo.currentUses >= promo.maxUses) {
+      return { success: false, error: 'קוד ההרשמה הגיע למכסת השימושים המקסימלית שלו' };
     }
     
     if (Date.now() > promo.expiresAt) {
       return { success: false, error: 'קוד ההרשמה פג תוקף' };
     }
 
+    // Check if user already redeemed this promo
+    const existingRedemption = await ctx.db
+      .query('promoRedemptions')
+      .withIndex('by_promo_and_user', (q) => q.eq('promoCodeId', promo._id).eq('userId', userId))
+      .first();
+    
+    if (existingRedemption) {
+      return { success: false, error: 'כבר ניצלת את קוד ההרשמה הזה בעבר' };
+    }
+
+    // Calculate expiration date for the user's subscription
+    const subscriptionExpiresAt = Date.now() + (promo.subscriptionDurationMonths * 30 * 24 * 60 * 60 * 1000);
+
     // Apply the subscription
-    await ctx.db.patch(userId, { subscriptionTier: promo.tier });
+    await ctx.db.patch(userId, { 
+      subscriptionTier: promo.tier,
+      subscriptionExpiresAt 
+    });
     
     // Mark code as used
     await ctx.db.patch(promo._id, {
-      isUsed: true,
-      usedByUserId: userId,
+      currentUses: promo.currentUses + 1,
+    });
+
+    // Record the redemption
+    await ctx.db.insert('promoRedemptions', {
+      promoCodeId: promo._id,
+      userId,
+      redeemedAt: Date.now(),
     });
 
     return { success: true, tier: promo.tier };

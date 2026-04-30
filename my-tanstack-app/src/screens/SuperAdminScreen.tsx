@@ -21,6 +21,8 @@ export function SuperAdminScreen() {
   const [newPassword, setNewPassword] = useState('');
   const [promoTier, setPromoTier] = useState<'pro' | 'premium'>('pro');
   const [promoValidity, setPromoValidity] = useState<number>(1);
+  const [promoMaxUses, setPromoMaxUses] = useState<number>(1);
+  const [promoDuration, setPromoDuration] = useState<number>(12); // months
 
   if (users === undefined) {
     return (
@@ -40,7 +42,12 @@ export function SuperAdminScreen() {
 
   const handleGeneratePromo = async () => {
     try {
-      await generatePromoCode({ tier: promoTier, validityDays: promoValidity });
+      await generatePromoCode({ 
+        tier: promoTier, 
+        validityDays: promoValidity,
+        maxUses: promoMaxUses,
+        subscriptionDurationMonths: promoDuration
+      });
       alert('הקוד נוצר בהצלחה!');
     } catch (e: any) {
       alert('שגיאה ביצירת הקוד: ' + e.message);
@@ -159,7 +166,15 @@ export function SuperAdminScreen() {
             </select>
           </div>
           <div>
-            <label style={{ display: 'block', fontSize: 13, marginBottom: 6, color: 'var(--text2)' }}>תוקף (ימים)</label>
+            <label style={{ display: 'block', fontSize: 13, marginBottom: 6, color: 'var(--text2)' }}>מקסימום שימושים</label>
+            <input type="number" min="1" className="input" value={promoMaxUses} onChange={(e) => setPromoMaxUses(Number(e.target.value))} />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: 13, marginBottom: 6, color: 'var(--text2)' }}>אורך מנוי (חודשים)</label>
+            <input type="number" min="1" className="input" value={promoDuration} onChange={(e) => setPromoDuration(Number(e.target.value))} />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: 13, marginBottom: 6, color: 'var(--text2)' }}>תוקף הקוד (ימים)</label>
             <input type="number" min="1" max="365" className="input" value={promoValidity} onChange={(e) => setPromoValidity(Number(e.target.value))} />
           </div>
           <Btn variant="primary" onClick={handleGeneratePromo} style={{ height: 42 }}>
@@ -175,7 +190,9 @@ export function SuperAdminScreen() {
                   <th style={{ padding: 12, fontWeight: 600 }}>קוד</th>
                   <th style={{ padding: 12, fontWeight: 600 }}>קישור הרשמה</th>
                   <th style={{ padding: 12, fontWeight: 600 }}>מנוי</th>
-                  <th style={{ padding: 12, fontWeight: 600 }}>פג תוקף</th>
+                  <th style={{ padding: 12, fontWeight: 600 }}>אורך מנוי</th>
+                  <th style={{ padding: 12, fontWeight: 600 }}>פג תוקף הקוד</th>
+                  <th style={{ padding: 12, fontWeight: 600 }}>שימושים</th>
                   <th style={{ padding: 12, fontWeight: 600 }}>סטטוס</th>
                 </tr>
               </thead>
@@ -183,8 +200,9 @@ export function SuperAdminScreen() {
                 {promoCodes.map((p) => {
                   const link = `${typeof window !== 'undefined' ? window.location.origin : ''}/register?promo=${p.code}`;
                   const isExpired = Date.now() > p.expiresAt;
+                  const isFullyUsed = p.currentUses >= p.maxUses;
                   return (
-                    <tr key={p._id} style={{ borderBottom: '1px solid var(--border)', opacity: p.isUsed ? 0.6 : 1 }}>
+                    <tr key={p._id} style={{ borderBottom: '1px solid var(--border)', opacity: isFullyUsed ? 0.6 : 1 }}>
                       <td style={{ padding: 12, fontWeight: 'bold' }}>{p.code}</td>
                       <td style={{ padding: 12 }}>
                         <Btn variant="outline" onClick={() => { navigator.clipboard.writeText(link); alert('הקישור הועתק!'); }} style={{ padding: '4px 8px', fontSize: 12 }}>
@@ -192,12 +210,14 @@ export function SuperAdminScreen() {
                         </Btn>
                       </td>
                       <td style={{ padding: 12 }}>{p.tier === 'premium' ? 'Premium' : 'Pro'}</td>
-                      <td style={{ padding: 12, color: isExpired && !p.isUsed ? '#EF4444' : 'inherit' }}>
+                      <td style={{ padding: 12 }}>{p.subscriptionDurationMonths} חודשים</td>
+                      <td style={{ padding: 12, color: isExpired && !isFullyUsed ? '#EF4444' : 'inherit' }}>
                         {new Date(p.expiresAt).toLocaleDateString('he-IL')}
                       </td>
+                      <td style={{ padding: 12 }}>{p.currentUses} / {p.maxUses}</td>
                       <td style={{ padding: 12 }}>
-                        {p.isUsed ? (
-                          <span style={{ color: 'var(--text3)' }}>נוצל</span>
+                        {isFullyUsed ? (
+                          <span style={{ color: 'var(--text3)' }}>נוצל במלואו</span>
                         ) : isExpired ? (
                           <span style={{ color: '#EF4444' }}>פג תוקף</span>
                         ) : (

@@ -520,7 +520,14 @@ export const zDailyLog = {
 export const zPromoCode = {
   code: z.string(),
   tier: z.enum(['pro', 'premium']),
+  maxUses: z.number(),
+  currentUses: z.number(),
+  subscriptionDurationMonths: z.number(),
   expiresAt: z.number(),
-  isUsed: z.boolean(),
-  usedByUserId: zid('users').optional(),
+};
+
+export const zPromoRedemption = {
+  promoCodeId: zid('promoCodes'),
+  userId: zid('users'),
+  redeemedAt: z.number(),
 };

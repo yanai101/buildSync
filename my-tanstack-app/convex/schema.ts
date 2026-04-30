@@ -35,6 +35,7 @@ export default defineSchema({
     isSuperAdmin: v.optional(v.boolean()),
     isSuspended: v.optional(v.boolean()),
     subscriptionTier: v.optional(v.string()),
+    subscriptionExpiresAt: v.optional(v.number()),
   })
     .index('email', ['email'])
     .index('phone', ['phone']),
@@ -152,4 +153,9 @@ export default defineSchema({
 
   promoCodes: defineTable(zodToConvexFields(s.zPromoCode))
     .index('by_code', ['code']),
+
+  promoRedemptions: defineTable(zodToConvexFields(s.zPromoRedemption))
+    .index('by_user', ['userId'])
+    .index('by_promo', ['promoCodeId'])
+    .index('by_promo_and_user', ['promoCodeId', 'userId']),
 });

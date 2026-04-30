@@ -200,6 +200,8 @@ export const generatePromoCode = mutation({
   args: {
     tier: v.union(v.literal('pro'), v.literal('premium')),
     validityDays: v.number(),
+    maxUses: v.number(),
+    subscriptionDurationMonths: v.number(),
   },
   handler: async (ctx, args) => {
     await checkSuperAdmin(ctx);
@@ -212,7 +214,9 @@ export const generatePromoCode = mutation({
       code,
       tier: args.tier,
       expiresAt,
-      isUsed: false,
+      maxUses: args.maxUses,
+      currentUses: 0,
+      subscriptionDurationMonths: args.subscriptionDurationMonths,
     });
     
     return code;
