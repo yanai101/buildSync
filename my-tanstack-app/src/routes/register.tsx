@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import { useAuthActions } from '@convex-dev/auth/react'
-import { useConvexAuth, useMutation, useConvex } from 'convex/react'
+import { useConvexAuth, useMutation, useConvex, useQuery } from 'convex/react'
 import { Icon, Input, Btn } from '~/components/Shared'
 import { api } from '../../convex/_generated/api'
 
