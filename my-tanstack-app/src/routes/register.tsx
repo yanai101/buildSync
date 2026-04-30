@@ -237,6 +237,7 @@ function RegisterPage() {
           <p style={{ textAlign: 'center', marginTop: 12, fontSize: 12, color: 'var(--text3)' }}>
             מנהל עבודה, מפקח או קבלן? יש לבקש מבעל הפרויקט לצרף אותך.
           </p>
+          </>
         </div>
       </div>
 
