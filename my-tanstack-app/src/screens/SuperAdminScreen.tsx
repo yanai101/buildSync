@@ -14,6 +14,7 @@ export function SuperAdminScreen() {
   
   const promoCodes = useQuery(api.superAdmin.getPromoCodes, isSuperAdmin ? {} : 'skip');
   const generatePromoCode = useMutation(api.superAdmin.generatePromoCode);
+  const deletePromoCode = useMutation(api.superAdmin.deletePromoCode);
 
   const [editingUser, setEditingUser] = useState<any | null>(null);
   const [showConfirmDelete, setShowConfirmDelete] = useState<Id<'users'> | null>(null);
@@ -194,6 +195,7 @@ export function SuperAdminScreen() {
                   <th style={{ padding: 12, fontWeight: 600 }}>פג תוקף הקוד</th>
                   <th style={{ padding: 12, fontWeight: 600 }}>שימושים</th>
                   <th style={{ padding: 12, fontWeight: 600 }}>סטטוס</th>
+                  <th style={{ padding: 12, fontWeight: 600 }}>פעולות</th>
                 </tr>
               </thead>
               <tbody>
@@ -223,6 +225,19 @@ export function SuperAdminScreen() {
                         ) : (
                           <span style={{ color: '#22C55E' }}>פעיל</span>
                         )}
+                      </td>
+                      <td style={{ padding: 12 }}>
+                        <Btn 
+                          variant="outline" 
+                          onClick={async () => {
+                            if (confirm('האם אתה בטוח שברצונך למחוק קוד הרשמה זה?')) {
+                              await deletePromoCode({ promoCodeId: p._id });
+                            }
+                          }} 
+                          style={{ padding: '4px 8px', borderColor: '#EF4444', color: '#EF4444' }}
+                        >
+                          מחק
+                        </Btn>
                       </td>
                     </tr>
                   );

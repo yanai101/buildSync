@@ -222,3 +222,11 @@ export const generatePromoCode = mutation({
     return code;
   },
 });
+
+export const deletePromoCode = mutation({
+  args: { promoCodeId: v.id('promoCodes') },
+  handler: async (ctx, args) => {
+    await checkSuperAdmin(ctx);
+    await ctx.db.delete(args.promoCodeId);
+  },
+});
