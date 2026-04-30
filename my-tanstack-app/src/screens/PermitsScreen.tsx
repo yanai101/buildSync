@@ -3,14 +3,16 @@ import { useCurrentProject } from '../hooks/useCurrentProject';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { ScreenBoundary } from '../components/ScreenBoundary';
-import { PageBackground, EmptyState, Btn, Icon, ConfirmDialog } from '../components/Shared';
+import { PageBackground, EmptyState, Btn, Icon, ConfirmDialog, PremiumLock } from '../components/Shared';
 import { useRequireRole } from '../hooks/useRequireRole';
 import { AccessDenied, AccessLoading } from '../components/AccessDenied';
 import type { Id } from '../../convex/_generated/dataModel';
+import { useSubscription } from '../hooks/useSubscription';
 
 export const PermitsScreen = () => {
   const { allowed, loading: roleLoading } = useRequireRole(['owner', 'manager', 'inspector']);
   const { projectId } = useCurrentProject();
+  const { isProOrPremium } = useSubscription();
   const permits = useQuery(api.permits.list, projectId && allowed ? { projectId } : 'skip');
   const generateUploadUrl = useMutation(api.permits.generateUploadUrl);
   const addPermit = useMutation(api.permits.addPermit);
@@ -114,7 +116,8 @@ export const PermitsScreen = () => {
   if (!allowed) return <AccessDenied message="מסמכים ואישורים זמינים לצוות הניהול בלבד." />;
 
   return (
-    <ScreenBoundary loading={isLoading}>
+    <PremiumLock isLocked={!isProOrPremium} title="ניהול בירוקרטיה והיתרים" description="מסך ההיתרים מאפשר לרכז היתרי בנייה ואישורים מול רשויות. שדרג את חשבונך כדי לגשת אליו.">
+      <ScreenBoundary loading={isLoading}>
       <datalist id="authorities-list">
         <option value="עירייה - ועדה מקומית" />
         <option value="חברת חשמל" />
@@ -269,5 +272,6 @@ export const PermitsScreen = () => {
         )}
       </div>
     </ScreenBoundary>
+    </PremiumLock>
   );
 };

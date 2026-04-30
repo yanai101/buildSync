@@ -1,5 +1,5 @@
 import React from 'react';
-import { Icon, Btn, Badge, EmptyState, PageBackground } from '../components/Shared';
+import { Icon, Btn, Badge, EmptyState, PageBackground, PremiumLock } from '../components/Shared';
 import { BOQ_DATA, fmtMoney } from '../utils/mockData';
 import { ScreenBoundary } from '../components/ScreenBoundary';
 import { Project, Room } from '../types';
@@ -562,8 +562,13 @@ export const BOQScreen = () => {
 
   return (
     <ScreenBoundary loading={loading} error={null} onRetry={() => window.location.reload()}>
-      <div className="page-content">
-        <div style={{display:"flex",gap:12,alignItems:"center",marginBottom:20,flexWrap:"wrap"}}>
+      <PremiumLock
+        isLocked={!isProOrPremium}
+        title="ניהול חכם של כתב כמויות"
+        description="קבל גישה מלאה לניהול כתב הכמויות, ייצוא ל-PDF ומעקב מדויק אחר הזמנות מספקים."
+      >
+        <div className="page-content">
+          <div style={{display:"flex",gap:12,alignItems:"center",marginBottom:20,flexWrap:"wrap"}}>
           <select className="bp-input" value={room} onChange={e=>setRoom(e.target.value)} style={{width:"auto",minWidth:180}}>
             {rooms.map((r: Room)=><option key={r.uid} value={r.uid}>{r.name}</option>)}
           </select>
@@ -709,6 +714,7 @@ export const BOQScreen = () => {
           />
         </div>
       </div>
+      </PremiumLock>
     </ScreenBoundary>
   );
 };

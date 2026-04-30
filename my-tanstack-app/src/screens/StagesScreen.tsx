@@ -10,6 +10,8 @@ import { api } from '../../convex/_generated/api';
 import { ScreenBoundary } from '../components/ScreenBoundary';
 import { STAGES, fmtMoney } from '../utils/mockData';
 import { useRequireRole } from '../hooks/useRequireRole';
+import { useSubscription } from '../hooks/useSubscription';
+import { useAppNotify } from '../hooks/useAppNotify';
 
 type StageGuideTask = {
   legacyId: number;
@@ -187,6 +189,7 @@ const StageCreationGuide = ({
   mode = 'template',
   initialStages,
   hasPreviousStage = false,
+  setFeedback,
 }: {
   onClose: () => void;
   onCreate: (stages: StageGuideStage[]) => Promise<void>;
@@ -196,11 +199,14 @@ const StageCreationGuide = ({
   mode?: 'template' | 'single';
   initialStages?: StageGuideStage[];
   hasPreviousStage?: boolean;
+  setFeedback: (f: any) => void;
 }) => {
   const contractors = useQuery(api.queries.listContractors, { projectId });
   const isSingle = mode === 'single';
   const [draft, setDraft] = React.useState<StageGuideStage[]>(() => initialStages ?? makeStageTemplate(projectStartDate));
   const [selected, setSelected] = React.useState(0);
+
+  const { isProOrPremium } = useSubscription();
 
   const current = draft[selected] ?? draft[0];
   const contractorOptions = contractors ?? [];
@@ -322,6 +328,10 @@ const StageCreationGuide = ({
   };
 
   const addStage = () => {
+    if (!isProOrPremium) {
+      setFeedback({ title: 'שדרוג נדרש', message: 'הוספת שלבי בנייה מותאמים אישית זמינה במסלול Pro ומעלה.', type: 'error' });
+      return;
+    }
     const legacyId = nextLegacyId(draft, 0);
     setDraft(prev => [
       ...prev,
@@ -641,6 +651,7 @@ export const StagesScreen = () => {
   const [addStageOpen, setAddStageOpen] = React.useState(false);
   const { role } = useRequireRole(['owner', 'manager', 'inspector', 'contractor']);
   const isContractor = role === 'contractor';
+  const { isProOrPremium } = useSubscription();
   const currentIdentity = useQuery(api.users.currentIdentity, {});
   const [savingGuide, setSavingGuide] = React.useState(false);
   const [editingStage, setEditingStage] = React.useState<Stage | null>(null);
@@ -1118,7 +1129,9 @@ export const StagesScreen = () => {
       emptyImage="/empty_states/stages.png"
       emptyTitle="אין שלבי בנייה"
       emptyDesc="נראה שעדיין לא הוגדרו שלבים לפרויקט זה. אפשר להתחיל מתבנית המאסטר ולערוך אותה לפני יצירה."
-      emptyAction={() => setGuideOpen(true)}
+      emptyAction={() => {
+        setGuideOpen(true);
+      }}
       emptyActionLabel="צור מתבנית"
       onRetry={refetch}
     >
@@ -1134,7 +1147,13 @@ export const StagesScreen = () => {
             </div>
           </div>
           {!isContractor && (
-            <Btn onClick={() => setAddStageOpen(true)}>
+            <Btn onClick={() => {
+              if (!isProOrPremium) {
+                setFeedback({ title: 'שדרוג נדרש', message: 'הוספת שלבי בנייה זמינה במסלול Pro ומעלה.', type: 'error' });
+                return;
+              }
+              setAddStageOpen(true);
+            }}>
               <Icon n="plus" s={14}/> שלב חדש
             </Btn>
           )}
@@ -1542,6 +1561,7 @@ export const StagesScreen = () => {
           await createStages(stages);
         }}
         saving={savingGuide}
+        setFeedback={setFeedback}
       />
     )}
     {addStageOpen && (
@@ -1554,6 +1574,7 @@ export const StagesScreen = () => {
         onClose={() => setAddStageOpen(false)}
         onCreate={createSingleStage}
         saving={savingGuide}
+        setFeedback={setFeedback}
       />
     )}
     </>

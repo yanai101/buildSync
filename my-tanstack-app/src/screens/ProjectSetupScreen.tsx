@@ -10,6 +10,8 @@ import { api } from '../../convex/_generated/api';
 import { ScreenBoundary } from '../components/ScreenBoundary';
 import { useRequireRole } from '../hooks/useRequireRole';
 import { AccessDenied, AccessLoading } from '../components/AccessDenied';
+import { useSubscription } from '../hooks/useSubscription';
+import { useAppNotify } from '../hooks/useAppNotify';
 
 export interface ProjectConfig {
   name: string;
@@ -29,6 +31,8 @@ export const ProjectSetupScreen = () => {
   const dbProject = useQuery(api.projects.getWithDetails, projectId && allowed ? { projectId } : "skip");
   const { data: project, loading, error, refetch } = useDataSource<Project>('project', { db: dbProject as any });
   const { mutate } = useDataMutation('projects');
+  const { isProOrPremium } = useSubscription();
+  const { notify } = useAppNotify();
 
   const [step, setStep] = React.useState(0);
   const [isEditing, setIsEditing] = React.useState(false);
@@ -55,6 +59,10 @@ export const ProjectSetupScreen = () => {
   const setField = (k: keyof ProjectConfig, v: string | number) => setCfg((c)=> c ? ({...c,[k]:v}) : c);
   const setRoom = (uid: string, k: keyof Room, v: any) => setCfg((c)=> c ? ({...c,rooms:(c.rooms || []).map((r)=>r.uid===uid?{...r,[k]:v}:r)}) : c);
   const addRoom = (floor: number = 1) => {
+    if (!isProOrPremium) {
+      notify({ title: 'שדרוג נדרש', body: 'הוספת חדרים מותאמים אישית זמינה במסלול Pro.', kind: 'error' });
+      return;
+    }
     const uid = `r${Date.now()}`;
     setCfg((c)=> c ? ({...c,rooms:[...(c.rooms || []),{uid,type:"bedroom",name:"חדר שינה חדש",floor,size:16}]}) : c);
   };
@@ -226,7 +234,13 @@ export const ProjectSetupScreen = () => {
                 <div style={{fontSize:12,color:"var(--text2)",marginBottom:4,fontWeight:500}}>מספר קומות</div>
                 <div style={{display:"flex",gap:8}}>
                   {[1,2,3,4].map(n=>(
-                    <div key={n} onClick={()=>setField("floors",n)} style={{width:44,height:44,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:16,cursor:"pointer",border:"2px solid",borderColor:cfg.floors===n?"var(--accent)":"var(--border)",background:cfg.floors===n?"var(--accent-light)":"var(--surface)",color:cfg.floors===n?"var(--accent)":"var(--text2)",transition:"all .15s"}}>
+                    <div key={n} onClick={()=>{
+                      if (!isProOrPremium && n !== cfg.floors) {
+                        notify({ title: 'שדרוג נדרש', body: 'שינוי מספר קומות זמין במסלול Pro.', kind: 'error' });
+                        return;
+                      }
+                      setField("floors",n);
+                    }} style={{width:44,height:44,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:16,cursor:"pointer",border:"2px solid",borderColor:cfg.floors===n?"var(--accent)":"var(--border)",background:cfg.floors===n?"var(--accent-light)":"var(--surface)",color:cfg.floors===n?"var(--accent)":"var(--text2)",transition:"all .15s"}}>
                       {n}
                     </div>
                   ))}

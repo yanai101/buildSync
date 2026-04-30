@@ -6,6 +6,8 @@ import { useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { useDataMutation } from '../hooks/useDataMutation';
 import { ScreenBoundary } from '../components/ScreenBoundary';
+import { useSubscription } from '../hooks/useSubscription';
+import { useAppNotify } from '../hooks/useAppNotify';
 
 const PREDEFINED_CHECKLISTS = [
   {
@@ -54,6 +56,8 @@ export const ChecklistsScreen = () => {
   const { projectId } = useCurrentProject();
   const checklists = useQuery(api.checklists.list, projectId ? { projectId } : 'skip');
   const { mutate } = useDataMutation('checklists');
+  const { isProOrPremium } = useSubscription();
+
   const [feedback, setFeedback] = useState<{ title: string; message: string; type: 'error' | 'success' } | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [isAdding, setIsAdding] = useState(false);
@@ -109,6 +113,10 @@ export const ChecklistsScreen = () => {
   };
 
   const handleAddNewItem = async (checklistId: string) => {
+    if (!isProOrPremium) {
+      setFeedback({ title: 'שדרוג נדרש', message: 'הוספת משימות מותאמות אישית זמינה במסלול Pro.', type: 'error' });
+      return;
+    }
     const text = newItemText[checklistId];
     if (!text?.trim()) return;
     try {
@@ -148,6 +156,10 @@ export const ChecklistsScreen = () => {
   };
 
   const handleAddCustom = async () => {
+    if (!isProOrPremium) {
+      setFeedback({ title: 'שדרוג נדרש', message: 'יצירת צ\'קליסט מותאם אישית זמינה במסלול Pro.', type: 'error' });
+      return;
+    }
     if (!projectId || !customTitle.trim()) return;
     try {
       await mutate('addChecklist', {
@@ -189,7 +201,13 @@ export const ChecklistsScreen = () => {
               <div style={{ background: 'var(--surface)', padding: 20, borderRadius: 12, border: '1px solid var(--border)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                   <h3 style={{ margin: 0, fontSize: 16 }}>{addingCustom ? 'צור צ\'קליסט מותאם אישית' : 'בחר תבנית מוכנה:'}</h3>
-                  <Btn onClick={() => setAddingCustom(!addingCustom)} variant="secondary">
+                  <Btn onClick={() => {
+                    if (!isProOrPremium && !addingCustom) {
+                      setFeedback({ title: 'שדרוג נדרש', message: 'יצירת צ\'קליסט מותאם אישית זמינה במסלול Pro.', type: 'error' });
+                      return;
+                    }
+                    setAddingCustom(!addingCustom);
+                  }} variant="secondary">
                     {addingCustom ? 'חזור לתבניות' : 'צור צ\'קליסט ריק'}
                   </Btn>
                 </div>
@@ -398,7 +416,9 @@ export const ChecklistsScreen = () => {
                               placeholder="משימה חדשה..."
                               value={newItemText[list.id as string] || ''}
                               onChange={e => setNewItemText({ ...newItemText, [list.id as string]: e.target.value })}
-                              onKeyDown={e => e.key === 'Enter' && handleAddNewItem(list.id as string)}
+                              onKeyDown={e => {
+                                if (e.key === 'Enter') handleAddNewItem(list.id as string);
+                              }}
                               style={{ flex: 1, fontSize: 14, padding: '8px 12px' }}
                             />
                             <Btn onClick={() => handleAddNewItem(list.id as string)} variant="secondary" style={{ padding: '8px 16px' }}>

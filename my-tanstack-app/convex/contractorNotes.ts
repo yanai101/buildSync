@@ -81,7 +81,7 @@ export const removeNote = mutation({
     const isAuthor = note.authorUserId === userId;
     const isProjectManager = project.ownerUserId === userId || project.managerUserId === userId;
     const hasManagerRole = user?.role === 'owner' || user?.role === 'manager';
-    if (!isAuthor && !isProjectManager && !hasManagerRole) {
+    if (!isAuthor && !isProjectManager && !hasManagerRole && !user?.isSuperAdmin) {
       throw new Error('Only the author, owner, or manager can delete this note');
     }
 

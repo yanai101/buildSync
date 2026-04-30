@@ -20,6 +20,7 @@ import type * as checklists from "../checklists.js";
 import type * as contractorNotes from "../contractorNotes.js";
 import type * as dailyLogs from "../dailyLogs.js";
 import type * as dashboard from "../dashboard.js";
+import type * as debugQuery from "../debugQuery.js";
 import type * as http from "../http.js";
 import type * as invitations from "../invitations.js";
 import type * as mutations from "../mutations.js";
@@ -57,6 +58,7 @@ declare const fullApi: ApiFromModules<{
   contractorNotes: typeof contractorNotes;
   dailyLogs: typeof dailyLogs;
   dashboard: typeof dashboard;
+  debugQuery: typeof debugQuery;
   http: typeof http;
   invitations: typeof invitations;
   mutations: typeof mutations;

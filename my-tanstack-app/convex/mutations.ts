@@ -109,7 +109,7 @@ const requirePhotoManager = async (ctx: MutationCtx) => {
   }
 
   const user = await ctx.db.get(userId);
-  if (user?.role !== 'owner' && user?.role !== 'manager') {
+  if (user?.role !== 'owner' && user?.role !== 'manager' && !user?.isSuperAdmin) {
     throw new Error('Only an owner or manager can update photos');
   }
 };

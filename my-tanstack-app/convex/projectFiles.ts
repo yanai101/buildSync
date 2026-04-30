@@ -82,7 +82,7 @@ export const deleteProjectFile = mutation({
     const isUploader = file.uploaderUserId === userId;
     const isProjectManager = project.ownerUserId === userId || project.managerUserId === userId;
     const hasManagerRole = user?.role === 'owner' || user?.role === 'manager';
-    if (!isUploader && !isProjectManager && !hasManagerRole) {
+    if (!isUploader && !isProjectManager && !hasManagerRole && !user?.isSuperAdmin) {
       throw new Error('Only the uploader, owner, or manager can delete this file');
     }
 

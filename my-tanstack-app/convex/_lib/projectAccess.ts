@@ -37,7 +37,7 @@ export const requireProjectFileUser = async (ctx: Ctx, projectId: Id<'projects'>
     user?.role === 'inspector' ||
     user?.role === 'contractor';
 
-  if (!isProjectMember && !hasProjectTeamRole) {
+  if (!isProjectMember && !hasProjectTeamRole && !user?.isSuperAdmin) {
     throw new Error('Only project team members can access files');
   }
 
@@ -49,7 +49,7 @@ export const requireProjectFileManager = async (ctx: Ctx, projectId: Id<'project
   const isProjectManager = project.ownerUserId === userId || project.managerUserId === userId;
   const hasManagerRole = user?.role === 'owner' || user?.role === 'manager';
 
-  if (!isProjectManager && !hasManagerRole) {
+  if (!isProjectManager && !hasManagerRole && !user?.isSuperAdmin) {
     throw new Error('Only an owner or manager can manage project files');
   }
 
@@ -71,7 +71,7 @@ export const requireProjectOwner = async (ctx: Ctx, projectId: Id<'projects'>) =
     throw new Error('Project not found');
   }
 
-  if (project.ownerUserId !== userId) {
+  if (project.ownerUserId !== userId && !user?.isSuperAdmin) {
     throw new Error('Only the project owner can perform this action');
   }
 

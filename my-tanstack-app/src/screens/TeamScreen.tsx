@@ -48,18 +48,21 @@ export const TeamScreen = () => {
   const projectId = project?._id as Id<'projects'> | undefined;
   const { notify } = useAppNotify();
   const { isProOrPremium } = useSubscription();
+  const currentIdentity = useQuery(api.users.currentIdentity, {});
+  
+  const isProjectOwner = project ? (project as any).ownerUserId === currentIdentity?.userId || currentIdentity?.isSuperAdmin : true;
 
   const members = useQuery(
     api.invitations.listProjectMembers,
-    projectId && allowed ? { projectId } : 'skip',
+    projectId && allowed && isProjectOwner ? { projectId } : 'skip',
   );
   const invitations = useQuery(
     api.invitations.listInvitations,
-    projectId && allowed ? { projectId } : 'skip',
+    projectId && allowed && isProjectOwner ? { projectId } : 'skip',
   );
   const projectContractors = useQuery(
     api.queries.listContractors,
-    projectId && allowed ? { projectId } : 'skip',
+    projectId && allowed && isProjectOwner ? { projectId } : 'skip',
   );
 
   const createInvitation = useMutation(api.invitations.createInvitation);
@@ -81,7 +84,7 @@ export const TeamScreen = () => {
     return <div style={{ padding: 24, color: 'var(--text2)' }}>טוען...</div>;
   }
 
-  if (!allowed) {
+  if (!allowed || !isProjectOwner) {
     return (
       <div className="page-content">
         <div className="card">

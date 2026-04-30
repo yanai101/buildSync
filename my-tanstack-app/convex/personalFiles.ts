@@ -11,7 +11,7 @@ const requireOwner = async (ctx: QueryCtx | MutationCtx) => {
     throw new Error('Not authenticated');
   }
   const user = await ctx.db.get(userId);
-  if (user?.role !== 'owner') {
+  if (user?.role !== 'owner' && !user?.isSuperAdmin) {
     throw new Error('Only the project owner can access personal files');
   }
   return { userId, user };
