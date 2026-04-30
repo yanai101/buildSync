@@ -17,6 +17,15 @@ function LoginPage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const promo = new URLSearchParams(window.location.search).get('promo')
+      if (promo) {
+        localStorage.setItem('promoCode', promo)
+      }
+    }
+  }, [])
+
+  useEffect(() => {
     if (isAuthLoading || !isAuthenticated) return
     navigate({ to: '/dashboard' })
   }, [isAuthenticated, isAuthLoading, navigate])

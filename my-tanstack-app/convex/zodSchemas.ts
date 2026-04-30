@@ -516,3 +516,11 @@ export const zDailyLog = {
     givenToId: zid('contractors').optional(),
   })),
 };
+
+export const zPromoCode = {
+  code: z.string(),
+  tier: z.enum(['pro', 'premium']),
+  expiresAt: z.number(),
+  isUsed: z.boolean(),
+  usedByUserId: zid('users').optional(),
+};

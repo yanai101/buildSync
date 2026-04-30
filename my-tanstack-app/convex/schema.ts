@@ -149,4 +149,7 @@ export default defineSchema({
   dailyLogs: defineTable(zodToConvexFields(s.zDailyLog))
     .index('by_project', ['projectId'])
     .index('by_project_date', ['projectId', 'date']),
+
+  promoCodes: defineTable(zodToConvexFields(s.zPromoCode))
+    .index('by_code', ['code']),
 });

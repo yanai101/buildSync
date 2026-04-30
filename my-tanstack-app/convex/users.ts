@@ -113,3 +113,39 @@ export const updatePassword = action({
   },
 });
 
+export const redeemPromoCode = mutation({
+  args: { code: v.string() },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) return { success: false, error: 'Unauthorized' };
+
+    const promo = await ctx.db
+      .query('promoCodes')
+      .withIndex('by_code', (q) => q.eq('code', args.code))
+      .first();
+
+    if (!promo) {
+      return { success: false, error: 'קוד ההרשמה אינו קיים' };
+    }
+    
+    if (promo.isUsed) {
+      return { success: false, error: 'קוד ההרשמה כבר נוצל' };
+    }
+    
+    if (Date.now() > promo.expiresAt) {
+      return { success: false, error: 'קוד ההרשמה פג תוקף' };
+    }
+
+    // Apply the subscription
+    await ctx.db.patch(userId, { subscriptionTier: promo.tier });
+    
+    // Mark code as used
+    await ctx.db.patch(promo._id, {
+      isUsed: true,
+      usedByUserId: userId,
+    });
+
+    return { success: true, tier: promo.tier };
+  },
+});
+

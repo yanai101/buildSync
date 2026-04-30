@@ -147,6 +147,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const isPublicRoute = (path: string) =>
     publicRoutes.includes(path) || path.startsWith('/join/')
 
+  const redeemPromoCode = useMutation(api.users.redeemPromoCode)
+
   React.useEffect(() => {
     if (isLoading) return
     if (!isAuthenticated && !isPublicRoute(currentPath)) {
@@ -160,6 +162,23 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       navigate({ to: '/dashboard' })
     }
   }, [currentPath, isAuthenticated, isLoading, navigate])
+
+  // Process promo code if authenticated
+  React.useEffect(() => {
+    if (isAuthenticated && !isLoading && typeof window !== 'undefined') {
+      const code = localStorage.getItem('promoCode');
+      if (code) {
+        redeemPromoCode({ code }).then((res) => {
+          if (res.success) {
+            alert('הקופון הופעל בהצלחה! החשבון שלך שודרג.');
+          } else {
+            console.error('Failed to redeem promo code:', res.error);
+          }
+          localStorage.removeItem('promoCode');
+        });
+      }
+    }
+  }, [isAuthenticated, isLoading, redeemPromoCode])
 
   React.useEffect(() => {
     if (isLoading || isProjectLoading) return

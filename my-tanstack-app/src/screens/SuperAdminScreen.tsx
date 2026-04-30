@@ -12,10 +12,15 @@ export function SuperAdminScreen() {
   const deleteUserCascade = useMutation(api.superAdmin.deleteUserCascade);
   const forceResetPassword = useAction(api.superAdmin.forceResetPassword);
   
+  const promoCodes = useQuery(api.superAdmin.getPromoCodes, isSuperAdmin ? {} : 'skip');
+  const generatePromoCode = useMutation(api.superAdmin.generatePromoCode);
+
   const [editingUser, setEditingUser] = useState<any | null>(null);
   const [showConfirmDelete, setShowConfirmDelete] = useState<Id<'users'> | null>(null);
   const [resetPasswordUser, setResetPasswordUser] = useState<any | null>(null);
   const [newPassword, setNewPassword] = useState('');
+  const [promoTier, setPromoTier] = useState<'pro' | 'premium'>('pro');
+  const [promoValidity, setPromoValidity] = useState<number>(1);
 
   if (users === undefined) {
     return (
@@ -31,6 +36,15 @@ export function SuperAdminScreen() {
       await deleteUserCascade({ userId: showConfirmDelete });
     }
     setShowConfirmDelete(null);
+  };
+
+  const handleGeneratePromo = async () => {
+    try {
+      await generatePromoCode({ tier: promoTier, validityDays: promoValidity });
+      alert('הקוד נוצר בהצלחה!');
+    } catch (e: any) {
+      alert('שגיאה ביצירת הקוד: ' + e.message);
+    }
   };
 
   return (
@@ -129,6 +143,74 @@ export function SuperAdminScreen() {
             </tbody>
           </table>
         </div>
+      </div>
+
+      <div className="card" style={{ padding: 24, marginBottom: 24 }}>
+        <h2 style={{ fontSize: 20, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Icon n="link" s={24} c="var(--accent)" />
+          קישורי הרשמה (Promo Codes)
+        </h2>
+        <div style={{ display: 'flex', gap: 16, marginBottom: 24, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+          <div>
+            <label style={{ display: 'block', fontSize: 13, marginBottom: 6, color: 'var(--text2)' }}>סוג מנוי</label>
+            <select className="input" value={promoTier} onChange={(e) => setPromoTier(e.target.value as any)}>
+              <option value="pro">Pro</option>
+              <option value="premium">Premium</option>
+            </select>
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: 13, marginBottom: 6, color: 'var(--text2)' }}>תוקף (ימים)</label>
+            <input type="number" min="1" max="365" className="input" value={promoValidity} onChange={(e) => setPromoValidity(Number(e.target.value))} />
+          </div>
+          <Btn variant="primary" onClick={handleGeneratePromo} style={{ height: 42 }}>
+            <Icon n="plus" s={18} /> צור קוד חדש
+          </Btn>
+        </div>
+
+        {promoCodes !== undefined && promoCodes.length > 0 && (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'right' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid var(--border)', color: 'var(--text3)', fontSize: 13 }}>
+                  <th style={{ padding: 12, fontWeight: 600 }}>קוד</th>
+                  <th style={{ padding: 12, fontWeight: 600 }}>קישור הרשמה</th>
+                  <th style={{ padding: 12, fontWeight: 600 }}>מנוי</th>
+                  <th style={{ padding: 12, fontWeight: 600 }}>פג תוקף</th>
+                  <th style={{ padding: 12, fontWeight: 600 }}>סטטוס</th>
+                </tr>
+              </thead>
+              <tbody>
+                {promoCodes.map((p) => {
+                  const link = `${typeof window !== 'undefined' ? window.location.origin : ''}/register?promo=${p.code}`;
+                  const isExpired = Date.now() > p.expiresAt;
+                  return (
+                    <tr key={p._id} style={{ borderBottom: '1px solid var(--border)', opacity: p.isUsed ? 0.6 : 1 }}>
+                      <td style={{ padding: 12, fontWeight: 'bold' }}>{p.code}</td>
+                      <td style={{ padding: 12 }}>
+                        <Btn variant="outline" onClick={() => { navigator.clipboard.writeText(link); alert('הקישור הועתק!'); }} style={{ padding: '4px 8px', fontSize: 12 }}>
+                          <Icon n="copy" s={14} /> העתק קישור
+                        </Btn>
+                      </td>
+                      <td style={{ padding: 12 }}>{p.tier === 'premium' ? 'Premium' : 'Pro'}</td>
+                      <td style={{ padding: 12, color: isExpired && !p.isUsed ? '#EF4444' : 'inherit' }}>
+                        {new Date(p.expiresAt).toLocaleDateString('he-IL')}
+                      </td>
+                      <td style={{ padding: 12 }}>
+                        {p.isUsed ? (
+                          <span style={{ color: 'var(--text3)' }}>נוצל</span>
+                        ) : isExpired ? (
+                          <span style={{ color: '#EF4444' }}>פג תוקף</span>
+                        ) : (
+                          <span style={{ color: '#22C55E' }}>פעיל</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {!!editingUser && (

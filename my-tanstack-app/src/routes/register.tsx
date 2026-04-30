@@ -20,11 +20,17 @@ function RegisterPage() {
   const [error, setError] = useState<string | null>(null)
 
   // If an invite code was passed via ?code=, redirect to the join flow.
+  // If a promo code was passed via ?promo=, save it to local storage.
   useEffect(() => {
     if (typeof window === 'undefined') return
-    const code = new URLSearchParams(window.location.search).get('code')
+    const params = new URLSearchParams(window.location.search)
+    const code = params.get('code')
     if (code) {
       navigate({ to: '/join/$code', params: { code } })
+    }
+    const promo = params.get('promo')
+    if (promo) {
+      localStorage.setItem('promoCode', promo)
     }
   }, [navigate])
 

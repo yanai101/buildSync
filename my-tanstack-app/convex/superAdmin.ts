@@ -187,3 +187,34 @@ export const getUserAccounts = query({
       .collect();
   },
 });
+
+export const getPromoCodes = query({
+  args: {},
+  handler: async (ctx) => {
+    await checkSuperAdmin(ctx);
+    return await ctx.db.query('promoCodes').order('desc').collect();
+  },
+});
+
+export const generatePromoCode = mutation({
+  args: {
+    tier: v.union(v.literal('pro'), v.literal('premium')),
+    validityDays: v.number(),
+  },
+  handler: async (ctx, args) => {
+    await checkSuperAdmin(ctx);
+    
+    // Generate a random string of 8 characters
+    const code = Math.random().toString(36).substring(2, 10).toUpperCase();
+    const expiresAt = Date.now() + args.validityDays * 24 * 60 * 60 * 1000;
+    
+    await ctx.db.insert('promoCodes', {
+      code,
+      tier: args.tier,
+      expiresAt,
+      isUsed: false,
+    });
+    
+    return code;
+  },
+});
