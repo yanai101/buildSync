@@ -6,11 +6,12 @@ import { ScreenBoundary } from '../components/ScreenBoundary';
 import { PageBackground, EmptyState, Btn, Icon, ConfirmDialog, FeedbackModal } from '../components/Shared';
 import { useRequireRole } from '../hooks/useRequireRole';
 import { AccessDenied, AccessLoading } from '../components/AccessDenied';
-
+import { useSubscription } from '../hooks/useSubscription';
 
 export const DailyLogsScreen = () => {
   const { role, allowed, loading: roleLoading } = useRequireRole(['owner', 'manager', 'inspector', 'contractor']);
   const { projectId } = useCurrentProject();
+  const { isProOrPremium } = useSubscription();
   const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [activeTab, setActiveTab] = useState<'log' | 'history'>('log');
   
@@ -96,6 +97,10 @@ export const DailyLogsScreen = () => {
   };
 
   const exportPDF = async (targetLog: any) => {
+    if (!isProOrPremium) {
+      setFeedback({ title: "תכונת Pro", message: "יצוא ל-PDF זמין במסלול Pro ומעלה.", type: "info" });
+      return;
+    }
     if (exporting || !targetLog) return;
     setExporting(true);
     try {

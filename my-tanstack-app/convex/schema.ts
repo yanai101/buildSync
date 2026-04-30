@@ -158,4 +158,8 @@ export default defineSchema({
     .index('by_user', ['userId'])
     .index('by_promo', ['promoCodeId'])
     .index('by_promo_and_user', ['promoCodeId', 'userId']),
+
+  projectAlerts: defineTable(zodToConvexFields(s.zProjectAlert))
+    .index('by_project', ['projectId'])
+    .index('by_project_read', ['projectId', 'isRead']),
 });

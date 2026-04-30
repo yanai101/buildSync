@@ -41,6 +41,8 @@ export const zExpenseStatus = z.enum(['שולם', 'ממתין']);
 
 export const zMessageThread = z.enum(['internal', 'contractor']);
 
+export const zAlertType = z.enum(['warning', 'error', 'info', 'success']);
+
 export const zRoomType = z.enum([
   'living',
   'dining',
@@ -530,4 +532,13 @@ export const zPromoRedemption = {
   promoCodeId: zid('promoCodes'),
   userId: zid('users'),
   redeemedAt: z.number(),
+};
+
+export const zProjectAlert = {
+  projectId: zid('projects'),
+  type: zAlertType,
+  text: z.string(),
+  isRead: z.boolean().default(false),
+  dateLabel: z.string().optional(),
+  createdAt: z.number(),
 };

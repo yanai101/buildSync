@@ -8,18 +8,21 @@ import { useDashboardOverview } from '../hooks/useDashboardOverview';
 import { BudgetSummaryCards } from '../components/BudgetSummaryCards';
 import { useRequireRole } from '../hooks/useRequireRole';
 
+import { useMutation } from 'convex/react';
+import { api } from '../../convex/_generated/api';
+
 export const DashboardScreen = () => {
   const { role } = useRequireRole(['owner', 'manager', 'inspector', 'contractor']);
   const [showAllStages, setShowAllStages] = React.useState(false);
   const { overview } = useDashboardOverview();
-  
   const { data: dashboard, loading, error, refetch } = useDataSource<any>('dashboard', { db: overview });
+  const seedAlert = useMutation(api.dashboard.seedAlert);
 
   if (!dashboard) {
     return <ScreenBoundary loading={loading} error={error} onRetry={refetch}><div/></ScreenBoundary>;
   }
 
-  const { project, stats, stages, recentActivity, topOverruns } = dashboard;
+  const { project, stats, stages, recentActivity, topOverruns, alerts } = dashboard;
   const stageRows = stages ?? [];
   const rc = ROLE_COLORS;
   const fmtDate = (dateStr: string) => {
@@ -36,15 +39,46 @@ export const DashboardScreen = () => {
   return (
     <ScreenBoundary loading={loading} error={error} onRetry={refetch}>
       <div className="page-content">
-        <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:24}}>
-          <div style={{width:42,height:42,borderRadius:12,background:"var(--accent-light)",color:"var(--accent)",display:"flex",alignItems:"center",justifyContent:"center"}}>
-            <Icon n="home" s={22}/>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:24}}>
+          <div style={{display:"flex",alignItems:"center",gap:12}}>
+            <div style={{width:42,height:42,borderRadius:12,background:"var(--accent-light)",color:"var(--accent)",display:"flex",alignItems:"center",justifyContent:"center"}}>
+              <Icon n="home" s={22}/>
+            </div>
+            <div>
+              <h1 style={{fontSize:22,fontWeight:800,margin:0}}>{project.name}</h1>
+              <div style={{fontSize:13,color:"var(--text3)",marginTop:2}}>{project.address}</div>
+            </div>
           </div>
-          <div>
-            <h1 style={{fontSize:22,fontWeight:800,margin:0}}>{project.name}</h1>
-            <div style={{fontSize:13,color:"var(--text3)",marginTop:2}}>{project.address}</div>
-          </div>
+          {import.meta.env.DEV && role !== 'contractor' && (
+            <button onClick={() => seedAlert({ projectId: project._id })} style={{background: 'var(--accent)', color: '#fff', padding: '6px 12px', borderRadius: 8, fontSize: 12, border: 'none', cursor: 'pointer', fontWeight: 'bold'}}>
+              + הוסף התראת טסט
+            </button>
+          )}
         </div>
+
+        {alerts && alerts.length > 0 && (
+          <div style={{
+            background: 'var(--warning-light)',
+            border: '1px solid var(--warning-border, rgba(245, 158, 11, 0.3))',
+            borderRadius: 12,
+            padding: 16,
+            marginBottom: 24,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontWeight: 600, color: 'var(--warning-dark, #B45309)' }}>
+              <Icon n="alert" s={20} />
+              <span>{alerts[0].text}</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: 13, color: 'var(--text2)' }}>
+              <span>{alerts[0].dateLabel}</span>
+              <button style={{ background: 'none', border: 'none', color: 'var(--warning-dark, #B45309)', fontWeight: 700, cursor: 'pointer', textDecoration: 'underline' }}>
+                ראה הכל ({alerts.length})
+              </button>
+            </div>
+          </div>
+        )}
 
         {role !== 'contractor' && <BudgetSummaryCards summary={stats} style={{marginBottom:24}} />}
 

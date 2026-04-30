@@ -7,6 +7,7 @@ import { Btn, Icon, Input, Modal, Select } from '../components/Shared';
 import { useCurrentProject } from '../hooks/useCurrentProject';
 import { useRequireRole } from '../hooks/useRequireRole';
 import { useAppNotify } from '../hooks/useAppNotify';
+import { useSubscription } from '../hooks/useSubscription';
 
 type InviteRole = 'manager' | 'inspector' | 'contractor';
 
@@ -46,6 +47,7 @@ export const TeamScreen = () => {
   const { project } = useCurrentProject();
   const projectId = project?._id as Id<'projects'> | undefined;
   const { notify } = useAppNotify();
+  const { isProOrPremium } = useSubscription();
 
   const members = useQuery(
     api.invitations.listProjectMembers,
@@ -108,6 +110,15 @@ export const TeamScreen = () => {
   }
 
   const openInvite = () => {
+    const currentTeamSize = (members?.owner ? 1 : 0) + (members?.manager ? 1 : 0) + (members?.inspector ? 1 : 0) + (members?.contractors?.length || 0);
+    if (!isProOrPremium && currentTeamSize >= 5) {
+      notify({
+        title: 'הגבלת חשבון חינמי',
+        body: 'במסלול החינמי ניתן להוסיף עד 5 חברי צוות. שדרג ל-Pro כדי להוסיף חברים נוספים.',
+        kind: 'error',
+      });
+      return;
+    }
     setInviteForm({ role: 'manager', name: '', email: '', contractorId: '' });
     setCreatedCode(null);
     setShowInvite(true);

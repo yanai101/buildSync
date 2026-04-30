@@ -12,7 +12,7 @@ export const getOverview = query({
       return null;
     }
 
-    const [stages, budgetCategories, recentActivity] = await Promise.all([
+    const [stages, budgetCategories, recentActivity, projectAlerts] = await Promise.all([
       ctx.db
         .query('stages')
         .withIndex('by_project_sort', (q) => q.eq('projectId', args.projectId))
@@ -26,6 +26,11 @@ export const getOverview = query({
         .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
         .order('desc')
         .take(4),
+      ctx.db
+        .query('projectAlerts')
+        .withIndex('by_project_read', (q) => q.eq('projectId', args.projectId).eq('isRead', false))
+        .order('desc')
+        .take(5),
     ]);
 
     const activeStage =
@@ -99,6 +104,29 @@ export const getOverview = query({
         text: item.text,
         createdAt: item.createdAt,
       })),
+      alerts: projectAlerts.map((alert) => ({
+        id: alert._id,
+        type: alert.type,
+        text: alert.text,
+        dateLabel: alert.dateLabel || 'היום',
+        createdAt: alert.createdAt,
+      })),
     };
+  },
+});
+
+import { mutation } from './_generated/server';
+
+export const seedAlert = mutation({
+  args: { projectId: v.id('projects') },
+  handler: async (ctx, args) => {
+    await ctx.db.insert('projectAlerts', {
+      projectId: args.projectId,
+      type: 'warning',
+      text: 'טיח חוץ לא הושלם - סיכון גשמי חורף',
+      isRead: false,
+      dateLabel: 'היום',
+      createdAt: Date.now(),
+    });
   },
 });

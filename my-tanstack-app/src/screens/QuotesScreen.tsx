@@ -12,6 +12,7 @@ import { useProjectFileUploader } from '../hooks/useProjectFileUploader';
 import { useRequireRole } from '../hooks/useRequireRole';
 import { AccessDenied, AccessLoading } from '../components/AccessDenied';
 import type { Id } from '../../convex/_generated/dataModel';
+import { useSubscription } from '../hooks/useSubscription';
 
 export interface Quote {
   id: any;
@@ -38,6 +39,7 @@ export interface QuoteTopic {
 }
 
 export const QuotesScreen = () => {
+  const { isProOrPremium } = useSubscription();
   const { allowed, loading: roleLoading } = useRequireRole(['owner']);
   const { projectId } = useCurrentProject();
   
@@ -400,7 +402,13 @@ export const QuotesScreen = () => {
                   <Btn size="sm" variant="ghost" onClick={() => { setForm({ ...emptyForm, topicKey: topic.key }); setEditing(null); setAddOpen(true); }}>
                     <Icon n="plus" s={12} /> הצעה לנושא
                   </Btn>
-                  <Btn size="sm" disabled={tQuotes.length < 2} onClick={() => setCompareTopicId(topic.key)}>
+                  <Btn size="sm" disabled={tQuotes.length < 2} onClick={() => {
+                    if (!isProOrPremium) {
+                      setFeedback({ title: "תכונת Pro", message: "השוואת הצעות קבלנים וזיהוי פערים זמינים במסלול Pro ומעלה.", type: "info" });
+                      return;
+                    }
+                    setCompareTopicId(topic.key);
+                  }}>
                     <Icon n="chart" s={12} /> השווה ({tQuotes.length})
                   </Btn>
                 </div>

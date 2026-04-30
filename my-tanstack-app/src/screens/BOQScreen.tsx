@@ -285,10 +285,14 @@ import html2pdf from 'html2pdf.js';
 import { BOQPrintTemplate } from '../components/BOQPrintTemplate';
 import { useRequireRole } from '../hooks/useRequireRole';
 import { AccessDenied, AccessLoading } from '../components/AccessDenied';
+import { useSubscription } from '../hooks/useSubscription';
+import { useAppNotify } from '../hooks/useAppNotify';
 
 export const BOQScreen = () => {
   const { allowed, loading: roleLoading } = useRequireRole(['owner', 'manager', 'inspector']);
   const { projectId } = useCurrentProject();
+  const { notify } = useAppNotify();
+  const { isProOrPremium } = useSubscription();
   const dbBoq = useQuery(api.queries.listBoq, projectId && allowed ? { projectId } : "skip");
   const dbProject = useQuery(api.projects.getWithDetails, projectId && allowed ? { projectId } : "skip");
   const addBoqItem = useMutation(api.mutations.addBoqItem);
@@ -313,6 +317,10 @@ export const BOQScreen = () => {
   const rooms = (project as any)?.rooms || [];
 
   const handleExportPDF = async () => {
+    if (!isProOrPremium) {
+      notify({ title: 'תכונת Pro', body: 'ייצוא כתב כמויות ל-PDF זמין במסלול Pro ומעלה.', kind: 'info' });
+      return;
+    }
     if (!printRef.current) return;
     setExporting(true);
     try {

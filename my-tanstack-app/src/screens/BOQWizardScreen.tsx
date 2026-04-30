@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Icon, Btn, ProgressBar, FeedbackModal, EmptyState, PageBackground } from '../components/Shared';
+import { Icon, Btn, ProgressBar, FeedbackModal, EmptyState, PageBackground, PremiumLock } from '../components/Shared';
 import { useDataSource } from '../hooks/useDataSource';
 import { useDataMutation } from '../hooks/useDataMutation';
 import { ScreenBoundary } from '../components/ScreenBoundary';
@@ -15,6 +15,7 @@ import { getCatalogForRoom } from '../data/boqCatalog';
 import { useRequireRole } from '../hooks/useRequireRole';
 import { AccessDenied, AccessLoading } from '../components/AccessDenied';
 import type { Id } from '../../convex/_generated/dataModel';
+import { useSubscription } from '../hooks/useSubscription';
 
 // ── CONSTANTS & CATALOG ───────────────────────────────────────────────────────
 
@@ -255,6 +256,7 @@ const AddItemWidget = ({
 // ── BOQ WIZARD SCREEN ───────────────────────────────────────────────────────
 
 export const BOQWizardScreen = () => {
+  const { isProOrPremium, isLoaded: subscriptionLoaded } = useSubscription();
   const { allowed, loading: roleLoading } = useRequireRole(['owner', 'manager']);
   const { projectId } = useCurrentProject();
   const dbProject = useQuery(api.projects.getWithDetails, projectId && allowed ? { projectId } : "skip");
@@ -750,7 +752,7 @@ export const BOQWizardScreen = () => {
     }
   };
 
-  if (roleLoading) return <AccessLoading />;
+  if (roleLoading || !subscriptionLoaded) return <AccessLoading />;
   if (!allowed) return <AccessDenied message="אשף הכמויות וניהול ה-BoQ מורשים ליזם ומנהל הפרויקט בלבד." />;
 
   if (!project) return <ScreenBoundary loading={loading} error={error} onRetry={refetch}><div/></ScreenBoundary>;
@@ -784,7 +786,12 @@ export const BOQWizardScreen = () => {
 
     return (
       <ScreenBoundary loading={loading} error={error} onRetry={refetch}>
-        <div className="page-content" style={{maxWidth:1200,margin:"0 auto",padding:"20px"}}>
+        <PremiumLock 
+          isLocked={!isProOrPremium} 
+          title="אשף הכמויות זמין במסלול Pro ומעלה"
+          description="שדרג את החשבון שלך כדי לקבל גישה לאשף שיעזור לך להכין כתב כמויות מדויק בקליק, כולל הצעות חכמות וייצוא ממותג ל-PDF."
+        >
+          <div className="page-content" style={{maxWidth:1200,margin:"0 auto",padding:"20px"}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",marginBottom:32}}>
             <div>
               <h1 style={{fontSize:28,fontWeight:900,margin:0,color:"#1A1A1A"}}>אשף כתב כמויות</h1>
@@ -892,7 +899,8 @@ export const BOQWizardScreen = () => {
               title="ריכוז כמויות כולל (סיכום אשף)"
             />
           </div>
-        </div>
+          </div>
+        </PremiumLock>
       </ScreenBoundary>
     );
   }
@@ -901,21 +909,27 @@ export const BOQWizardScreen = () => {
   if (!currentRoom) {
     return (
       <ScreenBoundary loading={loading} error={error} onRetry={refetch}>
-        <div style={{ position: 'relative', zIndex: 1, minHeight: 400, display: 'flex', flexDirection: 'column' }}>
-          <PageBackground image="/empty_states/boq.png" />
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <EmptyState 
-              icon="alert-circle" 
-              title="לא נמצאו חדרים בפרויקט" 
-          description="אשף הכמויות מבוסס על החדרים שהוגדרו בפרויקט. כדי להתחיל, יש להגדיר קודם את מבנה הבית."
-          action={
-            <Btn onClick={() => window.location.href = '/setup'} style={{margin: "0 auto", padding: "12px 24px"}}>
-              <Icon n="settings" s={18} /> מעבר להגדרות הבית
-            </Btn>
-          }
-        />
+        <PremiumLock 
+          isLocked={!isProOrPremium} 
+          title="אשף הכמויות זמין במסלול Pro ומעלה"
+          description="שדרג את החשבון שלך כדי לקבל גישה לאשף שיעזור לך להכין כתב כמויות מדויק בקליק, כולל הצעות חכמות וייצוא ממותג ל-PDF."
+        >
+          <div style={{ position: 'relative', zIndex: 1, minHeight: 400, display: 'flex', flexDirection: 'column' }}>
+            <PageBackground image="/empty_states/boq.png" />
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <EmptyState 
+                icon="alert-circle" 
+                title="לא נמצאו חדרים בפרויקט" 
+                description="אשף הכמויות מבוסס על החדרים שהוגדרו בפרויקט. כדי להתחיל, יש להגדיר קודם את מבנה הבית."
+                action={
+                  <Btn onClick={() => window.location.href = '/setup'} style={{margin: "0 auto", padding: "12px 24px"}}>
+                    <Icon n="settings" s={18} /> מעבר להגדרות הבית
+                  </Btn>
+                }
+              />
+            </div>
           </div>
-        </div>
+        </PremiumLock>
       </ScreenBoundary>
     );
   }
@@ -931,9 +945,14 @@ export const BOQWizardScreen = () => {
 
   return (
     <ScreenBoundary loading={loading} error={error} onRetry={refetch}>
-      <div className="page-content" style={{maxWidth:1200,margin:"0 auto",padding:"20px"}}>
-        
-        {/* Header Section */}
+      <PremiumLock 
+        isLocked={!isProOrPremium} 
+        title="אשף הכמויות זמין במסלול Pro ומעלה"
+        description="שדרג את החשבון שלך כדי לקבל גישה לאשף שיעזור לך להכין כתב כמויות מדויק בקליק, כולל הצעות חכמות וייצוא ממותג ל-PDF."
+      >
+        <div className="page-content" style={{maxWidth:1200,margin:"0 auto",padding:"20px"}}>
+          
+          {/* Header Section */}
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",marginBottom:32}}>
           <div>
             <h1 style={{fontSize:28,fontWeight:900,margin:0,color:"#1A1A1A"}}>אשף כתב כמויות</h1>
@@ -1228,6 +1247,7 @@ export const BOQWizardScreen = () => {
           </div>
         )}
       </div>
+      </PremiumLock>
     </ScreenBoundary>
   );
 };

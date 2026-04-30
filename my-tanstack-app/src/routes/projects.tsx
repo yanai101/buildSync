@@ -5,6 +5,7 @@ import { useCurrentProject } from '~/hooks/useCurrentProject';
 import { Btn, Icon, FeedbackModal, ConfirmDialog } from '~/components/Shared';
 import { useDataMutation } from '~/hooks/useDataMutation';
 import { CreateProjectWizard } from '~/components/CreateProjectWizard';
+import { useSubscription } from '~/hooks/useSubscription';
 
 export const Route = createFileRoute('/projects')({
   component: ProjectsRoute,
@@ -14,6 +15,7 @@ function ProjectsRoute() {
   const navigate = useNavigate();
   const { user, projects, projectId, setCurrentProject, isMock } = useCurrentProject();
   const { mutate } = useDataMutation('project');
+  const { isProOrPremium } = useSubscription();
   
   const [isWizardOpen, setIsWizardOpen] = React.useState(false);
   const [isDeleting, setIsDeleting] = React.useState<string | null>(null);
@@ -21,9 +23,25 @@ function ProjectsRoute() {
   const [isSaving, setIsSaving] = React.useState(false);
   const [feedback, setFeedback] = React.useState<{ title: string; message: string; type: 'success' | 'error' | 'info' } | null>(null);
 
+  const handleOpenWizard = () => {
+    if (!isProOrPremium && projects.length >= 1) {
+      setFeedback({
+        title: "הגבלת חשבון חינמי",
+        message: "במסלול החינמי ניתן לנהל פרויקט אחד בלבד. שדרג למסלול Pro כדי להוסיף ולנהל פרויקטים נוספים.",
+        type: "info"
+      });
+      return;
+    }
+    setIsWizardOpen(true);
+  };
+
   const handleCreate = async (data: any) => {
     if (isMock) {
       setFeedback({ title: "פעולה חסומה", message: "יצירת פרויקטים אינה זמינה במצב דמו (Mock).", type: "info" });
+      return;
+    }
+    if (!isProOrPremium && projects.length >= 1) {
+      setFeedback({ title: "הגבלת חשבון חינמי", message: "לא ניתן ליצור פרויקט נוסף במסלול החינמי.", type: "error" });
       return;
     }
     setIsSaving(true);
@@ -94,7 +112,7 @@ function ProjectsRoute() {
           <Icon n="plus" s={48} c="#fff" />
         </div>
         <h1 style={{ fontSize: 32, fontWeight: 900, marginBottom: 12, textAlign: 'center' }}>בוא נתחיל פרויקט חדש</h1>
-        <Btn id="tour-create-project" size="lg" onClick={() => setIsWizardOpen(true)} style={{ padding: '16px 40px', fontSize: 18 }}>
+        <Btn id="tour-create-project" size="lg" onClick={handleOpenWizard} style={{ padding: '16px 40px', fontSize: 18 }}>
           <Icon n="plus" s={20} />
           צור פרויקט ראשון
         </Btn>
@@ -121,7 +139,7 @@ function ProjectsRoute() {
             בחר איזה פרויקט לטעון כרגע. אם יש לך יותר מפרויקט אחד, אפשר לעבור ביניהם בכל רגע.
           </div>
         </div>
-        <Btn onClick={() => setIsWizardOpen(true)} disabled={isMock}>
+        <Btn onClick={handleOpenWizard} disabled={isMock}>
           <Icon n="plus" s={16} />
           הוסף פרויקט
         </Btn>
