@@ -36,9 +36,9 @@ function LoginPage() {
     } catch (err) {
       let msg = err instanceof Error ? err.message : 'ההתחברות נכשלה. נסה שוב.'
       if (msg.includes('InvalidSecret')) {
-        msg = 'האימייל או הסיסמה שהוזנו שגויים.'
+        msg = 'האימייל או הסיסמה שהוזנו שגויים. (אם נרשמת דרך גוגל, השתמש בכפתור ההתחברות של גוגל)'
       } else if (msg.includes('AccountNotFound')) {
-        msg = 'לא קיים משתמש עם כתובת אימייל זו.'
+        msg = 'לא נמצאה סיסמה לאימייל זה. אם נרשמת דרך גוגל, השתמש בכפתור ההתחברות של גוגל למעלה.'
       } else if (msg.includes('Uncaught Error')) {
         msg = 'ההתחברות נכשלה. אנא בדוק את הפרטים ונסה שוב.'
       }
