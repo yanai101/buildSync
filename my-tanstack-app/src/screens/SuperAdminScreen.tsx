@@ -272,17 +272,24 @@ export function SuperAdminScreen() {
                         )}
                       </td>
                       <td style={{ padding: 12 }}>
-                        <Btn 
-                          variant="outline" 
+                        <button 
                           onClick={async () => {
                             if (confirm('האם אתה בטוח שברצונך למחוק קוד הרשמה זה?')) {
                               await deletePromoCode({ promoCodeId: p._id });
                             }
                           }} 
-                          style={{ padding: '4px 8px', borderColor: '#EF4444', color: '#EF4444' }}
+                          style={{ 
+                            border: 'none', 
+                            background: '#FEF2F2', 
+                            padding: '6px 12px', 
+                            borderRadius: 6, 
+                            cursor: 'pointer', 
+                            color: '#EF4444',
+                            fontWeight: 500
+                          }}
                         >
                           מחק
-                        </Btn>
+                        </button>
                       </td>
                     </tr>
                   );
