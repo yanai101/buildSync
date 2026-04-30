@@ -34,7 +34,19 @@ export const currentIdentity = query({
       email: user?.email ?? null,
       name: user?.name ?? null,
       role: user?.role ?? null,
+      isSuperAdmin: user?.isSuperAdmin ?? false,
     };
+  },
+});
+
+export const isEmailTaken = query({
+  args: { email: v.string() },
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query('users')
+      .withIndex('email', (q) => q.eq('email', args.email.trim().toLowerCase()))
+      .first();
+    return user !== null;
   },
 });
 

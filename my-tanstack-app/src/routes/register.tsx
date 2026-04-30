@@ -1,8 +1,7 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import { useAuthActions } from '@convex-dev/auth/react'
-import { useConvexAuth } from 'convex/react'
-import { useMutation } from 'convex/react'
+import { useConvexAuth, useMutation, useConvex } from 'convex/react'
 import { Icon, Input, Btn } from '~/components/Shared'
 import { api } from '../../convex/_generated/api'
 
@@ -12,6 +11,7 @@ export const Route = createFileRoute('/register')({
 
 function RegisterPage() {
   const navigate = useNavigate()
+  const convex = useConvex()
   const { signIn } = useAuthActions()
   const { isAuthenticated, isLoading: isAuthLoading } = useConvexAuth()
   const seedMyProject = useMutation(api.seed.seedMyProject)
@@ -30,15 +30,27 @@ function RegisterPage() {
 
   useEffect(() => {
     if (isAuthLoading || !isAuthenticated) return
-    window.location.replace('/')
+    navigate({ to: '/' })
   }, [isAuthenticated, isAuthLoading, navigate])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!form.name || !form.email || !form.password) return
+    if (!form.name || !form.email || !form.phone || !form.password) {
+      setError('אנא מלא את כל השדות חובה (שם, אימייל, טלפון וסיסמה).')
+      return
+    }
     setError(null)
     setLoading(true)
+    
     try {
+      // Check explicitly if email is taken before creating an account
+      const taken = await convex.query(api.users.isEmailTaken, { email: form.email })
+      if (taken) {
+        setError('כתובת אימייל זו כבר רשומה במערכת.')
+        setLoading(false)
+        return
+      }
+
       await signIn('password', {
         flow: 'signUp',
         email: form.email,
@@ -48,7 +60,11 @@ function RegisterPage() {
       })
       // Navigation is handled by the useEffect above when isAuthenticated becomes true
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'ההרשמה נכשלה. נסה שוב.')
+      let msg = err instanceof Error ? err.message : 'ההרשמה נכשלה. נסה שוב.'
+      if (msg.toLowerCase().includes('exist') || msg.toLowerCase().includes('already')) {
+        msg = 'כתובת אימייל זו כבר רשומה במערכת.'
+      }
+      setError(msg)
     } finally {
       setLoading(false)
     }

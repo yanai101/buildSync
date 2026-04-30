@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TimelineRouteImport } from './routes/timeline'
 import { Route as TeamRouteImport } from './routes/team'
+import { Route as SuperAdminRouteImport } from './routes/super-admin'
 import { Route as StagesRouteImport } from './routes/stages'
 import { Route as SetupRouteImport } from './routes/setup'
 import { Route as RegisterRouteImport } from './routes/register'
@@ -40,6 +41,11 @@ const TimelineRoute = TimelineRouteImport.update({
 const TeamRoute = TeamRouteImport.update({
   id: '/team',
   path: '/team',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SuperAdminRoute = SuperAdminRouteImport.update({
+  id: '/super-admin',
+  path: '/super-admin',
   getParentRoute: () => rootRouteImport,
 } as any)
 const StagesRoute = StagesRouteImport.update({
@@ -163,6 +169,7 @@ export interface FileRoutesByFullPath {
   '/register': typeof RegisterRoute
   '/setup': typeof SetupRoute
   '/stages': typeof StagesRoute
+  '/super-admin': typeof SuperAdminRoute
   '/team': typeof TeamRoute
   '/timeline': typeof TimelineRoute
   '/join/$code': typeof JoinCodeRoute
@@ -187,6 +194,7 @@ export interface FileRoutesByTo {
   '/register': typeof RegisterRoute
   '/setup': typeof SetupRoute
   '/stages': typeof StagesRoute
+  '/super-admin': typeof SuperAdminRoute
   '/team': typeof TeamRoute
   '/timeline': typeof TimelineRoute
   '/join/$code': typeof JoinCodeRoute
@@ -212,6 +220,7 @@ export interface FileRoutesById {
   '/register': typeof RegisterRoute
   '/setup': typeof SetupRoute
   '/stages': typeof StagesRoute
+  '/super-admin': typeof SuperAdminRoute
   '/team': typeof TeamRoute
   '/timeline': typeof TimelineRoute
   '/join/$code': typeof JoinCodeRoute
@@ -238,6 +247,7 @@ export interface FileRouteTypes {
     | '/register'
     | '/setup'
     | '/stages'
+    | '/super-admin'
     | '/team'
     | '/timeline'
     | '/join/$code'
@@ -262,6 +272,7 @@ export interface FileRouteTypes {
     | '/register'
     | '/setup'
     | '/stages'
+    | '/super-admin'
     | '/team'
     | '/timeline'
     | '/join/$code'
@@ -286,6 +297,7 @@ export interface FileRouteTypes {
     | '/register'
     | '/setup'
     | '/stages'
+    | '/super-admin'
     | '/team'
     | '/timeline'
     | '/join/$code'
@@ -311,6 +323,7 @@ export interface RootRouteChildren {
   RegisterRoute: typeof RegisterRoute
   SetupRoute: typeof SetupRoute
   StagesRoute: typeof StagesRoute
+  SuperAdminRoute: typeof SuperAdminRoute
   TeamRoute: typeof TeamRoute
   TimelineRoute: typeof TimelineRoute
   JoinCodeRoute: typeof JoinCodeRoute
@@ -330,6 +343,13 @@ declare module '@tanstack/react-router' {
       path: '/team'
       fullPath: '/team'
       preLoaderRoute: typeof TeamRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/super-admin': {
+      id: '/super-admin'
+      path: '/super-admin'
+      fullPath: '/super-admin'
+      preLoaderRoute: typeof SuperAdminRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/stages': {
@@ -495,6 +515,7 @@ const rootRouteChildren: RootRouteChildren = {
   RegisterRoute: RegisterRoute,
   SetupRoute: SetupRoute,
   StagesRoute: StagesRoute,
+  SuperAdminRoute: SuperAdminRoute,
   TeamRoute: TeamRoute,
   TimelineRoute: TimelineRoute,
   JoinCodeRoute: JoinCodeRoute,

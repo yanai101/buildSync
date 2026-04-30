@@ -402,6 +402,29 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                     <Icon n="settings" s={14} />
                     פרטי חשבון
                   </Link>
+                  {identity?.isSuperAdmin && (
+                    <>
+                      <div style={{ height: 1, background: "var(--border)", margin: "6px 0" }} />
+                      <Link
+                        to="/super-admin"
+                        onClick={() => setMenuOpen(false)}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
+                          padding: "8px 10px",
+                          borderRadius: 8,
+                          color: "var(--accent)",
+                          fontSize: 13,
+                          fontWeight: 600,
+                          textDecoration: "none",
+                        }}
+                      >
+                        <Icon n="shield" s={14} />
+                        ניהול מערכת
+                      </Link>
+                    </>
+                  )}
                   <div style={{ height: 1, background: "var(--border)", margin: "6px 0" }} />
                   <button
                     onClick={() => {

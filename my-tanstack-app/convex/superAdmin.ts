@@ -1,0 +1,168 @@
+import { query, mutation } from './_generated/server';
+import { getAuthUserId } from '@convex-dev/auth/server';
+import { v } from 'convex/values';
+import { performProjectDeletion } from './_lib/projectDeletion';
+
+async function checkSuperAdmin(ctx: any) {
+  const userId = await getAuthUserId(ctx);
+  if (!userId) throw new Error('Unauthorized');
+  
+  const user = await ctx.db.get(userId);
+  if (!user?.isSuperAdmin) {
+    throw new Error('Unauthorized: Not Super Admin');
+  }
+  return user;
+}
+
+export const getAllUsers = query({
+  args: {},
+  handler: async (ctx) => {
+    await checkSuperAdmin(ctx);
+    const users = await ctx.db.query('users').collect();
+    
+    // Attach project counts to each user
+    const usersWithStats = await Promise.all(
+      users.map(async (u) => {
+        const projects = await ctx.db
+          .query('projects')
+          .withIndex('by_ownerUserId', (q) => q.eq('ownerUserId', u._id))
+          .collect();
+        return {
+          ...u,
+          projectCount: projects.length,
+        };
+      })
+    );
+    
+    return usersWithStats;
+  },
+});
+
+export const updateUserStatus = mutation({
+  args: {
+    userId: v.id('users'),
+    isSuspended: v.optional(v.boolean()),
+    subscriptionTier: v.optional(v.string()),
+    role: v.optional(v.union(
+      v.literal('owner'),
+      v.literal('manager'),
+      v.literal('inspector'),
+      v.literal('contractor')
+    )),
+  },
+  handler: async (ctx, args) => {
+    await checkSuperAdmin(ctx);
+    
+    const patch: any = {};
+    if (args.isSuspended !== undefined) patch.isSuspended = args.isSuspended;
+    if (args.subscriptionTier !== undefined) patch.subscriptionTier = args.subscriptionTier;
+    if (args.role !== undefined) patch.role = args.role;
+    
+    if (Object.keys(patch).length > 0) {
+      await ctx.db.patch(args.userId, patch);
+    }
+  },
+});
+
+export const getUserProjects = query({
+  args: { userId: v.id('users') },
+  handler: async (ctx, args) => {
+    await checkSuperAdmin(ctx);
+    return await ctx.db
+      .query('projects')
+      .withIndex('by_ownerUserId', (q) => q.eq('ownerUserId', args.userId))
+      .collect();
+  },
+});
+
+export const deleteUserProject = mutation({
+  args: { projectId: v.id('projects') },
+  handler: async (ctx, args) => {
+    await checkSuperAdmin(ctx);
+    await performProjectDeletion(ctx as any, args.projectId);
+  },
+});
+
+export const deleteUserCascade = mutation({
+  args: { userId: v.id('users') },
+  handler: async (ctx, args) => {
+    await checkSuperAdmin(ctx);
+    
+    // Find all projects owned by this user
+    const projects = await ctx.db
+      .query('projects')
+      .withIndex('by_ownerUserId', (q) => q.eq('ownerUserId', args.userId))
+      .collect();
+      
+    // Delete each project cascading
+    for (const project of projects) {
+      await performProjectDeletion(ctx as any, project._id);
+    }
+    
+    // Delete personal files, if any
+    const personalFiles = await ctx.db
+      .query('personalFiles')
+      .withIndex('by_owner', (q) => q.eq('ownerUserId', args.userId))
+      .collect();
+    for (const pf of personalFiles) {
+      try { await ctx.storage.delete(pf.storageId); } catch {}
+      await ctx.db.delete(pf._id);
+    }
+    
+    // Clean up Convex Auth internal tables so the email is freed up
+    const authAccounts = await ctx.db
+      .query('authAccounts' as any)
+      .filter((q: any) => q.eq(q.field('userId'), args.userId))
+      .collect();
+    for (const acc of authAccounts) {
+      await ctx.db.delete(acc._id);
+    }
+
+    const authSessions = await ctx.db
+      .query('authSessions' as any)
+      .filter((q: any) => q.eq(q.field('userId'), args.userId))
+      .collect();
+    for (const sess of authSessions) {
+      const tokens = await ctx.db
+        .query('authRefreshTokens' as any)
+        .filter((q: any) => q.eq(q.field('sessionId'), sess._id))
+        .collect();
+      for (const t of tokens) await ctx.db.delete(t._id);
+      await ctx.db.delete(sess._id);
+    }
+    
+    // Finally, delete the user
+    await ctx.db.delete(args.userId);
+  },
+});
+
+import { action } from './_generated/server';
+import { api } from './_generated/api';
+import { modifyAccountCredentials } from '@convex-dev/auth/server';
+
+export const forceResetPassword = action({
+  args: {
+    userId: v.id('users'),
+    email: v.string(),
+    newPassword: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error('Unauthorized');
+    
+    // In an action we must use runQuery to get the current user
+    const me = await ctx.runQuery(api.users.me, {});
+    if (!me?.isSuperAdmin) {
+      throw new Error('Unauthorized: Not Super Admin');
+    }
+
+    if (args.newPassword.length < 8) {
+      throw new Error('Password must be at least 8 characters');
+    }
+
+    await modifyAccountCredentials(ctx, {
+      provider: 'password',
+      account: { id: args.email, secret: args.newPassword },
+    });
+  },
+});

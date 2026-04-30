@@ -32,6 +32,9 @@ export default defineSchema({
     ),
     avatarLetter: v.optional(v.string()),
     avatarColor: v.optional(v.string()),
+    isSuperAdmin: v.optional(v.boolean()),
+    isSuspended: v.optional(v.boolean()),
+    subscriptionTier: v.optional(v.string()),
   })
     .index('email', ['email'])
     .index('phone', ['phone']),

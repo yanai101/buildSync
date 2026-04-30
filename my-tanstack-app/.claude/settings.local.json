@@ -32,7 +32,9 @@
       "Bash(xargs -I {} basename {})",
       "Bash(npx --yes create-video@latest --yes --blank --no-tailwind remotion)",
       "Bash(npx remotion *)",
-      "Bash(env)"
+      "Bash(env)",
+      "Bash(echo \"remotion folder removed: $?\")",
+      "Bash(grep -E \"\\\\.\\(ts|tsx\\)$\")"
     ]
   }
 }

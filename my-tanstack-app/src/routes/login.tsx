@@ -18,7 +18,7 @@ function LoginPage() {
 
   useEffect(() => {
     if (isAuthLoading || !isAuthenticated) return
-    window.location.replace('/dashboard')
+    navigate({ to: '/dashboard' })
   }, [isAuthenticated, isAuthLoading, navigate])
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -32,9 +32,17 @@ function LoginPage() {
         email: form.email,
         password: form.password,
       })
-      window.location.assign('/dashboard')
+      navigate({ to: '/dashboard' })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'ההתחברות נכשלה. נסה שוב.')
+      let msg = err instanceof Error ? err.message : 'ההתחברות נכשלה. נסה שוב.'
+      if (msg.includes('InvalidSecret')) {
+        msg = 'האימייל או הסיסמה שהוזנו שגויים.'
+      } else if (msg.includes('AccountNotFound')) {
+        msg = 'לא קיים משתמש עם כתובת אימייל זו.'
+      } else if (msg.includes('Uncaught Error')) {
+        msg = 'ההתחברות נכשלה. אנא בדוק את הפרטים ונסה שוב.'
+      }
+      setError(msg)
     } finally {
       setLoading(false)
     }
