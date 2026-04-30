@@ -5,7 +5,7 @@ import { Link, useNavigate, useRouterState, Outlet } from '@tanstack/react-route
 import { motion, AnimatePresence } from 'framer-motion'
 import { Icon, Btn } from './Shared'
 import { useCurrentProject } from '~/hooks/useCurrentProject'
-import { useConvexAuth, useQuery } from 'convex/react'
+import { useConvexAuth, useQuery, useMutation } from 'convex/react'
 import { useAuthActions } from '@convex-dev/auth/react'
 import { api } from '../../convex/_generated/api'
 import { useOnboardingTour } from '~/hooks/useOnboardingTour'
