@@ -24,6 +24,7 @@ export function SuperAdminScreen() {
   const [promoValidity, setPromoValidity] = useState<number>(1);
   const [promoMaxUses, setPromoMaxUses] = useState<number>(1);
   const [promoDuration, setPromoDuration] = useState<number>(12); // months
+  const [activeTab, setActiveTab] = useState<'users' | 'promo'>('users');
 
   if (users === undefined) {
     return (
@@ -57,11 +58,53 @@ export function SuperAdminScreen() {
 
   return (
     <div style={{ padding: '24px' }}>
-      <div className="card" style={{ padding: 24, marginBottom: 24 }}>
-        <h2 style={{ fontSize: 24, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 12 }}>
-          <Icon n="shield" s={28} c="var(--accent)" />
-          ניהול מערכת (Super Admin)
-        </h2>
+      <div style={{ display: 'flex', gap: 16, marginBottom: 24 }}>
+        <button 
+          onClick={() => setActiveTab('users')}
+          style={{ 
+            background: activeTab === 'users' ? 'var(--surface)' : 'transparent',
+            border: 'none',
+            borderBottom: activeTab === 'users' ? '2px solid var(--accent)' : '2px solid transparent',
+            padding: '12px 24px',
+            fontSize: 16,
+            fontWeight: activeTab === 'users' ? 600 : 400,
+            color: activeTab === 'users' ? 'var(--text1)' : 'var(--text2)',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8
+          }}
+        >
+          <Icon n="users" s={20} />
+          ניהול משתמשים
+        </button>
+        <button 
+          onClick={() => setActiveTab('promo')}
+          style={{ 
+            background: activeTab === 'promo' ? 'var(--surface)' : 'transparent',
+            border: 'none',
+            borderBottom: activeTab === 'promo' ? '2px solid var(--accent)' : '2px solid transparent',
+            padding: '12px 24px',
+            fontSize: 16,
+            fontWeight: activeTab === 'promo' ? 600 : 400,
+            color: activeTab === 'promo' ? 'var(--text1)' : 'var(--text2)',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8
+          }}
+        >
+          <Icon n="link" s={20} />
+          קישורי הרשמה
+        </button>
+      </div>
+
+      {activeTab === 'users' && (
+        <div className="card" style={{ padding: 24, marginBottom: 24 }}>
+          <h2 style={{ fontSize: 24, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 12 }}>
+            <Icon n="shield" s={28} c="var(--accent)" />
+            ניהול מערכת (Super Admin)
+          </h2>
         <p style={{ color: 'var(--text2)', marginBottom: 24 }}>
           כאן תוכל לראות את כל המשתמשים הרשומים, לנהל מנויים, להשעות משתמשים ולמחוק פרויקטים במידת הצורך.
         </p>
@@ -152,10 +195,12 @@ export function SuperAdminScreen() {
           </table>
         </div>
       </div>
+      )}
 
-      <div className="card" style={{ padding: 24, marginBottom: 24 }}>
-        <h2 style={{ fontSize: 20, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Icon n="link" s={24} c="var(--accent)" />
+      {activeTab === 'promo' && (
+        <div className="card" style={{ padding: 24, marginBottom: 24 }}>
+          <h2 style={{ fontSize: 20, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Icon n="link" s={24} c="var(--accent)" />
           קישורי הרשמה (Promo Codes)
         </h2>
         <div style={{ display: 'flex', gap: 16, marginBottom: 24, alignItems: 'flex-end', flexWrap: 'wrap' }}>
@@ -247,6 +292,7 @@ export function SuperAdminScreen() {
           </div>
         )}
       </div>
+      )}
 
       {!!editingUser && (
         <Modal onClose={() => setEditingUser(null)} title="עריכת משתמש">
