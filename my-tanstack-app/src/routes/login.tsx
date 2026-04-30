@@ -39,6 +39,8 @@ function LoginPage() {
         msg = 'האימייל או הסיסמה שהוזנו שגויים. (אם נרשמת דרך גוגל, השתמש בכפתור ההתחברות של גוגל)'
       } else if (msg.includes('AccountNotFound')) {
         msg = 'לא נמצאה סיסמה לאימייל זה. אם נרשמת דרך גוגל, השתמש בכפתור ההתחברות של גוגל למעלה.'
+      } else if (msg.includes('Server') || msg.includes('Called by client')) {
+        msg = 'ההתחברות נכשלה. (אם נרשמת דרך גוגל, אנא השתמש בכפתור ההתחברות של גוגל)'
       } else if (msg.includes('Uncaught Error')) {
         msg = 'ההתחברות נכשלה. אנא בדוק את הפרטים ונסה שוב.'
       }
