@@ -160,9 +160,30 @@ export const forceResetPassword = action({
       throw new Error('Password must be at least 8 characters');
     }
 
-    await modifyAccountCredentials(ctx, {
-      provider: 'password',
-      account: { id: args.email, secret: args.newPassword },
-    });
+    // Check if the user actually has a password account
+    const accounts = await ctx.runQuery(api.superAdmin.getUserAccounts as any, { userId: args.userId });
+    const hasPassword = accounts?.some((acc: any) => acc.provider === 'password');
+    if (!hasPassword) {
+      throw new Error('לא ניתן לאפס סיסמה: המשתמש נרשם באמצעות Google ולכן אין לו סיסמה במערכת.');
+    }
+
+    try {
+      await modifyAccountCredentials(ctx, {
+        provider: 'password',
+        account: { id: args.email, secret: args.newPassword },
+      });
+    } catch (e: any) {
+      throw new Error('שגיאה באיפוס הסיסמה: ' + e.message);
+    }
+  },
+});
+
+export const getUserAccounts = query({
+  args: { userId: v.id('users') },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query('authAccounts' as any)
+      .filter((q: any) => q.eq(q.field('userId'), args.userId))
+      .collect();
   },
 });
