@@ -18,10 +18,11 @@ function RegisterPage() {
   const [form, setForm] = useState({ name: '', email: '', phone: '', password: '' })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [promoMessage, setPromoMessage] = useState<{ type: 'success' | 'warning' | 'error', text: string } | null>(null)
+  const [promoCode, setPromoCode] = useState<string | null>(null)
 
-  // If an invite code was passed via ?code=, redirect to the join flow.
-  // If a promo code was passed via ?promo=, check its validity and save it to local storage.
+  // Use the standard hook for checking promo code status
+  const promoStatus = useQuery(api.users.getPromoCodeStatus, promoCode ? { code: promoCode } : 'skip')
+
   useEffect(() => {
     if (typeof window === 'undefined') return
     const params = new URLSearchParams(window.location.search)
@@ -31,20 +32,23 @@ function RegisterPage() {
     }
     const promo = params.get('promo')
     if (promo) {
-      convex.query(api.users.getPromoCodeStatus, { code: promo }).then(status => {
-        if (status.status === 'valid') {
-          localStorage.setItem('promoCode', promo)
-          setPromoMessage({ type: 'success', text: 'קוד ההטבה הופעל בהצלחה! עם הרשמתך תקבל מנוי אוטומטית.' })
-        } else if (status.status === 'fully_used') {
-          setPromoMessage({ type: 'warning', text: 'קוד ההטבה הזה נוצל במלואו והגיע למקסימום המשתמשים. עדיין תוכל להירשם לאפליקציה, אך המסלול שלך יהיה חינמי.' })
-        } else if (status.status === 'expired') {
-          setPromoMessage({ type: 'error', text: 'קוד ההטבה פג תוקף ולא יופעל עם הרשמתך.' })
-        } else {
-          setPromoMessage({ type: 'error', text: 'קוד ההטבה אינו תקין או שאינו קיים.' })
-        }
-      })
+      setPromoCode(promo)
+      localStorage.setItem('promoCode', promo)
     }
-  }, [navigate, convex])
+  }, [navigate])
+
+  let promoMessage = null;
+  if (promoStatus) {
+    if (promoStatus.status === 'valid') {
+      promoMessage = { type: 'success' as const, text: 'קוד ההטבה הופעל בהצלחה! עם הרשמתך תקבל מנוי אוטומטית.' }
+    } else if (promoStatus.status === 'fully_used') {
+      promoMessage = { type: 'warning' as const, text: 'קוד ההטבה הזה נוצל במלואו והגיע למקסימום המשתמשים. עדיין תוכל להירשם לאפליקציה, אך המסלול שלך יהיה חינמי.' }
+    } else if (promoStatus.status === 'expired') {
+      promoMessage = { type: 'error' as const, text: 'קוד ההטבה פג תוקף ולא יופעל עם הרשמתך.' }
+    } else {
+      promoMessage = { type: 'error' as const, text: 'קוד ההטבה אינו תקין או שאינו קיים.' }
+    }
+  }
 
   useEffect(() => {
     if (isAuthLoading || !isAuthenticated) return
