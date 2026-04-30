@@ -18,9 +18,10 @@ function RegisterPage() {
   const [form, setForm] = useState({ name: '', email: '', phone: '', password: '' })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [promoMessage, setPromoMessage] = useState<{ type: 'success' | 'warning' | 'error', text: string } | null>(null)
 
   // If an invite code was passed via ?code=, redirect to the join flow.
-  // If a promo code was passed via ?promo=, save it to local storage.
+  // If a promo code was passed via ?promo=, check its validity and save it to local storage.
   useEffect(() => {
     if (typeof window === 'undefined') return
     const params = new URLSearchParams(window.location.search)
@@ -30,9 +31,20 @@ function RegisterPage() {
     }
     const promo = params.get('promo')
     if (promo) {
-      localStorage.setItem('promoCode', promo)
+      convex.query(api.users.getPromoCodeStatus, { code: promo }).then(status => {
+        if (status.status === 'valid') {
+          localStorage.setItem('promoCode', promo)
+          setPromoMessage({ type: 'success', text: 'קוד ההטבה הופעל בהצלחה! עם הרשמתך תקבל מנוי אוטומטית.' })
+        } else if (status.status === 'fully_used') {
+          setPromoMessage({ type: 'warning', text: 'קוד ההטבה הזה נוצל במלואו והגיע למקסימום המשתמשים. עדיין תוכל להירשם לאפליקציה, אך המסלול שלך יהיה חינמי.' })
+        } else if (status.status === 'expired') {
+          setPromoMessage({ type: 'error', text: 'קוד ההטבה פג תוקף ולא יופעל עם הרשמתך.' })
+        } else {
+          setPromoMessage({ type: 'error', text: 'קוד ההטבה אינו תקין או שאינו קיים.' })
+        }
+      })
     }
-  }, [navigate])
+  }, [navigate, convex])
 
   useEffect(() => {
     if (isAuthLoading || !isAuthenticated) return
@@ -126,6 +138,23 @@ function RegisterPage() {
             <h1 style={{ fontSize: '2rem', fontWeight: 800, marginBottom: 8, color: 'var(--text1)' }}>יצירת חשבון בעל פרויקט</h1>
             <p style={{ color: 'var(--text2)' }}>הזן את הפרטים כדי לפתוח סביבת עבודה ולצרף צוות</p>
           </div>
+          
+          {promoMessage && (
+            <div style={{ 
+              marginBottom: 24, 
+              padding: 16, 
+              borderRadius: 8, 
+              background: promoMessage.type === 'success' ? '#ECFDF5' : promoMessage.type === 'warning' ? '#FFFBEB' : '#FEF2F2',
+              color: promoMessage.type === 'success' ? '#059669' : promoMessage.type === 'warning' ? '#D97706' : '#DC2626',
+              border: `1px solid ${promoMessage.type === 'success' ? '#A7F3D0' : promoMessage.type === 'warning' ? '#FDE68A' : '#FECACA'}`,
+              display: 'flex',
+              gap: 12,
+              alignItems: 'flex-start'
+            }}>
+              <Icon n={promoMessage.type === 'success' ? 'check-circle' : 'alert-circle'} s={20} />
+              <div style={{ fontSize: 14, lineHeight: 1.4 }}>{promoMessage.text}</div>
+            </div>
+          )}
 
           <Btn onClick={handleGoogle} variant="ghost" style={{ width: '100%', justifyContent: 'center', padding: '12px', marginBottom: 16, fontSize: 14, border: '1px solid var(--border)' }}>
             <GoogleMark /> המשך עם Google

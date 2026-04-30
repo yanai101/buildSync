@@ -177,3 +177,27 @@ export const redeemPromoCode = mutation({
   },
 });
 
+export const getPromoCodeStatus = query({
+  args: { code: v.string() },
+  handler: async (ctx, args) => {
+    const promo = await ctx.db
+      .query('promoCodes')
+      .withIndex('by_code', (q) => q.eq('code', args.code))
+      .first();
+
+    if (!promo) {
+      return { status: 'not_found' };
+    }
+    
+    if (promo.currentUses >= promo.maxUses) {
+      return { status: 'fully_used' };
+    }
+    
+    if (Date.now() > promo.expiresAt) {
+      return { status: 'expired' };
+    }
+
+    return { status: 'valid', tier: promo.tier };
+  },
+});
+
