@@ -143,26 +143,50 @@ function RegisterPage() {
             <p style={{ color: 'var(--text2)' }}>הזן את הפרטים כדי לפתוח סביבת עבודה ולצרף צוות</p>
           </div>
           
-          {promoMessage && (
+          {promoCode && !promoStatus ? (
             <div style={{ 
               marginBottom: 24, 
               padding: 16, 
               borderRadius: 8, 
-              background: promoMessage.type === 'success' ? '#ECFDF5' : promoMessage.type === 'warning' ? '#FFFBEB' : '#FEF2F2',
-              color: promoMessage.type === 'success' ? '#059669' : promoMessage.type === 'warning' ? '#D97706' : '#DC2626',
-              border: `1px solid ${promoMessage.type === 'success' ? '#A7F3D0' : promoMessage.type === 'warning' ? '#FDE68A' : '#FECACA'}`,
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
               display: 'flex',
               gap: 12,
-              alignItems: 'flex-start'
+              alignItems: 'center',
+              color: 'var(--text2)'
             }}>
-              <Icon n={promoMessage.type === 'success' ? 'check-circle' : 'alert-circle'} s={20} />
-              <div style={{ fontSize: 14, lineHeight: 1.4 }}>{promoMessage.text}</div>
+              <div style={{ 
+                width: 20, 
+                height: 20, 
+                border: '2px solid var(--border)', 
+                borderTopColor: 'var(--accent)', 
+                borderRadius: '50%', 
+                animation: 'spin 1s linear infinite' 
+              }} />
+              <div style={{ fontSize: 14 }}>בודק קוד הרשמה...</div>
             </div>
-          )}
+          ) : (
+            <>
+              {promoMessage && (
+                <div style={{ 
+                  marginBottom: 24, 
+                  padding: 16, 
+                  borderRadius: 8, 
+                  background: promoMessage.type === 'success' ? '#ECFDF5' : promoMessage.type === 'warning' ? '#FFFBEB' : '#FEF2F2',
+                  color: promoMessage.type === 'success' ? '#059669' : promoMessage.type === 'warning' ? '#D97706' : '#DC2626',
+                  border: `1px solid ${promoMessage.type === 'success' ? '#A7F3D0' : promoMessage.type === 'warning' ? '#FDE68A' : '#FECACA'}`,
+                  display: 'flex',
+                  gap: 12,
+                  alignItems: 'flex-start'
+                }}>
+                  <Icon n={promoMessage.type === 'success' ? 'check-circle' : 'alert-circle'} s={20} />
+                  <div style={{ fontSize: 14, lineHeight: 1.4 }}>{promoMessage.text}</div>
+                </div>
+              )}
 
-          <Btn onClick={handleGoogle} variant="ghost" style={{ width: '100%', justifyContent: 'center', padding: '12px', marginBottom: 16, fontSize: 14, border: '1px solid var(--border)' }}>
-            <GoogleMark /> המשך עם Google
-          </Btn>
+              <Btn onClick={handleGoogle} variant="ghost" style={{ width: '100%', justifyContent: 'center', padding: '12px', marginBottom: 16, fontSize: 14, border: '1px solid var(--border)' }}>
+                <GoogleMark /> המשך עם Google
+              </Btn>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '16px 0', color: 'var(--text3)', fontSize: 12 }}>
             <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
