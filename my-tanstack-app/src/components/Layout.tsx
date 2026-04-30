@@ -168,13 +168,16 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     if (isAuthenticated && !isLoading && typeof window !== 'undefined') {
       const code = localStorage.getItem('promoCode');
       if (code) {
+        // Remove it immediately to prevent infinite loops if the component re-renders while the mutation is running
+        localStorage.removeItem('promoCode');
         redeemPromoCode({ code }).then((res) => {
           if (res.success) {
             alert('הקופון הופעל בהצלחה! החשבון שלך שודרג.');
           } else {
             console.error('Failed to redeem promo code:', res.error);
           }
-          localStorage.removeItem('promoCode');
+        }).catch((err) => {
+          console.error('Error redeeming promo code:', err);
         });
       }
     }
