@@ -59,7 +59,7 @@ export function SuperAdminScreen() {
             </thead>
             <tbody>
               {users.map((u) => {
-                const isCurrentAdmin = u.isSuperAdmin;
+                const isCurrentAdmin = u._id === identity?.userId;
                 return (
                   <tr key={u._id} style={{ borderBottom: '1px solid var(--border)', opacity: isCurrentAdmin ? 0.6 : 1, background: isCurrentAdmin ? 'var(--surface)' : 'transparent' }}>
                     <td style={{ padding: 12 }}>
