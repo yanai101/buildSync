@@ -43,6 +43,7 @@ export const updateUserStatus = mutation({
     userId: v.id('users'),
     isSuspended: v.optional(v.boolean()),
     subscriptionTier: v.optional(v.string()),
+    subscriptionExpiresAt: v.optional(v.union(v.number(), v.null())),
     role: v.optional(v.union(
       v.literal('owner'),
       v.literal('manager'),
@@ -56,9 +57,14 @@ export const updateUserStatus = mutation({
     const patch: any = {};
     if (args.isSuspended !== undefined) patch.isSuspended = args.isSuspended;
     if (args.subscriptionTier !== undefined) patch.subscriptionTier = args.subscriptionTier;
+    if (args.subscriptionExpiresAt !== undefined) patch.subscriptionExpiresAt = args.subscriptionExpiresAt === null ? undefined : args.subscriptionExpiresAt;
     if (args.role !== undefined) patch.role = args.role;
     
     if (Object.keys(patch).length > 0) {
+      if (args.subscriptionExpiresAt === null) {
+        // To remove the field if they are downgraded to free
+        patch.subscriptionExpiresAt = undefined;
+      }
       await ctx.db.patch(args.userId, patch);
     }
   },

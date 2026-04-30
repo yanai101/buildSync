@@ -312,13 +312,41 @@ export function SuperAdminScreen() {
                 value={editingUser.subscriptionTier || 'none'}
                 onChange={(e) => setEditingUser({ ...editingUser, subscriptionTier: e.target.value === 'none' ? undefined : e.target.value })}
                 className="input"
-                style={{ width: '100%', padding: '10px' }}
+                style={{ width: '100%', padding: '10px', borderRadius: 8, border: '1px solid var(--border)' }}
               >
-                <option value="none">ללא מנוי</option>
+                <option value="none">ללא מנוי (Free)</option>
                 <option value="pro">Pro</option>
                 <option value="premium">Premium</option>
               </select>
             </div>
+
+            {['pro', 'premium'].includes(editingUser.subscriptionTier) && (
+              <div>
+                <label style={{ display: 'block', fontSize: 13, marginBottom: 6, color: 'var(--text2)' }}>
+                  חידוש תוקף מנוי (ימים מעכשיו)
+                  <span style={{ display: 'block', fontSize: 11, color: 'var(--text3)', fontWeight: 400 }}>
+                    השאר ריק כדי לשמור על התוקף הנוכחי: {editingUser.subscriptionExpiresAt ? new Date(editingUser.subscriptionExpiresAt).toLocaleDateString('he-IL') : 'לא מוגדר'}
+                  </span>
+                </label>
+                <input 
+                  type="number" 
+                  min="1"
+                  placeholder="לדוגמה: 30 לטסט, 365 לשנה"
+                  value={editingUser.newSubscriptionDays || ''}
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      setEditingUser({ ...editingUser, newSubscriptionDays: Number(e.target.value) });
+                    } else {
+                      const copy = { ...editingUser };
+                      delete copy.newSubscriptionDays;
+                      setEditingUser(copy);
+                    }
+                  }}
+                  className="input"
+                  style={{ width: '100%', padding: '10px', borderRadius: 8, border: '1px solid var(--border)' }}
+                />
+              </div>
+            )}
 
             <div>
               <label style={{ display: 'block', fontSize: 13, marginBottom: 6, color: 'var(--text2)' }}>סטטוס השעיה</label>
@@ -337,10 +365,21 @@ export function SuperAdminScreen() {
               <Btn 
                 variant="primary" 
                 onClick={async () => {
+                  let expiresAt = editingUser.subscriptionExpiresAt;
+                  if (!['pro', 'premium'].includes(editingUser.subscriptionTier)) {
+                    expiresAt = null; // Clear if downgraded to Free
+                  } else if (editingUser.newSubscriptionDays) {
+                    expiresAt = Date.now() + editingUser.newSubscriptionDays * 24 * 60 * 60 * 1000;
+                  } else if (!expiresAt) {
+                    // Default to 1 year if they didn't specify and don't have one
+                    expiresAt = Date.now() + 365 * 24 * 60 * 60 * 1000;
+                  }
+
                   await updateUserStatus({
                     userId: editingUser._id,
                     isSuspended: editingUser.isSuspended,
                     subscriptionTier: editingUser.subscriptionTier,
+                    subscriptionExpiresAt: expiresAt,
                   });
                   setEditingUser(null);
                 }}

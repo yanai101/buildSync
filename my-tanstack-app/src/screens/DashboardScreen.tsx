@@ -17,6 +17,8 @@ export const DashboardScreen = () => {
   const { overview } = useDashboardOverview();
   const { data: dashboard, loading, error, refetch } = useDataSource<any>('dashboard', { db: overview });
   const seedAlert = useMutation(api.dashboard.seedAlert);
+  const deleteAlert = useMutation(api.dashboard.deleteAlert);
+  const deleteAllAlerts = useMutation(api.dashboard.deleteAllAlerts);
 
   if (!dashboard) {
     return <ScreenBoundary loading={loading} error={error} onRetry={refetch}><div/></ScreenBoundary>;
@@ -50,9 +52,14 @@ export const DashboardScreen = () => {
             </div>
           </div>
           {import.meta.env.DEV && role !== 'contractor' && (
-            <button onClick={() => seedAlert({ projectId: project._id })} style={{background: 'var(--accent)', color: '#fff', padding: '6px 12px', borderRadius: 8, fontSize: 12, border: 'none', cursor: 'pointer', fontWeight: 'bold'}}>
-              + הוסף התראת טסט
-            </button>
+            <div style={{display: 'flex', gap: 8}}>
+              <button onClick={() => seedAlert({ projectId: project._id })} style={{background: 'var(--accent)', color: '#fff', padding: '6px 12px', borderRadius: 8, fontSize: 12, border: 'none', cursor: 'pointer', fontWeight: 'bold'}}>
+                + הוסף התראת טסט
+              </button>
+              <button onClick={() => deleteAllAlerts({ projectId: project._id })} style={{background: 'var(--danger)', color: '#fff', padding: '6px 12px', borderRadius: 8, fontSize: 12, border: 'none', cursor: 'pointer', fontWeight: 'bold'}}>
+                מחק הכל
+              </button>
+            </div>
           )}
         </div>
 
@@ -73,6 +80,9 @@ export const DashboardScreen = () => {
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: 13, color: 'var(--text2)' }}>
               <span>{alerts[0].dateLabel}</span>
+              <button onClick={() => deleteAlert({ alertId: alerts[0].id })} style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer' }} title="מחק התראה">
+                <Icon n="x" s={16} />
+              </button>
               <button style={{ background: 'none', border: 'none', color: 'var(--warning-dark, #B45309)', fontWeight: 700, cursor: 'pointer', textDecoration: 'underline' }}>
                 ראה הכל ({alerts.length})
               </button>

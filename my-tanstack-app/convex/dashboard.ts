@@ -130,3 +130,24 @@ export const seedAlert = mutation({
     });
   },
 });
+
+export const deleteAlert = mutation({
+  args: { alertId: v.id('projectAlerts') },
+  handler: async (ctx, args) => {
+    await ctx.db.delete(args.alertId);
+  },
+});
+
+export const deleteAllAlerts = mutation({
+  args: { projectId: v.id('projects') },
+  handler: async (ctx, args) => {
+    const alerts = await ctx.db
+      .query('projectAlerts')
+      .withIndex('by_project_read', (q) => q.eq('projectId', args.projectId))
+      .collect();
+    
+    for (const alert of alerts) {
+      await ctx.db.delete(alert._id);
+    }
+  },
+});
