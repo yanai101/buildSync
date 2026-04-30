@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { useQuery, useMutation, useAction } from 'convex/react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { api } from '../../convex/_generated/api';
 import { Id } from '../../convex/_generated/dataModel';
 import { Icon, Btn, Modal } from '../components/Shared';
@@ -25,6 +26,40 @@ export function SuperAdminScreen() {
   const [promoMaxUses, setPromoMaxUses] = useState<number>(1);
   const [promoDuration, setPromoDuration] = useState<number>(12); // months
   const [activeTab, setActiveTab] = useState<'users' | 'promo'>('users');
+
+  // Filters state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterTier, setFilterTier] = useState<string>('all');
+  const [filterStatus, setFilterStatus] = useState<string>('all');
+
+  // Filtered users array
+  const filteredUsers = useMemo(() => {
+    if (!users) return [];
+    return users.filter((u: any) => {
+      const matchesSearch = !searchQuery || 
+        (u.name?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+         u.email?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+         u.phone?.includes(searchQuery));
+         
+      const matchesTier = filterTier === 'all' || 
+        (filterTier === 'free' && !['pro', 'premium'].includes(u.subscriptionTier as string)) ||
+        u.subscriptionTier === filterTier;
+        
+      const matchesStatus = filterStatus === 'all' || 
+        (filterStatus === 'suspended' ? u.isSuspended : !u.isSuspended);
+        
+      return matchesSearch && matchesTier && matchesStatus;
+    });
+  }, [users, searchQuery, filterTier, filterStatus]);
+
+  // Virtualizer setup
+  const parentRef = useRef<HTMLDivElement>(null);
+  const rowVirtualizer = useVirtualizer({
+    count: filteredUsers.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 75,
+    overscan: 5,
+  });
 
   if (users === undefined) {
     return (
@@ -105,96 +140,146 @@ export function SuperAdminScreen() {
             <Icon n="shield" s={28} c="var(--accent)" />
             ניהול מערכת (Super Admin)
           </h2>
-        <p style={{ color: 'var(--text2)', marginBottom: 24 }}>
-          כאן תוכל לראות את כל המשתמשים הרשומים, לנהל מנויים, להשעות משתמשים ולמחוק פרויקטים במידת הצורך.
-        </p>
+          <p style={{ color: 'var(--text2)', marginBottom: 24 }}>
+            כאן תוכל לראות את כל המשתמשים הרשומים, לנהל מנויים, להשעות משתמשים ולמחוק פרויקטים במידת הצורך. סה"כ משתמשים: {filteredUsers.length}
+          </p>
 
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'right' }}>
-            <thead>
-              <tr style={{ borderBottom: '1px solid var(--border)', color: 'var(--text3)', fontSize: 13 }}>
-                <th style={{ padding: 12, fontWeight: 600 }}>שם משתמש</th>
-                <th style={{ padding: 12, fontWeight: 600 }}>אימייל / טלפון</th>
-                <th style={{ padding: 12, fontWeight: 600 }}>תפקיד</th>
-                <th style={{ padding: 12, fontWeight: 600 }}>פרויקטים</th>
-                <th style={{ padding: 12, fontWeight: 600 }}>מנוי</th>
-                <th style={{ padding: 12, fontWeight: 600 }}>סטטוס</th>
-                <th style={{ padding: 12, fontWeight: 600 }}>פעולות</th>
-              </tr>
-            </thead>
-            <tbody>
-              {users.map((u) => {
-                const isCurrentAdmin = u._id === identity?.userId;
-                return (
-                  <tr key={u._id} style={{ borderBottom: '1px solid var(--border)', opacity: isCurrentAdmin ? 0.6 : 1, background: isCurrentAdmin ? 'var(--surface)' : 'transparent' }}>
-                    <td style={{ padding: 12 }}>
-                      <div style={{ fontWeight: 600 }}>{u.name || 'ללא שם'}</div>
-                      {u.isSuperAdmin && (
-                        <span style={{ fontSize: 10, background: 'var(--accent)', color: '#fff', padding: '2px 6px', borderRadius: 10 }}>Admin</span>
-                      )}
-                    </td>
-                    <td style={{ padding: 12, color: 'var(--text2)', fontSize: 14 }}>
-                      {u.email && <div>{u.email}</div>}
-                      {u.phone && <div>{u.phone}</div>}
-                    </td>
-                    <td style={{ padding: 12, fontSize: 14 }}>{u.role || 'owner'}</td>
-                    <td style={{ padding: 12, fontSize: 14 }}>{u.projectCount || 0}</td>
-                    <td style={{ padding: 12 }}>
-                      {u.subscriptionTier === 'premium' ? (
-                        <span style={{ color: '#EAB308', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}><Icon n="star" s={14} /> פרימיום</span>
-                      ) : u.subscriptionTier === 'pro' ? (
-                        <span style={{ color: 'var(--accent)', fontWeight: 600 }}>Pro</span>
-                      ) : (
-                        <span style={{ color: 'var(--text3)' }}>ללא מנוי</span>
-                      )}
-                    </td>
-                    <td style={{ padding: 12 }}>
-                      {u.isSuspended ? (
-                        <span style={{ color: '#EF4444', fontWeight: 600 }}>מושעה</span>
-                      ) : (
-                        <span style={{ color: '#22C55E' }}>פעיל</span>
-                      )}
-                    </td>
-                    <td style={{ padding: 12 }}>
-                      {isCurrentAdmin ? (
-                        <span style={{ fontSize: 13, color: 'var(--text3)', fontWeight: 600 }}>מנהל מערכת (מוגן)</span>
-                      ) : (
-                        <div style={{ display: 'flex', gap: 8 }}>
-                          <button 
-                            onClick={() => setEditingUser(u)}
-                            style={{ border: 'none', background: 'var(--surface-hover)', padding: '6px 12px', borderRadius: 6, cursor: 'pointer', color: 'var(--text1)' }}
-                          >
-                            עריכה
-                          </button>
-                          <button 
-                            onClick={() => setResetPasswordUser(u)}
-                            style={{ border: 'none', background: 'var(--surface-hover)', padding: '6px 12px', borderRadius: 6, cursor: 'pointer', color: '#F59E0B' }}
-                          >
-                            איפוס סיסמה
-                          </button>
-                          <button 
-                            onClick={() => setShowConfirmDelete(u._id)}
-                            style={{ border: 'none', background: '#FEF2F2', padding: '6px 12px', borderRadius: 6, cursor: 'pointer', color: '#EF4444' }}
-                          >
-                            מחיקה
-                          </button>
+          <div style={{ display: 'flex', gap: 16, marginBottom: 16, flexWrap: 'wrap' }}>
+            <div style={{ flex: 1, minWidth: 200, position: 'relative' }}>
+              <Icon n="search" s={18} c="var(--text3)" style={{ position: 'absolute', right: 12, top: 12 }} />
+              <input 
+                type="text" 
+                placeholder="חיפוש לפי שם, אימייל או טלפון..." 
+                value={searchQuery} 
+                onChange={e => setSearchQuery(e.target.value)}
+                style={{ width: '100%', padding: '10px 36px 10px 12px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 14 }}
+              />
+            </div>
+            <select 
+              value={filterTier} 
+              onChange={e => setFilterTier(e.target.value)}
+              style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 14, minWidth: 150 }}
+            >
+              <option value="all">כל המנויים</option>
+              <option value="free">ללא מנוי (Free)</option>
+              <option value="pro">Pro</option>
+              <option value="premium">Premium</option>
+            </select>
+            <select 
+              value={filterStatus} 
+              onChange={e => setFilterStatus(e.target.value)}
+              style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 14, minWidth: 150 }}
+            >
+              <option value="all">כל הסטטוסים</option>
+              <option value="active">פעיל</option>
+              <option value="suspended">מושעה</option>
+            </select>
+          </div>
+
+          <div style={{ border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 2fr 1fr 1fr 1fr 1fr 2fr', background: 'var(--surface)', borderBottom: '1px solid var(--border)', fontWeight: 600, fontSize: 13, color: 'var(--text3)', padding: '12px 16px', gap: 12 }}>
+              <div>שם משתמש</div>
+              <div>אימייל / טלפון</div>
+              <div>תפקיד</div>
+              <div>פרויקטים</div>
+              <div>מנוי</div>
+              <div>סטטוס</div>
+              <div>פעולות</div>
+            </div>
+            
+            <div ref={parentRef} style={{ height: '600px', overflowY: 'auto', background: 'var(--bg)' }}>
+              {filteredUsers.length === 0 ? (
+                <div style={{ padding: 40, textAlign: 'center', color: 'var(--text3)' }}>
+                  לא נמצאו משתמשים התואמים לחיפוש.
+                </div>
+              ) : (
+                <div style={{ height: `${rowVirtualizer.getTotalSize()}px`, width: '100%', position: 'relative' }}>
+                  {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                    const u = filteredUsers[virtualRow.index];
+                    const isCurrentAdmin = u._id === identity?.userId;
+                    
+                    return (
+                      <div 
+                        key={virtualRow.key}
+                        style={{
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          width: '100%',
+                          height: `${virtualRow.size}px`,
+                          transform: `translateY(${virtualRow.start}px)`,
+                          display: 'grid', 
+                          gridTemplateColumns: '1.5fr 2fr 1fr 1fr 1fr 1fr 2fr',
+                          gap: 12,
+                          borderBottom: '1px solid var(--border)',
+                          opacity: isCurrentAdmin ? 0.6 : 1,
+                          background: isCurrentAdmin ? 'var(--surface)' : '#fff',
+                          padding: '0 16px',
+                          alignItems: 'center'
+                        }}
+                      >
+                        <div>
+                          <div style={{ fontWeight: 600 }}>{u.name || 'ללא שם'}</div>
+                          {u.isSuperAdmin && (
+                            <span style={{ fontSize: 10, background: 'var(--accent)', color: '#fff', padding: '2px 6px', borderRadius: 10 }}>Admin</span>
+                          )}
                         </div>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-              {users.length === 0 && (
-                <tr>
-                  <td colSpan={7} style={{ padding: 24, textAlign: 'center', color: 'var(--text3)' }}>
-                    אין משתמשים במערכת.
-                  </td>
-                </tr>
+                        <div style={{ color: 'var(--text2)', fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {u.email && <div>{u.email}</div>}
+                          {u.phone && <div>{u.phone}</div>}
+                        </div>
+                        <div style={{ fontSize: 14 }}>{u.role || 'owner'}</div>
+                        <div style={{ fontSize: 14 }}>{u.projectCount || 0}</div>
+                        <div>
+                          {u.subscriptionTier === 'premium' ? (
+                            <span style={{ color: '#EAB308', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}><Icon n="star" s={14} /> פרימיום</span>
+                          ) : u.subscriptionTier === 'pro' ? (
+                            <span style={{ color: 'var(--accent)', fontWeight: 600 }}>Pro</span>
+                          ) : (
+                            <span style={{ color: 'var(--text3)' }}>ללא מנוי</span>
+                          )}
+                        </div>
+                        <div>
+                          {u.isSuspended ? (
+                            <span style={{ color: '#EF4444', fontWeight: 600 }}>מושעה</span>
+                          ) : (
+                            <span style={{ color: '#22C55E' }}>פעיל</span>
+                          )}
+                        </div>
+                        <div>
+                          {isCurrentAdmin ? (
+                            <span style={{ fontSize: 13, color: 'var(--text3)', fontWeight: 600 }}>מנהל מערכת (מוגן)</span>
+                          ) : (
+                            <div style={{ display: 'flex', gap: 8 }}>
+                              <button 
+                                onClick={() => setEditingUser(u)}
+                                style={{ border: 'none', background: 'var(--surface-hover)', padding: '6px 12px', borderRadius: 6, cursor: 'pointer', color: 'var(--text1)' }}
+                              >
+                                עריכה
+                              </button>
+                              <button 
+                                onClick={() => setResetPasswordUser(u)}
+                                style={{ border: 'none', background: 'var(--surface-hover)', padding: '6px 12px', borderRadius: 6, cursor: 'pointer', color: '#F59E0B' }}
+                              >
+                                איפוס סיסמה
+                              </button>
+                              <button 
+                                onClick={() => setShowConfirmDelete(u._id)}
+                                style={{ border: 'none', background: '#FEF2F2', padding: '6px 12px', borderRadius: 6, cursor: 'pointer', color: '#EF4444' }}
+                              >
+                                מחיקה
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               )}
-            </tbody>
-          </table>
+            </div>
+          </div>
         </div>
-      </div>
       )}
 
       {activeTab === 'promo' && (
