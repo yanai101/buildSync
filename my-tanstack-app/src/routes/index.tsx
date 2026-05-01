@@ -390,11 +390,11 @@ function LandingPage() {
             <span className="feature-badge" style={{color: '#3B82F6'}}>תיעוד אמין ומוגן משינויים</span>
             <h2 className="feature-title">יומן עבודה יומי שמגן עליכם.</h2>
             <p className="feature-desc">
-              אל תשאירו מקום לספקות או ויכוחים. המערכת מחוללת אוטומטית דוח PDF מקיף ונעול לשינויים, עם תמונות, מזג אוויר ונוכחות פועלים שמונע סכסוכי קבלנים.
+              אל תשאירו מקום לספקות או ויכוחים. המערכת מאפשרת הפקת דוח PDF מקיף ונעול לשינויים, עם תמונות, מזג אוויר ונוכחות פועלים שמונע סכסוכי קבלנים.
             </p>
             <ul className="bullet-list">
-              <li className="bullet-item"><Icon n="file-text" s={28} c="#3B82F6" style={{marginTop:4}} /> <div><strong>תיעוד אוטומטי:</strong> מזג אוויר, נוכחות קבלנים, אישורי מפקח ותמונות מצורפות אוטומטית לקובץ יומי.</div></li>
-              <li className="bullet-item"><Icon n="lock" s={28} c="#3B82F6" style={{marginTop:4}} /> <div><strong>נעילת יומן:</strong> ברגע שהיומן ננעל אי אפשר לערוך אותו יותר, מה שהופך אותו למסמך אמין שאינו ניתן לעריכה בדיעבד.</div></li>
+              <li className="bullet-item"><Icon n="file-text" s={28} c="#3B82F6" style={{marginTop:4}} /> <div><strong>ריכוז נתונים:</strong> מזג אוויר, נוכחות קבלנים, אישורי מפקח ותמונות מאוגדים לקובץ מסודר.</div></li>
+              <li className="bullet-item"><Icon n="lock" s={28} c="#3B82F6" style={{marginTop:4}} /> <div><strong>נעילת יומן ל-PDF:</strong> בלחיצת כפתור היומן ננעל ומופק למסמך אמין שאינו ניתן לעריכה בדיעבד.</div></li>
             </ul>
           </motion.div>
           
@@ -437,6 +437,64 @@ function LandingPage() {
                   אושר וננעל
                 </motion.div>
               )}
+
+              {/* Added PDF Export indication */}
+              <div style={{ display: 'flex', justifyContent: 'center', marginTop: 24 }}>
+                <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', color: '#dc2626', padding: '8px 16px', borderRadius: 20, fontSize: 13, fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Icon n="download" s={14} /> גיבוי ל-PDF הושלם
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* 5.8 FEATURE DEEP DIVE: BUREAUCRACY & PERMITS */}
+      <section className="section-padding" style={{ background: '#0a0a0c', borderTop: '1px solid rgba(255,255,255,0.02)' }}>
+        <div className="content-width split-layout">
+          <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeIn} className="split-text">
+            <span className="feature-badge" style={{color: '#EAB308'}}>סדר בניירת וברישוי</span>
+            <h2 className="feature-title">המקום היחיד שמרכז את כל ההיתרים.</h2>
+            <p className="feature-desc">
+              שכחו מקלסרים אבודים ותיקיות מסורבלות במחשב. כל האישורים, התוכניות האדריכליות, היתרי הבנייה ותעודות האחריות נמצאים במקום אחד, מאובטח וזמין מכל מכשיר.
+            </p>
+            <ul className="bullet-list">
+              <li className="bullet-item"><Icon n="folder" s={28} c="#EAB308" style={{marginTop:4}} /> <div><strong>תיק פרויקט חכם:</strong> כל המסמכים מאורגנים לפי קטגוריות - מהיתרי בנייה ועד קבלות ותעודות ביטוח של קבלנים.</div></li>
+              <li className="bullet-item"><Icon n="clock" s={28} c="#EAB308" style={{marginTop:4}} /> <div><strong>מעקב פגות תוקף:</strong> המערכת מסמנת מסמכים זמניים או היתרים שפג תוקפם, כך שלעולם לא תיתקעו בשטח בגלל ביורוקרטיה.</div></li>
+              <li className="bullet-item"><Icon n="link" s={28} c="#EAB308" style={{marginTop:4}} /> <div><strong>שליפה מהירה:</strong> בלחיצת כפתור תוכלו לשלוף כל היתר או מסמך למפקחים, עורכי דין או רשויות מקומיות ישירות מהשטח.</div></li>
+            </ul>
+          </motion.div>
+          
+          <motion.div initial={{ opacity: 0, x: -50 }} whileInView={{ opacity: 1, x: 0 }} transition={{ duration: 0.8 }} viewport={{ once: true }} className="split-media relative">
+            <div className="mockup-container" style={{ background: '#111115', padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: 16 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <Icon n="folder" s={24} c="#EAB308" />
+                  <span style={{ fontSize: 18, fontWeight: 'bold' }}>רישוי וביורוקרטיה</span>
+                </div>
+                <div style={{ background: 'rgba(234, 179, 8, 0.1)', color: '#EAB308', padding: '4px 12px', borderRadius: 12, fontSize: 12, fontWeight: 'bold' }}>
+                  מסמכים מאומתים
+                </div>
+              </div>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {[
+                  { name: "היתר בנייה ראשי", status: "בתוקף", color: "var(--success)" },
+                  { name: "אישור מהנדס - שלד", status: "ממתין", color: "var(--warning)" },
+                  { name: "ביטוח קבלנים", status: "בתוקף עד 2027", color: "var(--success)" },
+                  { name: "אישור חברת חשמל", status: "חסר", color: "#EF4444" }
+                ].map((doc, i) => (
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px', background: 'rgba(255,255,255,0.03)', borderRadius: 12, border: '1px solid rgba(255,255,255,0.05)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <div style={{ background: 'rgba(255,255,255,0.05)', padding: 8, borderRadius: 8 }}>
+                        <Icon n="file-text" s={20} c="#ccc" />
+                      </div>
+                      <span style={{ fontWeight: 600 }}>{doc.name}</span>
+                    </div>
+                    <span style={{ color: doc.color, fontSize: 13, fontWeight: 600, background: `rgba(255,255,255,0.05)`, padding: '4px 10px', borderRadius: 20 }}>{doc.status}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </motion.div>
         </div>
@@ -464,6 +522,50 @@ function LandingPage() {
                 <p style={{ color: '#888', lineHeight: 1.6, fontSize: '1.1rem' }}>{f.desc}</p>
               </motion.div>
             ))}
+          </motion.div>
+        </div>
+      </section>
+
+      {/* 6.5 SUBSCRIPTION TIERS HIGHLIGHT */}
+      <section className="section-padding" style={{ background: '#0a0a0c', borderTop: '1px solid rgba(255,255,255,0.02)' }}>
+        <div className="content-width">
+          <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeIn} style={{ textAlign: 'center', marginBottom: 60 }}>
+            <span className="feature-badge" style={{color: 'var(--accent)', display: 'inline-flex', alignItems: 'center', gap: 6}}><Icon n="star" s={14} c="var(--accent)" /> חדש במערכת</span>
+            <h2 className="gradient-text" style={{ fontSize: 'clamp(2.5rem, 4vw, 3.5rem)', fontWeight: 800, marginBottom: 20 }}>
+              בחרו את המסלול שמתאים לכם
+            </h2>
+            <p style={{ color: '#a0a0a0', fontSize: '1.25rem', maxWidth: 800, margin: '0 auto' }}>
+              שדרגו את היכולות שלכם עם מסלול ה-Pro וקבלו כלים מתקדמים לניהול פרויקטים מרובים, הפקת דוחות PDF מקצועיים ושליטה כספית מלאה.
+            </p>
+          </motion.div>
+
+          <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-100px" }} variants={staggerContainer} className="card-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '40px', maxWidth: 900, margin: '0 auto' }}>
+            {/* Free Tier */}
+            <motion.div variants={fadeIn} className="info-card" style={{ background: 'linear-gradient(180deg, rgba(20,20,25,0.8) 0%, rgba(20,20,25,0.4) 100%)', border: '1px solid rgba(255,255,255,0.1)', position: 'relative', overflow: 'hidden' }}>
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 4, background: 'var(--text3)' }} />
+              <h3 style={{ fontSize: '1.8rem', fontWeight: 800, color: '#fff', marginBottom: 8 }}>Free</h3>
+              <div style={{ color: '#aaa', marginBottom: 24, fontSize: '1.1rem' }}>מעולה כדי להתחיל וללמוד את המערכת</div>
+              <ul className="bullet-list" style={{ gap: 16 }}>
+                <li className="bullet-item" style={{ fontSize: '1rem' }}><Icon n="check" s={20} c="var(--success)" /> <div>פרויקט אחד בלבד</div></li>
+                <li className="bullet-item" style={{ fontSize: '1rem' }}><Icon n="check" s={20} c="var(--success)" /> <div>ניהול תקציב, משימות וצ'אט בסיסי</div></li>
+                <li className="bullet-item" style={{ fontSize: '1rem', opacity: 0.5 }}><Icon n="x" s={20} c="#888" /> <div>ללא כתבי כמויות (BOQ)</div></li>
+                <li className="bullet-item" style={{ fontSize: '1rem', opacity: 0.5 }}><Icon n="x" s={20} c="#888" /> <div>ללא יומני עבודה (Daily Logs)</div></li>
+              </ul>
+            </motion.div>
+            
+            {/* Pro Tier */}
+            <motion.div variants={fadeIn} className="info-card" style={{ background: 'linear-gradient(180deg, rgba(224,122,56,0.15) 0%, rgba(20,20,25,0.8) 100%)', border: '1px solid rgba(224,122,56,0.3)', position: 'relative', overflow: 'hidden', transform: 'scale(1.05)', zIndex: 2 }}>
+              <div style={{ position: 'absolute', top: 16, left: -30, background: 'var(--accent)', color: '#fff', padding: '4px 40px', transform: 'rotate(-45deg)', fontSize: 12, fontWeight: 'bold', letterSpacing: 1, boxShadow: '0 5px 15px rgba(0,0,0,0.3)' }}>מומלץ</div>
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 4, background: 'var(--accent)' }} />
+              <h3 style={{ fontSize: '1.8rem', fontWeight: 800, color: '#fff', marginBottom: 8 }}>Pro</h3>
+              <div style={{ color: '#aaa', marginBottom: 24, fontSize: '1.1rem' }}>למפקחים, קבלנים ויזמים שמנהלים שטח</div>
+              <ul className="bullet-list" style={{ gap: 16 }}>
+                <li className="bullet-item" style={{ fontSize: '1rem' }}><Icon n="check" s={20} c="var(--accent)" /> <div>עד 5 פרויקטים במקביל</div></li>
+                <li className="bullet-item" style={{ fontSize: '1rem' }}><Icon n="check" s={20} c="var(--accent)" /> <div>כתבי כמויות אינטראקטיביים והצעות מחיר</div></li>
+                <li className="bullet-item" style={{ fontSize: '1rem' }}><Icon n="check" s={20} c="var(--accent)" /> <div>ייצוא כתב כמויות ל-PDF</div></li>
+                <li className="bullet-item" style={{ fontSize: '1rem' }}><Icon n="check" s={20} c="var(--accent)" /> <div>הפקת יומני עבודה מתקדמים ל-PDF</div></li>
+              </ul>
+            </motion.div>
           </motion.div>
         </div>
       </section>
