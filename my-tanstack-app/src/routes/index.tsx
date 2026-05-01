@@ -318,7 +318,7 @@ function LandingPage() {
         <div className="content-width split-layout">
           <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeIn} className="split-text">
             <span className="feature-badge" style={{color: 'var(--success)'}}>ניהול ביצוע ושקיפות יומית</span>
-            <h2 className="feature-title">מעקב זעיר אחר כל קבלן ובכל חדר.</h2>
+            <h2 className="feature-title">מעקב מדויק אחר התקדמות המשימות של כל קבלן.</h2>
             <p className="feature-desc">
               הציר המרכזי של BuildSync הוא היכולת לפרק בית שלם או פרויקט שיפוץ למאות משימות קטנות, לשייך אותן לקבלנים ולעקוב אחריהן בזמן אמת ללא צורך להיות 24/7 באתר.
             </p>
