@@ -269,7 +269,7 @@ function LandingPage() {
           </motion.div>
           <motion.div initial={{ opacity: 0, x: 50 }} whileInView={{ opacity: 1, x: 0 }} transition={{ duration: 0.8 }} viewport={{ once: true }} className="split-media relative">
             <div className="mockup-container">
-              <img src="/blueprints.png" className="mockup-img" alt="Budget and BOQ Features" />
+              <img src="/images/budget_dashboard.png" className="mockup-img" alt="Budget and BOQ Features" style={{ objectFit: 'cover' }} />
             </div>
             <motion.div className="floating-card" style={{ top: -30, right: -20, minWidth: 340, padding: 0, overflow: 'hidden' }}>
                <div style={{ padding: '16px 24px', background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
