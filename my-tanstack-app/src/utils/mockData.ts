@@ -15,6 +15,12 @@ export const ROOM_TYPE_OPTS = [
   {id:"balcony",  label:"מרפסת",             defaultSize:12, wet:false, needsAC:false},
   {id:"storage",  label:"מחסן",              defaultSize:8,  wet:false, needsAC:false},
   {id:"garage",   label:"חניה",              defaultSize:30, wet:false, needsAC:false},
+  {id:"yard",     label:"חצר / שטח חוץ",     defaultSize:50, wet:true,  needsAC:false},
+  {id:"pool",     label:"בריכה",             defaultSize:20, wet:true,  needsAC:false},
+  {id:"shelter",  label:"ממ״ד",              defaultSize:12, wet:false, needsAC:true},
+  {id:"cinema",   label:"קולנוע ביתי",       defaultSize:25, wet:false, needsAC:true},
+  {id:"parking",  label:"חניה תת-קרקעית",    defaultSize:30, wet:false, needsAC:false},
+  {id:"basement", label:"חלל מרתף מרכזי",    defaultSize:40, wet:false, needsAC:true},
 ];
 
 export const DEFAULT_ROOMS = [
@@ -166,6 +172,9 @@ export const ROOMS_LIST = [
   {id:"bed3",name:"חדר שינה 3"},{id:"bath1",name:"חדר אמבטיה 1"},
   {id:"bath2",name:"חדר אמבטיה 2"},{id:"toilet",name:"שירותי אורחים"},
   {id:"entrance",name:"כניסה ומסדרון"},{id:"utility",name:"חדר שירות"},
+  {id:"yard",name:"חצר / שטח חוץ"},{id:"pool",name:"בריכה"},
+  {id:"shelter",name:"ממ״ד"},{id:"cinema",name:"קולנוע ביתי"},
+  {id:"parking",name:"חניה תת-קרקעית"},{id:"basement",name:"מרתף"},
 ];
 
 export const BOQ_DATA = {

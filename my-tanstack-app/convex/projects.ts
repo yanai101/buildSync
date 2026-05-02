@@ -76,6 +76,8 @@ export const createProject = mutation({
     // One-time floor-waste setting captured at creation. Cannot be modified
     // afterwards — `saveProjectSetup` does not accept this argument.
     floorWastePct: v.optional(v.number()),
+    hasBasement: v.optional(v.boolean()),
+    hasYard: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -96,6 +98,8 @@ export const createProject = mutation({
       committed: 0,
       currentStageName: "חדש",
       ...(args.floorWastePct !== undefined ? { floorWastePct: args.floorWastePct } : {}),
+      ...(args.hasBasement !== undefined ? { hasBasement: args.hasBasement } : {}),
+      ...(args.hasYard !== undefined ? { hasYard: args.hasYard } : {}),
     });
   }
 });
@@ -111,6 +115,8 @@ export const saveProjectSetup = mutation({
     floors: v.optional(v.number()),
     areaSqm: v.optional(v.number()),
     budgetTotal: v.optional(v.number()),
+    hasBasement: v.optional(v.boolean()),
+    hasYard: v.optional(v.boolean()),
     rooms: v.array(v.any()),
   },
   handler: async (ctx, args) => {
@@ -125,6 +131,8 @@ export const saveProjectSetup = mutation({
       floors: args.floors ?? 1,
       areaSqm: args.areaSqm ?? 0,
       ...(args.budgetTotal !== undefined ? { budgetTotal: args.budgetTotal } : {}),
+      ...(args.hasBasement !== undefined ? { hasBasement: args.hasBasement } : {}),
+      ...(args.hasYard !== undefined ? { hasYard: args.hasYard } : {}),
     };
 
     await ctx.db.patch(args.projectId, projectPatch);

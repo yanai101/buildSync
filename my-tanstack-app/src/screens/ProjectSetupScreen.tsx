@@ -20,10 +20,26 @@ export interface ProjectConfig {
   manager: string;
   inspector: string;
   floors: number;
+  hasBasement?: boolean;
+  hasYard?: boolean;
   area: number;
   budgetTotal: number;
   rooms: Room[];
 }
+
+export const getFloorLabel = (f: number) => {
+  if (f === -1) return "מרתף";
+  if (f === 0) return "חצר / שטח חוץ";
+  return `קומה ${f}`;
+};
+
+export const getFloorList = (floors: number, hasBasement?: boolean, hasYard?: boolean) => {
+  const list = [];
+  if (hasYard) list.push(0);
+  if (hasBasement) list.push(-1);
+  for (let i = 1; i <= floors; i++) list.push(i);
+  return list;
+};
 
 export const ProjectSetupScreen = () => {
   const { allowed, loading: roleLoading } = useRequireRole(['owner', 'manager']);
@@ -49,6 +65,8 @@ export const ProjectSetupScreen = () => {
         manager: (project as any).managerName || '',
         inspector: (project as any).inspectorName || '',
         floors: project.floors || 1,
+        hasBasement: (project as any).hasBasement || false,
+        hasYard: (project as any).hasYard || false,
         area: project.areaSqm || 0,
         budgetTotal: (project as any).budgetTotal || 0,
         rooms: (project as any).rooms || [],
@@ -58,13 +76,27 @@ export const ProjectSetupScreen = () => {
 
   const setField = (k: keyof ProjectConfig, v: string | number) => setCfg((c)=> c ? ({...c,[k]:v}) : c);
   const setRoom = (uid: string, k: keyof Room, v: any) => setCfg((c)=> c ? ({...c,rooms:(c.rooms || []).map((r)=>r.uid===uid?{...r,[k]:v}:r)}) : c);
-  const addRoom = (floor: number = 1) => {
+  const addRoom = (floor: number = 1, type = "bedroom", name = "חדר שינה חדש", size = 16) => {
     if (!isProOrPremium) {
       notify({ title: 'שדרוג נדרש', body: 'הוספת חדרים מותאמים אישית זמינה במסלול Pro.', kind: 'error' });
       return;
     }
-    const uid = `r${Date.now()}`;
-    setCfg((c)=> c ? ({...c,rooms:[...(c.rooms || []),{uid,type:"bedroom",name:"חדר שינה חדש",floor,size:16}]}) : c);
+    const uid = `r${Date.now()}_${Math.random().toString(36).substring(7)}`;
+    setCfg((c)=> c ? ({...c,rooms:[...(c.rooms || []),{uid,type,name,floor,size}]}) : c);
+  };
+  
+  const toggleBasement = (checked: boolean) => {
+    setField("hasBasement", checked);
+    if (checked && floorRooms(-1).length === 0) {
+      addRoom(-1, "basement", "חלל מרתף", 40);
+    }
+  };
+
+  const toggleYard = (checked: boolean) => {
+    setField("hasYard", checked);
+    if (checked && floorRooms(0).length === 0) {
+      addRoom(0, "yard", "חצר", 50);
+    }
   };
   const removeRoom = (uid: string) => setCfg((c)=> c ? ({...c,rooms:(c.rooms || []).filter((r)=>r.uid!==uid)}) : c);
 
@@ -86,6 +118,8 @@ export const ProjectSetupScreen = () => {
         managerName: cfg.manager,
         inspectorName: cfg.inspector,
         floors: Number(cfg.floors),
+        hasBasement: Boolean(cfg.hasBasement),
+        hasYard: Boolean(cfg.hasYard),
         areaSqm: Number(cfg.area) || totalRoomArea,
         budgetTotal: Number(cfg.budgetTotal) || 0,
         rooms: cfg.rooms,
@@ -148,6 +182,8 @@ export const ProjectSetupScreen = () => {
               <div className="card-body">
                  {[
                    ["קומות", cfg.floors],
+                   ["מרתף", cfg.hasBasement ? "יש" : "אין"],
+                   ["חצר", cfg.hasYard ? "יש" : "אין"],
                    ["חדרים", cfg.rooms.length],
                    ["שטח כולל", `${displayArea} מ"ר`]
                  ].map(([k,v]) => (
@@ -256,6 +292,24 @@ export const ProjectSetupScreen = () => {
                 <div style={{fontSize:22,fontWeight:800,color:"var(--accent)"}}>{totalRoomArea} <span style={{fontSize:14,fontWeight:400,color:"var(--text2)"}}>מ"ר</span></div>
               </div>
             </div>
+            
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:24,background:"var(--surface)",padding:16,borderRadius:12,border:"1px solid var(--border)"}}>
+              <label style={{display:"flex",alignItems:"center",gap:12,cursor:"pointer"}}>
+                <input type="checkbox" checked={cfg.hasBasement} onChange={e=>toggleBasement(e.target.checked)} style={{width:18,height:18,accentColor:"var(--accent)"}}/>
+                <div>
+                  <div style={{fontWeight:600}}>יש מרתף</div>
+                  <div style={{fontSize:12,color:"var(--text3)"}}>הוספת קומה תת-קרקעית</div>
+                </div>
+              </label>
+              <label style={{display:"flex",alignItems:"center",gap:12,cursor:"pointer"}}>
+                <input type="checkbox" checked={cfg.hasYard} onChange={e=>toggleYard(e.target.checked)} style={{width:18,height:18,accentColor:"var(--accent)"}}/>
+                <div>
+                  <div style={{fontWeight:600}}>יש חצר / חוץ</div>
+                  <div style={{fontSize:12,color:"var(--text3)"}}>הוספת שטחי גינה ופיתוח</div>
+                </div>
+              </label>
+            </div>
+
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(120px,1fr))",gap:10}}>
               {[
                 {label:"חדר שינה",count:(cfg.rooms || []).filter((r)=>r.type==="bedroom"||r.type==="master").length},
@@ -278,15 +332,15 @@ export const ProjectSetupScreen = () => {
             <div style={{padding:"14px 18px",borderBottom:"1px solid var(--border)",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
               <span style={{fontWeight:700,fontSize:15}}>הגדרת חדרים</span>
             </div>
-            {Array.from({length:cfg.floors},(_,fi)=>(
-              <div key={fi} style={{padding:"14px 18px 8px",borderBottom:"1px solid var(--border)"}}>
+            {getFloorList(cfg.floors, cfg.hasBasement, cfg.hasYard).map((f)=>(
+              <div key={f} style={{padding:"14px 18px 8px",borderBottom:"1px solid var(--border)"}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-                  <div style={{fontSize:12,fontWeight:700,color:"var(--text3)",textTransform:"uppercase",letterSpacing:".5px"}}>קומה {fi+1}</div>
-                  <Btn size="sm" variant="ghost" onClick={() => addRoom(fi+1)}><Icon n="plus" s={13}/> חדר לקומה זו</Btn>
+                  <div style={{fontSize:12,fontWeight:700,color:"var(--text3)",textTransform:"uppercase",letterSpacing:".5px"}}>{getFloorLabel(f)}</div>
+                  <Btn size="sm" variant="ghost" onClick={() => addRoom(f)}><Icon n="plus" s={13}/> הוסף חדר</Btn>
                 </div>
                 <div style={{display:"flex",flexDirection:"column",gap:8}}>
-                  {floorRooms(fi+1).length===0 && <div style={{fontSize:13,color:"var(--text3)",padding:"8px 0"}}>אין חדרים בקומה זו</div>}
-                  {floorRooms(fi+1).map((r)=>(
+                  {floorRooms(f).length===0 && <div style={{fontSize:13,color:"var(--text3)",padding:"8px 0"}}>אין חדרים באזור זה</div>}
+                  {floorRooms(f).map((r)=>(
                     <div key={r.uid} style={{display:"flex",gap:10,alignItems:"center",padding:"8px 10px",background:"var(--bg)",borderRadius:8}}>
                       <select className="bp-input" value={r.type} onChange={e=>{
                         const t=ROOM_TYPE_OPTS.find(x=>x.id===e.target.value);
@@ -300,8 +354,8 @@ export const ProjectSetupScreen = () => {
                         <input className="bp-input" type="number" value={r.size} onChange={e=>setRoom(r.uid,"size",Number(e.target.value))} style={{width:60,fontSize:12}}/>
                         <span style={{fontSize:11,color:"var(--text3)",whiteSpace:"nowrap"}}>מ"ר</span>
                       </div>
-                      <select className="bp-input" value={r.floor} onChange={e=>setRoom(r.uid,"floor",Number(e.target.value))} style={{width:70,fontSize:12}}>
-                        {Array.from({length:cfg.floors},(_,i)=><option key={i+1} value={i+1}>קומה {i+1}</option>)}
+                      <select className="bp-input" value={r.floor} onChange={e=>setRoom(r.uid,"floor",Number(e.target.value))} style={{width:100,fontSize:12}}>
+                        {getFloorList(cfg.floors, cfg.hasBasement, cfg.hasYard).map(fl=><option key={fl} value={fl}>{getFloorLabel(fl)}</option>)}
                       </select>
                       <button onClick={()=>removeRoom(r.uid)} style={{background:"none",border:"none",cursor:"pointer",color:"var(--text3)",padding:4,display:"flex",flexShrink:0}}>
                         <Icon n="trash" s={14}/>
@@ -349,7 +403,7 @@ export const ProjectSetupScreen = () => {
               </div>
               <div>
                 <div style={{fontSize:12,fontWeight:700,color:"var(--text3)",marginBottom:10,textTransform:"uppercase",letterSpacing:".5px"}}>מבנה הבית</div>
-                {[["קומות",cfg.floors],["חדרים",(cfg.rooms || []).length],["שטח כולל",`${displayArea} מ"ר`]].map(([k,v])=>(
+                {[["קומות",cfg.floors],["מרתף",cfg.hasBasement?"יש":"אין"],["חצר",cfg.hasYard?"יש":"אין"],["חדרים",(cfg.rooms || []).length],["שטח כולל",`${displayArea} מ"ר`]].map(([k,v])=>(
                   <div key={k} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:"1px solid var(--border)",fontSize:13}}>
                     <span style={{color:"var(--text2)"}}>{k}</span><span style={{fontWeight:600}}>{v as any}</span>
                   </div>

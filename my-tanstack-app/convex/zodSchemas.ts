@@ -57,6 +57,12 @@ export const zRoomType = z.enum([
   'storage',
   'garage',
   'balcony',
+  'yard',
+  'pool',
+  'shelter',
+  'cinema',
+  'parking',
+  'basement',
 ]);
 
 export const zContractorRole = z.enum([
@@ -106,6 +112,8 @@ export const zProject = {
   // Waste percentage applied to flooring qty calculations across the app.
   // Default 10 if unset.
   floorWastePct: z.number().optional(),
+  hasBasement: z.boolean().optional(),
+  hasYard: z.boolean().optional(),
 };
 
 export const zProjectRoom = {

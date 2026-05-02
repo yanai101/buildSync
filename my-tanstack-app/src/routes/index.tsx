@@ -539,7 +539,7 @@ function LandingPage() {
             </p>
           </motion.div>
 
-          <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-100px" }} variants={staggerContainer} className="card-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '40px', maxWidth: 900, margin: '0 auto' }}>
+          <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-100px" }} variants={staggerContainer} className="card-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '30px', maxWidth: 1200, margin: '0 auto' }}>
             {/* Free Tier */}
             <motion.div variants={fadeIn} className="info-card" style={{ background: 'linear-gradient(180deg, rgba(20,20,25,0.8) 0%, rgba(20,20,25,0.4) 100%)', border: '1px solid rgba(255,255,255,0.1)', position: 'relative', overflow: 'hidden' }}>
               <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 4, background: 'var(--text3)' }} />
@@ -566,28 +566,57 @@ function LandingPage() {
                 <li className="bullet-item" style={{ fontSize: '1rem' }}><Icon n="check" s={20} c="var(--accent)" /> <div>הפקת יומני עבודה מתקדמים ל-PDF</div></li>
               </ul>
             </motion.div>
+
+            {/* Premium Tier */}
+            <motion.div variants={fadeIn} className="info-card" style={{ background: 'linear-gradient(180deg, rgba(59,130,246,0.1) 0%, rgba(20,20,25,0.8) 100%)', border: '1px solid rgba(59,130,246,0.2)', position: 'relative', overflow: 'hidden' }}>
+              <div style={{ position: 'absolute', top: 16, left: -30, background: '#3B82F6', color: '#fff', padding: '4px 40px', transform: 'rotate(-45deg)', fontSize: 12, fontWeight: 'bold', letterSpacing: 1, boxShadow: '0 5px 15px rgba(0,0,0,0.3)' }}>בקרוב</div>
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 4, background: '#3B82F6' }} />
+              <h3 style={{ fontSize: '1.8rem', fontWeight: 800, color: '#fff', marginBottom: 8 }}>Premium</h3>
+              <div style={{ color: '#aaa', marginBottom: 24, fontSize: '1.1rem' }}>למפקחים וקבלנים שרוצים לנהל חכם עם AI</div>
+              <ul className="bullet-list" style={{ gap: 16 }}>
+                <li className="bullet-item" style={{ fontSize: '1rem' }}><Icon n="check" s={20} c="#3B82F6" /> <div>כל היכולות של מסלול ה-Pro</div></li>
+                <li className="bullet-item" style={{ fontSize: '1rem' }}><Icon n="cpu" s={20} c="#3B82F6" /> <div>עוזר AI אישי שמסכם יומנים ופגישות</div></li>
+                <li className="bullet-item" style={{ fontSize: '1rem' }}><Icon n="cpu" s={20} c="#3B82F6" /> <div>תובנות אוטומטיות והמלצות לחיסכון</div></li>
+                <li className="bullet-item" style={{ fontSize: '1rem' }}><Icon n="check" s={20} c="#3B82F6" /> <div>מספר פרויקטים ומשתמשים ללא הגבלה</div></li>
+              </ul>
+            </motion.div>
           </motion.div>
         </div>
       </section>
 
       {/* 7. FINAL CALL TO ACTION (FULL WIDTH) */}
-      <section style={{ padding: '140px 5%', background: 'linear-gradient(135deg, var(--accent) 0%, #92400E 100%)', textAlign: 'center', color: '#fff', position: 'relative', overflow: 'hidden' }}>
+      <section style={{ padding: '140px 5%', background: 'linear-gradient(135deg, rgba(224,122,56,0.85) 0%, rgba(146,64,14,0.95) 100%), url(/images/house_cta_bg.png) center/cover no-repeat', textAlign: 'center', color: '#fff', position: 'relative', overflow: 'hidden' }}>
         {/* Subtle decorative circles */}
         <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 40, ease: "linear" }} style={{ position: 'absolute', top: -150, right: -150, width: 600, height: 600, borderRadius: '50%', background: 'radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%)', zIndex: 0 }} />
         <motion.div animate={{ rotate: -360 }} transition={{ repeat: Infinity, duration: 50, ease: "linear" }} style={{ position: 'absolute', bottom: -200, left: -100, width: 700, height: 700, borderRadius: '50%', background: 'radial-gradient(circle, rgba(0,0,0,0.15) 0%, transparent 70%)', zIndex: 0 }} />
         
         <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeIn} style={{ position: 'relative', zIndex: 1, maxWidth: 900, margin: '0 auto' }}>
-          <h2 style={{ fontSize: 'clamp(3rem, 6vw, 4.5rem)', fontWeight: 900, marginBottom: 30, textShadow: '0 10px 30px rgba(0,0,0,0.2)', lineHeight: 1.1, letterSpacing: '-0.02em' }}>
-            תתקדם לניהול של העתיד.
+          <div style={{ display: 'inline-block', padding: '6px 16px', marginBottom: '24px', fontSize: '0.875rem', fontWeight: 'bold', color: '#fff', background: 'rgba(255,255,255,0.15)', borderRadius: '999px', border: '1px solid rgba(255,255,255,0.3)', backdropFilter: 'blur(4px)', textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>
+            בקרוב באוויר
+          </div>
+          <h2 style={{ fontSize: 'clamp(3rem, 6vw, 4.5rem)', fontWeight: 900, marginBottom: 30, textShadow: '0 10px 30px rgba(0,0,0,0.5)', lineHeight: 1.1, letterSpacing: '-0.02em' }}>
+            מוכנים לעבוד חכם יותר?
           </h2>
-          <p style={{ fontSize: 'clamp(1.3rem, 2vw, 1.6rem)', margin: '0 auto 50px', opacity: 0.95, lineHeight: 1.6 }}>
-            הצטרף לעשרות המפקחים והחברות שכבר מנהלים את אתרי העבודה שלהם עם BuildSync. שלט על כל האספקטים הפיננסיים, התפעוליים והתקשורתיים מבוססי מובייל ודסקטופ בסביבה אחת מאובטחת וחכמה.
+          <p style={{ fontSize: 'clamp(1.3rem, 2vw, 1.6rem)', margin: '0 auto 50px', opacity: 0.95, lineHeight: 1.6, textShadow: '0 2px 10px rgba(0,0,0,0.3)' }}>
+            המערכת שתחסוך לכם זמן וכסף בכל פרויקט כבר ממש מעבר לפינה. אל תישארו מאחור – הירשמו עכשיו כדי לקבל הודעה לפני כולם ביום ההשקה.
           </p>
           <div style={{ display: 'flex', justifyContent: 'center', gap: 20, flexWrap: 'wrap' }}>
-            <div className="cta-btn" style={{ background: 'rgba(255,255,255,0.2)', color: '#fff', boxShadow: 'none', border: 'none', opacity: 0.8, cursor: 'not-allowed' }}>
-              פתיחת חשבון - בקרוב
-            </div>
+            <a 
+              href="https://forms.gle/iawiAgr9noE7TPDw5" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="cta-btn hover-scale" 
+              style={{ background: '#fff', color: 'var(--accent)', boxShadow: '0 10px 25px rgba(0,0,0,0.3)', display: 'inline-flex', alignItems: 'center', gap: '12px', textDecoration: 'none' }}
+            >
+              תעדכנו אותי כשהאפליקציה באוויר!
+              <svg style={{ width: 20, height: 20, transform: 'rotate(180deg)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+              </svg>
+            </a>
           </div>
+          <p style={{ marginTop: '24px', fontSize: '0.9rem', color: 'rgba(255,255,255,0.7)' }}>
+            * מבטיחים לא להספים. תקבלו הודעה רק כשיהיה משהו מעניין באמת.
+          </p>
         </motion.div>
       </section>
       

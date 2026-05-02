@@ -41,7 +41,7 @@ const applyWaste = (base: number, pct: number | undefined) =>
 const getRoomDbId = (room: any) => room?._id ?? room?.uid;
 
 const AddItemWidget = ({
-  roomUid, roomType, existingItems, onAdd, projectId, uploadProjectFile
+  roomUid, roomType, existingItems, onAdd, projectId, uploadProjectFile, globalCategories
 }: {
   roomUid: string;
   roomType: string;
@@ -69,7 +69,7 @@ const AddItemWidget = ({
   const close = () => { setOpen(false); setQuery(""); setPendingItem(null); setImagePreview(null); setImageUploadError(null); };
 
   const selectItem = (item: any) => {
-    setPendingItem({id:`cat_${Date.now()}`, cat:item.cat, name:item.name, qty:item.qty, unit:item.unit, userQty:item.qty, imageUrl: null, notes: ''});
+    setPendingItem({id:`cat_${Date.now()}`, cat:item.cat, name:item.name, qty:item.qty, unit:item.unit, userQty:item.qty, imageUrl: null, notes: '', isCustom: item.isCustom});
   };
 
   const handleImagePick = async (file: File | null) => {
@@ -100,7 +100,7 @@ const AddItemWidget = ({
     if (!pendingItem) return;
     setSavingItem(true);
     try {
-      await onAdd(pendingItem);
+      await onAdd({ ...pendingItem, cat: pendingItem.cat?.trim() || 'כללי' });
       close();
     } finally {
       setSavingItem(false);
@@ -175,7 +175,7 @@ const AddItemWidget = ({
                 </div>
                 {query.trim() && !allSuggestions.some(s => s.name === query.trim()) && (
                   <button
-                    onClick={() => selectItem({cat:"כללי",name:query.trim(),qty:1,unit:"יח'",userQty:1})}
+                    onClick={() => selectItem({cat:"",name:query.trim(),qty:1,unit:"יח'",userQty:1,isCustom:true})}
                     style={{padding:"10px",borderRadius:10,border:"2px dashed var(--accent)",background:"var(--accent-light)",color:"var(--accent)",fontWeight:700,fontSize:14,cursor:"pointer"}}
                   >
                     <Icon n="plus" s={14}/> הוסף "{query.trim()}" כפריט חופשי
@@ -184,6 +184,22 @@ const AddItemWidget = ({
               </>
             ) : (
               <>
+                {pendingItem.isCustom && (
+                  <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                    <label style={{fontSize:13,fontWeight:600,color:"var(--text2)"}}>קטגוריה *</label>
+                    <input
+                      className="bp-input"
+                      value={pendingItem.cat}
+                      onChange={e => setPendingItem((prev:any)=>({...prev,cat:e.target.value}))}
+                      list="global-categories"
+                      placeholder="כללי (ברירת מחדל)"
+                      style={{fontSize:14}}
+                    />
+                    <datalist id="global-categories">
+                      {globalCategories.map(c => <option key={c} value={c} />)}
+                    </datalist>
+                  </div>
+                )}
                 {/* Image upload area */}
                 <input
                   ref={imgInputRef}
@@ -280,6 +296,16 @@ export const BOQWizardScreen = () => {
 
   // Track which rooms have been initialised so we don't overwrite local state on re-render
   const [initialised, setInitialised] = React.useState(false);
+
+  const globalCategories = React.useMemo(() => {
+    const cats = new Set<string>();
+    const defaults = ["ריצוף וחיפוי", "חשמל", "אינסטלציה וסניטריה", "צבע ושפכטל", "נגרות ומטבחים", "אלומיניום וחלונות", "מיזוג אוויר", "דלתות", "כללי"];
+    defaults.forEach(c => cats.add(c));
+    Object.values(allItems).flat().forEach((i: any) => {
+      if (i.cat) cats.add(i.cat);
+    });
+    return Array.from(cats);
+  }, [allItems]);
 
   React.useEffect(() => {
     if (!project || !(project as any).rooms) return;
@@ -993,8 +1019,8 @@ export const BOQWizardScreen = () => {
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
               <div>
                 <h2 style={{fontSize:24,fontWeight:800,margin:0}}>{currentRoom.name}</h2>
-                <div style={{fontSize:14,color:"var(--text3)",marginTop:4}}>
-                  {currentRoom.name} · קומה {currentRoom.floor} · {currentRoom.size} מ"ר
+                <div style={{ fontSize: 13, color: 'var(--text3)', marginTop: 2 }}>
+                  {currentRoom.name} · {currentRoom.floor === -1 ? 'מרתף' : currentRoom.floor === 0 ? 'חצר / חוץ' : `קומה ${currentRoom.floor}`} · {currentRoom.size} מ"ר
                 </div>
               </div>
               <Btn onClick={()=>{
@@ -1019,11 +1045,12 @@ export const BOQWizardScreen = () => {
             <div style={{display:"flex",justifyContent:"flex-start"}}>
               <AddItemWidget
                 roomUid={currentRoom.uid}
-                roomType={currentRoom.type}
+                roomType={currentRoom.type || 'general'}
                 existingItems={items}
                 onAdd={item=>addItem(currentRoom.uid, item)}
                 projectId={projectId as any}
                 uploadProjectFile={uploadProjectFile}
+                globalCategories={globalCategories}
               />
             </div>
 
