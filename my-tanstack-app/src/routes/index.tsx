@@ -197,7 +197,7 @@ function LandingPage() {
       </div>
 
       {/* 2. CORE TRIAD (Quick Highlights) */}
-      <section className="section-padding" style={{ background: '#0a0a0c', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingTop: 60 }}>
+      <section className="section-padding" style={{ background: 'linear-gradient(180deg, rgba(10,10,12,0.95) 0%, rgba(10,10,12,0.5) 50%, rgba(10,10,12,0.95) 100%), url(/images/bg_core_triad.png) center/cover no-repeat', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingTop: 60 }}>
         <div className="content-width">
           <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-100px" }} variants={staggerContainer} className="card-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))' }}>
             {[
@@ -218,7 +218,7 @@ function LandingPage() {
       </section>
 
       {/* 3. FEATURE DEEP DIVE: COMMUNICATION & PHOTOS */}
-      <section className="section-padding" style={{ background: '#0a0a0c' }}>
+      <section className="section-padding" style={{ background: 'linear-gradient(180deg, rgba(10,10,12,0.95) 0%, rgba(10,10,12,0.6) 50%, rgba(10,10,12,0.95) 100%), url(/images/bg_communication.png) center/cover no-repeat', backgroundAttachment: 'fixed' }}>
         <div className="content-width split-layout">
           <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeIn} className="split-text">
             <span className="feature-badge">חווית תקשורת מתקדמת</span>
@@ -314,7 +314,7 @@ function LandingPage() {
       </section>
 
       {/* 5. FEATURE DEEP DIVE: MANAGING STAGES & CONTRACTORS */}
-      <section className="section-padding" style={{ background: '#0a0a0c' }}>
+      <section className="section-padding" style={{ background: 'linear-gradient(180deg, rgba(10,10,12,0.95) 0%, rgba(10,10,12,0.5) 50%, rgba(10,10,12,0.95) 100%), url(/images/bg_stages.png) center/cover no-repeat' }}>
         <div className="content-width split-layout">
           <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeIn} className="split-text">
             <span className="feature-badge" style={{color: 'var(--success)'}}>ניהול ביצוע ושקיפות יומית</span>
@@ -450,7 +450,7 @@ function LandingPage() {
       </section>
 
       {/* 5.8 FEATURE DEEP DIVE: BUREAUCRACY & PERMITS */}
-      <section className="section-padding" style={{ background: '#0a0a0c', borderTop: '1px solid rgba(255,255,255,0.02)' }}>
+      <section className="section-padding" style={{ background: 'linear-gradient(180deg, rgba(10,10,12,0.95) 0%, rgba(10,10,12,0.5) 50%, rgba(10,10,12,0.95) 100%), url(/images/bg_bureaucracy.png) center/cover no-repeat', borderTop: '1px solid rgba(255,255,255,0.02)' }}>
         <div className="content-width split-layout">
           <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeIn} className="split-text">
             <span className="feature-badge" style={{color: '#EAB308'}}>סדר בניירת וברישוי</span>
@@ -501,7 +501,7 @@ function LandingPage() {
       </section>
 
       {/* 6. AT-A-GLANCE GRID */}
-      <section className="section-padding" style={{ background: '#111115', borderTop: '1px solid rgba(255,255,255,0.02)' }}>
+      <section className="section-padding" style={{ background: 'linear-gradient(180deg, rgba(17,17,21,0.95) 0%, rgba(17,17,21,0.6) 50%, rgba(17,17,21,0.95) 100%), url(/images/bg_smart_system.png) center/cover no-repeat', borderTop: '1px solid rgba(255,255,255,0.02)' }}>
         <div className="content-width">
           <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeIn} style={{ textAlign: 'center', marginBottom: 80 }}>
             <h2 className="gradient-text" style={{ fontSize: 'clamp(2.5rem, 5vw, 3.5rem)', fontWeight: 800, marginBottom: 20 }}>מערכת כל-כך חכמה שהיא חוסכת עובד.</h2>
