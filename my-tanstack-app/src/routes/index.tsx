@@ -527,9 +527,9 @@ function LandingPage() {
       </section>
 
       {/* 6.2 THE SMART INVESTMENT BANNER */}
-      <section className="section-padding" style={{ background: 'linear-gradient(135deg, rgba(224,122,56,0.1) 0%, rgba(20,20,25,0.8) 100%)', borderTop: '1px solid rgba(224,122,56,0.2)', borderBottom: '1px solid rgba(224,122,56,0.2)', position: 'relative', overflow: 'hidden' }}>
+      <section className="section-padding" style={{ background: 'linear-gradient(135deg, rgba(224,122,56,0.65) 0%, rgba(10,10,12,0.95) 100%), url(/images/flying_money_bg.png) center/cover no-repeat', backgroundAttachment: 'fixed', borderTop: '1px solid rgba(224,122,56,0.2)', borderBottom: '1px solid rgba(224,122,56,0.2)', position: 'relative', overflow: 'hidden' }}>
         {/* Subtle background glow */}
-        <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '80%', height: '80%', background: 'radial-gradient(ellipse at center, rgba(224,122,56,0.15) 0%, transparent 70%)', filter: 'blur(40px)', zIndex: 0 }} />
+        <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '80%', height: '80%', background: 'radial-gradient(ellipse at center, rgba(224,122,56,0.2) 0%, transparent 70%)', filter: 'blur(40px)', zIndex: 0 }} />
         
         <div className="content-width" style={{ position: 'relative', zIndex: 1 }}>
           <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeIn} style={{ textAlign: 'center', maxWidth: 900, margin: '0 auto' }}>
