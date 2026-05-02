@@ -25,8 +25,9 @@ export const Route = createRootRoute({
         content: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no',
       },
       ...seo({
-        title: 'BuildSync - ניהול תהליך בנייה',
-        description: `ניהול בנייה ושיפוצים`,
+        title: 'BuildSync - פלטפורמה מתקדמת לניהול בנייה ושיפוצים',
+        description: `שליטה מוחלטת בכתבי כמויות, תקציב, קבלנים ותקשורת בשטח. מוציאים מיליונים על הנכס? תנהלו אותו חכם.`,
+        image: 'https://buildsync.vercel.app/og-image.png',
       }),
     ],
     links: [
