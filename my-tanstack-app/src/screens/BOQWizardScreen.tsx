@@ -49,6 +49,7 @@ const AddItemWidget = ({
   onAdd: (item: any) => Promise<void>;
   projectId: Id<'projects'> | null;
   uploadProjectFile: any;
+  globalCategories: string[];
 }) => {
   const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState("");

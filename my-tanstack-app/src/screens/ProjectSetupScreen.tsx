@@ -74,7 +74,7 @@ export const ProjectSetupScreen = () => {
     }
   }, [project]);
 
-  const setField = (k: keyof ProjectConfig, v: string | number) => setCfg((c)=> c ? ({...c,[k]:v}) : c);
+  const setField = (k: keyof ProjectConfig, v: string | number | boolean) => setCfg((c)=> c ? ({...c,[k]:v}) : c);
   const setRoom = (uid: string, k: keyof Room, v: any) => setCfg((c)=> c ? ({...c,rooms:(c.rooms || []).map((r)=>r.uid===uid?{...r,[k]:v}:r)}) : c);
   const addRoom = (floor: number = 1, type = "bedroom", name = "חדר שינה חדש", size = 16) => {
     if (!isProOrPremium) {
