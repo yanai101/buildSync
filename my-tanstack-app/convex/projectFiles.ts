@@ -7,6 +7,7 @@ const usageValidator = v.union(
   v.literal('receipt'),
   v.literal('quote'),
   v.literal('document'),
+  v.literal('daily_log'),
 );
 
 const kindValidator = v.union(
@@ -88,6 +89,40 @@ export const deleteProjectFile = mutation({
 
     await ctx.storage.delete(file.storageId);
     await ctx.db.delete(args.fileId);
+    return { deleted: true };
+  },
+});
+
+export const deleteProjectFileByStorageId = mutation({
+  args: {
+    storageId: v.id('_storage'),
+  },
+  handler: async (ctx, args) => {
+    const file = await ctx.db
+      .query('projectFiles')
+      .withIndex('by_storage', (q) => q.eq('storageId', args.storageId))
+      .first();
+
+    if (file) {
+      const { userId, user, project } = await requireProjectFileUser(ctx, file.projectId);
+      const isUploader = file.uploaderUserId === userId;
+      const isProjectManager = project.ownerUserId === userId || project.managerUserId === userId;
+      const hasManagerRole = user?.role === 'owner' || user?.role === 'manager';
+      
+      // Attempt to enforce auth if we found the file.
+      // If we don't have permission, just return false (fail silently to user but protect data)
+      if (!isUploader && !isProjectManager && !hasManagerRole && !user?.isSuperAdmin) {
+        throw new Error('Only the uploader, owner, or manager can delete this file');
+      }
+      await ctx.db.delete(file._id);
+    }
+    
+    // Always delete the underlying storage file if we get here
+    try {
+      await ctx.storage.delete(args.storageId);
+    } catch (e) {
+      // Storage file might already be deleted
+    }
     return { deleted: true };
   },
 });

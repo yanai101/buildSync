@@ -4,7 +4,7 @@ import { useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import type { Id } from '../../convex/_generated/dataModel';
 
-type ProjectFileUsage = 'photo' | 'receipt' | 'quote' | 'document';
+type ProjectFileUsage = 'photo' | 'receipt' | 'quote' | 'document' | 'daily_log';
 type ProjectFileKind = 'image' | 'pdf' | 'document' | 'other';
 
 type OptimizedFile = {

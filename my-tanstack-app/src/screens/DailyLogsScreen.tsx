@@ -7,6 +7,8 @@ import { PageBackground, EmptyState, Btn, Icon, ConfirmDialog, FeedbackModal, Pr
 import { useRequireRole } from '../hooks/useRequireRole';
 import { AccessDenied, AccessLoading } from '../components/AccessDenied';
 import { useSubscription } from '../hooks/useSubscription';
+import { useProjectFileUploader } from '../hooks/useProjectFileUploader';
+import type { Id } from '../../convex/_generated/dataModel';
 
 export const DailyLogsScreen = () => {
   const { role, allowed, loading: roleLoading } = useRequireRole(['owner', 'manager', 'inspector', 'contractor']);
@@ -21,10 +23,16 @@ export const DailyLogsScreen = () => {
   
   const saveLog = useMutation(api.dailyLogs.saveLog);
   const lockLog = useMutation(api.dailyLogs.lockLog);
+  const deleteFile = useMutation(api.projectFiles.deleteProjectFileByStorageId);
+  const uploadProjectFile = useProjectFileUploader();
 
   const [feedback, setFeedback] = useState<{title: string, message: string, type: 'success' | 'error' | 'info'} | null>(null);
   const [saving, setSaving] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [uploadingImagesCount, setUploadingImagesCount] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const [deletingImages, setDeletingImages] = useState<Set<string>>(new Set());
 
   // Local state for the form so we can edit before saving
   const [form, setForm] = useState({
@@ -35,6 +43,7 @@ export const DailyLogsScreen = () => {
     deliveries: [] as any[],
     issues: [] as any[],
     instructions: [] as any[],
+    images: [] as { storageId: string, url?: string }[],
   });
 
   // Sync db log to local form when log changes or date changes
@@ -48,9 +57,10 @@ export const DailyLogsScreen = () => {
         deliveries: log.deliveries || [],
         issues: log.issues || [],
         instructions: log.instructions || [],
+        images: log.images || [],
       });
     } else {
-      setForm({ weather: '', temperature: '', workforce: [], activities: [], deliveries: [], issues: [], instructions: [] });
+      setForm({ weather: '', temperature: '', workforce: [], activities: [], deliveries: [], issues: [], instructions: [], images: [] });
     }
   }, [log, selectedDate]);
 
@@ -74,12 +84,71 @@ export const DailyLogsScreen = () => {
         projectId,
         date: selectedDate,
         ...form,
+        images: form.images.map(img => ({ storageId: img.storageId as Id<'_storage'>, url: img.url })),
       });
       setFeedback({ title: "נשמר בהצלחה", message: "הדוח היומי נשמר כטיוטה.", type: 'success' });
     } catch (err: any) {
       setFeedback({ title: "שגיאה בשמירה", message: err.message, type: 'error' });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const processImageFiles = async (files: File[]) => {
+    if (!projectId || files.length === 0) return;
+    
+    const currentCount = form.images.length;
+    const availableSlots = 4 - currentCount;
+    
+    if (availableSlots <= 0) {
+      setFeedback({ title: "הגבלת תמונות", message: "ניתן להעלות עד 4 תמונות ליומן.", type: "error" });
+      return;
+    }
+    
+    const filesToUpload = files.slice(0, availableSlots);
+    if (files.length > availableSlots) {
+      setFeedback({ title: "הגבלת תמונות", message: `נבחרו יותר תמונות ממה שאפשר. רק ${availableSlots} תמונות יועלו.`, type: "info" });
+    }
+
+    setUploadingImage(true);
+    setUploadingImagesCount(filesToUpload.length);
+    try {
+      const newImages: {storageId: string, url: string}[] = [];
+      for (const file of filesToUpload) {
+        const uploaded = await uploadProjectFile({
+          projectId,
+          file,
+          usage: 'daily_log',
+        });
+        newImages.push({ storageId: uploaded.storageId, url: URL.createObjectURL(file) });
+      }
+      setForm(prev => ({
+        ...prev,
+        images: [...prev.images, ...newImages]
+      }));
+    } catch (err: any) {
+      setFeedback({ title: "שגיאה", message: "שגיאה בהעלאת התמונות. חלק מהתמונות אולי לא עלו.", type: "error" });
+    } finally {
+      setUploadingImage(false);
+      setUploadingImagesCount(0);
+    }
+  };
+
+  const handleUploadImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length > 0) {
+      await processImageFiles(files);
+    }
+    e.target.value = '';
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (uploadingImage) return;
+    const files = Array.from(e.dataTransfer.files || []).filter(f => f.type.startsWith('image/'));
+    if (files.length > 0) {
+      await processImageFiles(files);
     }
   };
 
@@ -135,6 +204,15 @@ export const DailyLogsScreen = () => {
         <strong>תנאי שטח:</strong> מזג אוויר: ${targetLog.weather || '-'} | טמפרטורה: ${targetLog.temperature || '-'}
       </div>`;
 
+      if (targetLog.workforce?.length > 0) {
+        html += `<h2 style="font-size: 18px; margin-bottom: 10px; border-bottom: 1px solid #ccc; padding-bottom: 4px; margin-top: 20px;">כוח אדם נוכח באתר</h2>
+        <ul style="font-size: 14px; line-height: 1.6;">`;
+        for (const w of targetLog.workforce) {
+          html += `<li><strong>${w.contractorName || 'כללי'}:</strong> ${w.workersCount} פועלים ${w.notes ? `(${w.notes})` : ''}</li>`;
+        }
+        html += `</ul>`;
+      }
+
       if (targetLog.activities?.length > 0) {
         html += `<h2 style="font-size: 18px; margin-bottom: 10px; border-bottom: 1px solid #ccc; padding-bottom: 4px;">עבודות שבוצעו</h2>
         <ul style="font-size: 14px; line-height: 1.6;">`;
@@ -152,6 +230,17 @@ export const DailyLogsScreen = () => {
           html += `<li>${iss.description} ${iss.financialImpact ? '<strong style="color: #D32F2F;">(השפעה כספית)</strong>' : ''}</li>`;
         }
         html += `</ul>`;
+      }
+
+      if (targetLog.images?.length > 0) {
+        html += `<h2 style="font-size: 18px; margin-bottom: 10px; border-bottom: 1px solid #ccc; padding-bottom: 4px; margin-top: 20px;">תמונות מהשטח</h2>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">`;
+        for (const img of targetLog.images) {
+          if (img.url) {
+            html += `<img src="${img.url}" style="width: 200px; height: 200px; object-fit: cover; border-radius: 8px; border: 1px solid #ccc;" />`;
+          }
+        }
+        html += `</div>`;
       }
 
       if (logIsLocked) {
@@ -267,6 +356,48 @@ export const DailyLogsScreen = () => {
               </div>
             </div>
 
+            {/* Workforce */}
+            <div style={{ background: "var(--surface)", borderRadius: 12, border: "1px solid var(--border)", overflow: "hidden" }}>
+              {renderSectionHeader("כוח אדם וקבלנים", "users")}
+              <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
+                {form.workforce.map((w, i) => (
+                  <div key={i} style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                    <select disabled={!canEditBasic} value={w.contractorId || ''} onChange={e=>{
+                      const newArr = [...form.workforce]; 
+                      const selectedC = contractors.find(c => c._id === e.target.value);
+                      newArr[i].contractorId = e.target.value || undefined; 
+                      newArr[i].contractorName = selectedC ? selectedC.name : (e.target.value ? '' : 'כללי');
+                      setForm({...form, workforce: newArr});
+                    }} style={{ width: 140, padding: "8px", borderRadius: 8, border: "1px solid var(--border)", fontSize: 13 }}>
+                      <option value="">כללי (לא משויך)</option>
+                      {contractors.map(c => <option key={c._id} value={c._id}>{c.name}</option>)}
+                    </select>
+                    
+                    <div style={{display: 'flex', alignItems: 'center', gap: 6}}>
+                      <span style={{fontSize: 13}}>פועלים:</span>
+                      <input type="number" disabled={!canEditBasic} value={w.workersCount} min={1} onChange={e=>{
+                        const newArr = [...form.workforce]; newArr[i].workersCount = parseInt(e.target.value) || 0; setForm({...form, workforce: newArr});
+                      }} style={{ width: 60, padding: "8px", borderRadius: 8, border: "1px solid var(--border)", fontSize: 13 }} />
+                    </div>
+
+                    <input disabled={!canEditBasic} value={w.notes || ''} onChange={e=>{
+                      const newArr = [...form.workforce]; newArr[i].notes = e.target.value; setForm({...form, workforce: newArr});
+                    }} placeholder="הערות (אופציונלי)" style={{ flex: 1, padding: "8px 12px", borderRadius: 8, border: "1px solid var(--border)", fontSize: 13, minWidth: 150 }} />
+                    
+                    {canEditBasic && (
+                      <button onClick={()=>{
+                        const newArr = [...form.workforce]; newArr.splice(i, 1); setForm({...form, workforce: newArr});
+                      }} style={{ background: "rgba(255,59,48,0.1)", border: "none", borderRadius: 8, padding: "8px 12px", cursor: "pointer", color: "#FF3B30", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }} onMouseOver={e=>e.currentTarget.style.background="rgba(255,59,48,0.2)"} onMouseOut={e=>e.currentTarget.style.background="rgba(255,59,48,0.1)"}>
+                        <Icon n="trash" s={14}/>
+                      </button>
+                    )}
+                  </div>
+                ))}
+                {canEditBasic && <Btn size="sm" variant="outline" style={{ alignSelf: "flex-start", marginTop: 8 }} onClick={()=>setForm({...form, workforce: [...form.workforce, { contractorId: undefined, contractorName: 'כללי', workersCount: 1, notes: '' }]})}><Icon n="plus" s={14}/> הוסף רישום פועלים</Btn>}
+                {form.workforce.length === 0 && !canEditBasic && <div style={{ fontSize: 13, color: "var(--text3)" }}>אין רישום כוח אדם ליום זה.</div>}
+              </div>
+            </div>
+
             {/* Activities */}
             <div style={{ background: "var(--surface)", borderRadius: 12, border: "1px solid var(--border)", overflow: "hidden" }}>
               {renderSectionHeader("מה בוצע היום?", "check-square")}
@@ -334,6 +465,84 @@ export const DailyLogsScreen = () => {
                   </div>
                 ))}
                 {canEditAdvanced && <Btn size="sm" variant="outline" style={{ alignSelf: "flex-start", marginTop: 8 }} onClick={()=>setForm({...form, issues: [...form.issues, { type: 'delay', description: '', financialImpact: false }]})}><Icon n="plus" s={14}/> דווח חריגה</Btn>}
+              </div>
+            </div>
+
+            {/* Images */}
+            <div style={{ background: "var(--surface)", borderRadius: 12, border: "1px solid var(--border)", overflow: "hidden" }}>
+              {renderSectionHeader("תמונות מהשטח", "image")}
+              <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
+                <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+                  {form.images.map((img, i) => {
+                    const isDeleting = deletingImages.has(img.storageId);
+                    return (
+                    <div key={i} style={{ position: "relative", width: 100, height: 100, borderRadius: 8, overflow: "hidden", border: "1px solid var(--border)" }}>
+                      <img src={img.url} style={{ width: "100%", height: "100%", objectFit: "cover", opacity: isDeleting ? 0.5 : 1, transition: "opacity 0.2s" }} />
+                      
+                      {isDeleting && (
+                        <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.3)" }}>
+                          <style>{`@keyframes spin { 100% { transform: rotate(360deg); } }`}</style>
+                          <div style={{ animation: 'spin 1s linear infinite', color: "#fff" }}>
+                            <Icon n="loader" s={24} />
+                          </div>
+                        </div>
+                      )}
+
+                      {canEditBasic && !isDeleting && (
+                        <button onClick={async () => {
+                           setDeletingImages(prev => new Set(prev).add(img.storageId));
+                           try {
+                             await deleteFile({ storageId: img.storageId as Id<'_storage'> });
+                             const newArr = [...form.images]; newArr.splice(i, 1); setForm({...form, images: newArr});
+                           } catch (e) {
+                             console.error("Failed to delete file from storage", e);
+                             setFeedback({ title: "שגיאה", message: "שגיאה במחיקת התמונה.", type: "error" });
+                           } finally {
+                             setDeletingImages(prev => {
+                               const next = new Set(prev);
+                               next.delete(img.storageId);
+                               return next;
+                             });
+                           }
+                        }} style={{ position: "absolute", top: 4, right: 4, background: "rgba(0,0,0,0.6)", color: "#fff", border: "none", borderRadius: "50%", width: 24, height: 24, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                          <Icon n="x" s={14}/>
+                        </button>
+                      )}
+                    </div>
+                  )})}
+                  
+                  {/* Uploading Placeholders */}
+                  {Array.from({ length: uploadingImagesCount }).map((_, i) => (
+                    <div key={`uploading-${i}`} style={{ width: 100, height: 100, borderRadius: 8, border: "1px solid var(--border)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "var(--surface)", color: "var(--accent)" }}>
+                      <style>{`@keyframes spin { 100% { transform: rotate(360deg); } }`}</style>
+                      <div style={{ animation: 'spin 1s linear infinite' }}>
+                        <Icon n="loader" s={24} />
+                      </div>
+                      <span style={{ fontSize: 11, marginTop: 8, fontWeight: 600 }}>מעלה...</span>
+                    </div>
+                  ))}
+
+                  {canEditBasic && (form.images.length + uploadingImagesCount) < 4 && (
+                    <label 
+                      style={{ 
+                        width: 100, height: 100, borderRadius: 8, border: isDragging ? "2px dashed var(--accent)" : "2px dashed var(--border)", 
+                        display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", 
+                        cursor: uploadingImage ? "not-allowed" : "pointer", background: isDragging ? "rgba(255, 149, 0, 0.1)" : "var(--bg)", 
+                        color: isDragging ? "var(--accent)" : "var(--text2)", transition: "all 0.2s" 
+                      }} 
+                      onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                      onDragLeave={(e) => { e.preventDefault(); setIsDragging(false); }}
+                      onDrop={handleDrop}
+                      onMouseOver={e=>!isDragging && (e.currentTarget.style.borderColor="var(--accent)")} 
+                      onMouseOut={e=>!isDragging && (e.currentTarget.style.borderColor="var(--border)")}
+                    >
+                      <input type="file" multiple accept="image/*" style={{ display: "none" }} disabled={uploadingImage} onChange={handleUploadImage} />
+                      <Icon n="image" s={20} />
+                      <span style={{ fontSize: 11, marginTop: 4, textAlign: 'center' }}>גרור או בחר תמונה</span>
+                    </label>
+                  )}
+                </div>
+                <div style={{ fontSize: 12, color: "var(--text3)" }}>{form.images.length} מתוך 4 תמונות הועלו. (עד 4 תמונות לדוח).</div>
               </div>
             </div>
           </div>

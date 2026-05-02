@@ -27,7 +27,7 @@ export const zPhotoTag = z.enum(['התקדמות', 'בעיה', 'בדיקה', 'א
 
 export const zAnnotationType = z.enum(['rect', 'circle', 'pen']);
 
-export const zProjectFileUsage = z.enum(['photo', 'receipt', 'quote', 'document']);
+export const zProjectFileUsage = z.enum(['photo', 'receipt', 'quote', 'document', 'daily_log']);
 
 export const zProjectFileKind = z.enum(['image', 'pdf', 'document', 'other']);
 
@@ -517,6 +517,11 @@ export const zDailyLog = {
     text: z.string(),
     givenToId: zid('contractors').optional(),
   })),
+
+  images: z.array(z.object({
+    storageId: zid('_storage'),
+    url: z.string().optional() // Stored explicitly or resolved later
+  })).optional(),
 };
 
 export const zPromoCode = {

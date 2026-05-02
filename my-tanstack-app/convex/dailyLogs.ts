@@ -9,6 +9,15 @@ export const getLogByDate = query({
       .query('dailyLogs')
       .withIndex('by_project_date', (q) => q.eq('projectId', args.projectId).eq('date', args.date))
       .first();
+      
+    if (log && log.images) {
+      log.images = await Promise.all(
+        log.images.map(async (img) => ({
+          ...img,
+          url: (await ctx.storage.getUrl(img.storageId)) ?? undefined,
+        }))
+      );
+    }
     return log;
   },
 });
@@ -16,11 +25,25 @@ export const getLogByDate = query({
 export const getLogs = query({
   args: { projectId: v.id('projects') },
   handler: async (ctx, args) => {
-    return await ctx.db
+    const logs = await ctx.db
       .query('dailyLogs')
       .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
       .order('desc')
       .take(100);
+      
+    return await Promise.all(
+      logs.map(async (log) => {
+        if (log.images) {
+          log.images = await Promise.all(
+            log.images.map(async (img) => ({
+              ...img,
+              url: (await ctx.storage.getUrl(img.storageId)) ?? undefined,
+            }))
+          );
+        }
+        return log;
+      })
+    );
   },
 });
 
@@ -56,6 +79,10 @@ export const saveLog = mutation({
       text: v.string(),
       givenToId: v.optional(v.id('contractors')),
     })),
+    images: v.optional(v.array(v.object({
+      storageId: v.id('_storage'),
+      url: v.optional(v.string()),
+    }))),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -76,6 +103,7 @@ export const saveLog = mutation({
         deliveries: args.deliveries,
         issues: args.issues,
         instructions: args.instructions,
+        images: args.images,
         updatedAt: Date.now(),
       });
       return args.logId;
@@ -93,6 +121,7 @@ export const saveLog = mutation({
         deliveries: args.deliveries,
         issues: args.issues,
         instructions: args.instructions,
+        images: args.images,
       });
     }
   },
