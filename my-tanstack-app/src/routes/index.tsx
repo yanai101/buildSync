@@ -526,8 +526,28 @@ function LandingPage() {
         </div>
       </section>
 
+      {/* 6.2 THE SMART INVESTMENT BANNER */}
+      <section className="section-padding" style={{ background: 'linear-gradient(135deg, rgba(224,122,56,0.1) 0%, rgba(20,20,25,0.8) 100%)', borderTop: '1px solid rgba(224,122,56,0.2)', borderBottom: '1px solid rgba(224,122,56,0.2)', position: 'relative', overflow: 'hidden' }}>
+        {/* Subtle background glow */}
+        <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '80%', height: '80%', background: 'radial-gradient(ellipse at center, rgba(224,122,56,0.15) 0%, transparent 70%)', filter: 'blur(40px)', zIndex: 0 }} />
+        
+        <div className="content-width" style={{ position: 'relative', zIndex: 1 }}>
+          <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeIn} style={{ textAlign: 'center', maxWidth: 900, margin: '0 auto' }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 64, height: 64, borderRadius: '50%', background: 'rgba(224,122,56,0.15)', border: '1px solid rgba(224,122,56,0.3)', marginBottom: 24 }}>
+              <Icon n="trending-up" s={32} c="var(--accent)" />
+            </div>
+            <h2 style={{ fontSize: 'clamp(2rem, 4vw, 3rem)', fontWeight: 800, marginBottom: 24, color: '#fff', lineHeight: 1.2 }}>
+              אתם משקיעים <span style={{ color: 'var(--accent)' }}>מיליוני שקלים</span> בבניית הנכס.
+            </h2>
+            <p style={{ color: '#d0d0d0', fontSize: 'clamp(1.2rem, 2vw, 1.5rem)', lineHeight: 1.6, marginBottom: 0 }}>
+              האם לא שווה להשקיע כ-1,500 שקלים בשנה על מערכת מקצועית שתוודא שהכסף הזה מנוהל חכם ותחסוך לכם עשרות אלפי שקלים של טעויות ועיכובים?
+            </p>
+          </motion.div>
+        </div>
+      </section>
+
       {/* 6.5 SUBSCRIPTION TIERS HIGHLIGHT */}
-      <section className="section-padding" style={{ background: '#0a0a0c', borderTop: '1px solid rgba(255,255,255,0.02)' }}>
+      <section className="section-padding" style={{ background: '#0a0a0c' }}>
         <div className="content-width">
           <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeIn} style={{ textAlign: 'center', marginBottom: 60 }}>
             <span className="feature-badge" style={{color: 'var(--accent)', display: 'inline-flex', alignItems: 'center', gap: 6}}><Icon n="star" s={14} c="var(--accent)" /> חדש במערכת</span>
