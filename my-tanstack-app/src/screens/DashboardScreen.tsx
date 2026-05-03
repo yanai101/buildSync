@@ -99,7 +99,7 @@ export const DashboardScreen = () => {
                       {alerts[0].actionText || 'לטפל'}
                     </Link>
                   )}
-                  <span>{alerts[0].dateLabel}</span>
+                  {!alerts[0].isDynamic && <span>{alerts[0].dateLabel}</span>}
                   {!alerts[0].isDynamic && (
                     <button onClick={() => deleteAlert({ alertId: alerts[0].id })} style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer' }} title="מחק התראה">
                       <Icon n="x" s={16} />
@@ -137,7 +137,7 @@ export const DashboardScreen = () => {
                           {alert.actionText || 'לטפל'}
                         </Link>
                       )}
-                      <span>{alert.dateLabel}</span>
+                      {!alert.isDynamic && <span>{alert.dateLabel}</span>}
                       {!alert.isDynamic && (
                         <button onClick={() => deleteAlert({ alertId: alert.id })} style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer' }} title="מחק התראה">
                           <Icon n="x" s={16} />

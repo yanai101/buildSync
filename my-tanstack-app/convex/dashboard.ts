@@ -100,7 +100,7 @@ export const getOverview = query({
             dateLabel: 'עבר',
             createdAt: Date.now(),
             isDynamic: true,
-            link: `/projects/${args.projectId}/timeline`,
+            link: `/timeline`,
             actionText: 'עדכן שלב',
           });
         } else if (stage.endDate === todayStr) {
@@ -111,7 +111,7 @@ export const getOverview = query({
             dateLabel: 'היום',
             createdAt: Date.now(),
             isDynamic: true,
-            link: `/projects/${args.projectId}/timeline`,
+            link: `/timeline`,
             actionText: 'עדכן שלב',
           });
         } else if (stage.endDate === tomorrowStr) {
@@ -122,7 +122,7 @@ export const getOverview = query({
             dateLabel: 'מחר',
             createdAt: Date.now(),
             isDynamic: true,
-            link: `/projects/${args.projectId}/timeline`,
+            link: `/timeline`,
             actionText: 'עדכן שלב',
           });
         }
@@ -139,7 +139,7 @@ export const getOverview = query({
             dateLabel: 'עבר',
             createdAt: Date.now(),
             isDynamic: true,
-            link: `/projects/${args.projectId}/orders`,
+            link: `/orders`,
             actionText: 'בדוק הזמנה',
           });
         } else if (order.expectedDeliveryDate === todayStr) {
@@ -150,7 +150,7 @@ export const getOverview = query({
             dateLabel: 'היום',
             createdAt: Date.now(),
             isDynamic: true,
-            link: `/projects/${args.projectId}/orders`,
+            link: `/orders`,
             actionText: 'עדכן סטטוס',
           });
         } else if (order.expectedDeliveryDate === tomorrowStr) {
@@ -161,7 +161,7 @@ export const getOverview = query({
             dateLabel: 'מחר',
             createdAt: Date.now(),
             isDynamic: true,
-            link: `/projects/${args.projectId}/orders`,
+            link: `/orders`,
             actionText: 'עדכן סטטוס',
           });
         }
