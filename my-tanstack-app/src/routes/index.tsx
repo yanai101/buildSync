@@ -508,11 +508,11 @@ function LandingPage() {
             <span className="feature-badge" style={{color: '#10B981'}}>לוגיסטיקה ורכש באתר</span>
             <h2 className="feature-title">מעקב הזמנות מקצה לקצה.</h2>
             <p className="feature-desc">
-              שליטה מוחלטת בשרשרת האספקה של הפרויקט. מהזמנת הברזל לשלד ועד לריצוף מחו"ל, המערכת מוודאת ששום סחורה לא "נופלת בין הכיסאות" בדרך לאתר הבנייה.
+              שליטה ובקרה בשטח על כל סחורה שמגיעה. המערכת מוודאת שמה שהוזמן זה מה שהגיע, ושום ציוד או חומר לא "נופל בין הכיסאות" באתר הבנייה.
             </p>
             <ul className="bullet-list">
-              <li className="bullet-item"><Icon n="truck" s={28} c="#10B981" style={{marginTop:4}} /> <div><strong>ניהול ספקים ואספקות:</strong> יצירת הזמנות מול ספקים, עדכון תאריכי הגעה משוערים וניהול קבלות או תעודות משלוח במקום אחד.</div></li>
-              <li className="bullet-item"><Icon n="package" s={28} c="#10B981" style={{marginTop:4}} /> <div><strong>מעקב סטאטוס חכם:</strong> מעבר דינאמי בין "הוזמן", "בדרך" ו-"התקבל באתר", המאפשר למפקח לאמת את הכמות שהגיעה בפועל.</div></li>
+              <li className="bullet-item"><Icon n="check-circle" s={28} c="#10B981" style={{marginTop:4}} /> <div><strong>בקרת קבלת סחורה בשטח:</strong> מאפשר למפקח לאמת, לבדוק ולאשר סחורות שמגיעות לאתר בזמן אמת, כולל העלאה ואחסון של שטרי מטען מצולמים ותעודות משלוח.</div></li>
+              <li className="bullet-item"><Icon n="package" s={28} c="#10B981" style={{marginTop:4}} /> <div><strong>ניהול חוסרים ואספקות חלקיות:</strong> הגיע רק חצי מהריצוף? סמנו כמות חלקית שהתקבלה, והמערכת תזכור בדיוק איזה ציוד חסר להשלמת ההזמנה.</div></li>
             </ul>
           </motion.div>
           
@@ -630,7 +630,7 @@ function LandingPage() {
               <ul className="bullet-list" style={{ gap: 16 }}>
                 <li className="bullet-item" style={{ fontSize: '1rem' }}><Icon n="check" s={20} c="var(--accent)" /> <div>עד 5 פרויקטים במקביל</div></li>
                 <li className="bullet-item" style={{ fontSize: '1rem' }}><Icon n="check" s={20} c="var(--accent)" /> <div>כתבי כמויות אינטראקטיביים והצעות מחיר</div></li>
-                <li className="bullet-item" style={{ fontSize: '1rem' }}><Icon n="check" s={20} c="var(--accent)" /> <div>ניהול מלא של הזמנות רכש ואספקות לאתר</div></li>
+                <li className="bullet-item" style={{ fontSize: '1rem' }}><Icon n="check" s={20} c="var(--accent)" /> <div>מעקב קבלת סחורות ושטרי מטען מהשטח</div></li>
                 <li className="bullet-item" style={{ fontSize: '1rem' }}><Icon n="check" s={20} c="var(--accent)" /> <div>הפקת יומני עבודה ל-PDF</div></li>
               </ul>
             </motion.div>
