@@ -45,7 +45,7 @@ type TimelineRange = {
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const MIN_TIMELINE_DAYS = 30;
-const LABEL_COL_WIDTH = 180;
+
 const TIMELINE_PADDING_START_DAYS = 2;
 const TIMELINE_PADDING_END_DAYS = 5;
 const BASE_DAY_WIDTH = 8;
@@ -173,6 +173,16 @@ export const TimelineScreen = () => {
   const dragRef = React.useRef<DragState | null>(null);
   const scrollContainerRef = React.useRef<HTMLDivElement | null>(null);
 
+  const [labelColWidth, setLabelColWidth] = React.useState(typeof window !== 'undefined' && window.innerWidth < 768 ? 120 : 180);
+
+  React.useEffect(() => {
+    const handleResize = () => {
+      setLabelColWidth(window.innerWidth < 768 ? 120 : 180);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   React.useEffect(() => {
     if (dbStages) {
       setStages(dbStages as TimelineStage[]);
@@ -195,7 +205,7 @@ export const TimelineScreen = () => {
     () => buildMonthMarks(timeline.start, timeline.totalDays),
     [timeline.start, timeline.totalDays],
   );
-  const visibleTrackWidth = Math.max(320, timelineViewportWidth - LABEL_COL_WIDTH);
+  const visibleTrackWidth = Math.max(320, timelineViewportWidth - labelColWidth);
   const timelineWidth = Math.max(visibleTrackWidth, Math.round(timeline.totalDays * BASE_DAY_WIDTH * zoom));
   const didAutoScrollRef = React.useRef(false);
 
@@ -206,7 +216,7 @@ export const TimelineScreen = () => {
       setIncludeTodayInRange(true);
       return;
     }
-    const todayPx = LABEL_COL_WIDTH + (todayOffset / timeline.totalDays) * timelineWidth;
+    const todayPx = labelColWidth + (todayOffset / timeline.totalDays) * timelineWidth;
     const target = todayPx - container.clientWidth / 2;
     container.scrollTo({ left: clampScrollLeft(container, target), top: 0, behavior: 'smooth' });
   }, [showToday, todayOffset, timeline.totalDays, timelineWidth]);
@@ -244,7 +254,7 @@ export const TimelineScreen = () => {
     if (!firstStart) return;
 
     const firstOffset = diffDays(timeline.start, firstStart);
-    const targetPx = LABEL_COL_WIDTH + (firstOffset / timeline.totalDays) * timelineWidth;
+    const targetPx = labelColWidth + (firstOffset / timeline.totalDays) * timelineWidth;
     didAutoScrollRef.current = true;
     container.scrollTo({ left: clampScrollLeft(container, targetPx - 24), behavior: 'auto' });
   }, [includeTodayInRange, lockedTimeline, timeline.start, timeline.totalDays, timelineWidth, validStages]);
@@ -444,7 +454,7 @@ export const TimelineScreen = () => {
         onRetry={() => setFeedbackError(null)}
       >
         <div className="page-content" style={{display:"flex",flexDirection:"column",minHeight:0}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:16,marginBottom:16,flexShrink:0}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:16,marginBottom:16,flexShrink:0}}>
             <div style={{display:"flex",alignItems:"center",gap:12}}>
               <div style={{width:42,height:42,borderRadius:12,background:"var(--accent-light)",color:"var(--accent)",display:"flex",alignItems:"center",justifyContent:"center"}}>
                 <Icon n="calendar" s={22}/>
@@ -520,9 +530,9 @@ export const TimelineScreen = () => {
             </div>
 
             <div ref={scrollContainerRef} style={{overflow:"auto",direction:"ltr",flex:"1 1 auto",minHeight:0}}>
-              <div style={{width:timelineWidth + LABEL_COL_WIDTH,direction:"ltr"}}>
+              <div style={{width:timelineWidth + labelColWidth,direction:"ltr"}}>
                 <div style={{display:"flex",borderBottom:"1px solid var(--border)",background:"#FAFAF8",position:"sticky",top:0,zIndex:5}}>
-                  <div style={{width:LABEL_COL_WIDTH,flexShrink:0,borderLeft:"1px solid var(--border)",padding:"8px 12px",fontSize:11,fontWeight:700,color:"var(--text3)",direction:"rtl",position:"sticky",left:0,zIndex:6,background:"#FAFAF8"}}>
+                  <div style={{width:labelColWidth,flexShrink:0,borderLeft:"1px solid var(--border)",padding:"8px 12px",fontSize:11,fontWeight:700,color:"var(--text3)",direction:"rtl",position:"sticky",left:0,zIndex:6,background:"#FAFAF8"}}>
                     שלב
                   </div>
                   <div data-timeline-track="true" style={{width:timelineWidth,position:"relative",height:38,flexShrink:0}}>
@@ -561,7 +571,7 @@ export const TimelineScreen = () => {
                       <button
                         type="button"
                         onClick={() => openEdit(stage)}
-                        style={{width:LABEL_COL_WIDTH,flexShrink:0,border:"none",borderLeft:"1px solid var(--border)",padding:"8px 12px",fontSize:12,fontWeight:700,color:stage.status==="active"?"var(--accent)":stage.status==="done"?"var(--text2)":"var(--text3)",background:isHovered?"#FAFAF8":"var(--bg, #fff)",textAlign:"right",direction:"rtl",cursor:stage._id?"pointer":"default",fontFamily:"inherit",position:"sticky",left:0,zIndex:4}}
+                        style={{width:labelColWidth,flexShrink:0,border:"none",borderLeft:"1px solid var(--border)",padding:"8px 12px",fontSize:12,fontWeight:700,color:stage.status==="active"?"var(--accent)":stage.status==="done"?"var(--text2)":"var(--text3)",background:isHovered?"#FAFAF8":"var(--bg, #fff)",textAlign:"right",direction:"rtl",cursor:stage._id?"pointer":"default",fontFamily:"inherit",position:"sticky",left:0,zIndex:4}}
                         disabled={!stage._id}
                       >
                         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}}>
