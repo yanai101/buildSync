@@ -327,13 +327,19 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
       <main className="main">
         <div className="page-header">
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <div>
-              <span className="page-title">{PAGE_TITLES[currentPath] || PAGE_TITLES["/"]}</span>
-              {PAGE_SUBTITLES[currentPath] && <div style={{ fontSize: 12, color: "var(--text3)", marginTop: 1 }}>{PAGE_SUBTITLES[currentPath]}</div>}
+          <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0, flex: 1 }}>
+            <div style={{ minWidth: 0, display: "flex", flexDirection: "column" }}>
+              <span className="page-title" style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {PAGE_TITLES[currentPath] || PAGE_TITLES["/"]}
+              </span>
+              {PAGE_SUBTITLES[currentPath] && (
+                <div className="desktop-only" style={{ fontSize: 12, color: "var(--text3)", marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {PAGE_SUBTITLES[currentPath]}
+                </div>
+              )}
             </div>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
             {hasMultipleProjects ? (
               <Link
                 to="/projects"
@@ -348,10 +354,14 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                   alignItems: "center",
                   gap: 8,
                   background: "var(--surface)",
+                  maxWidth: 160,
+                  overflow: "hidden",
+                  whiteSpace: "nowrap",
+                  textOverflow: "ellipsis",
                 }}
               >
                 <Icon n="layers" s={14} />
-                <span>{project?.name || "בחירת פרויקט"}</span>
+                <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{project?.name || "בחירת פרויקט"}</span>
               </Link>
             ) : project ? (
               <span
@@ -365,7 +375,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                   alignItems: "center",
                   gap: 8,
                   background: "var(--surface)",
-                  maxWidth: 180,
+                  maxWidth: 160,
                   overflow: "hidden",
                   whiteSpace: "nowrap",
                   textOverflow: "ellipsis",
@@ -375,11 +385,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{project.name}</span>
               </span>
             ) : null}
-            <div style={{ fontSize: 12, color: "var(--text3)", display: "flex", alignItems: "center", gap: 4 }}>
+            <div className="desktop-only" style={{ fontSize: 12, color: "var(--text3)", display: "flex", alignItems: "center", gap: 4 }}>
               <Icon n="clock" s={12} c="var(--text3)" />
               <span>עודכן: היום, 09:45</span>
             </div>
-            <div style={{ width: 1, height: 16, background: "var(--border)", margin: "0 4px" }} />
+            <div className="desktop-only" style={{ width: 1, height: 16, background: "var(--border)", margin: "0 4px" }} />
             <div ref={menuRef} style={{ position: "relative" }}>
               <button
                 id="tour-user-menu"
