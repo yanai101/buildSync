@@ -162,4 +162,8 @@ export default defineSchema({
   projectAlerts: defineTable(zodToConvexFields(s.zProjectAlert))
     .index('by_project', ['projectId'])
     .index('by_project_read', ['projectId', 'isRead']),
+
+  orders: defineTable(zodToConvexFields(s.zOrder))
+    .index('by_project', ['projectId'])
+    .index('by_project_status', ['projectId', 'status']),
 });

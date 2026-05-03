@@ -20,6 +20,7 @@ import { Route as ProjectsRouteImport } from './routes/projects'
 import { Route as PhotosRouteImport } from './routes/photos'
 import { Route as PersonalFilesRouteImport } from './routes/personal-files'
 import { Route as PermitsRouteImport } from './routes/permits'
+import { Route as OrdersRouteImport } from './routes/orders'
 import { Route as NotesRouteImport } from './routes/notes'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as DashboardRouteImport } from './routes/dashboard'
@@ -86,6 +87,11 @@ const PersonalFilesRoute = PersonalFilesRouteImport.update({
 const PermitsRoute = PermitsRouteImport.update({
   id: '/permits',
   path: '/permits',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OrdersRoute = OrdersRouteImport.update({
+  id: '/orders',
+  path: '/orders',
   getParentRoute: () => rootRouteImport,
 } as any)
 const NotesRoute = NotesRouteImport.update({
@@ -161,6 +167,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
   '/notes': typeof NotesRoute
+  '/orders': typeof OrdersRoute
   '/permits': typeof PermitsRoute
   '/personal-files': typeof PersonalFilesRoute
   '/photos': typeof PhotosRoute
@@ -186,6 +193,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
   '/notes': typeof NotesRoute
+  '/orders': typeof OrdersRoute
   '/permits': typeof PermitsRoute
   '/personal-files': typeof PersonalFilesRoute
   '/photos': typeof PhotosRoute
@@ -212,6 +220,7 @@ export interface FileRoutesById {
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
   '/notes': typeof NotesRoute
+  '/orders': typeof OrdersRoute
   '/permits': typeof PermitsRoute
   '/personal-files': typeof PersonalFilesRoute
   '/photos': typeof PhotosRoute
@@ -239,6 +248,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/login'
     | '/notes'
+    | '/orders'
     | '/permits'
     | '/personal-files'
     | '/photos'
@@ -264,6 +274,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/login'
     | '/notes'
+    | '/orders'
     | '/permits'
     | '/personal-files'
     | '/photos'
@@ -289,6 +300,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/login'
     | '/notes'
+    | '/orders'
     | '/permits'
     | '/personal-files'
     | '/photos'
@@ -315,6 +327,7 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRoute
   LoginRoute: typeof LoginRoute
   NotesRoute: typeof NotesRoute
+  OrdersRoute: typeof OrdersRoute
   PermitsRoute: typeof PermitsRoute
   PersonalFilesRoute: typeof PersonalFilesRoute
   PhotosRoute: typeof PhotosRoute
@@ -406,6 +419,13 @@ declare module '@tanstack/react-router' {
       path: '/permits'
       fullPath: '/permits'
       preLoaderRoute: typeof PermitsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/orders': {
+      id: '/orders'
+      path: '/orders'
+      fullPath: '/orders'
+      preLoaderRoute: typeof OrdersRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/notes': {
@@ -507,6 +527,7 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRoute,
   LoginRoute: LoginRoute,
   NotesRoute: NotesRoute,
+  OrdersRoute: OrdersRoute,
   PermitsRoute: PermitsRoute,
   PersonalFilesRoute: PersonalFilesRoute,
   PhotosRoute: PhotosRoute,

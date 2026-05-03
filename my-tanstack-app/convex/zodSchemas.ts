@@ -532,6 +532,22 @@ export const zDailyLog = {
   })).optional(),
 };
 
+export const zOrderStatus = z.enum(['pending', 'partial', 'completed']);
+
+export const zOrder = {
+  projectId: zid('projects'),
+  title: z.string(),
+  supplier: z.string().optional(),
+  status: zOrderStatus,
+  orderedQuantity: z.number(),
+  receivedQuantity: z.number().default(0),
+  unit: z.string(),
+  orderDate: z.string().optional(),
+  expectedDeliveryDate: z.string().optional(),
+  notes: z.string().optional(),
+  deliveryDocuments: z.array(zid('projectFiles')).optional(),
+};
+
 export const zPromoCode = {
   code: z.string(),
   tier: z.enum(['pro', 'premium']),

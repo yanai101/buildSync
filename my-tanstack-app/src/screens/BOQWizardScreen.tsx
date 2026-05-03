@@ -820,7 +820,7 @@ export const BOQWizardScreen = () => {
           title="אשף הכמויות זמין במסלול Pro ומעלה"
           description="שדרג את החשבון שלך כדי לקבל גישה לאשף שיעזור לך להכין כתב כמויות מדויק בקליק, כולל הצעות חכמות וייצוא ממותג ל-PDF."
         >
-          <div className="page-content" style={{maxWidth:1200,margin:"0 auto",padding:"20px"}}>
+          <div className="page-content" style={{maxWidth:1200,margin:"0 auto"}}>
           <div style={{display:"flex",flexWrap:"wrap",justifyContent:"space-between",alignItems:"flex-end",gap:16,marginBottom:32}}>
             <div>
               <h1 style={{fontSize:28,fontWeight:900,margin:0,color:"#1A1A1A"}}>אשף כתב כמויות</h1>
@@ -979,7 +979,7 @@ export const BOQWizardScreen = () => {
         title="אשף הכמויות זמין במסלול Pro ומעלה"
         description="שדרג את החשבון שלך כדי לקבל גישה לאשף שיעזור לך להכין כתב כמויות מדויק בקליק, כולל הצעות חכמות וייצוא ממותג ל-PDF."
       >
-        <div className="page-content" style={{maxWidth:1200,margin:"0 auto",padding:"20px"}}>
+        <div className="page-content" style={{maxWidth:1200,margin:"0 auto"}}>
           
           {/* Header Section */}
         <div style={{display:"flex",flexWrap:"wrap",justifyContent:"space-between",alignItems:"flex-end",gap:16,marginBottom:32}}>
