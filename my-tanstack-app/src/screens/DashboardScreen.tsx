@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import { Link } from '@tanstack/react-router';
 import { Icon, ProgressBar, Badge, Avatar, Btn } from '../components/Shared';
 import { ROLE_COLORS, fmtMoney } from '../utils/mockData';
 import { useDataSource } from '../hooks/useDataSource';
@@ -64,10 +65,21 @@ export const DashboardScreen = () => {
           )}
         </div>
 
-        {alerts && alerts.length > 0 && (
+        {alerts && alerts.length > 0 && (() => {
+          const getAlertStyle = (type: string) => {
+            switch(type) {
+              case 'danger': return { bg: 'rgba(239, 68, 68, 0.15)', border: 'rgba(239, 68, 68, 0.4)', text: '#EF4444' };
+              case 'info': return { bg: 'rgba(59, 130, 246, 0.15)', border: 'rgba(59, 130, 246, 0.4)', text: '#3B82F6' };
+              case 'warning':
+              default: return { bg: 'var(--warning-light)', border: 'var(--warning-border, rgba(245, 158, 11, 0.3))', text: 'var(--warning-dark, #B45309)' };
+            }
+          };
+          const mainStyle = getAlertStyle(alerts[0].type);
+
+          return (
           <div style={{
-            background: 'var(--warning-light)',
-            border: '1px solid var(--warning-border, rgba(245, 158, 11, 0.3))',
+            background: mainStyle.bg,
+            border: `1px solid ${mainStyle.border}`,
             borderRadius: 12,
             padding: 16,
             marginBottom: 24,
@@ -77,11 +89,16 @@ export const DashboardScreen = () => {
           }}>
             {!showAllAlerts ? (
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontWeight: 600, color: 'var(--warning-dark, #B45309)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontWeight: 600, color: mainStyle.text }}>
                   <Icon n="alert" s={20} />
                   <span>{alerts[0].text}</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: 13, color: 'var(--text2)' }}>
+                  {alerts[0].isDynamic && alerts[0].link && (
+                    <Link to={alerts[0].link} style={{ color: mainStyle.text, fontWeight: 600, textDecoration: 'none', background: 'rgba(255,255,255,0.1)', padding: '4px 10px', borderRadius: 6 }}>
+                      {alerts[0].actionText || 'לטפל'}
+                    </Link>
+                  )}
                   <span>{alerts[0].dateLabel}</span>
                   {!alerts[0].isDynamic && (
                     <button onClick={() => deleteAlert({ alertId: alerts[0].id })} style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer' }} title="מחק התראה">
@@ -89,7 +106,7 @@ export const DashboardScreen = () => {
                     </button>
                   )}
                   {alerts.length > 1 && (
-                    <button onClick={() => setShowAllAlerts(true)} style={{ background: 'none', border: 'none', color: 'var(--warning-dark, #B45309)', fontWeight: 700, cursor: 'pointer', textDecoration: 'underline' }}>
+                    <button onClick={() => setShowAllAlerts(true)} style={{ background: 'none', border: 'none', color: mainStyle.text, fontWeight: 700, cursor: 'pointer', textDecoration: 'underline' }}>
                       ראה הכל ({alerts.length})
                     </button>
                   )}
@@ -98,21 +115,28 @@ export const DashboardScreen = () => {
             ) : (
               <>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                  <div style={{ fontWeight: 800, color: 'var(--warning-dark, #B45309)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ fontWeight: 800, color: mainStyle.text, display: 'flex', alignItems: 'center', gap: 8 }}>
                     <Icon n="alert" s={20} />
                     <span>כל ההתראות ({alerts.length})</span>
                   </div>
-                  <button onClick={() => setShowAllAlerts(false)} style={{ background: 'none', border: 'none', color: 'var(--warning-dark, #B45309)', fontWeight: 700, cursor: 'pointer', textDecoration: 'underline', fontSize: 13 }}>
+                  <button onClick={() => setShowAllAlerts(false)} style={{ background: 'none', border: 'none', color: mainStyle.text, fontWeight: 700, cursor: 'pointer', textDecoration: 'underline', fontSize: 13 }}>
                     הסתר
                   </button>
                 </div>
-                {alerts.map((alert: any, idx: number) => (
-                  <div key={alert.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderTop: idx > 0 ? '1px solid rgba(245, 158, 11, 0.2)' : 'none' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontWeight: 500, color: 'var(--warning-dark, #B45309)' }}>
-                      <span style={{width: 6, height: 6, borderRadius: '50%', background: 'var(--warning-dark)'}}></span>
+                {alerts.map((alert: any, idx: number) => {
+                  const ast = getAlertStyle(alert.type);
+                  return (
+                  <div key={alert.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderTop: idx > 0 ? `1px solid ${mainStyle.border}` : 'none' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontWeight: 500, color: ast.text }}>
+                      <span style={{width: 8, height: 8, borderRadius: '50%', background: ast.text}}></span>
                       <span>{alert.text}</span>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: 13, color: 'var(--text2)' }}>
+                      {alert.isDynamic && alert.link && (
+                        <Link to={alert.link} style={{ color: ast.text, fontWeight: 600, textDecoration: 'none', background: 'rgba(255,255,255,0.1)', padding: '4px 10px', borderRadius: 6 }}>
+                          {alert.actionText || 'לטפל'}
+                        </Link>
+                      )}
                       <span>{alert.dateLabel}</span>
                       {!alert.isDynamic && (
                         <button onClick={() => deleteAlert({ alertId: alert.id })} style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer' }} title="מחק התראה">
@@ -121,11 +145,11 @@ export const DashboardScreen = () => {
                       )}
                     </div>
                   </div>
-                ))}
+                )})}
               </>
             )}
           </div>
-        )}
+        )})()}
 
         {role !== 'contractor' && <BudgetSummaryCards summary={stats} style={{marginBottom:24}} />}
 

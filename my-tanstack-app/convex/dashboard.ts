@@ -92,7 +92,18 @@ export const getOverview = query({
 
     stages.forEach(stage => {
       if (stage.status !== 'done') {
-        if (stage.endDate === todayStr) {
+        if (stage.endDate < todayStr) {
+          dynamicAlerts.push({
+            id: `stage-overdue-${stage._id}`,
+            type: 'danger',
+            text: `באיחור: שלב "${stage.name}" היה אמור להסתיים ב-${stage.endDate} וטרם הושלם.`,
+            dateLabel: 'עבר',
+            createdAt: Date.now(),
+            isDynamic: true,
+            link: `/projects/${args.projectId}/timeline`,
+            actionText: 'עדכן שלב',
+          });
+        } else if (stage.endDate === todayStr) {
           dynamicAlerts.push({
             id: `stage-today-${stage._id}`,
             type: 'warning',
@@ -100,6 +111,8 @@ export const getOverview = query({
             dateLabel: 'היום',
             createdAt: Date.now(),
             isDynamic: true,
+            link: `/projects/${args.projectId}/timeline`,
+            actionText: 'עדכן שלב',
           });
         } else if (stage.endDate === tomorrowStr) {
           dynamicAlerts.push({
@@ -109,6 +122,8 @@ export const getOverview = query({
             dateLabel: 'מחר',
             createdAt: Date.now(),
             isDynamic: true,
+            link: `/projects/${args.projectId}/timeline`,
+            actionText: 'עדכן שלב',
           });
         }
       }
@@ -116,7 +131,18 @@ export const getOverview = query({
 
     orders.forEach(order => {
       if (order.status !== 'completed') {
-        if (order.expectedDeliveryDate === todayStr) {
+        if (order.expectedDeliveryDate && order.expectedDeliveryDate < todayStr) {
+          dynamicAlerts.push({
+            id: `order-overdue-${order._id}`,
+            type: 'danger',
+            text: `איחור באספקה: סחורה "${order.title}" הייתה אמורה להגיע ב-${order.expectedDeliveryDate}.`,
+            dateLabel: 'עבר',
+            createdAt: Date.now(),
+            isDynamic: true,
+            link: `/projects/${args.projectId}/orders`,
+            actionText: 'בדוק הזמנה',
+          });
+        } else if (order.expectedDeliveryDate === todayStr) {
           dynamicAlerts.push({
             id: `order-today-${order._id}`,
             type: 'info',
@@ -124,6 +150,8 @@ export const getOverview = query({
             dateLabel: 'היום',
             createdAt: Date.now(),
             isDynamic: true,
+            link: `/projects/${args.projectId}/orders`,
+            actionText: 'עדכן סטטוס',
           });
         } else if (order.expectedDeliveryDate === tomorrowStr) {
           dynamicAlerts.push({
@@ -133,6 +161,8 @@ export const getOverview = query({
             dateLabel: 'מחר',
             createdAt: Date.now(),
             isDynamic: true,
+            link: `/projects/${args.projectId}/orders`,
+            actionText: 'עדכן סטטוס',
           });
         }
       }
@@ -174,7 +204,11 @@ export const getOverview = query({
         text: alert.text,
         dateLabel: alert.dateLabel || 'היום',
         createdAt: alert.createdAt,
-      }))],
+        isDynamic: false,
+      }))].sort((a, b) => {
+        const order = { danger: 0, warning: 1, info: 2 };
+        return order[a.type as keyof typeof order] - order[b.type as keyof typeof order];
+      }),
     };
   },
 });
