@@ -32,6 +32,7 @@ export const listTopics = query({
     const builtins = await ctx.db
       .query('quoteTopics')
       .withIndex('by_key')
+      .filter(q => q.eq(q.field('isBuiltin'), true))
       .collect();
     
     if (args.projectId) {
@@ -123,12 +124,13 @@ export const addTopic = mutation({
   },
   handler: async (ctx, args) => {
     const key = `custom_${Date.now()}`;
-    return await ctx.db.insert('quoteTopics', {
+    await ctx.db.insert('quoteTopics', {
       projectId: args.projectId,
       key,
       name: args.name,
       icon: args.icon,
       isBuiltin: false,
     });
+    return key;
   },
 });

@@ -49,7 +49,7 @@ export const QuotesScreen = () => {
 
   // Data Sources
   const { data: initialQuotes, loading: quotesLoading, error: quotesError, refetch: quotesRefetch } = useDataSource<any[]>('quotes', { db: dbQuotes as any });
-  const { data: initialTopics, loading: topicsLoading } = useDataSource<any[]>('quote_topics', { db: dbTopics as any });
+  const { data: initialTopics, loading: topicsLoading, refetch: topicsRefetch } = useDataSource<any[]>('quote_topics', { db: dbTopics as any });
   
   const { mutate } = useDataMutation('quotes');
   const uploadProjectFile = useProjectFileUploader();
@@ -59,8 +59,6 @@ export const QuotesScreen = () => {
   const [addOpen, setAddOpen] = React.useState(false);
   const [editing, setEditing] = React.useState<Quote | null>(null);
   const [compareTopicId, setCompareTopicId] = React.useState<string | null>(null);
-  const [topicInputOpen, setTopicInputOpen] = React.useState(false);
-  const [newTopicName, setNewTopicName] = React.useState("");
   const [saving, setSaving] = React.useState(false);
   const [deleteTargetId, setDeleteTargetId] = React.useState<any>(null);
   const [selectedFile, setSelectedFile] = React.useState<File | null>(null);
@@ -86,8 +84,11 @@ export const QuotesScreen = () => {
   if (!allowed) return <AccessDenied message="הצעות מחיר זמינות ליזם הפרויקט בלבד." />;
 
   const topics = React.useMemo(() => {
-    const raw = initialTopics || QUOTE_TOPICS;
-    return raw.map((t: any) => ({
+    const dbTopics = initialTopics || [];
+    const all = [...QUOTE_TOPICS, ...dbTopics];
+    const unique = Array.from(new Map(all.map((t: any) => [t.key || t.id, t])).values());
+
+    return unique.map((t: any) => ({
       key: t.key || t.id,
       name: t.name,
       icon: t.icon,
@@ -109,21 +110,22 @@ export const QuotesScreen = () => {
     return Math.max(max, Math.max(...vals) - Math.min(...vals));
   }, 0);
 
-  const emptyForm = { topicKey: "kitchen", supplier: "", contact: "", phone: "", email: "", total: "", validity: "", notes: "", fileName: "", projectFileId: "" };
+  const emptyForm = { topicName: "", supplier: "", contact: "", phone: "", email: "", total: "", validity: "", notes: "", fileName: "", projectFileId: "" };
   const [form, setForm] = React.useState<Record<string, string>>(emptyForm);
 
   const openAdd = () => { 
     setEditing(null); 
     setSelectedFile(null);
     setRemoveFile(false);
-    setForm({ ...emptyForm, topicKey: filter !== "all" ? filter : (topics[0]?.key || "kitchen") }); 
+    const initialTopic = filter !== "all" ? topicById(filter).name : (topics[0]?.name || "מטבח");
+    setForm({ ...emptyForm, topicName: initialTopic }); 
     setAddOpen(true); 
   };
   
   const openEdit = (q: Quote) => { 
     setEditing(q); 
     setForm({ 
-      topicKey: q.topicKey, 
+      topicName: topicById(q.topicKey).name, 
       supplier: q.supplier, 
       contact: q.contact || "", 
       phone: q.phone || "", 
@@ -159,7 +161,8 @@ export const QuotesScreen = () => {
   };
 
   const saveQuote = async () => {
-    if (!form.topicKey || !form.supplier.trim() || !form.total || !projectId) return;
+    const tName = form.topicName.trim();
+    if (!tName || !form.supplier.trim() || !form.total || !projectId) return;
     const total = Number(form.total);
     if (Number.isNaN(total) || total <= 0) return;
     
@@ -179,10 +182,20 @@ export const QuotesScreen = () => {
         setRemoveFile(false);
       }
 
+      let topicKey = topics.find(t => t.name === tName)?.key;
+      if (!topicKey) {
+        topicKey = await mutate('addQuoteTopic', {
+          projectId,
+          name: tName,
+          icon: "clipboard"
+        });
+        topicsRefetch();
+      }
+
       const payload = {
         projectId,
         id: editing?.id,
-        topicKey: form.topicKey,
+        topicKey,
         supplier: form.supplier,
         contact: form.contact,
         phone: form.phone,
@@ -284,26 +297,7 @@ export const QuotesScreen = () => {
     }
   };
 
-  const addCustomTopic = async () => {
-    const name = newTopicName.trim();
-    if (!name) return;
-    
-    setSaving(true);
-    try {
-      await mutate('addQuoteTopic', {
-        projectId,
-        name,
-        icon: "clipboard"
-      });
-      setNewTopicName("");
-      setTopicInputOpen(false);
-      setFeedback({ title: "נושא נוסף", message: `הנושא "${name}" נוסף בהצלחה.`, type: "success" });
-    } catch (err) {
-      setFeedback({ title: "שגיאה", message: "לא הצלחנו להוסיף את הנושא.", type: "error" });
-    } finally {
-      setSaving(false);
-    }
-  };
+
 
   const onFilePick = (file: File | null) => {
     setSelectedFile(file);
@@ -344,25 +338,13 @@ export const QuotesScreen = () => {
           </div>
 
           <div style={{ marginRight: "auto", display: "flex", gap: 8 }}>
-            <Btn size="sm" variant="ghost" onClick={() => { setTopicInputOpen(true); setAddOpen(false); }}>
-              <Icon n="plus" s={13} /> נושא חדש
-            </Btn>
             <Btn size="sm" onClick={openAdd}>
               <Icon n="plus" s={13} /> הצעה חדשה
             </Btn>
           </div>
         </div>
 
-        {topicInputOpen && !addOpen && (
-          <div className="card" style={{ padding: 16, marginBottom: 16, border: "2px solid var(--accent)" }}>
-            <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}>הוספת נושא חדש</div>
-            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <Input value={newTopicName} onChange={setNewTopicName} placeholder='למשל: "מערכות אזעקה" או "ריהוט גן"' style={{ flex: 1 }} />
-              <Btn onClick={addCustomTopic} disabled={!newTopicName.trim() || saving}>{saving ? "שומר..." : "שמור נושא"}</Btn>
-              <Btn variant="ghost" onClick={() => { setTopicInputOpen(false); setNewTopicName(""); }}>ביטול</Btn>
-            </div>
-          </div>
-        )}
+
 
         {visibleTopics.length === 0 ? (
           <div className="card card-body" style={{ textAlign: "center", padding: 48 }}>
@@ -373,7 +355,6 @@ export const QuotesScreen = () => {
             <div style={{ fontSize: 13, color: "var(--text3)", marginBottom: 16 }}>הוסיפו הצעות לפי נושא (מטבח, ריצוף, טיח וכו׳) כדי להתחיל להשוות בין ספקים.</div>
             <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
               <Btn onClick={openAdd}><Icon n="plus" s={13} /> הוסף הצעה ראשונה</Btn>
-              <Btn variant="ghost" onClick={() => setTopicInputOpen(true)}><Icon n="plus" s={13} /> נושא חדש</Btn>
             </div>
           </div>
         ) : visibleTopics.map(topic => {
@@ -399,7 +380,7 @@ export const QuotesScreen = () => {
                   </div>
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>
-                  <Btn size="sm" variant="ghost" onClick={() => { setForm({ ...emptyForm, topicKey: topic.key }); setEditing(null); setAddOpen(true); }}>
+                  <Btn size="sm" variant="ghost" onClick={() => { setForm({ ...emptyForm, topicName: topic.name }); setEditing(null); setAddOpen(true); }}>
                     <Icon n="plus" s={12} /> הצעה לנושא
                   </Btn>
                   <Btn size="sm" disabled={tQuotes.length < 2} onClick={() => {
@@ -501,10 +482,15 @@ export const QuotesScreen = () => {
             <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
               <div style={{ gridColumn: "1 / -1" }}>
                 <div style={{ fontSize: 12, color: "var(--text2)", marginBottom: 4, fontWeight: 600 }}>נושא *</div>
-                <Select value={form.topicKey} onChange={(v: string) => { if (v === "__add__") { setTopicInputOpen(true); } else { setForm((f) => ({ ...f, topicKey: v })); } }}>
-                  {topics.map(t => <option key={t?.key} value={t?.key}>{t?.name}</option>)}
-                  <option value="__add__">➕ הוסף נושא חדש…</option>
-                </Select>
+                <Input 
+                  list="topic-options" 
+                  value={form.topicName} 
+                  onChange={(v: string) => setForm((f) => ({ ...f, topicName: v }))} 
+                  placeholder='למשל: מטבח, ריצוף או הקלד נושא חדש...' 
+                />
+                <datalist id="topic-options">
+                  {topics.map(t => <option key={t?.key} value={t?.name} />)}
+                </datalist>
               </div>
 
               <div>
@@ -579,7 +565,7 @@ export const QuotesScreen = () => {
 
             <div style={{ marginTop: 20, display: "flex", justifyContent: "flex-end", gap: 8 }}>
               <Btn variant="ghost" onClick={closeModal}>ביטול</Btn>
-              <Btn onClick={saveQuote} disabled={!form.supplier.trim() || !form.total || !form.topicKey || saving}>
+              <Btn onClick={saveQuote} disabled={!form.supplier.trim() || !form.total || !form.topicName.trim() || saving}>
                 <Icon n="check" s={13} /> {saving ? "שומר..." : editing ? "שמור שינויים" : "שמור הצעה"}
               </Btn>
             </div>
