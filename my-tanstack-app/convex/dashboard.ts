@@ -12,7 +12,7 @@ export const getOverview = query({
       return null;
     }
 
-    const [stages, budgetCategories, recentActivity, projectAlerts] = await Promise.all([
+    const [stages, budgetCategories, recentActivity, projectAlerts, orders] = await Promise.all([
       ctx.db
         .query('stages')
         .withIndex('by_project_sort', (q) => q.eq('projectId', args.projectId))
@@ -31,6 +31,10 @@ export const getOverview = query({
         .withIndex('by_project_read', (q) => q.eq('projectId', args.projectId).eq('isRead', false))
         .order('desc')
         .take(5),
+      ctx.db
+        .query('orders')
+        .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
+        .collect(),
     ]);
 
     const activeStage =
@@ -74,6 +78,66 @@ export const getOverview = query({
         overrun: category.spent - category.budget,
       }));
 
+    // Generate Dynamic Alerts for Stages and Orders
+    const today = new Date();
+    // Offset by +3 hours for Israel time roughly, to ensure dates align correctly in the evening
+    today.setHours(today.getHours() + 3);
+    const todayStr = today.toISOString().split('T')[0];
+    
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowStr = tomorrow.toISOString().split('T')[0];
+
+    const dynamicAlerts: any[] = [];
+
+    stages.forEach(stage => {
+      if (stage.status !== 'done') {
+        if (stage.endDate === todayStr) {
+          dynamicAlerts.push({
+            id: `stage-today-${stage._id}`,
+            type: 'warning',
+            text: `שלב "${stage.name}" אמור להסתיים היום וטרם סומן כמושלם.`,
+            dateLabel: 'היום',
+            createdAt: Date.now(),
+            isDynamic: true,
+          });
+        } else if (stage.endDate === tomorrowStr) {
+          dynamicAlerts.push({
+            id: `stage-tomorrow-${stage._id}`,
+            type: 'warning',
+            text: `שלב "${stage.name}" מסתיים מחר וטרם סומן כמושלם.`,
+            dateLabel: 'מחר',
+            createdAt: Date.now(),
+            isDynamic: true,
+          });
+        }
+      }
+    });
+
+    orders.forEach(order => {
+      if (order.status !== 'completed') {
+        if (order.expectedDeliveryDate === todayStr) {
+          dynamicAlerts.push({
+            id: `order-today-${order._id}`,
+            type: 'info',
+            text: `סחורה צפויה להגיע היום: ${order.title}`,
+            dateLabel: 'היום',
+            createdAt: Date.now(),
+            isDynamic: true,
+          });
+        } else if (order.expectedDeliveryDate === tomorrowStr) {
+          dynamicAlerts.push({
+            id: `order-tomorrow-${order._id}`,
+            type: 'info',
+            text: `סחורה צפויה להגיע מחר: ${order.title}`,
+            dateLabel: 'מחר',
+            createdAt: Date.now(),
+            isDynamic: true,
+          });
+        }
+      }
+    });
+
     return {
       project,
       stats: {
@@ -104,13 +168,13 @@ export const getOverview = query({
         text: item.text,
         createdAt: item.createdAt,
       })),
-      alerts: projectAlerts.map((alert) => ({
+      alerts: [...dynamicAlerts, ...projectAlerts.map((alert) => ({
         id: alert._id,
         type: alert.type,
         text: alert.text,
         dateLabel: alert.dateLabel || 'היום',
         createdAt: alert.createdAt,
-      })),
+      }))],
     };
   },
 });

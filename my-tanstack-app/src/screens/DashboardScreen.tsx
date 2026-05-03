@@ -80,9 +80,11 @@ export const DashboardScreen = () => {
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: 13, color: 'var(--text2)' }}>
               <span>{alerts[0].dateLabel}</span>
-              <button onClick={() => deleteAlert({ alertId: alerts[0].id })} style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer' }} title="מחק התראה">
-                <Icon n="x" s={16} />
-              </button>
+              {!alerts[0].isDynamic && (
+                <button onClick={() => deleteAlert({ alertId: alerts[0].id })} style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer' }} title="מחק התראה">
+                  <Icon n="x" s={16} />
+                </button>
+              )}
               <button style={{ background: 'none', border: 'none', color: 'var(--warning-dark, #B45309)', fontWeight: 700, cursor: 'pointer', textDecoration: 'underline' }}>
                 ראה הכל ({alerts.length})
               </button>
