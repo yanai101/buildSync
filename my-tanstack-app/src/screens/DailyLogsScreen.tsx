@@ -310,7 +310,7 @@ export const DailyLogsScreen = () => {
           <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
             
             {/* Header Row for Log */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--surface)', padding: 16, borderRadius: 12, border: '1px solid var(--border)' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, justifyContent: 'space-between', alignItems: 'center', background: 'var(--surface)', padding: 16, borderRadius: 12, border: '1px solid var(--border)' }}>
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                 <span style={{ fontSize: 14, fontWeight: 600 }}>בחר תאריך:</span>
                 <input 
@@ -344,7 +344,7 @@ export const DailyLogsScreen = () => {
             {/* General */}
             <div style={{ background: "var(--surface)", borderRadius: 12, border: "1px solid var(--border)", overflow: "hidden" }}>
               {renderSectionHeader("תנאי שטח", "sun")}
-              <div style={{ padding: 16, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+              <div style={{ padding: 16, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 16 }}>
                 <div>
                   <label style={{ display: "block", fontSize: 12, color: "var(--text2)", marginBottom: 4 }}>מזג אוויר</label>
                   <input disabled={!canEditBasic} value={form.weather} onChange={e=>setForm({...form, weather: e.target.value})} placeholder="לדוגמה: שרב / גשום / רגיל" style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid var(--border)", fontSize: 14, opacity: canEditBasic ? 1 : 0.6 }} />
@@ -403,7 +403,7 @@ export const DailyLogsScreen = () => {
               {renderSectionHeader("מה בוצע היום?", "check-square")}
               <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
                 {form.activities.map((act, i) => (
-                  <div key={i} style={{ display: "flex", gap: 8 }}>
+                  <div key={i} style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                     <input disabled={!canEditBasic} value={act.description} onChange={e=>{
                       const newArr = [...form.activities]; newArr[i].description = e.target.value; setForm({...form, activities: newArr});
                     }} placeholder="תיאור העבודה (למשל יציקת קירות ממ״ד)" style={{ flex: 1, padding: "8px 12px", borderRadius: 8, border: "1px solid var(--border)", fontSize: 13 }} />
@@ -417,7 +417,7 @@ export const DailyLogsScreen = () => {
                     {canEditBasic && (
                       <button onClick={()=>{
                         const newArr = [...form.activities]; newArr.splice(i, 1); setForm({...form, activities: newArr});
-                      }} style={{ background: "rgba(255,59,48,0.1)", border: "none", borderRadius: 8, padding: "8px 12px", cursor: "pointer", color: "#FF3B30", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }} onMouseOver={e=>e.currentTarget.style.background="rgba(255,59,48,0.2)"} onMouseOut={e=>e.currentTarget.style.background="rgba(255,59,48,0.1)"}>
+                      }} style={{ background: "rgba(255,59,48,0.1)", border: "none", borderRadius: 8, padding: "8px 12px", cursor: "pointer", color: "#FF3B30", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s", flex: "0 0 auto" }} onMouseOver={e=>e.currentTarget.style.background="rgba(255,59,48,0.2)"} onMouseOut={e=>e.currentTarget.style.background="rgba(255,59,48,0.1)"}>
                         <Icon n="trash" s={14}/>
                       </button>
                     )}
@@ -434,12 +434,12 @@ export const DailyLogsScreen = () => {
               <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
                 {!isInspectorOrManager && !isOwner && <div style={{ fontSize: 13, color: "var(--text3)" }}>רק מפקח מורשה להזין ולנהל עיכובים וחריגות כספיות.</div>}
                 {form.issues.map((iss, i) => (
-                  <div key={i} style={{ display: "flex", gap: 8, padding: 12, background: "rgba(255,59,48,0.05)", borderRadius: 8, border: "1px solid rgba(255,59,48,0.2)" }}>
+                  <div key={i} style={{ display: "flex", gap: 8, flexWrap: "wrap", padding: 12, background: "rgba(255,59,48,0.05)", borderRadius: 8, border: "1px solid rgba(255,59,48,0.2)" }}>
                     <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8 }}>
                       <input disabled={!canEditAdvanced} value={iss.description} onChange={e=>{
                         const newArr = [...form.issues]; newArr[i].description = e.target.value; setForm({...form, issues: newArr});
                       }} placeholder="תיאור הבעיה (למשל: משאבת בטון לא הגיעה)" style={{ padding: "8px 12px", borderRadius: 6, border: "1px solid var(--border)", fontSize: 13 }} />
-                      <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
+                      <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "center" }}>
                         <select disabled={!canEditAdvanced} value={iss.type} onChange={e=>{
                           const newArr = [...form.issues]; newArr[i].type = e.target.value as any; setForm({...form, issues: newArr});
                         }} style={{ padding: "6px", borderRadius: 6, border: "1px solid var(--border)", fontSize: 12 }}>
@@ -458,7 +458,7 @@ export const DailyLogsScreen = () => {
                     {canEditAdvanced && (
                       <button onClick={()=>{
                         const newArr = [...form.issues]; newArr.splice(i, 1); setForm({...form, issues: newArr});
-                      }} style={{ background: "rgba(255,59,48,0.1)", border: "none", borderRadius: 8, padding: "8px 12px", cursor: "pointer", color: "#FF3B30", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }} onMouseOver={e=>e.currentTarget.style.background="rgba(255,59,48,0.2)"} onMouseOut={e=>e.currentTarget.style.background="rgba(255,59,48,0.1)"}>
+                      }} style={{ background: "rgba(255,59,48,0.1)", border: "none", borderRadius: 8, padding: "8px 12px", cursor: "pointer", color: "#FF3B30", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s", flex: "0 0 auto", height: "fit-content" }} onMouseOver={e=>e.currentTarget.style.background="rgba(255,59,48,0.2)"} onMouseOut={e=>e.currentTarget.style.background="rgba(255,59,48,0.1)"}>
                         <Icon n="trash" s={14}/>
                       </button>
                     )}
@@ -552,7 +552,7 @@ export const DailyLogsScreen = () => {
                 <EmptyState title="אין היסטוריית יומנים" description="עדיין לא נוצרו יומני עבודה בפרויקט זה." icon="file-text" />
               ) : (
                 allLogs.map(l => (
-                  <div key={l._id} style={{ background: 'var(--surface)', padding: 16, borderRadius: 12, border: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div key={l._id} style={{ background: 'var(--surface)', padding: 16, borderRadius: 12, border: '1px solid var(--border)', display: 'flex', flexWrap: 'wrap', gap: 16, justifyContent: 'space-between', alignItems: 'center' }}>
                     <div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
                         <span style={{ fontSize: 16, fontWeight: 700 }}>{new Date(l.date).toLocaleDateString('he-IL')}</span>
@@ -568,7 +568,7 @@ export const DailyLogsScreen = () => {
                         <span>חריגות: {l.issues.length}</span>
                       </div>
                     </div>
-                    <div style={{ display: 'flex', gap: 12 }}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
                       <Btn variant="outline" size="sm" onClick={() => {
                         setSelectedDate(l.date);
                         setActiveTab('log');
