@@ -92,9 +92,9 @@ export const DashboardScreen = () => {
 
         {role !== 'contractor' && <BudgetSummaryCards summary={stats} style={{marginBottom:24}} />}
 
-        <div style={{display:"grid",gridTemplateColumns:"1fr 340px",gap:20}}>
+        <div style={{display: "flex", flexWrap: "wrap", gap: 20}}>
           {/* Left col */}
-          <div style={{display:"flex",flexDirection:"column",gap:20}}>
+          <div style={{flex: "1 1 500px", display:"flex",flexDirection:"column",gap:20}}>
             {/* Progress */}
             <div className="card">
               <div className="card-header">התקדמות פרויקט</div>
@@ -124,14 +124,14 @@ export const DashboardScreen = () => {
             {/* Budget overview */}
             {role !== 'contractor' && (
               <div className="card">
-              <div className="card-header" style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <div className="card-header" style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
                 <span>תקציב ותשלומים</span>
                 <span style={{fontSize:12,color:"var(--text3)",fontWeight:400}}>יתרה: {fmtMoney(stats.remainingBudget)}</span>
               </div>
               <div className="card-body" style={{paddingTop:12}}>
-                <div style={{display:"flex",gap:24,marginBottom:16}}>
+                <div style={{display:"flex",gap:16,marginBottom:16,flexWrap:"wrap"}}>
                   {[{label:"תקציב",v:stats.totalBudget,c:"var(--text1)"},{label:"הוצא",v:stats.totalSpent,c:"var(--accent)"},{label:"מחויב",v:stats.committed,c:"var(--warning)"}].map(x=>(
-                    <div key={x.label}>
+                    <div key={x.label} style={{flex:"1 1 100px"}}>
                       <div style={{fontSize:20,fontWeight:800,color:x.c}}>{fmtMoney(x.v)}</div>
                       <div style={{fontSize:12,color:"var(--text2)"}}>{x.label}</div>
                     </div>
@@ -141,7 +141,7 @@ export const DashboardScreen = () => {
                   <div style={{width:`${stats.totalBudget ? (stats.totalSpent/stats.totalBudget*100) : 0}%`,background:"var(--accent)",transition:"width .4s"}}/>
                   <div style={{width:`${stats.totalBudget ? (stats.committed/stats.totalBudget*100) : 0}%`,background:"#FDE68A"}}/>
                 </div>
-                <div style={{display:"flex",gap:16,marginTop:8,fontSize:11,color:"var(--text3)"}}>
+                <div style={{display:"flex",flexWrap:"wrap",gap:16,marginTop:8,fontSize:11,color:"var(--text3)"}}>
                   <span style={{display:"flex",alignItems:"center",gap:4}}><span style={{width:8,height:8,borderRadius:2,background:"var(--accent)",display:"inline-block"}}/> הוצא {stats.totalBudget ? (stats.totalSpent/stats.totalBudget*100).toFixed(1) : '0.0'}%</span>
                   <span style={{display:"flex",alignItems:"center",gap:4}}><span style={{width:8,height:8,borderRadius:2,background:"#FDE68A",display:"inline-block"}}/> מחויב {stats.totalBudget ? (stats.committed/stats.totalBudget*100).toFixed(1) : '0.0'}%</span>
                 </div>
@@ -167,7 +167,7 @@ export const DashboardScreen = () => {
           </div>
 
           {/* Right col */}
-          <div style={{display:"flex",flexDirection:"column",gap:20}}>
+          <div style={{flex: "1 1 340px", display:"flex",flexDirection:"column",gap:20}}>
             {/* Project info */}
             <div className="card">
               <div className="card-header">פרטי פרויקט</div>
