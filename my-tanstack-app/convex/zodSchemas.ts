@@ -545,7 +545,10 @@ export const zOrder = {
   orderDate: z.string().optional(),
   expectedDeliveryDate: z.string().optional(),
   notes: z.string().optional(),
-  deliveryDocuments: z.array(zid('projectFiles')).optional(),
+  deliveryDocuments: z.array(z.object({
+    storageId: zid('_storage'),
+    name: z.string(),
+  })).optional(),
 };
 
 export const zPromoCode = {

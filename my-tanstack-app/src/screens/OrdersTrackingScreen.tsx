@@ -17,6 +17,7 @@ type Order = {
   orderDate?: string;
   expectedDeliveryDate?: string;
   notes?: string;
+  deliveryDocuments?: { storageId: Id<'_storage'>; name: string; url?: string | null }[];
 };
 
 export const OrdersTrackingScreen = () => {
@@ -25,6 +26,13 @@ export const OrdersTrackingScreen = () => {
   const createOrder = useMutation(api.orders.create);
   const updateReceived = useMutation(api.orders.updateReceived);
   const deleteOrder = useMutation(api.orders.remove);
+  const generateUploadUrl = useMutation(api.orders.generateUploadUrl);
+  const addDocument = useMutation(api.orders.addDocument);
+  const removeDocument = useMutation(api.orders.removeDocument);
+
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const [uploadingOrderId, setUploadingOrderId] = React.useState<Id<'orders'> | null>(null);
+  const [previewDocumentUrl, setPreviewDocumentUrl] = React.useState<string | null>(null);
 
   const [isAddModalOpen, setIsAddModalOpen] = React.useState(false);
   const [selectedOrder, setSelectedOrder] = React.useState<Order | null>(null);
@@ -127,6 +135,48 @@ export const OrdersTrackingScreen = () => {
     }
   };
 
+  const handlePickFile = (orderId: Id<'orders'>) => {
+    setUploadingOrderId(orderId);
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file || !projectId || !uploadingOrderId) return;
+
+    try {
+      const uploadUrl = await generateUploadUrl({ projectId });
+      const uploadResponse = await fetch(uploadUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': file.type },
+        body: file,
+      });
+
+      if (!uploadResponse.ok) throw new Error('File upload failed');
+
+      const { storageId } = await uploadResponse.json() as { storageId: Id<'_storage'> };
+      await addDocument({
+        orderId: uploadingOrderId,
+        storageId,
+        name: file.name,
+      });
+      setFeedback({ title: 'הועלה בהצלחה', message: 'תעודת המשלוח נוספה.', type: 'success' });
+    } catch (err) {
+      setFeedback({ title: 'שגיאה', message: 'שגיאה בהעלאת הקובץ.', type: 'error' });
+    } finally {
+      setUploadingOrderId(null);
+    }
+  };
+
+  const handleDeleteDocument = async (orderId: Id<'orders'>, storageId: Id<'_storage'>) => {
+    try {
+      await removeDocument({ orderId, storageId });
+    } catch (err) {
+      setFeedback({ title: 'שגיאה', message: 'לא ניתן למחוק מסמך.', type: 'error' });
+    }
+  };
+
   return (
     <ScreenBoundary loading={loading} error={null} onRetry={() => {}}>
       <div className="page-content" style={{ display: 'flex', flexDirection: 'column', minHeight: 'calc(100vh - 100px)' }}>
@@ -148,6 +198,14 @@ export const OrdersTrackingScreen = () => {
             <Icon n="plus" s={14} /> הוסף הזמנה
           </Btn>
         </div>
+
+        <input
+          ref={fileInputRef}
+          type="file"
+          style={{ display: 'none' }}
+          onChange={handleFileChange}
+          accept="image/*,.pdf"
+        />
 
         {/* Stats */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 24 }}>
@@ -257,6 +315,36 @@ export const OrdersTrackingScreen = () => {
                       </Btn>
                     )}
                   </div>
+
+                  {/* Documents section */}
+                  {order.deliveryDocuments && order.deliveryDocuments.length > 0 && (
+                    <div style={{ marginTop: 8, borderTop: '1px dashed var(--border)', paddingTop: 12 }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text2)', marginBottom: 8 }}>תעודות משלוח ({order.deliveryDocuments.length})</div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        {order.deliveryDocuments.map((doc, i) => (
+                          <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--bg)', padding: '6px 12px', borderRadius: 6 }}>
+                            <div 
+                              onClick={() => doc.url && setPreviewDocumentUrl(doc.url)}
+                              style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, cursor: doc.url ? 'pointer' : 'default', color: doc.url ? 'var(--accent)' : 'var(--text1)' }}
+                            >
+                              <Icon n="file" s={14} />
+                              <span style={{ maxWidth: 150, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{doc.name}</span>
+                            </div>
+                            <button onClick={() => handleDeleteDocument(order._id, doc.storageId)} style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', padding: 2 }}>
+                              <Icon n="x" s={12} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div style={{ marginTop: order.deliveryDocuments && order.deliveryDocuments.length > 0 ? 4 : 8 }}>
+                    <Btn size="sm" variant="ghost" onClick={() => handlePickFile(order._id)} disabled={uploadingOrderId === order._id} style={{ fontSize: 12, width: '100%', justifyContent: 'center' }}>
+                      <Icon n="paperclip" s={14} /> 
+                      {uploadingOrderId === order._id ? 'מעלה...' : 'צרף תעודת משלוח'}
+                    </Btn>
+                  </div>
                 </div>
               );
             })}
@@ -350,6 +438,15 @@ export const OrdersTrackingScreen = () => {
           onConfirm={handleDelete}
           onClose={() => setDeleteConfirmOpen(null)}
         />
+      )}
+
+      {/* Preview Document */}
+      {previewDocumentUrl && (
+        <Modal title="תעודת משלוח" onClose={() => setPreviewDocumentUrl(null)} width={800}>
+          <div style={{ height: '70vh', background: '#f5f5f5', borderRadius: 8, overflow: 'hidden' }}>
+            <iframe src={previewDocumentUrl} width="100%" height="100%" style={{ border: 'none' }} title="Preview" />
+          </div>
+        </Modal>
       )}
 
       {/* Feedback */}

@@ -18,7 +18,51 @@ export const list = query({
       .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
       .collect();
       
-    return orders;
+    return await Promise.all(orders.map(async (order) => {
+      const documentsWithUrls = await Promise.all(
+        (order.deliveryDocuments || []).map(async (doc) => ({
+          ...doc,
+          url: await ctx.storage.getUrl(doc.storageId),
+        }))
+      );
+      return { ...order, deliveryDocuments: documentsWithUrls };
+    }));
+  },
+});
+
+export const generateUploadUrl = mutation({
+  args: { projectId: v.id('projects') },
+  handler: async (ctx) => {
+    return await ctx.storage.generateUploadUrl();
+  },
+});
+
+export const addDocument = mutation({
+  args: {
+    orderId: v.id('orders'),
+    storageId: v.id('_storage'),
+    name: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const order = await ctx.db.get(args.orderId);
+    if (!order) throw new Error('Order not found');
+    const documents = order.deliveryDocuments || [];
+    documents.push({ storageId: args.storageId, name: args.name });
+    await ctx.db.patch(args.orderId, { deliveryDocuments: documents });
+  },
+});
+
+export const removeDocument = mutation({
+  args: {
+    orderId: v.id('orders'),
+    storageId: v.id('_storage'),
+  },
+  handler: async (ctx, args) => {
+    const order = await ctx.db.get(args.orderId);
+    if (!order) throw new Error('Order not found');
+    const documents = (order.deliveryDocuments || []).filter(d => d.storageId !== args.storageId);
+    await ctx.db.patch(args.orderId, { deliveryDocuments: documents });
+    await ctx.storage.delete(args.storageId);
   },
 });
 
