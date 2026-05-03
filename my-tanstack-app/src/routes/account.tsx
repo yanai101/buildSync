@@ -304,7 +304,7 @@ function AccountPage() {
       </div>
 
       {/* Dev Toggle */}
-      {process.env.NODE_ENV === 'development' && (
+      {import.meta.env.DEV && (
         <div className="card" style={{ padding: 24, background: 'rgba(0,0,0,0.02)', borderStyle: 'dashed' }}>
           <SectionHeader
             title="🛠️ כלי מפתחים (טסטים)"
