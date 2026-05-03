@@ -154,7 +154,7 @@ export const ProjectSetupScreen = () => {
                 <div style={{fontSize:13,color:"var(--text3)",marginTop:2}}>ניהול פרטי הפרויקט, מבנה הקומות והחדרים</div>
               </div>
             </div>
-            <Btn onClick={() => setIsEditing(true)}><Icon n="edit" s={14}/> ערוך הגדרות</Btn>
+            <Btn onClick={() => { setIsEditing(true); setStep(0); }}><Icon n="edit" s={14}/> ערוך הגדרות</Btn>
           </div>
 
           <div style={{display:"flex",flexWrap:"wrap",gap:20}}>
@@ -201,6 +201,15 @@ export const ProjectSetupScreen = () => {
             </div>
           </div>
         </div>
+        
+        {feedback && (
+          <FeedbackModal 
+            title={feedback.title} 
+            message={feedback.message} 
+            type={feedback.type} 
+            onClose={() => setFeedback(null)} 
+          />
+        )}
       </ScreenBoundary>
     );
   }
