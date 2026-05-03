@@ -67,7 +67,7 @@ export const PAGE_SUBTITLES: Record<string, string> = {
   "/account": "עדכון פרטים אישיים וסיסמה",
 }
 
-const BOTTOM_NAV = ["/dashboard", "/setup", "/boqwizard", "/photos", "/notes"].map(id => NAV.find(n => n.id === id)!)
+const BOTTOM_NAV = ["/dashboard", "/boqwizard", "/photos", "/notes"].map(id => NAV.find(n => n.id === id)!)
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const routerState = useRouterState()
@@ -80,6 +80,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const { signOut } = useAuthActions()
   const identity = useQuery(api.users.currentIdentity, {})
   const [menuOpen, setMenuOpen] = React.useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false)
   const menuRef = React.useRef<HTMLDivElement>(null)
   const { startTour } = useOnboardingTour()
   const dbNotes = useQuery(api.queries.listNotes, project?._id ? { projectId: project._id } : "skip")
@@ -553,13 +554,123 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               className="bottom-nav-item"
               activeProps={{ className: 'active' }}
               exact
+              onClick={() => setMobileMenuOpen(false)}
             >
               <Icon n={n.icon} s={20} />
               <span>{n.label}</span>
             </Link>
           ))}
+          <button 
+            type="button" 
+            className={`bottom-nav-item ${mobileMenuOpen ? 'active' : ''}`} 
+            style={{ background: 'none', border: 'none', fontFamily: 'inherit' }}
+            onClick={() => setMobileMenuOpen(v => !v)}
+          >
+            <Icon n="menu" s={20} />
+            <span>תפריט</span>
+          </button>
         </div>
       </div>
+
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(0,0,0,0.5)',
+              zIndex: 90,
+            }}
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              onClick={e => e.stopPropagation()}
+              style={{
+                position: 'absolute',
+                bottom: 0,
+                left: 0,
+                right: 0,
+                background: 'var(--surface)',
+                borderTopLeftRadius: 24,
+                borderTopRightRadius: 24,
+                padding: '24px 20px calc(80px + env(safe-area-inset-bottom))',
+                maxHeight: '85vh',
+                overflowY: 'auto',
+                boxShadow: '0 -10px 40px rgba(0,0,0,0.1)'
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800 }}>תפריט ניווט</h3>
+                <button 
+                  onClick={() => setMobileMenuOpen(false)}
+                  style={{ background: 'var(--bg)', border: 'none', borderRadius: '50%', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text2)', cursor: 'pointer' }}
+                >
+                  <Icon n="x" s={16} />
+                </button>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                {sections.map(sec => {
+                  const userRole = resolvedRole ?? 'owner'
+                  const items = NAV.filter(n =>
+                    n.section === sec &&
+                    (!n.roles || n.roles.includes(userRole as any))
+                  )
+                  if (items.length === 0) return null
+                  
+                  return (
+                    <div key={sec}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text3)', marginBottom: 8, padding: '0 8px' }}>{sec}</div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                        {items.map(n => {
+                          const isDisabled = projects.length === 0 && n.id !== '/projects';
+                          const badgeVal = n.id === '/notes' && unreadNotesCount > 0 ? unreadNotesCount : n.badge;
+                          
+                          return (
+                            <Link
+                              key={n.id}
+                              to={isDisabled ? currentPath : n.id}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 10,
+                                padding: '12px',
+                                background: currentPath === n.id ? 'var(--accent-light)' : 'var(--bg)',
+                                color: currentPath === n.id ? 'var(--accent)' : 'var(--text1)',
+                                borderRadius: 12,
+                                textDecoration: 'none',
+                                fontWeight: currentPath === n.id ? 700 : 500,
+                                opacity: isDisabled ? 0.4 : 1,
+                                border: currentPath === n.id ? '1px solid var(--accent)' : '1px solid var(--border)'
+                              }}
+                              onClick={() => {
+                                if (!isDisabled) setMobileMenuOpen(false);
+                              }}
+                            >
+                              <Icon n={n.icon} s={18} />
+                              <span style={{ fontSize: 13, flex: 1 }}>{n.label}</span>
+                              {badgeVal && (
+                                <span style={{ background: 'var(--accent)', color: '#fff', fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 10 }}>{badgeVal}</span>
+                              )}
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </>
   )
 }
