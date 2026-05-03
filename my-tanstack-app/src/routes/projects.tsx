@@ -130,19 +130,21 @@ function ProjectsRoute() {
 
   return (
     <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <div className="card" style={{ padding: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
+      <div className="card" style={{ padding: "20px 24px", display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
+        <div style={{ flex: '1 1 250px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--text1)' }}>מעבר בין פרויקטים</div>
+            <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--text1)' }}>מעבר בין פרויקטים</div>
           </div>
-          <div style={{ fontSize: 14, color: 'var(--text3)', marginTop: 8 }}>
+          <div style={{ fontSize: 13, color: 'var(--text3)', marginTop: 4 }}>
             בחר איזה פרויקט לטעון כרגע. אם יש לך יותר מפרויקט אחד, אפשר לעבור ביניהם בכל רגע.
           </div>
         </div>
-        <Btn onClick={handleOpenWizard} disabled={isMock}>
-          <Icon n="plus" s={16} />
-          הוסף פרויקט
-        </Btn>
+        <div style={{ flex: '0 0 auto' }}>
+          <Btn onClick={handleOpenWizard} disabled={isMock}>
+            <Icon n="plus" s={16} />
+            הוסף פרויקט
+          </Btn>
+        </div>
       </div>
 
       <div style={{ display: 'grid', gap: 16 }}>
@@ -151,8 +153,8 @@ function ProjectsRoute() {
           const deleting = isDeleting === project._id;
           return (
             <div key={project._id} className="card" style={{ padding: 20, border: isActive ? '2px solid var(--accent)' : '1px solid var(--border)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'center' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: '1 1 250px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <div style={{ fontSize: 20, fontWeight: 800 }}>{project.name}</div>
                     {isActive ? <span className="badge badge-active">פעיל</span> : null}
@@ -166,7 +168,7 @@ function ProjectsRoute() {
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', gap: 12 }}>
+                <div style={{ display: 'flex', gap: 12, alignItems: 'center', flex: '1 1 auto', justifyContent: 'flex-end' }}>
                   {user?._id === project.ownerUserId && (
                     <button 
                       onClick={() => handleDelete(project._id)}
@@ -174,7 +176,7 @@ function ProjectsRoute() {
                       disabled={deleting}
                     >
                       <Icon n="trash" s={16} />
-                      {deleting ? 'מוחק...' : 'מחק'}
+                      <span className="desktop-only">{deleting ? 'מוחק...' : 'מחק'}</span>
                     </button>
                   )}
 
@@ -187,7 +189,7 @@ function ProjectsRoute() {
                     }}
                   >
                     <Icon n="arrow-right" s={16} />
-                    {isActive ? 'זה הפרויקט הנוכחי' : 'טען פרויקט'}
+                    {isActive ? 'הנוכחי' : 'טען'}
                   </Btn>
                 </div>
               </div>
