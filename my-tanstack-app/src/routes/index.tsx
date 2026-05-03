@@ -501,6 +501,52 @@ function LandingPage() {
         </div>
       </section>
 
+      {/* 5.9 FEATURE DEEP DIVE: LOGISTICS & ORDERS */}
+      <section className="section-padding" style={{ background: 'linear-gradient(180deg, rgba(10,10,12,0.95) 0%, rgba(10,10,12,0.6) 50%, rgba(10,10,12,0.95) 100%), url(/images/bg_orders.png) center/cover no-repeat', borderTop: '1px solid rgba(255,255,255,0.02)' }}>
+        <div className="content-width split-layout reversed">
+          <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeIn} className="split-text">
+            <span className="feature-badge" style={{color: '#10B981'}}>לוגיסטיקה ורכש באתר</span>
+            <h2 className="feature-title">מעקב הזמנות מקצה לקצה.</h2>
+            <p className="feature-desc">
+              שליטה מוחלטת בשרשרת האספקה של הפרויקט. מהזמנת הברזל לשלד ועד לריצוף מחו"ל, המערכת מוודאת ששום סחורה לא "נופלת בין הכיסאות" בדרך לאתר הבנייה.
+            </p>
+            <ul className="bullet-list">
+              <li className="bullet-item"><Icon n="truck" s={28} c="#10B981" style={{marginTop:4}} /> <div><strong>ניהול ספקים ואספקות:</strong> יצירת הזמנות מול ספקים, עדכון תאריכי הגעה משוערים וניהול קבלות או תעודות משלוח במקום אחד.</div></li>
+              <li className="bullet-item"><Icon n="package" s={28} c="#10B981" style={{marginTop:4}} /> <div><strong>מעקב סטאטוס חכם:</strong> מעבר דינאמי בין "הוזמן", "בדרך" ו-"התקבל באתר", המאפשר למפקח לאמת את הכמות שהגיעה בפועל.</div></li>
+            </ul>
+          </motion.div>
+          
+          <motion.div initial={{ opacity: 0, x: 50 }} whileInView={{ opacity: 1, x: 0 }} transition={{ duration: 0.8 }} viewport={{ once: true }} className="split-media" style={{ display: 'flex', justifyContent: 'center' }}>
+            <div style={{ width: '100%', maxWidth: 400, background: 'rgba(20, 20, 25, 0.9)', backdropFilter: 'blur(20px)', borderRadius: 24, padding: 32, border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 40px 80px rgba(0,0,0,0.8)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: 16, marginBottom: 24 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <Icon n="truck" s={24} c="#10B981" />
+                  <span style={{ fontSize: 18, fontWeight: 'bold' }}>משלוחים קרובים</span>
+                </div>
+              </div>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                {[
+                  { name: "ברזל בניין 12 מ''מ", supplier: "פקר פלדה", status: "התקבל חלקי", icon: "box", color: "var(--warning)" },
+                  { name: "ריצוף גרניט פורצלן", supplier: "נגב קרמיקה", status: "בדרך", icon: "truck", color: "#3B82F6" },
+                  { name: "מלט לבן ושחור", supplier: "נשר", status: "התקבל במלואו", icon: "check-circle", color: "var(--success)" }
+                ].map((order, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '16px', background: 'rgba(0,0,0,0.3)', borderRadius: 16, border: '1px solid rgba(255,255,255,0.03)' }}>
+                    <div style={{ width: 40, height: 40, borderRadius: 10, background: `rgba(255,255,255,0.05)`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Icon n={order.icon} s={20} c={order.color} />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 600, fontSize: 15 }}>{order.name}</div>
+                      <div style={{ fontSize: 13, color: '#888' }}>{order.supplier}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
       {/* 6. AT-A-GLANCE GRID */}
       <section className="section-padding" style={{ background: 'linear-gradient(180deg, rgba(17,17,21,0.95) 0%, rgba(17,17,21,0.6) 50%, rgba(17,17,21,0.95) 100%), url(/images/bg_smart_system.png) center/cover no-repeat', borderTop: '1px solid rgba(255,255,255,0.02)' }}>
         <div className="content-width">
@@ -571,6 +617,7 @@ function LandingPage() {
                 <li className="bullet-item" style={{ fontSize: '1rem' }}><Icon n="check" s={20} c="var(--success)" /> <div>ניהול תקציב, משימות וצ'אט בסיסי</div></li>
                 <li className="bullet-item" style={{ fontSize: '1rem', opacity: 0.5 }}><Icon n="x" s={20} c="#888" /> <div>ללא כתבי כמויות (BOQ)</div></li>
                 <li className="bullet-item" style={{ fontSize: '1rem', opacity: 0.5 }}><Icon n="x" s={20} c="#888" /> <div>ללא יומני עבודה (Daily Logs)</div></li>
+                <li className="bullet-item" style={{ fontSize: '1rem', opacity: 0.5 }}><Icon n="x" s={20} c="#888" /> <div>ללא מעקב הזמנות מול ספקים</div></li>
               </ul>
             </motion.div>
             
@@ -583,8 +630,8 @@ function LandingPage() {
               <ul className="bullet-list" style={{ gap: 16 }}>
                 <li className="bullet-item" style={{ fontSize: '1rem' }}><Icon n="check" s={20} c="var(--accent)" /> <div>עד 5 פרויקטים במקביל</div></li>
                 <li className="bullet-item" style={{ fontSize: '1rem' }}><Icon n="check" s={20} c="var(--accent)" /> <div>כתבי כמויות אינטראקטיביים והצעות מחיר</div></li>
-                <li className="bullet-item" style={{ fontSize: '1rem' }}><Icon n="check" s={20} c="var(--accent)" /> <div>ייצוא כתב כמויות ל-PDF</div></li>
-                <li className="bullet-item" style={{ fontSize: '1rem' }}><Icon n="check" s={20} c="var(--accent)" /> <div>הפקת יומני עבודה מתקדמים ל-PDF</div></li>
+                <li className="bullet-item" style={{ fontSize: '1rem' }}><Icon n="check" s={20} c="var(--accent)" /> <div>ניהול מלא של הזמנות רכש ואספקות לאתר</div></li>
+                <li className="bullet-item" style={{ fontSize: '1rem' }}><Icon n="check" s={20} c="var(--accent)" /> <div>הפקת יומני עבודה ל-PDF</div></li>
               </ul>
             </motion.div>
 
