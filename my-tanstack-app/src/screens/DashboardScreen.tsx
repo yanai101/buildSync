@@ -14,6 +14,7 @@ import { api } from '../../convex/_generated/api';
 export const DashboardScreen = () => {
   const { role } = useRequireRole(['owner', 'manager', 'inspector', 'contractor']);
   const [showAllStages, setShowAllStages] = React.useState(false);
+  const [showAllAlerts, setShowAllAlerts] = React.useState(false);
   const { overview } = useDashboardOverview();
   const { data: dashboard, loading, error, refetch } = useDataSource<any>('dashboard', { db: overview });
   const seedAlert = useMutation(api.dashboard.seedAlert);
@@ -71,24 +72,58 @@ export const DashboardScreen = () => {
             padding: 16,
             marginBottom: 24,
             display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center'
+            flexDirection: 'column',
+            gap: 12
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontWeight: 600, color: 'var(--warning-dark, #B45309)' }}>
-              <Icon n="alert" s={20} />
-              <span>{alerts[0].text}</span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: 13, color: 'var(--text2)' }}>
-              <span>{alerts[0].dateLabel}</span>
-              {!alerts[0].isDynamic && (
-                <button onClick={() => deleteAlert({ alertId: alerts[0].id })} style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer' }} title="מחק התראה">
-                  <Icon n="x" s={16} />
-                </button>
-              )}
-              <button style={{ background: 'none', border: 'none', color: 'var(--warning-dark, #B45309)', fontWeight: 700, cursor: 'pointer', textDecoration: 'underline' }}>
-                ראה הכל ({alerts.length})
-              </button>
-            </div>
+            {!showAllAlerts ? (
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontWeight: 600, color: 'var(--warning-dark, #B45309)' }}>
+                  <Icon n="alert" s={20} />
+                  <span>{alerts[0].text}</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: 13, color: 'var(--text2)' }}>
+                  <span>{alerts[0].dateLabel}</span>
+                  {!alerts[0].isDynamic && (
+                    <button onClick={() => deleteAlert({ alertId: alerts[0].id })} style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer' }} title="מחק התראה">
+                      <Icon n="x" s={16} />
+                    </button>
+                  )}
+                  {alerts.length > 1 && (
+                    <button onClick={() => setShowAllAlerts(true)} style={{ background: 'none', border: 'none', color: 'var(--warning-dark, #B45309)', fontWeight: 700, cursor: 'pointer', textDecoration: 'underline' }}>
+                      ראה הכל ({alerts.length})
+                    </button>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                  <div style={{ fontWeight: 800, color: 'var(--warning-dark, #B45309)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <Icon n="alert" s={20} />
+                    <span>כל ההתראות ({alerts.length})</span>
+                  </div>
+                  <button onClick={() => setShowAllAlerts(false)} style={{ background: 'none', border: 'none', color: 'var(--warning-dark, #B45309)', fontWeight: 700, cursor: 'pointer', textDecoration: 'underline', fontSize: 13 }}>
+                    הסתר
+                  </button>
+                </div>
+                {alerts.map((alert: any, idx: number) => (
+                  <div key={alert.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderTop: idx > 0 ? '1px solid rgba(245, 158, 11, 0.2)' : 'none' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontWeight: 500, color: 'var(--warning-dark, #B45309)' }}>
+                      <span style={{width: 6, height: 6, borderRadius: '50%', background: 'var(--warning-dark)'}}></span>
+                      <span>{alert.text}</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: 13, color: 'var(--text2)' }}>
+                      <span>{alert.dateLabel}</span>
+                      {!alert.isDynamic && (
+                        <button onClick={() => deleteAlert({ alertId: alert.id })} style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer' }} title="מחק התראה">
+                          <Icon n="x" s={16} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </>
+            )}
           </div>
         )}
 
