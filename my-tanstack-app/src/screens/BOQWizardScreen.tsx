@@ -1073,7 +1073,7 @@ export const BOQWizardScreen = () => {
                       const roomSize = Number(currentRoom.size ?? currentRoom.sizeSqm ?? 0);
                       const dimmedStyle = locked && !enabled ? { opacity: 0.55 } : {};
                       return (
-                      <div key={item.id} style={{display:"flex",alignItems:"flex-start",gap:16,padding:"16px 20px",borderBottom:"1px solid var(--border)", ...dimmedStyle}}>
+                      <div key={item.id} style={{display:"flex",flexWrap:"wrap",alignItems:"flex-start",gap:16,padding:"16px 20px",borderBottom:"1px solid var(--border)", ...dimmedStyle}}>
                         {/* Thumbnail with edit affordance for locked rows */}
                         {locked ? (
                           <div style={{position:"relative",flexShrink:0}}>
@@ -1125,7 +1125,7 @@ export const BOQWizardScreen = () => {
                             </div>
                           )
                         )}
-                        <div style={{flex:1,minWidth:0}}>
+                        <div style={{flex:"1 1 180px", minWidth:"180px"}}>
                           <div style={{display:"flex",alignItems:"center",gap:6}}>
                             <div style={{fontSize:15,fontWeight:600}}>{item.name}</div>
                             {locked && <Icon n="lock" s={12} c="var(--text3)"/>}
@@ -1170,7 +1170,7 @@ export const BOQWizardScreen = () => {
                             </div>
                           )}
                         </div>
-                        <div style={{display:"flex",alignItems:"center",gap:12}}>
+                        <div style={{display:"flex",flexWrap:"wrap",alignItems:"center",gap:12}}>
                           {locked ? (
                             <>
                               {/* Toggle on/off */}
