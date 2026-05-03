@@ -385,3 +385,37 @@ body {
 .buildsync-tour-theme .driver-popover-close-btn:hover {
   color: var(--danger) !important;
 }
+
+/* Stage Wizard Layout */
+.stage-wizard-layout {
+  display: grid;
+  grid-template-columns: 280px minmax(0,1fr);
+  gap: 18px;
+  height: min(72vh, 720px);
+  overflow: hidden;
+}
+
+.stage-wizard-single {
+  display: grid;
+  grid-template-columns: minmax(0,1fr);
+  gap: 18px;
+  height: min(72vh, 720px);
+  overflow: hidden;
+}
+
+@media(max-width:768px){
+  .stage-wizard-layout {
+    display: flex;
+    flex-direction: column;
+    height: auto;
+    max-height: 75vh;
+    overflow-y: auto;
+  }
+  .stage-wizard-single {
+    display: flex;
+    flex-direction: column;
+    height: auto;
+    max-height: 75vh;
+    overflow-y: auto;
+  }
+}

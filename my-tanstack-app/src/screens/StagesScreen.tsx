@@ -362,14 +362,14 @@ const StageCreationGuide = ({
 
   return (
     <Modal title={isSingle ? "הוספת שלב חדש" : "יצירת שלבי בנייה מתבנית"} onClose={onClose} width={isSingle ? 760 : 1040}>
-      <div style={{display:"grid",gridTemplateColumns:isSingle ? "minmax(0,1fr)" : "280px minmax(0,1fr)",gap:18,height:"min(72vh, 720px)",overflow:"hidden"}}>
+      <div className={isSingle ? "stage-wizard-single" : "stage-wizard-layout"}>
         {!isSingle && (
         <div style={{display:"flex",flexDirection:"column",gap:10,minHeight:0}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
             <div style={{fontSize:13,fontWeight:800}}>תבנית מאסטר</div>
             <Btn size="sm" variant="ghost" onClick={addStage}><Icon n="plus" s={12}/> שלב</Btn>
           </div>
-          <ScrollShadow style={{flex:1}}>
+          <ScrollShadow style={{flex:1, minHeight: 150}}>
             <Reorder.Group
               axis="y"
               values={draft}
@@ -438,20 +438,20 @@ const StageCreationGuide = ({
             </div>
 
             <div className="card" style={{padding:16,marginBottom:14}}>
-              <div style={{display:"grid",gridTemplateColumns:"80px 1.4fr 1fr 1fr",gap:10}}>
-                <label>
+              <div style={{display:"flex",flexWrap:"wrap",gap:10}}>
+                <label style={{flex:"1 1 80px"}}>
                   <div style={{fontSize:11,color:"var(--text2)",marginBottom:3}}>אייקון</div>
                   <input className="bp-input" value={current.icon || ""} onChange={e=>updateStage({icon:e.target.value})}/>
                 </label>
-                <label>
+                <label style={{flex:"1 1 180px"}}>
                   <div style={{fontSize:11,color:"var(--text2)",marginBottom:3}}>שם שלב</div>
                   <input className="bp-input" value={current.name} onChange={e=>updateStage({name:e.target.value})}/>
                 </label>
-                <label>
+                <label style={{flex:"1 1 120px"}}>
                   <div style={{fontSize:11,color:"var(--text2)",marginBottom:3}}>התחלה</div>
                   <input className="bp-input" type="date" value={current.startDate} onChange={e=>updateStage({startDate:e.target.value})}/>
                 </label>
-                <label>
+                <label style={{flex:"1 1 120px"}}>
                   <div style={{fontSize:11,color:"var(--text2)",marginBottom:3}}>סיום</div>
                   <input className="bp-input" type="date" value={current.endDate} onChange={e=>updateStage({endDate:e.target.value})}/>
                 </label>
@@ -516,9 +516,9 @@ const StageCreationGuide = ({
               </div>
               <div style={{display:"flex",flexDirection:"column",gap:8}}>
                 {current.tasks.map((task, taskIndex) => (
-                  <div key={task.legacyId} style={{display:"grid",gridTemplateColumns:current.paymentAtEnd ? "1.5fr 1fr 82px 70px" : "1.5fr 1fr 82px 130px 120px 70px",gap:8,alignItems:"center"}}>
-                    <input className="bp-input" value={task.name} onChange={e=>updateTask(taskIndex,{name:e.target.value})}/>
-                    <select className="bp-input" value={task.assignee} onChange={e=>updateTask(taskIndex,{assignee:e.target.value})}>
+                  <div key={task.legacyId} style={{display:"flex",flexWrap:"wrap",gap:8,alignItems:"center",background:"#f9f9f9",padding:8,borderRadius:8}}>
+                    <input className="bp-input" value={task.name} onChange={e=>updateTask(taskIndex,{name:e.target.value})} style={{flex:"1 1 180px"}}/>
+                    <select className="bp-input" value={task.assignee} onChange={e=>updateTask(taskIndex,{assignee:e.target.value})} style={{flex:"1 1 120px"}}>
                       <option value="">לא הוגדר</option>
                       <option value="מפקח">מפקח</option>
                       <option value="בעל הבית">בעל הבית</option>
@@ -526,13 +526,13 @@ const StageCreationGuide = ({
                         {contractors?.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
                       </optgroup>
                     </select>
-                    <label style={{fontSize:12,color:"var(--text2)",display:"flex",gap:6,alignItems:"center"}}>
+                    <label style={{fontSize:12,color:"var(--text2)",display:"flex",gap:6,alignItems:"center",flex:"0 0 auto"}}>
                       <input type="checkbox" checked={task.required} onChange={e=>updateTask(taskIndex,{required:e.target.checked})}/>
                       חובה
                     </label>
                     {!current.paymentAtEnd && (
-                      <>
-                        <label style={{fontSize:12,color:"var(--text2)",display:"flex",gap:6,alignItems:"center"}}>
+                      <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",flex:"1 1 200px"}}>
+                        <label style={{fontSize:12,color:"var(--text2)",display:"flex",gap:6,alignItems:"center",flex:"0 0 auto"}}>
                           <input
                             type="checkbox"
                             checked={task.paymentRequired}
@@ -551,10 +551,11 @@ const StageCreationGuide = ({
                           value={task.paymentRequired ? task.paymentAmount : ''}
                           disabled={!task.paymentRequired}
                           onChange={e=>updateTask(taskIndex,{paymentAmount:Number(e.target.value) || 0})}
+                          style={{flex:"1 1 80px"}}
                         />
-                      </>
+                      </div>
                     )}
-                    <Btn size="sm" variant="ghost" onClick={()=>removeTask(taskIndex)}>מחק</Btn>
+                    <Btn size="sm" variant="ghost" onClick={()=>removeTask(taskIndex)} style={{flex:"0 0 auto"}}>מחק</Btn>
                   </div>
                 ))}
               </div>
