@@ -10,6 +10,7 @@ import { useAuthActions } from '@convex-dev/auth/react'
 import { api } from '../../convex/_generated/api'
 import { useOnboardingTour } from '~/hooks/useOnboardingTour'
 import { useRequireRole } from '~/hooks/useRequireRole'
+import { useSubscription } from '~/hooks/useSubscription'
 
 type NavRole = 'owner' | 'manager' | 'inspector' | 'contractor'
 const ALL_ROLES: NavRole[] = ['owner', 'manager', 'inspector', 'contractor']
@@ -36,6 +37,15 @@ export const NAV = [
   { id: "/budget",        label: "תקציב",      icon: "chart",     section: "פיננסי",  roles: OWNER_ONLY },
   { id: "/quotes",        label: "הצעות מחיר", icon: "clipboard", section: "פיננסי",  roles: OWNER_ONLY },
   { id: "/timeline",      label: "לוח זמנים", icon: "calendar",  section: "פיננסי",   roles: ALL_ROLES },
+]
+
+export const PREMIUM_ROUTES = [
+  '/orders',
+  '/boq',
+  '/boqwizard',
+  '/permits',
+  '/daily-logs',
+  // Optional: add more like '/team' if needed
 ]
 
 export const PAGE_TITLES: Record<string, string> = {
@@ -79,6 +89,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const { project, projects, hasMultipleProjects, isLoading: isProjectLoading } = useCurrentProject()
   const { isAuthenticated, isLoading } = useConvexAuth()
   const { role: resolvedRole } = useRequireRole(ALL_ROLES)
+  const { isProOrPremium } = useSubscription()
   const { signOut } = useAuthActions()
   const identity = useQuery(api.users.currentIdentity, {})
   const [menuOpen, setMenuOpen] = React.useState(false)
@@ -283,6 +294,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                     >
                       {items.map(n => {
                         const isDisabled = projects.length === 0 && n.id !== '/projects';
+                        const isPremiumLocked = PREMIUM_ROUTES.includes(n.id) && !isProOrPremium;
                         const badgeVal = n.id === '/notes' && unreadNotesCount > 0 ? unreadNotesCount : n.badge;
                         return (
                           <Link
@@ -292,7 +304,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                             className="nav-item"
                             activeProps={isDisabled ? {} : { className: 'active' }}
                             style={{ 
-                              opacity: isDisabled ? 0.4 : 1, 
+                              opacity: isDisabled ? 0.4 : (isPremiumLocked ? 0.75 : 1), 
                               pointerEvents: isDisabled ? 'none' : 'auto' 
                             }}
                             exact
@@ -301,7 +313,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                               <motion.div layoutId="nav-active" className="nav-item-bg" transition={{type:"spring", stiffness:300, damping:30}} />
                             )}
                             <Icon n={n.icon} s={18} />
-                            <span style={{flex:1}}>{n.label}</span>
+                            <span style={{flex:1, display: 'flex', alignItems: 'center', gap: 6}}>
+                              {n.label}
+                              {isPremiumLocked && <Icon n="lock" s={12} c="var(--text3)" />}
+                            </span>
                             {badgeVal ? <span className="nav-item-badge">{badgeVal}</span> : null}
                           </Link>
                         )
