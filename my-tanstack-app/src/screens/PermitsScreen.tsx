@@ -22,6 +22,7 @@ export const PermitsScreen = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [permitToDelete, setPermitToDelete] = useState<{ id: Id<'permits'>, title: string } | null>(null);
+  const [previewDocumentUrl, setPreviewDocumentUrl] = useState<string | null>(null);
   const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
   const noteTimers = useRef<Record<string, number>>({});
   const [authorityDrafts, setAuthorityDrafts] = useState<Record<string, string>>({});
@@ -225,16 +226,11 @@ export const PermitsScreen = () => {
 
                 {permit.url && (
                   <div style={{ display: 'flex', gap: 8, marginTop: 'auto' }}>
-                    <a
-                      href={permit.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      style={{ flex: 1, textDecoration: 'none' }}
-                    >
-                      <Btn variant="secondary" style={{ width: '100%', justifyContent: 'center' }}>
+                    <div style={{ flex: 1 }}>
+                      <Btn variant="secondary" onClick={() => setPreviewDocumentUrl(permit.url as string)} style={{ width: '100%', justifyContent: 'center' }}>
                         <Icon n="eye" s={16} /> צפה במסמך
                       </Btn>
-                    </a>
+                    </div>
                     <button
                       type="button"
                       onClick={() => setPermitToDelete({ id: permit._id, title: permit.title })}
@@ -269,6 +265,19 @@ export const PermitsScreen = () => {
             onConfirm={confirmDeletePermit}
             onClose={() => setPermitToDelete(null)}
           />
+        )}
+
+        {previewDocumentUrl && (
+          <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.8)', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', padding: 16 }}>
+              <button onClick={() => setPreviewDocumentUrl(null)} style={{ background: 'var(--surface)', border: 'none', borderRadius: '50%', width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}>
+                <Icon n="x" s={20} />
+              </button>
+            </div>
+            <div style={{ flex: 1, padding: '0 16px 16px 16px' }}>
+              <iframe src={previewDocumentUrl} style={{ width: '100%', height: '100%', border: 'none', borderRadius: 12, background: '#fff' }} title="Document Preview" />
+            </div>
+          </div>
         )}
       </div>
     </ScreenBoundary>
