@@ -311,7 +311,7 @@ export const BOQScreen = () => {
   const [exporting, setExporting] = React.useState(false);
   const [formError, setFormError] = React.useState<string | null>(null);
   const [statusSavingIds, setStatusSavingIds] = React.useState<Set<string | number>>(() => new Set());
-  const [form, setForm] = React.useState<Partial<BOQItem>>({name:"",cat:"ריצוף פנים",qty:1,unit:"יח'",unitPrice:0,supplier:"",spec:"",notes:"",status:"pending"});
+  const [form, setForm] = React.useState<Partial<BOQItem>>({name:"",cat:"",qty:1,unit:"יח'",unitPrice:0,supplier:"",spec:"",notes:"",status:"pending"});
 
   const printRef = React.useRef<HTMLDivElement>(null);
   const rooms = (project as any)?.rooms || [];
@@ -391,7 +391,7 @@ export const BOQScreen = () => {
   );
 
   const resetForm = () => {
-    setForm({name:"",cat:"ריצוף פנים",qty:1,unit:"יח'",unitPrice:0,supplier:"",spec:"",notes:"",status:"pending"});
+    setForm({name:"",cat:"",qty:1,unit:"יח'",unitPrice:0,supplier:"",spec:"",notes:"",status:"pending"});
     setEditingItem(null);
     setFormError(null);
   };
