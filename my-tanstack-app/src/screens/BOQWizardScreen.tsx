@@ -821,7 +821,7 @@ export const BOQWizardScreen = () => {
           description="שדרג את החשבון שלך כדי לקבל גישה לאשף שיעזור לך להכין כתב כמויות מדויק בקליק, כולל הצעות חכמות וייצוא ממותג ל-PDF."
         >
           <div className="page-content" style={{maxWidth:1200,margin:"0 auto",padding:"20px"}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",marginBottom:32}}>
+          <div style={{display:"flex",flexWrap:"wrap",justifyContent:"space-between",alignItems:"flex-end",gap:16,marginBottom:32}}>
             <div>
               <h1 style={{fontSize:28,fontWeight:900,margin:0,color:"#1A1A1A"}}>אשף כתב כמויות</h1>
               <div style={{color:"var(--text3)",fontSize:15,marginTop:4}}>עבור חדר-חדר ובנה רשימת כמויות לרכישה / ייבוא</div>
@@ -834,12 +834,12 @@ export const BOQWizardScreen = () => {
             </div>
           </div>
 
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}>
+          <div style={{display:"flex",flexWrap:"wrap",justifyContent:"space-between",alignItems:"center",gap:16,marginBottom:24}}>
             <div>
               <h2 style={{fontSize:24,fontWeight:800,margin:0}}>רשימת יבוא מרוכזת</h2>
               <div style={{color:"var(--text3)",fontSize:14,marginTop:4}}>כל הכמויות המאוחדות לפי קטגוריה — מוכן לרכישה</div>
             </div>
-            <div style={{display:"flex",gap:12}}>
+            <div style={{display:"flex",flexWrap:"wrap",gap:12}}>
               <Btn variant="ghost" onClick={handleExportPDF} disabled={exporting} style={{borderRadius:12,padding:"10px 20px",fontWeight:700,border:"1px solid var(--border)"}}>
                 <Icon n={exporting ? "loader" : "download"} s={16} style={{marginLeft:8}}/> {exporting ? "מייצא..." : "ייצוא PDF"}
               </Btn>
@@ -853,7 +853,7 @@ export const BOQWizardScreen = () => {
           </div>
 
           {/* Stats Cards */}
-          <div style={{display:"grid",gridTemplateColumns:"repeat(4, 1fr)",gap:20,marginBottom:32}}>
+          <div className="boq-stats-grid">
             {[
               {label:"סה\"כ ריצוף", val:`${Object.values(aggregated).filter(i=>i.cat==='ריצוף').reduce((a,c)=>a+c.total,0)} מ"ר`, color:"#F97316"},
               {label:"נקודות תאורה", val:`${Object.values(aggregated).filter(i=>i.cat==='תאורה').reduce((a,c)=>a+c.total,0)} יח'`, color:"#F97316"},
@@ -982,7 +982,7 @@ export const BOQWizardScreen = () => {
         <div className="page-content" style={{maxWidth:1200,margin:"0 auto",padding:"20px"}}>
           
           {/* Header Section */}
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",marginBottom:32}}>
+        <div style={{display:"flex",flexWrap:"wrap",justifyContent:"space-between",alignItems:"flex-end",gap:16,marginBottom:32}}>
           <div>
             <h1 style={{fontSize:28,fontWeight:900,margin:0,color:"#1A1A1A"}}>אשף כתב כמויות</h1>
             <div style={{color:"var(--text3)",fontSize:15,marginTop:4}}>עבור חדר-חדר ובנה רשימת כמויות לרכישה / ייבוא</div>
@@ -995,7 +995,7 @@ export const BOQWizardScreen = () => {
           </div>
         </div>
 
-        <div style={{display:"grid",gridTemplateColumns:"300px 1fr",gap:32}}>
+        <div className="boq-wizard-layout">
           
           {/* Sidebar */}
           <div style={{display:"flex",flexDirection:"column",gap:12}}>
@@ -1019,7 +1019,7 @@ export const BOQWizardScreen = () => {
           {/* Main Area */}
           <div style={{display:"flex",flexDirection:"column",gap:20}}>
             
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+            <div style={{display:"flex",flexWrap:"wrap",justifyContent:"space-between",alignItems:"flex-start",gap:16}}>
               <div>
                 <h2 style={{fontSize:24,fontWeight:800,margin:0}}>{currentRoom.name}</h2>
                 <div style={{ fontSize: 13, color: 'var(--text3)', marginTop: 2 }}>

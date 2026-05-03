@@ -429,3 +429,29 @@ body {
     min-height: 0;
   }
 }
+
+/* BOQ Wizard Layout */
+.boq-wizard-layout {
+  display: grid;
+  grid-template-columns: 300px minmax(0,1fr);
+  gap: 32px;
+}
+.boq-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+  margin-bottom: 32px;
+}
+
+@media(max-width:768px){
+  .boq-wizard-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+  .boq-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
+}
