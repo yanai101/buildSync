@@ -44,7 +44,7 @@ export const PAGE_TITLES: Record<string, string> = {
   "/setup": "הגדרות בית",
   "/stages": "שלבי בנייה",
   "/contractors": "ניהול קבלנים",
-  "/orders": "מעקב הזמנות ואספקות",
+  "/orders": "מעקב הזמנות",
   "/boq": "כתב כמויות",
   "/boqwizard": "אשף כתב כמויות",
   "/checklists": "צ'קליסטים ופרוטוקולים",
@@ -331,11 +331,13 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <div className="page-header">
           <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0, flex: 1 }}>
             <div style={{ minWidth: 0, display: "flex", flexDirection: "column" }}>
-              <span className="page-title" style={{ display: "flex", alignItems: "center", gap: 8, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              <span className="page-title" style={{ display: "flex", alignItems: "center", gap: 8, overflow: "hidden", whiteSpace: "nowrap" }}>
                 {NAV.find(n => n.id === currentPath)?.icon && (
                   <Icon n={NAV.find(n => n.id === currentPath)!.icon} s={18} />
                 )}
-                {PAGE_TITLES[currentPath] || PAGE_TITLES["/"]}
+                <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
+                  {PAGE_TITLES[currentPath] || PAGE_TITLES["/"]}
+                </span>
               </span>
               {PAGE_SUBTITLES[currentPath] && (
                 <div className="desktop-only" style={{ fontSize: 12, color: "var(--text3)", marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
