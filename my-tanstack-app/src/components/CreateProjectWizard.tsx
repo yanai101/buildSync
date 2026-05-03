@@ -101,8 +101,8 @@ export function CreateProjectWizard({ onClose, onSave, saving }: CreateProjectWi
               {step === 0 && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
                   <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 4 }}>בוא נתחיל מהבסיס</div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                    <div style={{ gridColumn: '1 / -1' }}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>
+                    <div style={{ flex: '1 1 100%' }}>
                       <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>שם הפרויקט</div>
                       <input 
                         className="bp-input" 
@@ -113,7 +113,7 @@ export function CreateProjectWizard({ onClose, onSave, saving }: CreateProjectWi
                         autoFocus
                       />
                     </div>
-                    <div style={{ gridColumn: '1 / -1' }}>
+                    <div style={{ flex: '1 1 100%' }}>
                       <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>כתובת</div>
                       <input 
                         className="bp-input" 
@@ -123,7 +123,7 @@ export function CreateProjectWizard({ onClose, onSave, saving }: CreateProjectWi
                         style={{ width: '100%' }}
                       />
                     </div>
-                    <div>
+                    <div style={{ flex: '1 1 200px' }}>
                       <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>תאריך תחילת עבודה</div>
                       <input 
                         className="bp-input" 
@@ -133,7 +133,7 @@ export function CreateProjectWizard({ onClose, onSave, saving }: CreateProjectWi
                         style={{ width: '100%' }}
                       />
                     </div>
-                    <div>
+                    <div style={{ flex: '1 1 200px' }}>
                       <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>צפי סיום</div>
                       <input 
                         className="bp-input" 
@@ -150,8 +150,8 @@ export function CreateProjectWizard({ onClose, onSave, saving }: CreateProjectWi
               {step === 1 && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
                   <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 4 }}>מבנה ושטח</div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
-                    <div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>
+                    <div style={{ flex: '1 1 140px' }}>
                       <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>מספר קומות</div>
                       <select
                         className="bp-input"
@@ -162,7 +162,7 @@ export function CreateProjectWizard({ onClose, onSave, saving }: CreateProjectWi
                         {[1, 2, 3, 4, 5].map(n => <option key={n} value={n}>{n} {n === 1 ? 'קומה' : 'קומות'}</option>)}
                       </select>
                     </div>
-                    <div>
+                    <div style={{ flex: '1 1 140px' }}>
                       <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>שטח בנוי משוער (מ"ר)</div>
                       <input
                         className="bp-input"
@@ -173,7 +173,7 @@ export function CreateProjectWizard({ onClose, onSave, saving }: CreateProjectWi
                         style={{ width: '100%' }}
                       />
                     </div>
-                    <div>
+                    <div style={{ flex: '1 1 140px' }}>
                       <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>אחוז פחת לריצוף (%)</div>
                       <input
                         className="bp-input"
@@ -209,8 +209,8 @@ export function CreateProjectWizard({ onClose, onSave, saving }: CreateProjectWi
               {step === 2 && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
                   <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 4 }}>מי המעורבים?</div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                    <div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>
+                    <div style={{ flex: '1 1 200px' }}>
                       <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>בעל הבית</div>
                       <input 
                         className="bp-input" 
@@ -220,7 +220,7 @@ export function CreateProjectWizard({ onClose, onSave, saving }: CreateProjectWi
                         style={{ width: '100%' }}
                       />
                     </div>
-                    <div>
+                    <div style={{ flex: '1 1 200px' }}>
                       <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>מנהל פרויקט</div>
                       <input 
                         className="bp-input" 

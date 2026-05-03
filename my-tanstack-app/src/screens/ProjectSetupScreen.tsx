@@ -157,8 +157,8 @@ export const ProjectSetupScreen = () => {
             <Btn onClick={() => setIsEditing(true)}><Icon n="edit" s={14}/> ערוך הגדרות</Btn>
           </div>
 
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20}}>
-            <div className="card">
+          <div style={{display:"flex",flexWrap:"wrap",gap:20}}>
+            <div className="card" style={{flex:"1 1 300px"}}>
               <div className="card-header">פרטי פרויקט</div>
               <div className="card-body">
                  {[
@@ -177,7 +177,7 @@ export const ProjectSetupScreen = () => {
               </div>
             </div>
 
-            <div className="card">
+            <div className="card" style={{flex:"1 1 300px"}}>
               <div className="card-header">מבנה ושטח</div>
               <div className="card-body">
                  {[
@@ -208,7 +208,7 @@ export const ProjectSetupScreen = () => {
   return (
     <ScreenBoundary loading={loading} error={error} onRetry={refetch}>
       <div className="page-content">
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24,flexWrap:"wrap",gap:16}}>
           <div style={{display:"flex",alignItems:"center",gap:12}}>
             <div style={{width:42,height:42,borderRadius:12,background:"var(--accent-light)",color:"var(--accent)",display:"flex",alignItems:"center",justifyContent:"center"}}>
               <Icon n="settings" s={22}/>
@@ -242,18 +242,18 @@ export const ProjectSetupScreen = () => {
         {step===0 && (
           <div className="card-body">
             <div style={{fontWeight:700,fontSize:16,marginBottom:20}}>פרטי הפרויקט</div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+            <div style={{display:"flex",flexWrap:"wrap",gap:16}}>
               {(["name", "address", "owner"] as const).map((k)=>(
-                <div key={k}>
+                <div key={k} style={{flex:"1 1 250px"}}>
                   <div style={{fontSize:12,color:"var(--text2)",marginBottom:4,fontWeight:500}}>{k === "name" ? "שם הפרויקט" : k === "address" ? "כתובת" : "בעל הבית"}</div>
                   <input className="bp-input" value={cfg[k]} onChange={e=>setField(k,e.target.value)}/>
                 </div>
               ))}
-              <div>
+              <div style={{flex:"1 1 250px"}}>
                 <div style={{fontSize:12,color:"var(--text2)",marginBottom:4,fontWeight:500}}>תאריך התחלה צפוי</div>
                 <input className="bp-input" type="date" defaultValue="2025-01-01"/>
               </div>
-              <div>
+              <div style={{flex:"1 1 250px"}}>
                 <div style={{fontSize:12,color:"var(--text2)",marginBottom:4,fontWeight:500}}>תקציב כולל (₪)</div>
                 <input className="bp-input" type="number" min={0} value={cfg.budgetTotal || ''} onChange={e=>setField("budgetTotal",Number(e.target.value))}/>
               </div>
@@ -265,8 +265,8 @@ export const ProjectSetupScreen = () => {
         {step===1 && (
           <div className="card-body">
             <div style={{fontWeight:700,fontSize:16,marginBottom:20}}>מבנה הבית</div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:16,marginBottom:24}}>
-              <div>
+            <div style={{display:"flex",flexWrap:"wrap",gap:16,marginBottom:24}}>
+              <div style={{flex:"1 1 150px"}}>
                 <div style={{fontSize:12,color:"var(--text2)",marginBottom:4,fontWeight:500}}>מספר קומות</div>
                 <div style={{display:"flex",gap:8}}>
                   {[1,2,3,4].map(n=>(
@@ -282,26 +282,26 @@ export const ProjectSetupScreen = () => {
                   ))}
                 </div>
               </div>
-              <div>
+              <div style={{flex:"1 1 150px"}}>
                 <div style={{fontSize:12,color:"var(--text2)",marginBottom:4,fontWeight:500}}>שטח כולל (מ"ר)</div>
                 <input className="bp-input" type="number" value={cfg.area} onChange={e=>setField("area",Number(e.target.value))} placeholder={`או חישוב אוטומטי: ${totalRoomArea}`} style={{width:100}}/>
                 {cfg.area === 0 && <div style={{fontSize:11,color:"var(--text3)",marginTop:4}}>מחושב לפי חדרים</div>}
               </div>
-              <div>
+              <div style={{flex:"1 1 150px"}}>
                 <div style={{fontSize:12,color:"var(--text2)",marginBottom:4,fontWeight:500}}>שטח מוגדר (חדרים)</div>
                 <div style={{fontSize:22,fontWeight:800,color:"var(--accent)"}}>{totalRoomArea} <span style={{fontSize:14,fontWeight:400,color:"var(--text2)"}}>מ"ר</span></div>
               </div>
             </div>
             
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:24,background:"var(--surface)",padding:16,borderRadius:12,border:"1px solid var(--border)"}}>
-              <label style={{display:"flex",alignItems:"center",gap:12,cursor:"pointer"}}>
+            <div style={{display:"flex",flexWrap:"wrap",gap:16,marginBottom:24,background:"var(--surface)",padding:16,borderRadius:12,border:"1px solid var(--border)"}}>
+              <label style={{display:"flex",alignItems:"center",gap:12,cursor:"pointer",flex:"1 1 200px"}}>
                 <input type="checkbox" checked={cfg.hasBasement} onChange={e=>toggleBasement(e.target.checked)} style={{width:18,height:18,accentColor:"var(--accent)"}}/>
                 <div>
                   <div style={{fontWeight:600}}>יש מרתף</div>
                   <div style={{fontSize:12,color:"var(--text3)"}}>הוספת קומה תת-קרקעית</div>
                 </div>
               </label>
-              <label style={{display:"flex",alignItems:"center",gap:12,cursor:"pointer"}}>
+              <label style={{display:"flex",alignItems:"center",gap:12,cursor:"pointer",flex:"1 1 200px"}}>
                 <input type="checkbox" checked={cfg.hasYard} onChange={e=>toggleYard(e.target.checked)} style={{width:18,height:18,accentColor:"var(--accent)"}}/>
                 <div>
                   <div style={{fontWeight:600}}>יש חצר / חוץ</div>
@@ -329,7 +329,7 @@ export const ProjectSetupScreen = () => {
         {/* Step 2: Rooms */}
         {step===2 && (
           <div>
-            <div style={{padding:"14px 18px",borderBottom:"1px solid var(--border)",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <div style={{padding:"14px 18px",borderBottom:"1px solid var(--border)",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
               <span style={{fontWeight:700,fontSize:15}}>הגדרת חדרים</span>
             </div>
             {getFloorList(cfg.floors, cfg.hasBasement, cfg.hasYard).map((f)=>(
@@ -341,20 +341,20 @@ export const ProjectSetupScreen = () => {
                 <div style={{display:"flex",flexDirection:"column",gap:8}}>
                   {floorRooms(f).length===0 && <div style={{fontSize:13,color:"var(--text3)",padding:"8px 0"}}>אין חדרים באזור זה</div>}
                   {floorRooms(f).map((r)=>(
-                    <div key={r.uid} style={{display:"flex",gap:10,alignItems:"center",padding:"8px 10px",background:"var(--bg)",borderRadius:8}}>
+                    <div key={r.uid} style={{display:"flex",flexWrap:"wrap",gap:10,alignItems:"center",padding:"8px 10px",background:"var(--bg)",borderRadius:8}}>
                       <select className="bp-input" value={r.type} onChange={e=>{
                         const t=ROOM_TYPE_OPTS.find(x=>x.id===e.target.value);
                         setRoom(r.uid,"type",e.target.value);
                         if(t) setRoom(r.uid,"name",t.label);
-                      }} style={{width:150,fontSize:12}}>
+                      }} style={{flex:"1 1 120px",fontSize:12}}>
                         {ROOM_TYPE_OPTS.map(t=><option key={t.id} value={t.id}>{t.label}</option>)}
                       </select>
-                      <input className="bp-input" value={r.name} onChange={e=>setRoom(r.uid,"name",e.target.value)} placeholder="שם חדר" style={{flex:1,fontSize:12}}/>
+                      <input className="bp-input" value={r.name} onChange={e=>setRoom(r.uid,"name",e.target.value)} placeholder="שם חדר" style={{flex:"1 1 120px",fontSize:12}}/>
                       <div style={{display:"flex",alignItems:"center",gap:4,flexShrink:0}}>
                         <input className="bp-input" type="number" value={r.size} onChange={e=>setRoom(r.uid,"size",Number(e.target.value))} style={{width:60,fontSize:12}}/>
                         <span style={{fontSize:11,color:"var(--text3)",whiteSpace:"nowrap"}}>מ"ר</span>
                       </div>
-                      <select className="bp-input" value={r.floor} onChange={e=>setRoom(r.uid,"floor",Number(e.target.value))} style={{width:100,fontSize:12}}>
+                      <select className="bp-input" value={r.floor} onChange={e=>setRoom(r.uid,"floor",Number(e.target.value))} style={{width:100,flexShrink:0,fontSize:12}}>
                         {getFloorList(cfg.floors, cfg.hasBasement, cfg.hasYard).map(fl=><option key={fl} value={fl}>{getFloorLabel(fl)}</option>)}
                       </select>
                       <button onClick={()=>removeRoom(r.uid)} style={{background:"none",border:"none",cursor:"pointer",color:"var(--text3)",padding:4,display:"flex",flexShrink:0}}>
@@ -365,7 +365,7 @@ export const ProjectSetupScreen = () => {
                 </div>
               </div>
             ))}
-            <div style={{padding:"10px 18px",background:"#FAFAF8",borderRadius:"0 0 10px 10px",display:"flex",gap:20,fontSize:12,color:"var(--text2)"}}>
+            <div style={{padding:"10px 18px",background:"#FAFAF8",borderRadius:"0 0 10px 10px",display:"flex",flexWrap:"wrap",gap:20,fontSize:12,color:"var(--text2)"}}>
               <span>סה"כ חדרים: <strong>{(cfg.rooms || []).length}</strong></span>
               <span>שטח מוגדר: <strong>{totalRoomArea} מ"ר</strong></span>
               <span>ממוצע לחדר: <strong>{(cfg.rooms || []).length?Math.round(totalRoomArea/(cfg.rooms || []).length):0} מ"ר</strong></span>
@@ -377,9 +377,9 @@ export const ProjectSetupScreen = () => {
         {step===3 && (
           <div className="card-body">
             <div style={{fontWeight:700,fontSize:16,marginBottom:20}}>צוות הפרויקט</div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+            <div style={{display:"flex",flexWrap:"wrap",gap:16}}>
               {(["manager", "inspector", "owner"] as const).map((k)=>(
-                <div key={k}>
+                <div key={k} style={{flex:"1 1 250px"}}>
                   <div style={{fontSize:12,color:"var(--text2)",marginBottom:4,fontWeight:500}}>{k === "manager" ? "בעל בנייה / מנהל פרויקט" : k === "inspector" ? "מפקח" : "בעל הבית (יזם)"}</div>
                   <input className="bp-input" value={cfg[k]} onChange={e=>setField(k,e.target.value)}/>
                 </div>
@@ -392,8 +392,8 @@ export const ProjectSetupScreen = () => {
         {step===4 && (
           <div className="card-body">
             <div style={{fontWeight:700,fontSize:16,marginBottom:20}}>סיכום הגדרות</div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20,marginBottom:20}}>
-              <div>
+            <div style={{display:"flex",flexWrap:"wrap",gap:20,marginBottom:20}}>
+              <div style={{flex:"1 1 250px"}}>
                 <div style={{fontSize:12,fontWeight:700,color:"var(--text3)",marginBottom:10,textTransform:"uppercase",letterSpacing:".5px"}}>פרטי פרויקט</div>
                 {[["שם",cfg.name],["כתובת",cfg.address],["בעל הבית",cfg.owner],["בעל בנייה",cfg.manager],["מפקח",cfg.inspector],["תקציב כולל",cfg.budgetTotal ? `${cfg.budgetTotal.toLocaleString('he-IL')} ₪` : "טרם הוגדר"]].map(([k,v])=>(
                   <div key={k} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:"1px solid var(--border)",fontSize:13}}>
@@ -401,7 +401,7 @@ export const ProjectSetupScreen = () => {
                   </div>
                 ))}
               </div>
-              <div>
+              <div style={{flex:"1 1 250px"}}>
                 <div style={{fontSize:12,fontWeight:700,color:"var(--text3)",marginBottom:10,textTransform:"uppercase",letterSpacing:".5px"}}>מבנה הבית</div>
                 {[["קומות",cfg.floors],["מרתף",cfg.hasBasement?"יש":"אין"],["חצר",cfg.hasYard?"יש":"אין"],["חדרים",(cfg.rooms || []).length],["שטח כולל",`${displayArea} מ"ר`]].map(([k,v])=>(
                   <div key={k} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:"1px solid var(--border)",fontSize:13}}>
