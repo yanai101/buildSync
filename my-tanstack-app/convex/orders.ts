@@ -128,6 +128,34 @@ export const updateReceived = mutation({
   },
 });
 
+export const update = mutation({
+  args: {
+    orderId: v.id('orders'),
+    title: v.optional(v.string()),
+    supplier: v.optional(v.string()),
+    orderedQuantity: v.optional(v.number()),
+    unit: v.optional(v.string()),
+    orderDate: v.optional(v.string()),
+    expectedDeliveryDate: v.optional(v.string()),
+    notes: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const { orderId, ...updates } = args;
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Unauthenticated");
+    
+    const user = await ctx.db.get(userId);
+    if (user?.role === 'contractor') {
+      throw new Error("Contractors cannot update orders");
+    }
+
+    const order = await ctx.db.get(orderId);
+    if (!order) throw new Error("Order not found");
+
+    await ctx.db.patch(orderId, updates);
+  },
+});
+
 export const remove = mutation({
   args: { orderId: v.id('orders') },
   handler: async (ctx, args) => {

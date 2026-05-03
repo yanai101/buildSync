@@ -27,6 +27,7 @@ const OrderCard = ({
   statusLabels,
   onUpdateReceive,
   onDelete,
+  onEdit,
   onPickFile,
   uploadingOrderId,
   onPreviewDocument,
@@ -37,6 +38,7 @@ const OrderCard = ({
   statusLabels: Record<string, string>;
   onUpdateReceive: (order: Order) => void;
   onDelete: (id: Id<'orders'>) => void;
+  onEdit: (order: Order) => void;
   onPickFile: (id: Id<'orders'>) => void;
   uploadingOrderId: Id<'orders'> | null;
   onPreviewDocument: (url: string) => void;
@@ -95,6 +97,9 @@ const OrderCard = ({
                   עדכן קבלה
                 </Btn>
               )}
+              <button onClick={(e: React.MouseEvent) => { e.stopPropagation(); onEdit(order); }} style={{ background: 'none', border: 'none', color: 'var(--text1)', cursor: 'pointer', padding: '4px 8px', display: 'flex', alignItems: 'center', gap: 4, borderRadius: 6 }}>
+                <Icon n="edit-2" s={14} /> עריכה
+              </button>
               <button onClick={(e: React.MouseEvent) => { e.stopPropagation(); onDelete(order._id); }} style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', padding: '4px 8px', display: 'flex', alignItems: 'center', gap: 4, borderRadius: 6 }}>
                 <Icon n="trash" s={14} /> מחיקה
               </button>
@@ -141,6 +146,7 @@ export const OrdersTrackingScreen = () => {
   const { isProOrPremium } = useSubscription();
   const orders = useQuery(api.orders.list, projectId ? { projectId } : 'skip');
   const createOrder = useMutation(api.orders.create);
+  const updateOrder = useMutation(api.orders.update);
   const updateReceived = useMutation(api.orders.updateReceived);
   const deleteOrder = useMutation(api.orders.remove);
   const generateUploadUrl = useMutation(api.orders.generateUploadUrl);
@@ -152,6 +158,7 @@ export const OrdersTrackingScreen = () => {
   const [previewDocumentUrl, setPreviewDocumentUrl] = React.useState<string | null>(null);
 
   const [isAddModalOpen, setIsAddModalOpen] = React.useState(false);
+  const [editingOrder, setEditingOrder] = React.useState<Order | null>(null);
   const [selectedOrder, setSelectedOrder] = React.useState<Order | null>(null);
   const [receiveAmount, setReceiveAmount] = React.useState('');
   const [filter, setFilter] = React.useState<'all' | 'pending' | 'partial' | 'completed'>('all');
@@ -218,6 +225,28 @@ export const OrdersTrackingScreen = () => {
       setFeedback({ title: 'הזמנה נוספה', message: 'ההזמנה נוספה בהצלחה למעקב.', type: 'success' });
     } catch (err) {
       setFeedback({ title: 'שגיאה', message: 'לא הצלחנו להוסיף את ההזמנה.', type: 'error' });
+    }
+  };
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingOrder) return;
+    
+    try {
+      await updateOrder({
+        orderId: editingOrder._id,
+        title: form.title,
+        supplier: form.supplier || undefined,
+        orderedQuantity: Number(form.orderedQuantity),
+        unit: form.unit,
+        expectedDeliveryDate: form.expectedDeliveryDate || undefined,
+        notes: form.notes || undefined,
+      });
+      setEditingOrder(null);
+      setForm({ title: '', supplier: '', orderedQuantity: '', unit: 'יחידות', expectedDeliveryDate: '', notes: '' });
+      setFeedback({ title: 'עודכן בהצלחה', message: 'ההזמנה עודכנה.', type: 'success' });
+    } catch (err) {
+      setFeedback({ title: 'שגיאה', message: 'לא הצלחנו לעדכן את ההזמנה.', type: 'error' });
     }
   };
 
@@ -381,6 +410,17 @@ export const OrdersTrackingScreen = () => {
                 statusColors={statusColors}
                 statusLabels={statusLabels}
                 onUpdateReceive={(o) => { setSelectedOrder(o); setReceiveAmount(''); }}
+                onEdit={(order) => {
+                  setForm({
+                    title: order.title,
+                    supplier: order.supplier || '',
+                    orderedQuantity: order.orderedQuantity.toString(),
+                    unit: order.unit,
+                    expectedDeliveryDate: order.expectedDeliveryDate || '',
+                    notes: order.notes || '',
+                  });
+                  setEditingOrder(order);
+                }}
                 onDelete={setDeleteConfirmOpen}
                 onPickFile={handlePickFile}
                 uploadingOrderId={uploadingOrderId}
@@ -392,10 +432,10 @@ export const OrdersTrackingScreen = () => {
         )}
       </div>
 
-      {/* Add Modal */}
-      {isAddModalOpen && (
-        <Modal title="הוספת הזמנה למעקב" onClose={() => setIsAddModalOpen(false)} width={500}>
-          <form onSubmit={handleAddSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {/* Add / Edit Modal */}
+      {(isAddModalOpen || editingOrder) && (
+        <Modal title={editingOrder ? "עריכת הזמנה" : "הזמנה חדשה"} onClose={() => { setIsAddModalOpen(false); setEditingOrder(null); setForm({ title: '', supplier: '', orderedQuantity: '', unit: 'יחידות', expectedDeliveryDate: '', notes: '' }); }} width={500}>
+          <form onSubmit={editingOrder ? handleEditSubmit : handleAddSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <label>
               <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 4 }}>שם הפריט / הזמנה *</div>
               <input required className="bp-input" value={form.title} onChange={e => setForm({...form, title: e.target.value})} placeholder="לדוגמה: ברזל יסודות" />
@@ -430,8 +470,8 @@ export const OrdersTrackingScreen = () => {
               <textarea className="bp-input" value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} rows={2} />
             </label>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
-              <Btn type="button" variant="ghost" onClick={() => setIsAddModalOpen(false)}>ביטול</Btn>
-              <Btn type="submit">שמור הזמנה</Btn>
+              <Btn type="button" variant="ghost" onClick={() => { setIsAddModalOpen(false); setEditingOrder(null); }}>ביטול</Btn>
+              <Btn type="submit">{editingOrder ? 'שמור שינויים' : 'שמור הזמנה'}</Btn>
             </div>
           </form>
         </Modal>
