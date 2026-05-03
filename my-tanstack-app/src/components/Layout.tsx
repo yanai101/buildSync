@@ -331,7 +331,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <div className="page-header">
           <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0, flex: 1 }}>
             <div style={{ minWidth: 0, display: "flex", flexDirection: "column" }}>
-              <span className="page-title" style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              <span className="page-title" style={{ display: "flex", alignItems: "center", gap: 8, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {NAV.find(n => n.id === currentPath)?.icon && (
+                  <Icon n={NAV.find(n => n.id === currentPath)!.icon} s={18} />
+                )}
                 {PAGE_TITLES[currentPath] || PAGE_TITLES["/"]}
               </span>
               {PAGE_SUBTITLES[currentPath] && (

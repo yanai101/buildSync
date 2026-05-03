@@ -142,6 +142,12 @@ export const remove = mutation({
       throw new Error("Contractors cannot delete orders");
     }
 
+    if (order.deliveryDocuments && order.deliveryDocuments.length > 0) {
+      for (const doc of order.deliveryDocuments) {
+        await ctx.storage.delete(doc.storageId);
+      }
+    }
+
     await ctx.db.delete(args.orderId);
   },
 });
