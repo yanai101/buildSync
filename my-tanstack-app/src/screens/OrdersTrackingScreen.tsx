@@ -365,7 +365,7 @@ export const OrdersTrackingScreen = () => {
         {/* List */}
         {orders?.length === 0 ? (
           <div style={{ position: 'relative', flex: 1, minHeight: 350, marginTop: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--surface)', borderRadius: 24, border: '1px solid var(--border)', overflow: 'hidden' }}>
-            <PageBackground image="/empty_states/checklists.png" />
+            <PageBackground image="/empty_states/boq.png" />
             <EmptyState icon="search" title="אין הזמנות למעקב" description="לא נמצאו הזמנות בפרויקט זה. תוכל להוסיף הזמנה חדשה כדי לעקוב אחרי קבלת סחורות." action={<Btn onClick={() => setIsAddModalOpen(true)}>הוסף הזמנה ראשונה</Btn>} />
           </div>
         ) : filteredOrders.length === 0 ? (

@@ -3,6 +3,7 @@ import * as React from 'react'
 import { useAction, useMutation, useQuery } from 'convex/react'
 import { Btn, Input, Icon } from '~/components/Shared'
 import { api } from '../../convex/_generated/api'
+import { useSubscription } from '~/hooks/useSubscription'
 
 export const Route = createFileRoute('/account')({
   component: AccountPage,
@@ -30,6 +31,8 @@ function AccountPage() {
   const user = useQuery(api.users.me, {})
   const updateProfile = useMutation(api.users.updateProfile)
   const updatePassword = useAction(api.users.updatePassword)
+  const toggleSubscription = useMutation(api.users.toggleSubscription)
+  const { isProOrPremium, tier, isSuperAdmin } = useSubscription()
 
   const [profile, setProfile] = React.useState({
     name: '',
@@ -216,7 +219,14 @@ function AccountPage() {
             />
           </div>
 
-          <ReadOnlyField label="תאריך פתיחת חשבון" value={createdAt} />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+            <ReadOnlyField label="תאריך פתיחת חשבון" value={createdAt} />
+            <ReadOnlyField 
+              label="סוג מנוי" 
+              value={isSuperAdmin ? 'מנהל מערכת (Premium)' : isProOrPremium ? 'מנוי Pro פעיל' : 'חשבון חינמי (Free)'} 
+              color={isProOrPremium || isSuperAdmin ? 'var(--accent)' : 'var(--text2)'}
+            />
+          </div>
 
           {profileMsg && <Banner {...profileMsg} />}
 
@@ -292,6 +302,21 @@ function AccountPage() {
           <li>מחיקת חשבון</li>
         </ul>
       </div>
+
+      {/* Dev Toggle */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="card" style={{ padding: 24, background: 'rgba(0,0,0,0.02)', borderStyle: 'dashed' }}>
+          <SectionHeader
+            title="🛠️ כלי מפתחים (טסטים)"
+            subtitle="החלף את סוג המנוי של המשתמש הזה כדי לבדוק גישה."
+          />
+          <div style={{ marginTop: 16 }}>
+            <Btn onClick={() => toggleSubscription()} variant="outline">
+              החלף מנוי (עכשיו: {tier})
+            </Btn>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -325,7 +350,7 @@ function Field({
   )
 }
 
-function ReadOnlyField({ label, value }: { label: string; value: string }) {
+function ReadOnlyField({ label, value, color }: { label: string; value: string; color?: string }) {
   return (
     <div>
       <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text1)', marginBottom: 6 }}>{label}</div>
@@ -335,8 +360,9 @@ function ReadOnlyField({ label, value }: { label: string; value: string }) {
           background: 'var(--bg)',
           border: '1px solid var(--border)',
           borderRadius: 10,
-          color: 'var(--text2)',
+          color: color || 'var(--text2)',
           fontSize: 14,
+          fontWeight: color ? 700 : 400
         }}
       >
         {value}

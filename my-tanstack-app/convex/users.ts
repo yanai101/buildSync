@@ -201,3 +201,23 @@ export const getPromoCodeStatus = query({
   },
 });
 
+export const toggleSubscription = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error('Not authenticated');
+    
+    const user = await ctx.db.get(userId);
+    if (!user) throw new Error('User not found');
+
+    const newTier = user.subscriptionTier === 'pro' ? 'free' : 'pro';
+    
+    await ctx.db.patch(userId, {
+      subscriptionTier: newTier,
+      // Give them a 1-year subscription when toggling to pro
+      subscriptionExpiresAt: newTier === 'pro' ? Date.now() + 365 * 24 * 60 * 60 * 1000 : undefined,
+    });
+    
+    return newTier;
+  },
+});
