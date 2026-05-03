@@ -24,7 +24,7 @@ export const NAV = [
   { id: "/team",          label: "ניהול צוות",  icon: "users",     section: "ראשי",   roles: OWNER_MANAGER_INSPECTOR },
   { id: "/stages",        label: "שלבי בנייה", icon: "layers",    section: "ניהול",   roles: ALL_ROLES },
   { id: "/contractors",   label: "קבלנים",     icon: "users",     section: "ניהול",   roles: ALL_ROLES },
-  { id: "/orders",        label: "מעקב הזמנות",icon: "truck",     section: "ניהול",   roles: OWNER_MANAGER_INSPECTOR },
+  { id: "/orders",        label: "מעקב הזמנות",icon: "search",     section: "ניהול",   roles: OWNER_MANAGER_INSPECTOR },
   { id: "/boq",           label: "כתב כמויות", icon: "clipboard", section: "ניהול",   roles: OWNER_MANAGER_INSPECTOR },
   { id: "/boqwizard",     label: "אשף כמויות", icon: "zoom-in",   section: "ניהול",   roles: OWNER_MANAGER },
   { id: "/checklists",    label: "צ'קליסטים",  icon: "check-circle", section: "ניהול", roles: ALL_ROLES },

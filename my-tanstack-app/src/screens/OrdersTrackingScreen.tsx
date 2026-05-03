@@ -20,6 +20,121 @@ type Order = {
   deliveryDocuments?: { storageId: Id<'_storage'>; name: string; url?: string | null }[];
 };
 
+const OrderCard = ({
+  order,
+  statusColors,
+  statusLabels,
+  onUpdateReceive,
+  onDelete,
+  onPickFile,
+  uploadingOrderId,
+  onPreviewDocument,
+  onDeleteDocument,
+}: {
+  order: Order;
+  statusColors: Record<string, string>;
+  statusLabels: Record<string, string>;
+  onUpdateReceive: (order: Order) => void;
+  onDelete: (id: Id<'orders'>) => void;
+  onPickFile: (id: Id<'orders'>) => void;
+  uploadingOrderId: Id<'orders'> | null;
+  onPreviewDocument: (url: string) => void;
+  onDeleteDocument: (orderId: Id<'orders'>, storageId: Id<'_storage'>) => void;
+}) => {
+  const [isExpanded, setIsExpanded] = React.useState(false);
+  const progress = Math.min(100, Math.round((order.receivedQuantity / order.orderedQuantity) * 100));
+
+  return (
+    <div className="card" style={{ display: 'flex', flexDirection: 'column', padding: 0, position: 'relative', overflow: 'hidden' }}>
+      <div style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: 4, background: statusColors[order.status] }} />
+      
+      {/* Clickable Header */}
+      <div 
+        onClick={() => setIsExpanded(!isExpanded)}
+        style={{ padding: 16, cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 12, userSelect: 'none' }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 16, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Icon n={isExpanded ? 'chevron-down' : 'chevron-left'} s={16} c="var(--text3)" />
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{order.title}</span>
+            </div>
+            <div style={{ fontSize: 13, color: 'var(--text2)', marginTop: 2, paddingRight: 24 }}>{order.supplier || 'ללא ספק'}</div>
+          </div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <Badge type={order.status === 'completed' ? 'done' : order.status === 'partial' ? 'in_progress' : 'pending'}>
+              {statusLabels[order.status]}
+            </Badge>
+          </div>
+        </div>
+
+        {/* Progress Overview (Always visible) */}
+        <div style={{ paddingRight: 24 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginBottom: 6, color: 'var(--text2)' }}>
+            <span>התקבל: {order.receivedQuantity} / {order.orderedQuantity} {order.unit}</span>
+            <span>{progress}%</span>
+          </div>
+          <div style={{ width: '100%', height: 6, background: 'var(--border)', borderRadius: 3, overflow: 'hidden' }}>
+            <div style={{ width: `${progress}%`, height: '100%', background: statusColors[order.status], transition: 'width 0.3s' }} />
+          </div>
+        </div>
+      </div>
+
+      {/* Expanded Details */}
+      {isExpanded && (
+        <div style={{ padding: '0 16px 16px', borderTop: '1px solid var(--border)', paddingTop: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+            <div style={{ fontSize: 13, color: 'var(--text2)' }}>
+              <Icon n="calendar" s={14} style={{ marginLeft: 4, verticalAlign: 'middle' }} />
+              {order.expectedDeliveryDate ? `יעד לאספקה: ${new Date(order.expectedDeliveryDate).toLocaleDateString('he-IL')}` : 'לא הוגדר תאריך אספקה'}
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {order.status !== 'completed' && (
+                <Btn size="sm" variant="outline" onClick={(e: React.MouseEvent) => { e.stopPropagation(); onUpdateReceive(order); }} style={{ fontSize: 12, padding: '4px 12px' }}>
+                  עדכן קבלה
+                </Btn>
+              )}
+              <button onClick={(e: React.MouseEvent) => { e.stopPropagation(); onDelete(order._id); }} style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', padding: '4px 8px', display: 'flex', alignItems: 'center', gap: 4, borderRadius: 6 }}>
+                <Icon n="trash" s={14} /> מחיקה
+              </button>
+            </div>
+          </div>
+
+          {/* Documents section */}
+          {order.deliveryDocuments && order.deliveryDocuments.length > 0 && (
+            <div style={{ borderTop: '1px dashed var(--border)', paddingTop: 12 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text2)', marginBottom: 8 }}>תעודות משלוח וקבצים ({order.deliveryDocuments.length})</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {order.deliveryDocuments.map((doc, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--bg)', padding: '8px 12px', borderRadius: 8 }}>
+                    <div 
+                      onClick={(e: React.MouseEvent) => { e.stopPropagation(); doc.url && onPreviewDocument(doc.url); }}
+                      style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: doc.url ? 'pointer' : 'default', color: doc.url ? 'var(--accent)' : 'var(--text1)', flex: 1, minWidth: 0 }}
+                    >
+                      <Icon n="file-text" s={16} />
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{doc.name}</span>
+                    </div>
+                    <button onClick={(e: React.MouseEvent) => { e.stopPropagation(); onDeleteDocument(order._id, doc.storageId); }} style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', padding: 4 }}>
+                      <Icon n="x" s={14} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div style={{ marginTop: 4 }}>
+            <Btn size="sm" variant="ghost" onClick={(e: React.MouseEvent) => { e.stopPropagation(); onPickFile(order._id); }} disabled={uploadingOrderId === order._id} style={{ fontSize: 13, width: '100%', justifyContent: 'center', padding: '8px 0' }}>
+              <Icon n="paperclip" s={16} /> 
+              {uploadingOrderId === order._id ? 'מעלה...' : 'צרף תעודת משלוח'}
+            </Btn>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 export const OrdersTrackingScreen = () => {
   const { projectId } = useCurrentProject();
   const orders = useQuery(api.orders.list, projectId ? { projectId } : 'skip');
@@ -186,7 +301,7 @@ export const OrdersTrackingScreen = () => {
           <div>
             <h1 style={{ fontSize: 24, fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
               <div style={{ width: 40, height: 40, borderRadius: 12, background: 'var(--accent-light)', color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Icon n="truck" s={20} />
+                <Icon n="search" s={20} />
               </div>
               מעקב הזמנות
             </h1>
@@ -263,7 +378,7 @@ export const OrdersTrackingScreen = () => {
         {orders?.length === 0 ? (
           <div style={{ position: 'relative', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <PageBackground image="/empty_states/checklists.png" />
-            <EmptyState icon="truck" title="אין הזמנות למעקב" description="לא נמצאו הזמנות בפרויקט זה. תוכל להוסיף הזמנה חדשה כדי לעקוב אחרי קבלת סחורות." action={<Btn onClick={() => setIsAddModalOpen(true)}>הוסף הזמנה ראשונה</Btn>} />
+            <EmptyState icon="search" title="אין הזמנות למעקב" description="לא נמצאו הזמנות בפרויקט זה. תוכל להוסיף הזמנה חדשה כדי לעקוב אחרי קבלת סחורות." action={<Btn onClick={() => setIsAddModalOpen(true)}>הוסף הזמנה ראשונה</Btn>} />
           </div>
         ) : filteredOrders.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text3)' }}>
@@ -271,83 +386,20 @@ export const OrdersTrackingScreen = () => {
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {filteredOrders.map((order: Order) => {
-              const progress = Math.min(100, Math.round((order.receivedQuantity / order.orderedQuantity) * 100));
-              
-              return (
-                <div key={order._id} className="card" style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: 16, position: 'relative', overflow: 'hidden' }}>
-                  <div style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: 4, background: statusColors[order.status] }} />
-                  
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
-                    <div>
-                      <div style={{ fontSize: 16, fontWeight: 700 }}>{order.title}</div>
-                      <div style={{ fontSize: 13, color: 'var(--text2)', marginTop: 2 }}>{order.supplier || 'ללא ספק'}</div>
-                    </div>
-                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                      <Badge type={order.status === 'completed' ? 'done' : order.status === 'partial' ? 'in_progress' : 'pending'}>
-                        {statusLabels[order.status]}
-                      </Badge>
-                      <button onClick={() => setDeleteConfirmOpen(order._id)} style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', padding: 4 }}>
-                        <Icon n="trash" s={14} />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Progress */}
-                  <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginBottom: 6, color: 'var(--text2)' }}>
-                      <span>התקבל: {order.receivedQuantity} {order.unit}</span>
-                      <span>הוזמן: {order.orderedQuantity} {order.unit}</span>
-                    </div>
-                    <div style={{ width: '100%', height: 6, background: 'var(--border)', borderRadius: 3, overflow: 'hidden' }}>
-                      <div style={{ width: `${progress}%`, height: '100%', background: statusColors[order.status], transition: 'width 0.3s' }} />
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4, flexWrap: 'wrap', gap: 8 }}>
-                    <div style={{ fontSize: 12, color: 'var(--text3)' }}>
-                      {order.expectedDeliveryDate ? `יעד לאספקה: ${new Date(order.expectedDeliveryDate).toLocaleDateString('he-IL')}` : 'לא הוגדר תאריך אספקה'}
-                    </div>
-                    
-                    {order.status !== 'completed' && (
-                      <Btn size="sm" variant="outline" onClick={() => { setSelectedOrder(order); setReceiveAmount(''); }} style={{ fontSize: 12, padding: '4px 12px' }}>
-                        עדכן קבלה
-                      </Btn>
-                    )}
-                  </div>
-
-                  {/* Documents section */}
-                  {order.deliveryDocuments && order.deliveryDocuments.length > 0 && (
-                    <div style={{ marginTop: 8, borderTop: '1px dashed var(--border)', paddingTop: 12 }}>
-                      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text2)', marginBottom: 8 }}>תעודות משלוח ({order.deliveryDocuments.length})</div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                        {order.deliveryDocuments.map((doc, i) => (
-                          <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--bg)', padding: '6px 12px', borderRadius: 6 }}>
-                            <div 
-                              onClick={() => doc.url && setPreviewDocumentUrl(doc.url)}
-                              style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, cursor: doc.url ? 'pointer' : 'default', color: doc.url ? 'var(--accent)' : 'var(--text1)' }}
-                            >
-                              <Icon n="file" s={14} />
-                              <span style={{ maxWidth: 150, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{doc.name}</span>
-                            </div>
-                            <button onClick={() => handleDeleteDocument(order._id, doc.storageId)} style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', padding: 2 }}>
-                              <Icon n="x" s={12} />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  <div style={{ marginTop: order.deliveryDocuments && order.deliveryDocuments.length > 0 ? 4 : 8 }}>
-                    <Btn size="sm" variant="ghost" onClick={() => handlePickFile(order._id)} disabled={uploadingOrderId === order._id} style={{ fontSize: 12, width: '100%', justifyContent: 'center' }}>
-                      <Icon n="paperclip" s={14} /> 
-                      {uploadingOrderId === order._id ? 'מעלה...' : 'צרף תעודת משלוח'}
-                    </Btn>
-                  </div>
-                </div>
-              );
-            })}
+            {filteredOrders.map((order: Order) => (
+              <OrderCard
+                key={order._id}
+                order={order}
+                statusColors={statusColors}
+                statusLabels={statusLabels}
+                onUpdateReceive={(o) => { setSelectedOrder(o); setReceiveAmount(''); }}
+                onDelete={setDeleteConfirmOpen}
+                onPickFile={handlePickFile}
+                uploadingOrderId={uploadingOrderId}
+                onPreviewDocument={setPreviewDocumentUrl}
+                onDeleteDocument={handleDeleteDocument}
+              />
+            ))}
           </div>
         )}
       </div>
