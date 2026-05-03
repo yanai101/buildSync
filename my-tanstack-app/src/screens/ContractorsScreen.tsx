@@ -700,14 +700,28 @@ export const ContractorsScreen = () => {
               <div style={{marginTop:8}}><Stars rating={c.rating}/></div>
             </div>
             <div className="card card-body">
-              {[
-                { key: 'phone', icon: 'phone', value: c.phone || "—" },
-                { key: 'mail', icon: 'mail', value: c.email || "—" },
-              ].map((item,i)=>(
-                <div key={item.key} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 0",borderBottom:i===0?"1px solid var(--border)":"none",fontSize:13}}>
-                  <span style={{color:"var(--text3)"}}><Icon n={item.icon} s={14}/></span>{item.value}
-                </div>
-              ))}
+              <div style={{display:"flex",alignItems:"center",gap:8,padding:"6px 0",borderBottom:"1px solid var(--border)",fontSize:13}}>
+                <span style={{color:"var(--text3)"}}><Icon n="phone" s={14}/></span>
+                {c.phone ? (
+                  <>
+                    <span style={{ direction: "ltr" }}>{c.phone}</span>
+                    <div style={{ display: "flex", gap: 8, marginRight: "auto", alignItems: "center" }}>
+                      <a href={`tel:${c.phone.replace(/[^0-9+]/g, '')}`} style={{ color: "var(--accent)", display: "flex" }} title="חייג">
+                        <Icon n="phone" s={15} />
+                      </a>
+                      <a href={`https://wa.me/${c.phone.replace(/[^0-9+]/g, '').replace(/^0/, '972')}`} target="_blank" rel="noreferrer" style={{ color: "#25D366", display: "flex" }} title="וואטסאפ">
+                        <Icon n="message-circle" s={15} />
+                      </a>
+                    </div>
+                  </>
+                ) : (
+                  <span>—</span>
+                )}
+              </div>
+              <div style={{display:"flex",alignItems:"center",gap:8,padding:"6px 0",fontSize:13}}>
+                <span style={{color:"var(--text3)"}}><Icon n="mail" s={14}/></span>
+                <span>{c.email || "—"}</span>
+              </div>
             </div>
             <div className="card card-body">
               <div style={{fontSize:13,fontWeight:600,marginBottom:10}}>סיכום תשלומים</div>

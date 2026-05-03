@@ -433,7 +433,20 @@ export const QuotesScreen = () => {
                         </div>
 
                         <div style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12, color: "var(--text2)" }}>
-                          {q.phone && <div style={{ display: "flex", alignItems: "center", gap: 6 }}><Icon n="phone" s={11} c="var(--text3)" /> {q.phone}</div>}
+                          {q.phone && (
+                            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                              <Icon n="phone" s={11} c="var(--text3)" />
+                              <span style={{ direction: "ltr" }}>{q.phone}</span>
+                              <div style={{ display: "flex", gap: 8, marginRight: "auto", alignItems: "center" }}>
+                                <a href={`tel:${q.phone.replace(/[^0-9+]/g, '')}`} style={{ color: "var(--accent)", display: "flex" }} title="חייג">
+                                  <Icon n="phone" s={13} />
+                                </a>
+                                <a href={`https://wa.me/${q.phone.replace(/[^0-9+]/g, '').replace(/^0/, '972')}`} target="_blank" rel="noreferrer" style={{ color: "#25D366", display: "flex" }} title="וואטסאפ">
+                                  <Icon n="message-circle" s={13} />
+                                </a>
+                              </div>
+                            </div>
+                          )}
                           {q.email && <div style={{ display: "flex", alignItems: "center", gap: 6, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}><Icon n="mail" s={11} c="var(--text3)" /> <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{q.email}</span></div>}
                           {q.validity && <div style={{ display: "flex", alignItems: "center", gap: 6 }}><Icon n="calendar" s={11} c="var(--text3)" /> תוקף: {q.validity}</div>}
                         </div>
