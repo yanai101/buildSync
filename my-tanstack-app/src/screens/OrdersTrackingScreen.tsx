@@ -323,56 +323,60 @@ export const OrdersTrackingScreen = () => {
         />
 
         {/* Stats */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 24 }}>
-          <div style={{ background: 'var(--surface)', padding: 16, borderRadius: 12, border: '1px solid var(--border)' }}>
-            <div style={{ fontSize: 12, color: 'var(--text2)', fontWeight: 600 }}>סה"כ הזמנות</div>
-            <div style={{ fontSize: 24, fontWeight: 800, marginTop: 4 }}>{stats.total}</div>
+        {orders && orders.length > 0 && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 24 }}>
+            <div style={{ background: 'var(--surface)', padding: 16, borderRadius: 12, border: '1px solid var(--border)' }}>
+              <div style={{ fontSize: 12, color: 'var(--text2)', fontWeight: 600 }}>סה"כ הזמנות</div>
+              <div style={{ fontSize: 24, fontWeight: 800, marginTop: 4 }}>{stats.total}</div>
+            </div>
+            <div style={{ background: 'var(--surface)', padding: 16, borderRadius: 12, border: '1px solid var(--warning)', position: 'relative', overflow: 'hidden' }}>
+              <div style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: 4, background: 'var(--warning)' }} />
+              <div style={{ fontSize: 12, color: 'var(--text2)', fontWeight: 600 }}>בהמתנה לאספקה</div>
+              <div style={{ fontSize: 24, fontWeight: 800, marginTop: 4 }}>{stats.pending}</div>
+            </div>
+            <div style={{ background: 'var(--surface)', padding: 16, borderRadius: 12, border: '1px solid #007AFF', position: 'relative', overflow: 'hidden' }}>
+              <div style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: 4, background: '#007AFF' }} />
+              <div style={{ fontSize: 12, color: 'var(--text2)', fontWeight: 600 }}>סופקו חלקית</div>
+              <div style={{ fontSize: 24, fontWeight: 800, marginTop: 4 }}>{stats.partial}</div>
+            </div>
+            <div style={{ background: 'var(--surface)', padding: 16, borderRadius: 12, border: '1px solid var(--success)', position: 'relative', overflow: 'hidden' }}>
+              <div style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: 4, background: 'var(--success)' }} />
+              <div style={{ fontSize: 12, color: 'var(--text2)', fontWeight: 600 }}>הושלמו</div>
+              <div style={{ fontSize: 24, fontWeight: 800, marginTop: 4 }}>{stats.completed}</div>
+            </div>
           </div>
-          <div style={{ background: 'var(--surface)', padding: 16, borderRadius: 12, border: '1px solid var(--warning)', position: 'relative', overflow: 'hidden' }}>
-            <div style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: 4, background: 'var(--warning)' }} />
-            <div style={{ fontSize: 12, color: 'var(--text2)', fontWeight: 600 }}>בהמתנה לאספקה</div>
-            <div style={{ fontSize: 24, fontWeight: 800, marginTop: 4 }}>{stats.pending}</div>
-          </div>
-          <div style={{ background: 'var(--surface)', padding: 16, borderRadius: 12, border: '1px solid #007AFF', position: 'relative', overflow: 'hidden' }}>
-            <div style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: 4, background: '#007AFF' }} />
-            <div style={{ fontSize: 12, color: 'var(--text2)', fontWeight: 600 }}>סופקו חלקית</div>
-            <div style={{ fontSize: 24, fontWeight: 800, marginTop: 4 }}>{stats.partial}</div>
-          </div>
-          <div style={{ background: 'var(--surface)', padding: 16, borderRadius: 12, border: '1px solid var(--success)', position: 'relative', overflow: 'hidden' }}>
-            <div style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: 4, background: 'var(--success)' }} />
-            <div style={{ fontSize: 12, color: 'var(--text2)', fontWeight: 600 }}>הושלמו</div>
-            <div style={{ fontSize: 24, fontWeight: 800, marginTop: 4 }}>{stats.completed}</div>
-          </div>
-        </div>
+        )}
 
         {/* Filters */}
-        <div style={{ display: 'flex', gap: 8, marginBottom: 16, overflowX: 'auto', paddingBottom: 4 }}>
-          {[
-            { id: 'all', label: 'הכל' },
-            { id: 'pending', label: 'בהמתנה' },
-            { id: 'partial', label: 'סופק חלקית' },
-            { id: 'completed', label: 'הושלם' },
-          ].map(f => (
-            <button
-              key={f.id}
-              onClick={() => setFilter(f.id as any)}
-              style={{
-                padding: '6px 14px',
-                borderRadius: 20,
-                border: '1px solid',
-                borderColor: filter === f.id ? 'var(--accent)' : 'var(--border)',
-                background: filter === f.id ? 'var(--accent-light)' : 'var(--surface)',
-                color: filter === f.id ? 'var(--accent)' : 'var(--text2)',
-                fontSize: 12,
-                fontWeight: filter === f.id ? 700 : 500,
-                cursor: 'pointer',
-                whiteSpace: 'nowrap'
-              }}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
+        {orders && orders.length > 0 && (
+          <div style={{ display: 'flex', gap: 8, marginBottom: 16, overflowX: 'auto', paddingBottom: 4 }}>
+            {[
+              { id: 'all', label: 'הכל' },
+              { id: 'pending', label: 'בהמתנה' },
+              { id: 'partial', label: 'סופק חלקית' },
+              { id: 'completed', label: 'הושלם' },
+            ].map(f => (
+              <button
+                key={f.id}
+                onClick={() => setFilter(f.id as any)}
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: 20,
+                  border: '1px solid',
+                  borderColor: filter === f.id ? 'var(--accent)' : 'var(--border)',
+                  background: filter === f.id ? 'var(--accent-light)' : 'var(--surface)',
+                  color: filter === f.id ? 'var(--accent)' : 'var(--text2)',
+                  fontSize: 12,
+                  fontWeight: filter === f.id ? 700 : 500,
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* List */}
         {orders?.length === 0 ? (
