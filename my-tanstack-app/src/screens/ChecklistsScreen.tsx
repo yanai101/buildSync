@@ -228,18 +228,21 @@ export const ChecklistsScreen = () => {
                   </div>
                 ) : (
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>
-                    {PREDEFINED_CHECKLISTS.map((template, idx) => (
-                      <div key={idx} style={{ flex: '1 1 280px', padding: 16, border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg)', display: 'flex', flexDirection: 'column' }}>
+                    {PREDEFINED_CHECKLISTS.map((template, idx) => {
+                      const isAdded = checklists?.some((c: any) => c.title === template.title);
+                      return (
+                      <div key={idx} style={{ flex: '1 1 280px', padding: 16, border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg)', display: 'flex', flexDirection: 'column', opacity: isAdded ? 0.6 : 1 }}>
                         <div style={{ fontSize: 12, color: 'var(--accent)', fontWeight: 600, marginBottom: 4 }}>{template.category}</div>
                         <div style={{ fontSize: 15, fontWeight: 500, marginBottom: 12, color: 'var(--text1)' }}>{template.title}</div>
                         <div style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 16, flex: 1 }}>
                           {template.items.length} משימות לבדיקה
                         </div>
-                        <Btn onClick={() => handleAddTemplate(template)} variant="secondary" style={{ width: '100%', justifyContent: 'center' }}>
-                          הוסף לפרויקט
+                        <Btn onClick={() => handleAddTemplate(template)} disabled={isAdded} variant="secondary" style={{ width: '100%', justifyContent: 'center' }}>
+                          {isAdded ? 'נוסף לפרויקט' : 'הוסף לפרויקט'}
                         </Btn>
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
