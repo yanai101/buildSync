@@ -65,7 +65,7 @@ const AddItemWidget = ({
   const existingNames = existingItems.map(i=>i.name.trim().toLowerCase());
   const allSuggestions = query.trim().length >= 1
     ? catalog.filter(c => c.name.includes(query.trim()) && !existingNames.includes(c.name.toLowerCase())).slice(0, 8)
-    : catalog.filter(c => !existingNames.includes(c.name.toLowerCase())).slice(0, 8);
+    : [];
 
   const close = () => { setOpen(false); setQuery(""); setPendingItem(null); setImagePreview(null); setImageUploadError(null); };
 
@@ -171,7 +171,9 @@ const AddItemWidget = ({
                       <span style={{fontSize:12,color:"var(--text3)",background:"var(--border)",borderRadius:6,padding:"2px 8px"}}>{s.cat}</span>
                     </div>
                   )) : (
-                    <div style={{padding:"14px 16px",fontSize:13,color:"var(--text3)"}}>הקלד שם פריט לחיפוש</div>
+                    <div style={{padding:"14px 16px",fontSize:13,color:"var(--text3)"}}>
+                      {query.trim().length === 0 ? "התחל להקליד כדי לחפש..." : "לא נמצאו תוצאות. תוכל להוסיף כפריט חופשי."}
+                    </div>
                   )}
                 </div>
                 {query.trim() && !allSuggestions.some(s => s.name === query.trim()) && (
