@@ -26,7 +26,7 @@ export const NAV = [
   { id: "/contractors",   label: "קבלנים",     icon: "users",     section: "ניהול",   roles: ALL_ROLES },
   { id: "/orders",        label: "מעקב הזמנות",icon: "search",     section: "ניהול",   roles: OWNER_MANAGER_INSPECTOR },
   { id: "/boq",           label: "כתב כמויות", icon: "clipboard", section: "ניהול",   roles: OWNER_MANAGER_INSPECTOR },
-  { id: "/boqwizard",     label: "אשף כמויות", icon: "zoom-in",   section: "ניהול",   roles: OWNER_MANAGER },
+  { id: "/boqwizard",     label: "אשף כמויות", icon: "wand",      section: "ניהול",   roles: OWNER_MANAGER },
   { id: "/checklists",    label: "צ'קליסטים",  icon: "check-circle", section: "ניהול", roles: ALL_ROLES },
   { id: "/permits",       label: "היתרים",     icon: "clipboard", section: "ניהול", roles: OWNER_MANAGER_INSPECTOR },
   { id: "/daily-logs",    label: "יומן עבודה", icon: "calendar",  section: "תיעוד",   roles: ALL_ROLES },
