@@ -1179,13 +1179,13 @@ export const StagesScreen = () => {
             </span>
           </div>
           <div className="card-body" style={{paddingTop:12}}>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(3, minmax(0, 1fr))",gap:18,marginBottom:14}}>
+            <div style={{display:"flex",flexWrap:"wrap",gap:18,marginBottom:14}}>
               {[
                 {label:"תקציב כולל", value:paymentSummary.projectBudget, color:"var(--text1)"},
                 {label:"שולם עד כה", value:paymentSummary.totalPaid, color:paymentSummary.isOverLimit ? "var(--danger)" : paymentSummary.isNearLimit ? "var(--warning)" : "var(--success)"},
                 {label:"נותר לתשלום", value:paymentSummary.remaining, color:paymentSummary.remaining === 0 ? "var(--danger)" : "var(--text1)"},
               ].map(item => (
-                <div key={item.label}>
+                <div key={item.label} style={{flex:"1 1 120px"}}>
                   <div style={{fontSize:20,fontWeight:800,color:item.color}}>{fmtMoney(item.value)}</div>
                   <div style={{fontSize:12,color:"var(--text2)"}}>{item.label}</div>
                 </div>
@@ -1210,10 +1210,10 @@ export const StagesScreen = () => {
         <div style={{display:"flex",flexDirection:"column",gap:16}}>
           {visibleStages.map(s=>(
             <div key={s.id} className="card" style={{border:expanded===s.id?"1px solid var(--accent)":"1px solid var(--border)",boxShadow:expanded===s.id?"var(--shadow-md)":"none"}}>
-              <div onClick={()=>toggleStage(s.id)} style={{padding:"16px 20px",display:"flex",alignItems:"center",gap:16,cursor:"pointer"}}>
+              <div onClick={()=>toggleStage(s.id)} style={{padding:"16px 20px",display:"flex",alignItems:"center",gap:16,cursor:"pointer",flexWrap:"wrap"}}>
                 <div style={{width:24,textAlign:"center",fontSize:12,fontWeight:700,color:"var(--text3)"}}>{s.id}</div>
-                <div style={{flex:1}}>
-                  <div style={{fontSize:15,fontWeight:700,display:"flex",alignItems:"center",gap:8}}>
+                <div style={{flex:"1 1 200px"}}>
+                  <div style={{fontSize:15,fontWeight:700,display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
                     {s.name}
                     <Badge type={s.status}/>
                   </div>
@@ -1253,8 +1253,8 @@ export const StagesScreen = () => {
                           אין קבלן מקושר לשלב — אי אפשר לסמן משימות או לשלם. קשרו קבלן לשלב כדי להמשיך.
                         </div>
                       )}
-                      <div style={{display:"grid",gridTemplateColumns:"1fr 340px",gap:20,marginTop:20}}>
-                        <div>
+                      <div style={{display:"flex",flexWrap:"wrap",gap:20,marginTop:20}}>
+                        <div style={{flex:"1 1 300px"}}>
                           <div style={{fontSize:13,fontWeight:700,color:"var(--text2)",marginBottom:12}}>משימות בשלב זה</div>
                           <div className="card" style={{background:"#fff"}}>
                             {(s.tasks || []).map(t=>{
@@ -1264,15 +1264,15 @@ export const StagesScreen = () => {
                                 <div
                                   key={t.id}
                                   onClick={taskDisabled ? undefined : ()=>toggleTask(s.id,t.id, (t as any)._id)}
-                                  style={{display:"flex",alignItems:"center",gap:12,padding:"10px 16px",borderBottom:"1px solid var(--border)",cursor:taskDisabled?"not-allowed":"pointer",opacity:taskDisabled?0.55:1}}
+                                  style={{display:"flex",alignItems:"center",gap:12,padding:"10px 16px",borderBottom:"1px solid var(--border)",cursor:taskDisabled?"not-allowed":"pointer",opacity:taskDisabled?0.55:1,flexWrap:"wrap"}}
                                   title={taskDisabled?"קשרו קבלן לשלב כדי לסמן משימות":undefined}
                                   onMouseEnter={taskDisabled ? undefined : e=>e.currentTarget.style.background="#F9FAFB"}
                                   onMouseLeave={taskDisabled ? undefined : e=>e.currentTarget.style.background="transparent"}
                                 >
-                                  <div style={{width:18,height:18,borderRadius:4,border:t.done?"none":"2px solid var(--border)",background:t.done?"var(--success)":"transparent",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                                  <div style={{width:18,height:18,borderRadius:4,border:t.done?"none":"2px solid var(--border)",background:t.done?"var(--success)":"transparent",display:"flex",alignItems:"center",justifyContent:"center",flex:"0 0 auto"}}>
                                     {t.done && <Icon n="check" s={12} c="#fff"/>}
                                   </div>
-                                  <span style={{fontSize:13,color:t.done?"var(--text3)":"var(--text1)",textDecoration:t.done?"line-through":"none",flex:1}}>{t.name}</span>
+                                  <span style={{fontSize:13,color:t.done?"var(--text3)":"var(--text1)",textDecoration:t.done?"line-through":"none",flex:"1 1 150px"}}>{t.name}</span>
                                   {taskPayment && (
                                     <span style={{
                                       fontSize:11,
@@ -1283,6 +1283,7 @@ export const StagesScreen = () => {
                                       borderRadius:999,
                                       padding:"3px 8px",
                                       whiteSpace:"nowrap",
+                                      flex:"0 0 auto"
                                     }}>
                                       {taskPayment.status === "paid" ? "שולם" : "לתשלום"} · {fmtMoney(taskPayment.amount)}
                                     </span>
@@ -1293,7 +1294,7 @@ export const StagesScreen = () => {
                           </div>
                         </div>
 
-                        <div>
+                        <div style={{flex:"1 1 300px"}}>
                           <div style={{fontSize:13,fontWeight:700,color:"var(--text2)",marginBottom:12}}>תשלום ואישור</div>
                           {(s.contractorPaymentWarnings?.length ?? 0) > 0 && (
                             <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:10}}>
@@ -1370,12 +1371,12 @@ export const StagesScreen = () => {
     </ScreenBoundary>
     {editingStage && (
       <Modal title="עריכת שלב בנייה" onClose={()=>setEditingStage(null)} width={560}>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
-          <label style={{gridColumn:"1 / -1"}}>
+        <div style={{display:"flex",flexWrap:"wrap",gap:14}}>
+          <label style={{flex:"1 1 100%"}}>
             <div style={{fontSize:12,color:"var(--text2)",marginBottom:4,fontWeight:600}}>שם שלב</div>
             <input className="bp-input" value={editForm.name} onChange={e=>setEditForm(f=>({...f,name:e.target.value}))}/>
           </label>
-          <div style={{gridColumn:"1 / -1",border:"1px solid var(--border)",borderRadius:8,padding:12,background:"#fff"}}>
+          <div style={{flex:"1 1 100%",border:"1px solid var(--border)",borderRadius:8,padding:12,background:"#fff"}}>
             <div style={{fontSize:12,color:"var(--text2)",marginBottom:8,fontWeight:600}}>קבלנים משתתפים בשלב</div>
             <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
               {contractorOptions.length ? contractorOptions.map(contractor => {
@@ -1392,13 +1393,13 @@ export const StagesScreen = () => {
               )}
             </div>
           </div>
-          <label>
+          <label style={{flex:"1 1 100%"}}>
             <div style={{fontSize:12,color:"var(--text2)",marginBottom:4,fontWeight:600}}>סכום תשלום</div>
             <input className="bp-input" type="number" value={editForm.amount} onChange={e=>setEditForm(f=>({...f,amount:Number(e.target.value)}))}/>
           </label>
           {editForm.contractorIds.length > 0 && (
             <div style={{
-              gridColumn:"1 / -1",
+              flex:"1 1 100%",
               border:"1px solid",
               borderColor:editPaymentAmountMismatch ? "#FCA5A5" : "#BBF7D0",
               background:editPaymentAmountMismatch ? "#FEF2F2" : "#F0FDF4",
@@ -1415,7 +1416,7 @@ export const StagesScreen = () => {
             </div>
           )}
           {editContractorPaymentWarnings.length > 0 && (
-            <div style={{gridColumn:"1 / -1",display:"flex",flexDirection:"column",gap:6}}>
+            <div style={{flex:"1 1 100%",display:"flex",flexDirection:"column",gap:6}}>
               {editContractorPaymentWarnings.map(warning => (
                 <div key={warning.contractorName} style={{border:"1px solid #FCD34D",background:"#FFFBEB",color:"#92400E",borderRadius:8,padding:"8px 10px",fontSize:12,fontWeight:700,lineHeight:1.45}}>
                   סכום השלבים של {warning.contractorName} ({fmtMoney(warning.stagePaymentTotal)}) לא תואם לסכום החוזה ({fmtMoney(warning.contractorBudget)}). אפשר לשמור, אבל כדאי לתקן לפני תשלום.
@@ -1423,15 +1424,15 @@ export const StagesScreen = () => {
               ))}
             </div>
           )}
-          <label>
+          <label style={{flex:"1 1 200px"}}>
             <div style={{fontSize:12,color:"var(--text2)",marginBottom:4,fontWeight:600}}>תאריך התחלה</div>
             <input className="bp-input" type="date" value={editForm.startDate} onChange={e=>setEditForm(f=>({...f,startDate:e.target.value}))}/>
           </label>
-          <label>
+          <label style={{flex:"1 1 200px"}}>
             <div style={{fontSize:12,color:"var(--text2)",marginBottom:4,fontWeight:600}}>תאריך סיום</div>
             <input className="bp-input" type="date" value={editForm.endDate} onChange={e=>setEditForm(f=>({...f,endDate:e.target.value}))}/>
           </label>
-          <label style={{gridColumn:"1 / -1",display:"flex",alignItems:"center",gap:8,fontSize:13,cursor:((editingStage as any).sortOrder ?? editingStage.id - 1) <= 0?"not-allowed":"pointer",color:((editingStage as any).sortOrder ?? editingStage.id - 1) <= 0?"var(--text3)":"var(--text2)"}}>
+          <label style={{flex:"1 1 100%",display:"flex",alignItems:"center",gap:8,fontSize:13,cursor:((editingStage as any).sortOrder ?? editingStage.id - 1) <= 0?"not-allowed":"pointer",color:((editingStage as any).sortOrder ?? editingStage.id - 1) <= 0?"var(--text3)":"var(--text2)"}}>
             <input
               type="checkbox"
               checked={((editingStage as any).sortOrder ?? editingStage.id - 1) > 0 && editForm.dependsOnPrevious}
@@ -1442,7 +1443,7 @@ export const StagesScreen = () => {
           </label>
 
           {isAdvancedEdit ? (
-            <div style={{gridColumn:"1 / -1", marginTop: 14}}>
+            <div style={{flex:"1 1 100%", marginTop: 14}}>
               <div style={{display:"flex", alignItems:"center", gap:16, marginBottom:16}}>
                 <label style={{display:"flex",alignItems:"center",gap:8,fontSize:13,cursor:"pointer"}}>
                   <input type="checkbox" checked={editForm.paymentAtEnd} onChange={e=>setEditForm(f=>({...f, paymentAtEnd:e.target.checked}))}/>
@@ -1457,9 +1458,9 @@ export const StagesScreen = () => {
                 </div>
                 <div style={{display:"flex",flexDirection:"column",gap:8}}>
                   {editForm.tasks.map((task, taskIndex) => (
-                    <div key={taskIndex} style={{display:"grid",gridTemplateColumns:editForm.paymentAtEnd ? "1.5fr 1fr 82px 70px" : "1.5fr 1fr 82px 130px 120px 70px",gap:8,alignItems:"center"}}>
-                      <input className="bp-input" value={task.name} onChange={e=>updateEditTask(taskIndex,{name:e.target.value})}/>
-                      <select className="bp-input" value={task.assignee} onChange={e=>updateEditTask(taskIndex,{assignee:e.target.value})}>
+                    <div key={taskIndex} style={{display:"flex",flexWrap:"wrap",gap:8,alignItems:"center",background:"#fff",padding:8,borderRadius:8,border:"1px solid var(--border)"}}>
+                      <input className="bp-input" value={task.name} onChange={e=>updateEditTask(taskIndex,{name:e.target.value})} style={{flex:"1 1 180px"}}/>
+                      <select className="bp-input" value={task.assignee} onChange={e=>updateEditTask(taskIndex,{assignee:e.target.value})} style={{flex:"1 1 120px"}}>
                         <option value="">לא הוגדר</option>
                         <option value="מפקח">מפקח</option>
                         <option value="בעל הבית">בעל הבית</option>
@@ -1467,20 +1468,20 @@ export const StagesScreen = () => {
                           {contractors?.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
                         </optgroup>
                       </select>
-                      <label style={{fontSize:12,color:"var(--text2)",display:"flex",gap:6,alignItems:"center"}}>
+                      <label style={{fontSize:12,color:"var(--text2)",display:"flex",gap:6,alignItems:"center",flex:"0 0 auto"}}>
                         <input type="checkbox" checked={task.required} onChange={e=>updateEditTask(taskIndex,{required:e.target.checked})}/>
                         חובה
                       </label>
                       {!editForm.paymentAtEnd && (
-                        <>
-                          <label style={{fontSize:12,color:"var(--text2)",display:"flex",gap:6,alignItems:"center"}}>
+                        <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",flex:"1 1 200px"}}>
+                          <label style={{fontSize:12,color:"var(--text2)",display:"flex",gap:6,alignItems:"center",flex:"0 0 auto"}}>
                             <input type="checkbox" checked={task.paymentRequired} onChange={e=>updateEditTask(taskIndex,{paymentRequired:e.target.checked, paymentAmount:e.target.checked?task.paymentAmount:0})}/>
                             תשלום בסיום
                           </label>
-                          <input className="bp-input" type="number" min={0} placeholder="סכום ₪" value={task.paymentRequired ? task.paymentAmount : ''} disabled={!task.paymentRequired} onChange={e=>updateEditTask(taskIndex,{paymentAmount:Number(e.target.value) || 0})}/>
-                        </>
+                          <input className="bp-input" type="number" min={0} placeholder="סכום ₪" value={task.paymentRequired?task.paymentAmount:''} disabled={!task.paymentRequired} onChange={e=>updateEditTask(taskIndex,{paymentAmount:Number(e.target.value)||0})} style={{flex:"1 1 80px"}}/>
+                        </div>
                       )}
-                      <Btn size="sm" variant="ghost" onClick={()=>removeEditTask(taskIndex)} style={{color:"var(--danger)"}}>מחק</Btn>
+                      <Btn size="sm" variant="ghost" onClick={()=>removeEditTask(taskIndex)} style={{flex:"0 0 auto",color:"var(--danger)"}}>מחק</Btn>
                     </div>
                   ))}
                 </div>
