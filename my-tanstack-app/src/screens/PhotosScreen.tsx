@@ -186,6 +186,7 @@ export const PhotosScreen = () => {
   const currentIdentity = useQuery(api.users.currentIdentity, {});
   const { data: initialPhotos, loading, error, refetch, mode } = useDataSource<any[]>('photos', { db: dbPhotos as any });
   const { mutate } = useDataMutation('photos');
+  const { mutate: notesMutate } = useDataMutation('notes');
   const [viewMode, setViewMode] = React.useState<"gallery" | "snagging">("gallery");
   const [photos, setPhotos] = React.useState<any[]>([]);
   const [selected, setSelected] = React.useState<any>(null);
@@ -213,6 +214,7 @@ export const PhotosScreen = () => {
   const [drawMode, setDrawMode] = React.useState("pen");
   const [drawColor, setDrawColor] = React.useState("#FF3B30");
   const [noteText, setNoteText] = React.useState("");
+  const [noteAssignee, setNoteAssignee] = React.useState("contractor");
   const [deletingPhoto, setDeletingPhoto] = React.useState(false);
   const [savingTag, setSavingTag] = React.useState(false);
   const [uploadingPhoto, setUploadingPhoto] = React.useState(false);
@@ -549,7 +551,33 @@ export const PhotosScreen = () => {
   };
 
   const addNote = async () => {
+    const currentNoteText = noteText.trim();
+    const currentAssignee = noteAssignee;
+    
     await saveAnnotatedVersion();
+
+    if (currentNoteText && currentAssignee) {
+      try {
+        let roleName = '';
+        if (currentAssignee === 'manager') roleName = 'מנהל הפרויקט';
+        else if (currentAssignee === 'inspector') roleName = 'המפקח';
+        else if (currentAssignee === 'contractor') roleName = 'הקבלן המבצע';
+        else {
+           const c = contractors.find((c: any) => c._id === currentAssignee);
+           roleName = c ? c.name : 'הקבלן';
+        }
+
+        const msg = `הערה חדשה בתמונה "${selected?.label || ''}" עבור ${roleName}: "${currentNoteText}" — נדרשת התייחסות.`;
+        
+        await notesMutate('saveNote', {
+          projectId: projectId || 'dummy',
+          text: msg,
+          thread: currentAssignee === 'manager' || currentAssignee === 'inspector' ? 'internal' : 'contractor'
+        });
+      } catch (err) {
+        console.error("Failed to add chat note", err);
+      }
+    }
   };
 
   const deleteSelectedPhoto = async () => {
@@ -844,10 +872,11 @@ export const PhotosScreen = () => {
                   disabled={!canEditSelectedPhoto}
                   style={{width:"100%",border:"1px solid var(--border)",borderRadius:8,padding:"8px",fontSize:12,fontFamily:"'Heebo',sans-serif",resize:"none",outline:"none",opacity:canEditSelectedPhoto?1:.55}}/>
                 <div style={{display:"flex",gap:6}}>
-                  <Select value="manager" onChange={()=>{}} disabled={!canEditSelectedPhoto} style={{flex:1,fontSize:11}}>
+                  <Select value={noteAssignee} onChange={setNoteAssignee} disabled={!canEditSelectedPhoto} style={{flex:1,fontSize:11}}>
                     <option value="manager">בעל בנייה</option>
                     <option value="inspector">מפקח</option>
-                    <option value="contractor">לקבלן</option>
+                    <option value="contractor">לקבלן כללי</option>
+                    {contractors.map((c: any) => <option key={c._id} value={c._id}>{c.name}</option>)}
                   </Select>
                   <Btn size="sm" onClick={addNote} disabled={savingVersion || !canEditSelectedPhoto}>
                     <Icon n="send" s={12}/>
