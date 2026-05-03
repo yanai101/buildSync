@@ -407,15 +407,25 @@ body {
   .stage-wizard-layout {
     display: flex;
     flex-direction: column;
-    height: auto;
+    height: 75vh;
     max-height: 75vh;
-    overflow-y: auto;
+    overflow: hidden;
   }
   .stage-wizard-single {
     display: flex;
     flex-direction: column;
-    height: auto;
+    height: 75vh;
     max-height: 75vh;
-    overflow-y: auto;
+    overflow: hidden;
+  }
+  .stage-wizard-master {
+    flex: 1 1 40%;
+    min-height: 0;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 12px;
+  }
+  .stage-wizard-detail {
+    flex: 1 1 60%;
+    min-height: 0;
   }
 }

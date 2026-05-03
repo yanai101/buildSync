@@ -364,7 +364,7 @@ const StageCreationGuide = ({
     <Modal title={isSingle ? "הוספת שלב חדש" : "יצירת שלבי בנייה מתבנית"} onClose={onClose} width={isSingle ? 760 : 1040}>
       <div className={isSingle ? "stage-wizard-single" : "stage-wizard-layout"}>
         {!isSingle && (
-        <div style={{display:"flex",flexDirection:"column",gap:10,minHeight:0}}>
+        <div className="stage-wizard-master" style={{display:"flex",flexDirection:"column",gap:10,minHeight:0}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
             <div style={{fontSize:13,fontWeight:800}}>תבנית מאסטר</div>
             <Btn size="sm" variant="ghost" onClick={addStage}><Icon n="plus" s={12}/> שלב</Btn>
@@ -424,10 +424,11 @@ const StageCreationGuide = ({
         )}
 
         {current && (
-          <ScrollShadow>
-          <div style={{paddingInlineEnd:4,paddingBlock:2}}>
-            <div style={{display:"flex",justifyContent:"space-between",gap:10,alignItems:"center",marginBottom:14}}>
-              <div>
+          <div className="stage-wizard-detail" style={{display:"flex",flexDirection:"column",minHeight:0}}>
+            <ScrollShadow style={{flex:1}}>
+              <div style={{paddingInlineEnd:4,paddingBlock:2}}>
+                <div style={{display:"flex",justifyContent:"space-between",gap:10,alignItems:"center",marginBottom:14}}>
+                  <div>
                 <div style={{fontSize:18,fontWeight:800}}>עריכת שלב</div>
                 <div style={{fontSize:12,color:"var(--text3)"}}>
                   {isSingle
@@ -614,6 +615,7 @@ const StageCreationGuide = ({
             </div>
           </div>
           </ScrollShadow>
+          </div>
         )}
       </div>
 
