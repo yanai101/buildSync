@@ -263,6 +263,7 @@ function LandingPage() {
             </p>
             <ul className="bullet-list">
               <li className="bullet-item"><Icon n="clipboard" s={28} c="var(--warning)" style={{marginTop:4}} /> <div><strong>אשף כתבי כמויות (BOQ):</strong> בניית מפרטי רכש רוחביים לפי כל חדר בבית (אינסטלציה, ריצוף, חשמל). המערכת מסכמת אוטומטית שטח כולל ועלויות צפויות.</div></li>
+              <li className="bullet-item"><Icon n="search" s={28} c="var(--warning)" style={{marginTop:4}} /> <div><strong>מעקב הזמנות חכם:</strong> שליטה מלאה באספקת חומרים לאתר - הזמנות חסרות, קבלות חלקיות ותעודות משלוח מצורפות הכל במקום אחד.</div></li>
               <li className="bullet-item"><Icon n="chart" s={28} c="var(--warning)" style={{marginTop:4}} /> <div><strong>מנגנון תשלום לקבלנים:</strong> אל תשלם מקדמות אקסטרה. BuildSync בונה אוטומטית לוחות סילוקין לתשלום לפי "אבני דרך" (לדוג: 20% בגמר שלד חוץ). התשלום נפתח רק כשהמפקח סימן שהשלב הסתיים.</div></li>
               <li className="bullet-item"><Icon n="calendar" s={28} c="var(--warning)" style={{marginTop:4}} /> <div><strong>מעקב תקציב דינמי:</strong> בכל רגע נתון תוכל לראות כמה הוצאת, כמה מהתקציב כבר 'משוריין' לקבלנים קיימים, והיכן יש לך עודפים פיננסיים.</div></li>
             </ul>
