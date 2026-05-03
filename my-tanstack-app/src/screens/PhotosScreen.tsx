@@ -144,8 +144,8 @@ const DefectsTable = ({ photos, onSelect, contractors, setFeedback }: { photos: 
           <Icon n={exporting ? "loader" : "download"} s={14}/> {exporting ? "מכין דוח..." : "ייצוא דוח PDF"}
         </Btn>
       </div>
-      <div style={{ background: "var(--surface)", borderRadius: 12, border: "1px solid var(--border)", overflow: "hidden" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "right" }}>
+      <div style={{ background: "var(--surface)", borderRadius: 12, border: "1px solid var(--border)", overflowX: "auto" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "right", minWidth: 700 }}>
           <thead>
             <tr style={{ background: "var(--bg)", borderBottom: "1px solid var(--border)", fontSize: 12, color: "var(--text2)" }}>
               <th style={{ padding: "12px 16px", fontWeight: 600 }}>תמונה</th>
@@ -774,7 +774,7 @@ export const PhotosScreen = () => {
         <Modal onClose={()=>setSelected(null)} title={`${selected.label} — ${selected.date}`} width={760}>
           <div style={{display:"flex",gap:16,flexWrap:"wrap"}}>
             {/* Photo + canvas */}
-            <div style={{flex:"1 1 400px"}}>
+            <div style={{flex:"1 1 min(100%, 400px)"}}>
               <div style={{position:"relative",borderRadius:8,overflow:"hidden",userSelect:"none"}}>
                 {selected.fileUrl ? (
                   <img src={selected.fileUrl} alt={selected.label} style={{width:"100%",height:300,objectFit:"cover",display:"block",background:selected.color}}/>
