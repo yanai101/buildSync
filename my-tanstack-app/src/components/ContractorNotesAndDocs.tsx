@@ -57,6 +57,7 @@ export const ContractorNotesAndDocs = ({ projectId, contractorId, contractorName
   const [uploading, setUploading] = React.useState(false);
   const [pendingFileId, setPendingFileId] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
+  const [isDragOver, setIsDragOver] = React.useState(false);
 
   const submitNote = async () => {
     const trimmed = text.trim();
@@ -89,10 +90,7 @@ export const ContractorNotesAndDocs = ({ projectId, contractorId, contractorName
     fileInputRef.current?.click();
   };
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    e.target.value = '';
-    if (!file) return;
+  const processFile = async (file: File) => {
     setUploading(true);
     setError(null);
     try {
@@ -108,6 +106,21 @@ export const ContractorNotesAndDocs = ({ projectId, contractorId, contractorName
     } finally {
       setUploading(false);
     }
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    await processFile(file);
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) await processFile(file);
   };
 
   const handleRemoveFile = async (fileId: Id<'projectFiles'>) => {
@@ -190,12 +203,30 @@ export const ContractorNotesAndDocs = ({ projectId, contractorId, contractorName
         </section>
 
         <section>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-            <div style={{fontSize:13,fontWeight:700}}>תיעוד וקבצים</div>
-            <Btn size="sm" onClick={handlePickFile} disabled={uploading}>
-              <Icon n="plus" s={12}/> {uploading ? "מעלה..." : "העלה קובץ"}
-            </Btn>
+          <div style={{fontSize:13,fontWeight:700,marginBottom:8}}>תיעוד וקבצים</div>
+          
+          <div 
+            style={{ 
+              marginBottom: 12,
+              border: `1px dashed ${isDragOver ? 'var(--accent)' : 'var(--border)'}`, 
+              borderRadius: 8,
+              background: isDragOver ? 'var(--accent-light)' : 'var(--surface)',
+              transition: 'all 0.2s',
+              cursor: 'pointer',
+              textAlign: 'center',
+              padding: '16px 12px'
+            }}
+            onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setIsDragOver(true); }}
+            onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); setIsDragOver(false); }}
+            onDrop={handleDrop}
+            onClick={handlePickFile}
+          >
+            <div style={{ pointerEvents: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text1)', opacity: uploading ? 0.6 : 1, fontWeight: 500 }}>
+              <Icon n="upload-cloud" s={20} c="var(--text2)" /> 
+              {uploading ? 'מעלה...' : 'לחץ או גרור קבצים (חוזה, אישורים, תכניות) לכאן'}
+            </div>
           </div>
+
           <input
             ref={fileInputRef}
             type="file"
@@ -204,11 +235,7 @@ export const ContractorNotesAndDocs = ({ projectId, contractorId, contractorName
             onChange={handleFileChange}
           />
 
-          {files.length === 0 ? (
-            <div style={{fontSize:12,color:"var(--text3)",border:"1px dashed var(--border)",borderRadius:8,padding:12,textAlign:"center"}}>
-              אין קבצים מצורפים. אפשר להעלות חוזה, אישורים, תכניות וכו׳.
-            </div>
-          ) : (
+          {files.length > 0 && (
             <div style={{display:"flex",flexDirection:"column",gap:6}}>
               {files.map((file) => (
                 <div key={String(file.id)} style={{display:"flex",alignItems:"center",gap:10,border:"1px solid var(--border)",borderRadius:8,padding:"8px 10px",background:"#fff"}}>
