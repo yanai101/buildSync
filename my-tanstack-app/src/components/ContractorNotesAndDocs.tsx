@@ -2,7 +2,7 @@ import React from 'react';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import type { Id } from '../../convex/_generated/dataModel';
-import { Icon, Btn } from './Shared';
+import { Icon, Btn, Modal } from './Shared';
 import { useProjectFileUploader } from '../hooks/useProjectFileUploader';
 
 const formatRelative = (createdAt: number): string => {
@@ -58,6 +58,7 @@ export const ContractorNotesAndDocs = ({ projectId, contractorId, contractorName
   const [pendingFileId, setPendingFileId] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [isDragOver, setIsDragOver] = React.useState(false);
+  const [previewDocumentUrl, setPreviewDocumentUrl] = React.useState<string | null>(null);
 
   const submitNote = async () => {
     const trimmed = text.trim();
@@ -249,15 +250,14 @@ export const ContractorNotesAndDocs = ({ projectId, contractorId, contractorName
                     </div>
                   </div>
                   {file.url && (
-                    <a
-                      href={file.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      title="פתח"
-                      style={{padding:6,color:"var(--text2)",display:"flex",alignItems:"center"}}
+                    <button
+                      type="button"
+                      onClick={() => setPreviewDocumentUrl(file.url!)}
+                      title="צפה"
+                      style={{padding:6,color:"var(--accent)",display:"flex",alignItems:"center",background:"none",border:"none",cursor:"pointer"}}
                     >
-                      <Icon n="download" s={14}/>
-                    </a>
+                      <Icon n="eye" s={14}/>
+                    </button>
                   )}
                   <button
                     type="button"
@@ -274,6 +274,15 @@ export const ContractorNotesAndDocs = ({ projectId, contractorId, contractorName
           )}
         </section>
       </div>
+
+      {/* Preview Document */}
+      {previewDocumentUrl && (
+        <Modal title="צפייה במסמך" onClose={() => setPreviewDocumentUrl(null)} width={800}>
+          <div style={{ height: '70vh', background: '#f5f5f5', borderRadius: 8, overflow: 'hidden' }}>
+            <iframe src={previewDocumentUrl} width="100%" height="100%" style={{ border: 'none' }} title="Preview" />
+          </div>
+        </Modal>
+      )}
     </div>
   );
 };
