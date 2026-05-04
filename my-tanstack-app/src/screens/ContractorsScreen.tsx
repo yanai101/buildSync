@@ -763,7 +763,7 @@ export const ContractorsScreen = () => {
                 onClick={() => openEditModal(c)}
                 disabled={mode !== 'db'}
               >
-                <Icon n="edit-2" s={13}/> עריכה
+                <Icon n="edit" s={13}/> עריכה
               </Btn>
               <Btn
                 size="sm"
@@ -1026,7 +1026,7 @@ export const ContractorsScreen = () => {
                         style={{width:28,height:28,border:"1px solid var(--border)",borderRadius:6,background:"#fff",display:"flex",alignItems:"center",justifyContent:"center",cursor:mode!=='db'?"not-allowed":"pointer",color:"var(--text1)",opacity:mode!=='db'?0.55:1}}
                         title="ערוך קבלן"
                       >
-                        <Icon n="edit-2" s={13}/>
+                        <Icon n="edit" s={13}/>
                       </button>
                       <button
                         type="button"
