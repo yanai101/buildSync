@@ -699,6 +699,55 @@ export const ContractorsScreen = () => {
     ? c.paid > 0 || normalizeMilestones(c).some(milestone => Boolean(milestone.paid))
     : false;
 
+  const contractorModal = (adding || editingContractor) ? (
+    <Modal onClose={()=>{setAdding(false); setEditingContractor(null); setForm(emptyForm);}} title={editingContractor ? "עריכת קבלן" : "הוספת קבלן חדש"} width={520}>
+      <div style={{display:"flex",flexDirection:"column",gap:14}}>
+        <div>
+          <div style={{fontSize:12,color:"var(--text2)",marginBottom:4,fontWeight:600}}>סוג קבלן</div>
+          <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:4}}>
+            {ContractorRoles.map(r=>(
+              <button key={r} onClick={()=>setForm(f=>({...f,role:r}))} style={{padding:"5px 10px",borderRadius:20,border:"1px solid",borderColor:form.role===r?"var(--accent)":"var(--border)",background:form.role===r?"var(--accent-light)":"var(--surface)",color:form.role===r?"var(--accent)":"var(--text2)",fontSize:12,cursor:"pointer",fontFamily:"'Heebo',sans-serif",fontWeight:form.role===r?700:400,transition:"all .12s"}}>
+                {r}
+              </button>
+            ))}
+          </div>
+          {form.role==="קבלן עד מפתח" && (
+            <div style={{fontSize:11,color:"#3730A3",background:"#EEF2FF",borderRadius:6,padding:"6px 10px",marginTop:4}}>
+              לוח תשלומים של 9 שלבים לפי התקדמות הבנייה יוגדר אוטומטית
+            </div>
+          )}
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+          {[
+            ["name","שם הקבלן"],
+            ["company","שם חברה"],
+            ["phone","טלפון"],
+            ["email","אימייל"],
+          ].map(([k,label])=>(
+            <div key={k}>
+              <div style={{fontSize:12,color:"var(--text2)",marginBottom:3,fontWeight:500}}>{label}</div>
+              <input className="bp-input" value={form[k as keyof ContractorForm]} onChange={e=>setForm(f=>({...f,[k]:e.target.value}))}/>
+            </div>
+          ))}
+          <div>
+            <div style={{fontSize:12,color:"var(--text2)",marginBottom:3,fontWeight:500}}>תקציב מוסכם (₪)</div>
+            <input className="bp-input" type="number" value={form.budget} onChange={e=>setForm(f=>({...f,budget:Number(e.target.value)}))}/>
+          </div>
+        </div>
+        <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:4}}>
+          <Btn variant="ghost" onClick={()=>{setAdding(false); setEditingContractor(null); setForm(emptyForm);}} disabled={savingContractor}>ביטול</Btn>
+          <Btn onClick={addContractor} disabled={savingContractor || !form.name.trim()}>
+            {editingContractor ? (
+              <>שמור שינויים</>
+            ) : (
+              <><Icon n="plus" s={13}/> הוסף קבלן</>
+            )}
+          </Btn>
+        </div>
+      </div>
+    </Modal>
+  ) : null;
+
   if (c) return (
     <>
       <ScreenBoundary loading={loading} error={error} onRetry={refetch}>
@@ -893,6 +942,7 @@ export const ContractorsScreen = () => {
         )}
         </div>
       </ScreenBoundary>
+      {contractorModal}
       {deleteTarget && (
         <ConfirmDialog
           title="מחיקת קבלן"
@@ -1016,54 +1066,7 @@ export const ContractorsScreen = () => {
           </>
         </div>
       </ScreenBoundary>
-      {(adding || editingContractor) && (
-        <Modal onClose={()=>{setAdding(false); setEditingContractor(null); setForm(emptyForm);}} title={editingContractor ? "עריכת קבלן" : "הוספת קבלן חדש"} width={520}>
-          <div style={{display:"flex",flexDirection:"column",gap:14}}>
-            <div>
-              <div style={{fontSize:12,color:"var(--text2)",marginBottom:4,fontWeight:600}}>סוג קבלן</div>
-              <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:4}}>
-                {ContractorRoles.map(r=>(
-                  <button key={r} onClick={()=>setForm(f=>({...f,role:r}))} style={{padding:"5px 10px",borderRadius:20,border:"1px solid",borderColor:form.role===r?"var(--accent)":"var(--border)",background:form.role===r?"var(--accent-light)":"var(--surface)",color:form.role===r?"var(--accent)":"var(--text2)",fontSize:12,cursor:"pointer",fontFamily:"'Heebo',sans-serif",fontWeight:form.role===r?700:400,transition:"all .12s"}}>
-                    {r}
-                  </button>
-                ))}
-              </div>
-              {form.role==="קבלן עד מפתח" && (
-                <div style={{fontSize:11,color:"#3730A3",background:"#EEF2FF",borderRadius:6,padding:"6px 10px",marginTop:4}}>
-                  לוח תשלומים של 9 שלבים לפי התקדמות הבנייה יוגדר אוטומטית
-                </div>
-              )}
-            </div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-              {[
-                ["name","שם הקבלן"],
-                ["company","שם חברה"],
-                ["phone","טלפון"],
-                ["email","אימייל"],
-              ].map(([k,label])=>(
-                <div key={k}>
-                  <div style={{fontSize:12,color:"var(--text2)",marginBottom:3,fontWeight:500}}>{label}</div>
-                  <input className="bp-input" value={form[k as keyof ContractorForm]} onChange={e=>setForm(f=>({...f,[k]:e.target.value}))}/>
-                </div>
-              ))}
-              <div>
-                <div style={{fontSize:12,color:"var(--text2)",marginBottom:3,fontWeight:500}}>תקציב מוסכם (₪)</div>
-                <input className="bp-input" type="number" value={form.budget} onChange={e=>setForm(f=>({...f,budget:Number(e.target.value)}))}/>
-              </div>
-            </div>
-            <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:4}}>
-              <Btn variant="ghost" onClick={()=>{setAdding(false); setEditingContractor(null); setForm(emptyForm);}} disabled={savingContractor}>ביטול</Btn>
-              <Btn onClick={addContractor} disabled={savingContractor || !form.name.trim()}>
-                {editingContractor ? (
-                  <>שמור שינויים</>
-                ) : (
-                  <><Icon n="plus" s={13}/> הוסף קבלן</>
-                )}
-              </Btn>
-            </div>
-          </div>
-        </Modal>
-      )}
+      {contractorModal}
       {deleteTarget && (
         <ConfirmDialog
           title="מחיקת קבלן"
