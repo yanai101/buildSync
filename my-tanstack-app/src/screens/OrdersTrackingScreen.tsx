@@ -29,6 +29,7 @@ const OrderCard = ({
   onDelete,
   onEdit,
   onPickFile,
+  onDropFile,
   uploadingOrderId,
   onPreviewDocument,
   onDeleteDocument,
@@ -40,11 +41,13 @@ const OrderCard = ({
   onDelete: (id: Id<'orders'>) => void;
   onEdit: (order: Order) => void;
   onPickFile: (id: Id<'orders'>) => void;
+  onDropFile: (id: Id<'orders'>, file: File) => void;
   uploadingOrderId: Id<'orders'> | null;
   onPreviewDocument: (url: string) => void;
   onDeleteDocument: (orderId: Id<'orders'>, storageId: Id<'_storage'>) => void;
 }) => {
   const [isExpanded, setIsExpanded] = React.useState(false);
+  const [isDragOver, setIsDragOver] = React.useState(false);
   const progress = Math.min(100, Math.round((order.receivedQuantity / order.orderedQuantity) * 100));
 
   return (
@@ -129,11 +132,30 @@ const OrderCard = ({
             </div>
           )}
 
-          <div style={{ marginTop: 4 }}>
-            <Btn size="sm" variant="ghost" onClick={(e: React.MouseEvent) => { e.stopPropagation(); onPickFile(order._id); }} disabled={uploadingOrderId === order._id} style={{ fontSize: 13, width: '100%', justifyContent: 'center', padding: '8px 0' }}>
-              <Icon n="paperclip" s={16} /> 
-              {uploadingOrderId === order._id ? 'מעלה...' : 'צרף תעודת משלוח'}
-            </Btn>
+          <div 
+            style={{ 
+              marginTop: 4, 
+              border: `1px dashed ${isDragOver ? 'var(--accent)' : 'var(--border)'}`, 
+              borderRadius: 8,
+              background: isDragOver ? 'var(--accent-light)' : 'transparent',
+              transition: 'all 0.2s',
+              cursor: 'pointer'
+            }}
+            onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setIsDragOver(true); }}
+            onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); setIsDragOver(false); }}
+            onDrop={(e) => {
+              e.preventDefault(); 
+              e.stopPropagation(); 
+              setIsDragOver(false);
+              const file = e.dataTransfer.files?.[0];
+              if (file) onDropFile(order._id, file);
+            }}
+            onClick={(e: React.MouseEvent) => { e.stopPropagation(); onPickFile(order._id); }}
+          >
+            <div style={{ pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 13, color: 'var(--text1)', padding: '12px 0', opacity: uploadingOrderId === order._id ? 0.6 : 1, fontWeight: 500 }}>
+              <Icon n="upload-cloud" s={16} /> 
+              {uploadingOrderId === order._id ? 'מעלה...' : 'לחץ או גרור תעודת משלוח לכאן'}
+            </div>
           </div>
         </div>
       )}
@@ -286,11 +308,9 @@ export const OrdersTrackingScreen = () => {
     fileInputRef.current?.click();
   };
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    e.target.value = '';
-    if (!file || !projectId || !uploadingOrderId) return;
-
+  const processUpload = async (file: File, orderId: Id<'orders'>) => {
+    if (!projectId) return;
+    setUploadingOrderId(orderId);
     try {
       const uploadUrl = await generateUploadUrl({ projectId });
       const uploadResponse = await fetch(uploadUrl, {
@@ -303,7 +323,7 @@ export const OrdersTrackingScreen = () => {
 
       const { storageId } = await uploadResponse.json() as { storageId: Id<'_storage'> };
       await addDocument({
-        orderId: uploadingOrderId,
+        orderId,
         storageId,
         name: file.name,
       });
@@ -313,6 +333,17 @@ export const OrdersTrackingScreen = () => {
     } finally {
       setUploadingOrderId(null);
     }
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file || !uploadingOrderId) return;
+    await processUpload(file, uploadingOrderId);
+  };
+
+  const handleDropFile = async (orderId: Id<'orders'>, file: File) => {
+    await processUpload(file, orderId);
   };
 
   const handleDeleteDocument = async (orderId: Id<'orders'>, storageId: Id<'_storage'>) => {
@@ -423,6 +454,7 @@ export const OrdersTrackingScreen = () => {
                 }}
                 onDelete={setDeleteConfirmOpen}
                 onPickFile={handlePickFile}
+                onDropFile={handleDropFile}
                 uploadingOrderId={uploadingOrderId}
                 onPreviewDocument={setPreviewDocumentUrl}
                 onDeleteDocument={handleDeleteDocument}
