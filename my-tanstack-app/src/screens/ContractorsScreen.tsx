@@ -489,6 +489,7 @@ export const ContractorsScreen = () => {
   const { loading, error, refetch, mode } = contractorsSource;
   const contractors = contractorsSource.data ?? [];
   const createContractor = useMutation(api.mutations.createContractor);
+  const updateContractor = useMutation(api.mutations.updateContractor);
   const deleteContractor = useMutation(api.mutations.deleteContractor);
   const saveSchedule = useMutation(api.mutations.saveContractorPaymentSchedule);
   const setMilestonePaid = useMutation(api.mutations.setContractorPaymentMilestonePaid);
@@ -496,6 +497,7 @@ export const ContractorsScreen = () => {
   const setContractorPaymentMode = useMutation(api.stages.setContractorPaymentMode);
   const [selectedId, setSelectedId] = React.useState<string | null>(null);
   const [adding, setAdding] = React.useState(false);
+  const [editingContractor, setEditingContractor] = React.useState<Contractor | null>(null);
   const [savingContractor, setSavingContractor] = React.useState(false);
   const [deletingContractor, setDeletingContractor] = React.useState(false);
   const [deleteTarget, setDeleteTarget] = React.useState<Contractor | null>(null);
@@ -531,27 +533,52 @@ export const ContractorsScreen = () => {
 
     setSavingContractor(true);
     try {
-      await createContractor({
-        projectId,
-        name: form.name.trim(),
-        company: form.company.trim() || undefined,
-        role: form.role as any,
-        phone: form.phone.trim() || undefined,
-        email: form.email.trim() || undefined,
-        budget: Number(form.budget) || 0,
-        avatarColor: COLORS[contractors.length % COLORS.length],
-      });
-      setAdding(false);
+      if (editingContractor) {
+        await updateContractor({
+          contractorId: contractorDbId(editingContractor) as any,
+          name: form.name.trim(),
+          company: form.company.trim() || undefined,
+          role: form.role as any,
+          phone: form.phone.trim() || undefined,
+          email: form.email.trim() || undefined,
+          budget: Number(form.budget) || 0,
+        });
+        setEditingContractor(null);
+      } else {
+        await createContractor({
+          projectId,
+          name: form.name.trim(),
+          company: form.company.trim() || undefined,
+          role: form.role as any,
+          phone: form.phone.trim() || undefined,
+          email: form.email.trim() || undefined,
+          budget: Number(form.budget) || 0,
+          avatarColor: COLORS[contractors.length % COLORS.length],
+        });
+        setAdding(false);
+      }
       setForm(emptyForm);
     } catch (err) {
       setFeedback({
         title: "שגיאה",
-        message: err instanceof Error ? err.message : "לא הצלחנו להוסיף את הקבלן. אנא נסו שוב.",
+        message: err instanceof Error ? err.message : "לא הצלחנו לשמור את הקבלן. אנא נסו שוב.",
         type: "error",
       });
     } finally {
       setSavingContractor(false);
     }
+  };
+
+  const openEditModal = (contractor: Contractor) => {
+    setForm({
+      name: contractor.name,
+      company: contractor.company || "",
+      role: contractor.role || "קבלן עד מפתח",
+      phone: contractor.phone || "",
+      email: contractor.email || "",
+      budget: contractor.budget || 0,
+    });
+    setEditingContractor(contractor);
   };
 
   const handleTogglePaid = async (milestone: Milestone, paid: boolean) => {
@@ -680,15 +707,25 @@ export const ContractorsScreen = () => {
             <button onClick={()=>setSelectedId(null)} style={{display:"flex",alignItems:"center",gap:6,background:"none",border:"none",cursor:"pointer",color:"var(--text2)",fontSize:13,padding:0}}>
               <Icon n="arrow-right" s={14}/> חזרה לרשימה
             </button>
-            <Btn
-              size="sm"
-              variant="ghost"
-              onClick={()=>requestDeleteContractor(c)}
-              disabled={deletingContractor || mode !== 'db'}
-              style={{color:"var(--danger)"}}
-            >
-              <Icon n="trash" s={13}/> מחק קבלן
-            </Btn>
+            <div style={{display:"flex",gap:8}}>
+              <Btn
+                size="sm"
+                variant="outline"
+                onClick={() => openEditModal(c)}
+                disabled={mode !== 'db'}
+              >
+                <Icon n="edit-2" s={13}/> עריכה
+              </Btn>
+              <Btn
+                size="sm"
+                variant="ghost"
+                onClick={()=>requestDeleteContractor(c)}
+                disabled={deletingContractor || mode !== 'db'}
+                style={{color:"var(--danger)"}}
+              >
+                <Icon n="trash" s={13}/> מחק
+              </Btn>
+            </div>
           </div>
         <div style={{display:"grid",gridTemplateColumns:"280px 1fr",gap:20}}>
           <div style={{display:"flex",flexDirection:"column",gap:16}}>
@@ -931,6 +968,18 @@ export const ContractorsScreen = () => {
                       <Badge type={c.status}/>
                       <button
                         type="button"
+                        disabled={mode !== 'db'}
+                        onClick={(e)=>{
+                          e.stopPropagation();
+                          openEditModal(c);
+                        }}
+                        style={{width:28,height:28,border:"1px solid var(--border)",borderRadius:6,background:"#fff",display:"flex",alignItems:"center",justifyContent:"center",cursor:mode!=='db'?"not-allowed":"pointer",color:"var(--text1)",opacity:mode!=='db'?0.55:1}}
+                        title="ערוך קבלן"
+                      >
+                        <Icon n="edit-2" s={13}/>
+                      </button>
+                      <button
+                        type="button"
                         disabled={deletingContractor || mode !== 'db'}
                         onClick={(e)=>{
                           e.stopPropagation();
@@ -967,8 +1016,8 @@ export const ContractorsScreen = () => {
           </>
         </div>
       </ScreenBoundary>
-      {adding && (
-        <Modal onClose={()=>setAdding(false)} title="הוספת קבלן חדש" width={520}>
+      {(adding || editingContractor) && (
+        <Modal onClose={()=>{setAdding(false); setEditingContractor(null); setForm(emptyForm);}} title={editingContractor ? "עריכת קבלן" : "הוספת קבלן חדש"} width={520}>
           <div style={{display:"flex",flexDirection:"column",gap:14}}>
             <div>
               <div style={{fontSize:12,color:"var(--text2)",marginBottom:4,fontWeight:600}}>סוג קבלן</div>
@@ -1003,9 +1052,13 @@ export const ContractorsScreen = () => {
               </div>
             </div>
             <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:4}}>
-              <Btn variant="ghost" onClick={()=>setAdding(false)} disabled={savingContractor}>ביטול</Btn>
+              <Btn variant="ghost" onClick={()=>{setAdding(false); setEditingContractor(null); setForm(emptyForm);}} disabled={savingContractor}>ביטול</Btn>
               <Btn onClick={addContractor} disabled={savingContractor || !form.name.trim()}>
-                <Icon n="plus" s={13}/> הוסף קבלן
+                {editingContractor ? (
+                  <>שמור שינויים</>
+                ) : (
+                  <><Icon n="plus" s={13}/> הוסף קבלן</>
+                )}
               </Btn>
             </div>
           </div>

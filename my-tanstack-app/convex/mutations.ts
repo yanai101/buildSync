@@ -274,6 +274,45 @@ export const createContractor = mutation({
   },
 });
 
+export const updateContractor = mutation({
+  args: {
+    contractorId: v.id('contractors'),
+    name: v.string(),
+    company: v.optional(v.string()),
+    role: contractorRoleValidator,
+    phone: v.optional(v.string()),
+    email: v.optional(v.string()),
+    budget: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const contractor = await ctx.db.get(args.contractorId);
+    if (!contractor) throw new Error('Contractor not found');
+
+    await ctx.db.patch(args.contractorId, {
+      name: args.name,
+      company: args.company,
+      role: args.role,
+      phone: args.phone,
+      email: args.email,
+      budget: args.budget,
+    });
+    
+    // If budget changed, sync if paymentMode is 'stage_synced' (budget will redistribute)
+    if (contractor.budget !== args.budget) {
+      const stageLinks = await ctx.db
+        .query('stageContractors')
+        .withIndex('by_contractor', (q) => q.eq('contractorId', args.contractorId))
+        .collect();
+      
+      const isStageSynced = stageLinks.length > 0 && stageLinks.some(link => (link.paymentMode ?? 'stage_synced') === 'stage_synced');
+      
+      if (isStageSynced) {
+        await syncContractorStagePayments(ctx, args.contractorId);
+      }
+    }
+  },
+});
+
 export const addContractorPaymentMilestone = mutation({
   args: {
     contractorId: v.id('contractors'),
