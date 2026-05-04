@@ -776,7 +776,7 @@ export const ContractorsScreen = () => {
               </Btn>
             </div>
           </div>
-        <div style={{display:"grid",gridTemplateColumns:"280px 1fr",gap:20}}>
+        <div className="contractor-detail-layout">
           <div style={{display:"flex",flexDirection:"column",gap:16}}>
             <div className="card" style={{padding:20,textAlign:"center"}}>
               <Avatar letter={c.avatar || c.name[0]} color={c.color} size={64} />

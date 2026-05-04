@@ -455,3 +455,18 @@ body {
     gap: 16px;
   }
 }
+
+/* Contractor Layout */
+.contractor-detail-layout {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 20px;
+}
+
+@media(max-width:768px){
+  .contractor-detail-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+}
