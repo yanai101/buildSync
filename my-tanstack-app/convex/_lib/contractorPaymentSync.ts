@@ -17,17 +17,24 @@ type SyncedPaymentItem = {
 
 const roundPct = (value: number) => Math.round(value * 100) / 100;
 
-const itemKey = (item: Pick<SyncedPaymentItem, 'sourceStageId' | 'sourceStageMilestoneId'>) =>
-  item.sourceStageMilestoneId ? `milestone:${item.sourceStageMilestoneId}` : `stage:${item.sourceStageId}`;
+const itemKey = (item: Pick<SyncedPaymentItem, 'sourceStageId' | 'sourceStageMilestoneId' | 'sourceTaskId'>) =>
+  item.sourceStageMilestoneId
+    ? `milestone:${item.sourceStageMilestoneId}`
+    : item.sourceTaskId
+      ? `task:${item.sourceTaskId}`
+      : `stage:${item.sourceStageId}`;
 
 const milestoneKey = (milestone: {
   sourceStageId?: Id<'stages'>;
   sourceStageMilestoneId?: Id<'stageMilestones'>;
+  sourceTaskId?: Id<'stageTasks'>;
 }) => milestone.sourceStageMilestoneId
   ? `milestone:${milestone.sourceStageMilestoneId}`
-  : milestone.sourceStageId
-    ? `stage:${milestone.sourceStageId}`
-    : '';
+  : milestone.sourceTaskId
+    ? `task:${milestone.sourceTaskId}`
+    : milestone.sourceStageId
+      ? `stage:${milestone.sourceStageId}`
+      : '';
 
 export const hasSyncedStageContractorLinks = async (ctx: DbCtx, stageId: Id<'stages'>) => {
   const links = await ctx.db
@@ -47,6 +54,27 @@ const getStagePaymentItems = async (ctx: DbCtx, stageId: Id<'stages'>): Promise<
     .take(100);
 
   if (milestones.length === 0) {
+    const stageTasks = await ctx.db
+      .query('stageTasks')
+      .withIndex('by_stage', (q) => q.eq('stageId', stageId))
+      .take(200);
+    const requiredTasks = stageTasks
+      .filter((task) => task.required !== false)
+      .sort((a, b) => a.sortOrder - b.sortOrder);
+    if (requiredTasks.length > 0) {
+      const stagePot = Math.max(0, stage.payment.amount || 0);
+      const perTaskWeight = stagePot / requiredTasks.length;
+      return requiredTasks.map((task, index) => ({
+        key: `task:${task._id}`,
+        sourceStageId: stage._id,
+        sourceTaskId: task._id,
+        stageSortOrder: stage.sortOrder,
+        milestoneSortOrder: index,
+        name: `${stage.name} - ${task.name}`,
+        triggerText: `סיום משימה: ${task.name}`,
+        weight: perTaskWeight,
+      }));
+    }
     return [{
       key: `stage:${stage._id}`,
       sourceStageId: stage._id,
@@ -123,6 +151,17 @@ export const getSyncedPaymentReadiness = async (
   const stage = await ctx.db.get(milestone.sourceStageId);
   if (!stage) {
     return { ready: false, reason: 'שלב המקור לא נמצא' };
+  }
+
+  if (milestone.sourceTaskId && !milestone.sourceStageMilestoneId) {
+    const task = await ctx.db.get(milestone.sourceTaskId);
+    if (!task) {
+      return { ready: false, reason: 'משימת המקור לא נמצאה' };
+    }
+    if (!task.done) {
+      return { ready: false, reason: 'המשימה עדיין לא בוצעה' };
+    }
+    return { ready: true, reason: null };
   }
 
   if (milestone.sourceStageMilestoneId) {

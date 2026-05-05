@@ -63,10 +63,11 @@ const stageDbId = (stage: { id?: unknown; _id?: unknown; stageId?: unknown }) =>
 type DraftMilestone = Milestone & { isNew?: boolean };
 
 const clampPct = (pct: number) => Math.max(0, Math.min(100, Math.round(Number.isFinite(pct) ? pct : 0)));
+const roundPct = (value: number) => Math.round(value * 100) / 100;
 
 const withAmounts = (contractor: Contractor, milestones: DraftMilestone[]): DraftMilestone[] => {
   let sumAmount = 0;
-  const totalPct = milestones.reduce((sum, m) => sum + m.pct, 0);
+  const totalPct = roundPct(milestones.reduce((sum, m) => sum + m.pct, 0));
 
   return milestones.map((m, i) => {
     if (i === milestones.length - 1 && totalPct === 100 && contractor.budget > 0) {
@@ -210,8 +211,8 @@ const PaymentSchedule = ({
   const [savingSchedule, setSavingSchedule] = React.useState(false);
 
   const totalPaid = milestones.filter(m=>m.paid).reduce((a,m)=>a+m.amount,0);
-  const totalPct = milestones.filter(m=>m.paid).reduce((a,m)=>a+m.pct,0);
-  const totalPctAll = milestones.reduce((a,m)=>a+m.pct,0);
+  const totalPct = roundPct(milestones.filter(m=>m.paid).reduce((a,m)=>a+m.pct,0));
+  const totalPctAll = roundPct(milestones.reduce((a,m)=>a+m.pct,0));
   const totalAmount = milestones.reduce((a,m)=>a+m.amount,0);
   const scheduleOverBudget = totalPctAll > 100 || totalAmount > contractor.budget;
 
@@ -226,7 +227,7 @@ const PaymentSchedule = ({
 
   const saveSchedule = async (nextMilestones = milestones) => {
     if (locked) return;
-    const nextTotalPct = nextMilestones.reduce((sum, milestone) => sum + milestone.pct, 0);
+    const nextTotalPct = roundPct(nextMilestones.reduce((sum, milestone) => sum + milestone.pct, 0));
     const nextTotalAmount = nextMilestones.reduce((sum, milestone) => sum + milestone.amount, 0);
     if (nextTotalPct > 100 || nextTotalAmount > contractor.budget) return;
     setSavingSchedule(true);
