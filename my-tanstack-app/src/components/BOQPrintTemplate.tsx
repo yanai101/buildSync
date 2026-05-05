@@ -38,6 +38,15 @@ export const BOQPrintTemplate = React.forwardRef<HTMLDivElement, BOQPrintTemplat
     if (!totalCost && itemsGroupedByRoom) {
       calculatedTotal = Object.values(itemsGroupedByRoom).flat().reduce((acc, item) => acc + (item.qty * (item.unitPrice || 0)), 0);
     }
+    let calculatedPaid = 0;
+    if (itemsGroupedByRoom) {
+      calculatedPaid = Object.values(itemsGroupedByRoom).flat().reduce(
+        (acc, item) => acc + (item.paid ? item.qty * (item.unitPrice || 0) : 0),
+        0,
+      );
+    }
+    const paidPctOfTotal = calculatedTotal > 0 ? Math.round((calculatedPaid / calculatedTotal) * 100) : 0;
+    const anyPaid = calculatedPaid > 0;
 
     return (
       <div 
@@ -76,6 +85,15 @@ export const BOQPrintTemplate = React.forwardRef<HTMLDivElement, BOQPrintTemplat
             <div style={{ flex: 1, padding: '16px', background: '#FFF7ED', border: '1px solid #FED7AA', borderRadius: '12px' }}>
               <div style={{ fontSize: '12px', color: '#9A3412', fontWeight: 700, marginBottom: '4px' }}>סה"כ עלות משוערת</div>
               <div style={{ fontSize: '24px', color: '#C2410C', fontWeight: 900 }}>{fmtMoney(calculatedTotal)}</div>
+            </div>
+          )}
+          {anyPaid && (
+            <div style={{ flex: 1, padding: '16px', background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '12px' }}>
+              <div style={{ fontSize: '12px', color: '#166534', fontWeight: 700, marginBottom: '4px' }}>שולם עד כה</div>
+              <div style={{ fontSize: '24px', color: '#15803D', fontWeight: 900 }}>{fmtMoney(calculatedPaid)}</div>
+              {calculatedTotal > 0 && (
+                <div style={{ fontSize: '11px', color: '#166534', marginTop: '4px' }}>{paidPctOfTotal}% מהעלות</div>
+              )}
             </div>
           )}
           {itemsGroupedByCategory && (
@@ -148,6 +166,9 @@ export const BOQPrintTemplate = React.forwardRef<HTMLDivElement, BOQPrintTemplat
            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
              {rooms.filter(r => itemsGroupedByRoom[r.uid] && itemsGroupedByRoom[r.uid].length > 0).map(room => {
                const roomItems = itemsGroupedByRoom[room.uid];
+               const roomSum = roomItems.reduce((acc: number, item: any) => acc + item.qty * (item.unitPrice || 0), 0);
+               const roomPaidSum = roomItems.reduce((acc: number, item: any) => acc + (item.paid ? item.qty * (item.unitPrice || 0) : 0), 0);
+               const roomHasPaid = roomPaidSum > 0;
                return (
                  <div key={room.uid} style={{ breakInside: 'avoid', border: '1px solid #E5E7EB', borderRadius: '8px', overflow: 'hidden' }}>
                     <div style={{ background: '#F3F4F6', padding: '12px 16px', fontWeight: 800, fontSize: '16px', color: '#1F2937', borderBottom: '1px solid #E5E7EB' }}>
@@ -161,11 +182,12 @@ export const BOQPrintTemplate = React.forwardRef<HTMLDivElement, BOQPrintTemplat
                           <th style={{ padding: '8px 16px', textAlign: 'right', color: '#4B5563' }}>מחיר יח'</th>
                           <th style={{ padding: '8px 16px', textAlign: 'right', color: '#4B5563' }}>סה"כ</th>
                           <th style={{ padding: '8px 16px', textAlign: 'right', color: '#4B5563' }}>ספק</th>
+                          <th style={{ padding: '8px 16px', textAlign: 'right', color: '#4B5563' }}>תשלום</th>
                         </tr>
                       </thead>
                       <tbody>
                         {roomItems.map((item: any, i: number) => (
-                          <tr key={i} style={{ borderBottom: i === roomItems.length - 1 ? 'none' : '1px solid #F3F4F6' }}>
+                          <tr key={i} style={{ borderBottom: i === roomItems.length - 1 ? 'none' : '1px solid #F3F4F6', background: item.paid ? '#F0FDF4' : 'transparent' }}>
                             <td style={{ padding: '10px 16px', fontWeight: 600, verticalAlign: 'top' }}>
                               {item.name}
                               {item.spec && (
@@ -184,9 +206,28 @@ export const BOQPrintTemplate = React.forwardRef<HTMLDivElement, BOQPrintTemplat
                             <td style={{ padding: '10px 16px' }}>{fmtMoney(item.unitPrice)}</td>
                             <td style={{ padding: '10px 16px', fontWeight: 700 }}>{fmtMoney(item.qty * item.unitPrice)}</td>
                             <td style={{ padding: '10px 16px', color: '#6B7280' }}>{item.supplier || '-'}</td>
+                            <td style={{ padding: '10px 16px' }}>
+                              {item.paid ? (
+                                <span style={{ display: 'inline-block', padding: '3px 8px', borderRadius: '999px', background: '#DCFCE7', color: '#15803D', fontWeight: 700, fontSize: '11px', whiteSpace: 'nowrap' }}>
+                                  שולם{item.paidAt ? ` · ${item.paidAt}` : ''}
+                                </span>
+                              ) : (
+                                <span style={{ color: '#9CA3AF' }}>—</span>
+                              )}
+                            </td>
                           </tr>
                         ))}
                       </tbody>
+                      <tfoot>
+                        <tr style={{ background: '#F9FAFB', borderTop: '1px solid #E5E7EB' }}>
+                          <td colSpan={3} style={{ padding: '10px 16px', fontSize: '11px', color: '#4B5563', fontWeight: 700 }}>
+                            סה"כ חדר: <span style={{ color: '#111827', fontWeight: 800 }}>{fmtMoney(roomSum)}</span>
+                          </td>
+                          <td colSpan={3} style={{ padding: '10px 16px', fontSize: '11px', textAlign: 'left', fontWeight: 700, color: roomHasPaid ? '#15803D' : '#9CA3AF' }}>
+                            {roomHasPaid ? <>שולם בחדר: <span style={{ fontWeight: 800 }}>{fmtMoney(roomPaidSum)}</span></> : 'אין תשלומים בחדר'}
+                          </td>
+                        </tr>
+                      </tfoot>
                     </table>
                  </div>
                );
