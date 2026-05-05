@@ -303,7 +303,12 @@ export const ProjectSetupScreen = () => {
               <div style={{flex:"1 1 150px"}}>
                 <div style={{fontSize:12,color:"var(--text2)",marginBottom:4,fontWeight:500}}>יחידות דיור / צימרים</div>
                 <div style={{display:"flex",gap:8,alignItems:"center"}}>
-                  <button onClick={()=>setField("housingUnits", Math.max(0, (cfg.housingUnits||0)-1))} style={{width:32,height:32,borderRadius:8,border:"1px solid var(--border)",background:"var(--surface)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><Icon n="minus" s={14}/></button>
+                  <button onClick={()=>{
+                    const oldCount = cfg.housingUnits || 0;
+                    if (oldCount === 0) return;
+                    const removedFloor = -1 - oldCount;
+                    setCfg((c)=> c ? ({...c, housingUnits: oldCount - 1, rooms: (c.rooms || []).filter((r)=>Number(r.floor) !== removedFloor)}) : c);
+                  }} style={{width:32,height:32,borderRadius:8,border:"1px solid var(--border)",background:"var(--surface)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><Icon n="minus" s={14}/></button>
                   <span style={{fontSize:18,fontWeight:700,width:20,textAlign:"center"}}>{cfg.housingUnits || 0}</span>
                   <button onClick={()=>{
                     if (!isProOrPremium && (cfg.housingUnits||0) >= 1) {
