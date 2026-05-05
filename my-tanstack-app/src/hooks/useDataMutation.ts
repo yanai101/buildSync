@@ -65,6 +65,9 @@ export const useDataMutation = (resource: MutationResource) => {
             floors: payload.floors,
             areaSqm: payload.areaSqm,
             budgetTotal: payload.budgetTotal,
+            hasBasement: payload.hasBasement,
+            hasYard: payload.hasYard,
+            housingUnits: payload.housingUnits,
             rooms: payload.rooms
           });
         case 'addExpense':
@@ -97,6 +100,9 @@ export const useDataMutation = (resource: MutationResource) => {
             budgetTotal: payload.budgetTotal,
             startDate: payload.startDate,
             expectedEnd: payload.expectedEnd,
+            hasBasement: payload.hasBasement,
+            hasYard: payload.hasYard,
+            housingUnits: payload.housingUnits,
             ...(payload.floorWastePct !== undefined ? { floorWastePct: payload.floorWastePct } : {}),
           });
         case 'deleteProject':
