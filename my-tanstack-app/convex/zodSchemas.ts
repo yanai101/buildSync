@@ -256,6 +256,8 @@ export const zBoqItem = {
   // Whether this row is "chosen" / active. Locked rows can be toggled off
   // (qty effectively 0) but never deleted. Default = true (enabled).
   isEnabled: z.boolean().optional(),
+  paid: z.boolean().optional(),
+  paidAt: z.string().optional(),
 };
 
 export const zDefectStatus = z.enum(['פתוח', 'בטיפול', 'תוקן', 'אושר']);
@@ -402,6 +404,7 @@ export const zExpense = {
   milestoneId: zid('contractorPaymentMilestones').optional(),
   stageId: zid('stages').optional(),
   stageMilestoneId: zid('stageMilestones').optional(),
+  boqItemId: zid('boqItems').optional(),
 };
 
 export const zTimelineBar = {

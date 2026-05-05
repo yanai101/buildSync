@@ -16,6 +16,8 @@ export interface BOQItem {
   notes?: string;
   status: "pending" | "approved";
   isLocked?: boolean;
+  paid?: boolean;
+  paidAt?: string;
 }
 
 import { useCurrentProject } from '../hooks/useCurrentProject';
@@ -299,6 +301,7 @@ export const BOQScreen = () => {
   const addBoqItem = useMutation(api.mutations.addBoqItem);
   const updateBoqItem = useMutation(api.mutations.updateBoqItem);
   const updateBoqItemStatus = useMutation(api.mutations.updateBoqItemStatus);
+  const setBoqItemPaid = useMutation(api.mutations.setBoqItemPaid);
 
   const initialBoq = dbBoq ?? null;
   const project = (dbProject ?? null) as Project | null;
@@ -361,6 +364,8 @@ export const BOQScreen = () => {
             notes: item.notes,
             status: item.status,
             isLocked: item.isLocked,
+            paid: item.paid,
+            paidAt: item.paidAt,
           });
         });
         setItems(grouped);
@@ -380,6 +385,8 @@ export const BOQScreen = () => {
   const currentRoom = rooms.find((r: Room) => r.uid === room);
   const total = roomItems.reduce((a: number, i: BOQItem)=>a+i.qty*i.unitPrice,0);
   const allTotal = Object.values(items).flat().reduce((a: number, i: BOQItem)=>a+i.qty*i.unitPrice,0);
+  const roomPaid = roomItems.reduce((a: number, i: BOQItem)=>a+(i.paid?i.qty*i.unitPrice:0),0);
+  const allPaid = Object.values(items).flat().reduce((a: number, i: BOQItem)=>a+(i.paid?i.qty*i.unitPrice:0),0);
   const categoryOptions = React.useMemo(
     () => uniqueCategories([
       ...getCatalogForRoom((currentRoom as any)?.type, false).map((item) => item.cat),
@@ -556,6 +563,27 @@ export const BOQScreen = () => {
     }
   };
 
+  const [paidSavingIds, setPaidSavingIds] = React.useState<Set<BOQItem['id']>>(new Set());
+  const togglePaid = async (item: BOQItem) => {
+    const nextPaid = !item.paid;
+    setPaidSavingIds(prev => new Set(prev).add(item.id));
+    try {
+      await setBoqItemPaid({ itemId: item.id as any, paid: nextPaid });
+      patchLocalItem(item.id, {
+        paid: nextPaid,
+        paidAt: nextPaid ? new Date().toISOString().slice(0, 10) : undefined,
+      });
+    } catch (err) {
+      console.error('Failed to update BOQ item paid state', err);
+    } finally {
+      setPaidSavingIds(prev => {
+        const next = new Set(prev);
+        next.delete(item.id);
+        return next;
+      });
+    }
+  };
+
   const cats = [...new Set(roomItems.map((i)=>i.cat))];
 
   if (roleLoading) return <AccessLoading />;
@@ -575,6 +603,8 @@ export const BOQScreen = () => {
           </select>
           <span style={{fontSize:13,color:"var(--text2)"}}>סה"כ חדר: <strong>{fmtMoney(total)}</strong></span>
           <span style={{fontSize:13,color:"var(--text3)"}}>| כלל הבית: <strong>{fmtMoney(allTotal)}</strong></span>
+          <span style={{fontSize:13,color:"var(--success)"}}>| שולם בחדר: <strong>{fmtMoney(roomPaid)}</strong></span>
+          <span style={{fontSize:13,color:"var(--success)"}}>| שולם בכלל הבית: <strong>{fmtMoney(allPaid)}</strong></span>
           <div style={{marginRight:"auto",display:"flex",gap:8}}>
             <Btn size="sm" variant="ghost" onClick={() => (window as any).location.href='/boqwizard'}><Icon n="settings" s={13}/> אשף כמויות</Btn>
             <Btn size="sm" variant="ghost" onClick={handleExportPDF} disabled={exporting}>
@@ -694,9 +724,32 @@ export const BOQScreen = () => {
                           </button>
                         </td>
                         <td style={{textAlign:"left"}}>
-                          <Btn size="sm" variant="ghost" onClick={() => startEditing(i)}>
-                            <Icon n="edit" s={13}/> עריכה
-                          </Btn>
+                          <div style={{display:"flex",gap:6,justifyContent:"flex-end",alignItems:"center",flexWrap:"wrap"}}>
+                            {i.paid ? (
+                              <Btn
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => !paidSavingIds.has(i.id) && togglePaid(i)}
+                                disabled={paidSavingIds.has(i.id)}
+                                style={{color:"var(--success)"}}
+                                title={i.paidAt ? `שולם ב-${i.paidAt}` : 'שולם'}
+                              >
+                                <Icon n="check" s={13}/> שולם{i.paidAt ? ` · ${i.paidAt}` : ''}
+                              </Btn>
+                            ) : i.status === 'approved' ? (
+                              <Btn
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => !paidSavingIds.has(i.id) && togglePaid(i)}
+                                disabled={paidSavingIds.has(i.id)}
+                              >
+                                <Icon n="check" s={13}/> סמן כשולם
+                              </Btn>
+                            ) : null}
+                            <Btn size="sm" variant="ghost" onClick={() => startEditing(i)} disabled={i.paid}>
+                              <Icon n="edit" s={13}/> עריכה
+                            </Btn>
+                          </div>
                         </td>
                       </tr>
                     ))}

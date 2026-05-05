@@ -727,7 +727,109 @@ export const updateBoqItemStatus = mutation({
       throw new Error('BOQ item not found');
     }
 
+    if (args.status === 'pending' && item.paid) {
+      throw new Error('אי אפשר לבטל אישור — הפריט כבר סומן כשולם');
+    }
+
     await ctx.db.patch(args.itemId, { status: args.status });
+  },
+});
+
+const findBoqItemExpense = async (
+  ctx: MutationCtx,
+  projectId: Id<'projects'>,
+  itemId: Id<'boqItems'>,
+) => {
+  return await ctx.db
+    .query('expenses')
+    .withIndex('by_project', (q) => q.eq('projectId', projectId))
+    .filter((q) => q.eq(q.field('boqItemId'), itemId))
+    .first();
+};
+
+const findBudgetCategoryByName = async (
+  ctx: MutationCtx,
+  projectId: Id<'projects'>,
+  name: string,
+) => {
+  if (!name) return null;
+  return await ctx.db
+    .query('budgetCategories')
+    .withIndex('by_project', (q) => q.eq('projectId', projectId))
+    .filter((q) => q.eq(q.field('name'), name))
+    .first();
+};
+
+export const setBoqItemPaid = mutation({
+  args: {
+    itemId: v.id('boqItems'),
+    paid: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    const item = await ctx.db.get(args.itemId);
+    if (!item) {
+      throw new Error('BOQ item not found');
+    }
+
+    if (args.paid && item.status !== 'approved') {
+      throw new Error('אפשר לסמן כשולם רק פריט מאושר');
+    }
+
+    if (args.paid === Boolean(item.paid)) {
+      return;
+    }
+
+    const today = new Date().toISOString().slice(0, 10);
+    const qty = item.userQty ?? item.qty;
+    const amount = Math.max(0, Math.round(qty * item.unitPrice));
+    const existingExpense = await findBoqItemExpense(ctx, item.projectId, args.itemId);
+
+    if (args.paid) {
+      await ctx.db.patch(args.itemId, { paid: true, paidAt: today });
+
+      if (!existingExpense) {
+        const category = await findBudgetCategoryByName(ctx, item.projectId, item.category);
+        await ctx.db.insert('expenses', {
+          projectId: item.projectId,
+          description: `רכש BoQ: ${item.name}`,
+          amount,
+          expenseDate: today,
+          status: 'שולם',
+          categoryId: category?._id,
+          boqItemId: args.itemId,
+        });
+
+        if (category) {
+          await ctx.db.patch(category._id, {
+            spent: category.spent + amount,
+          });
+        }
+      }
+
+      await insertActivity(ctx, {
+        projectId: item.projectId,
+        text: `סומן כשולם פריט BoQ: ${item.name} (${amount.toLocaleString('he-IL')} ₪)`,
+      });
+    } else {
+      await ctx.db.patch(args.itemId, { paid: false, paidAt: undefined });
+
+      if (existingExpense) {
+        await ctx.db.delete(existingExpense._id);
+        if (existingExpense.categoryId) {
+          const category = await ctx.db.get(existingExpense.categoryId);
+          if (category) {
+            await ctx.db.patch(category._id, {
+              spent: Math.max(0, category.spent - existingExpense.amount),
+            });
+          }
+        }
+      }
+
+      await insertActivity(ctx, {
+        projectId: item.projectId,
+        text: `בוטל סימון תשלום עבור פריט BoQ: ${item.name}`,
+      });
+    }
   },
 });
 
