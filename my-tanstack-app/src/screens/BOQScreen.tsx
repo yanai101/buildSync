@@ -601,10 +601,12 @@ export const BOQScreen = () => {
           <select className="bp-input" value={room} onChange={e=>setRoom(e.target.value)} style={{width:"auto",minWidth:180}}>
             {rooms.map((r: Room)=><option key={r.uid} value={r.uid}>{r.name} ({getFloorLabel(r.floor, (project as any)?.housingUnits)})</option>)}
           </select>
-          <span style={{fontSize:13,color:"var(--text2)"}}>סה"כ חדר: <strong>{fmtMoney(total)}</strong></span>
-          <span style={{fontSize:13,color:"var(--text3)"}}>| כלל הבית: <strong>{fmtMoney(allTotal)}</strong></span>
-          <span style={{fontSize:13,color:"var(--success)"}}>| שולם בחדר: <strong>{fmtMoney(roomPaid)}</strong></span>
-          <span style={{fontSize:13,color:"var(--success)"}}>| שולם בכלל הבית: <strong>{fmtMoney(allPaid)}</strong></span>
+          <div style={{display:"flex",gap:12,flexWrap:"wrap",alignItems:"center",rowGap:6}}>
+            <span style={{fontSize:13,color:"var(--text2)"}}>סה"כ חדר: <strong>{fmtMoney(total)}</strong></span>
+            <span style={{fontSize:13,color:"var(--text3)"}}>כלל הבית: <strong>{fmtMoney(allTotal)}</strong></span>
+            <span style={{fontSize:13,color:"var(--success)"}}>שולם בחדר: <strong>{fmtMoney(roomPaid)}</strong></span>
+            <span style={{fontSize:13,color:"var(--success)"}}>שולם בכלל הבית: <strong>{fmtMoney(allPaid)}</strong></span>
+          </div>
           <div style={{marginRight:"auto",display:"flex",gap:8}}>
             <Btn size="sm" variant="ghost" onClick={() => (window as any).location.href='/boqwizard'}><Icon n="settings" s={13}/> אשף כמויות</Btn>
             <Btn size="sm" variant="ghost" onClick={handleExportPDF} disabled={exporting}>
