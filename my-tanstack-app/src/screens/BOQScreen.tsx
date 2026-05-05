@@ -23,6 +23,7 @@ import { useMutation, useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { getAllBoqCatalogCategories, getCatalogForRoom } from '../data/boqCatalog';
 import type { Id } from '../../convex/_generated/dataModel';
+import { getFloorLabel } from './ProjectSetupScreen';
 
 const ITEM_FORM_FIELDS = [
   ["qty", "כמות"],
@@ -570,7 +571,7 @@ export const BOQScreen = () => {
         <div className="page-content">
           <div style={{display:"flex",gap:12,alignItems:"center",marginBottom:20,flexWrap:"wrap"}}>
           <select className="bp-input" value={room} onChange={e=>setRoom(e.target.value)} style={{width:"auto",minWidth:180}}>
-            {rooms.map((r: Room)=><option key={r.uid} value={r.uid}>{r.name}</option>)}
+            {rooms.map((r: Room)=><option key={r.uid} value={r.uid}>{r.name} ({getFloorLabel(r.floor, (project as any)?.housingUnits)})</option>)}
           </select>
           <span style={{fontSize:13,color:"var(--text2)"}}>סה"כ חדר: <strong>{fmtMoney(total)}</strong></span>
           <span style={{fontSize:13,color:"var(--text3)"}}>| כלל הבית: <strong>{fmtMoney(allTotal)}</strong></span>

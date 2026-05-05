@@ -16,6 +16,7 @@ import { useRequireRole } from '../hooks/useRequireRole';
 import { AccessDenied, AccessLoading } from '../components/AccessDenied';
 import type { Id } from '../../convex/_generated/dataModel';
 import { useSubscription } from '../hooks/useSubscription';
+import { getFloorLabel } from './ProjectSetupScreen';
 
 // ── CONSTANTS & CATALOG ───────────────────────────────────────────────────────
 
@@ -789,7 +790,8 @@ export const BOQWizardScreen = () => {
   if (view === 'summary') {
     const aggregated: Record<string, {name: string, cat: string, unit: string, total: number, rooms: {name: string, qty: number, notes?: string}[], notes: string[]}> = {};
     Object.keys(allItems).forEach(ruid => {
-      const rName = rooms.find((r:any)=>r.uid===ruid)?.name || "חדר";
+      const room = rooms.find((r:any)=>r.uid===ruid);
+      const rName = room ? `${room.name} (${getFloorLabel(Number(room.floor), (project as any)?.housingUnits)})` : "חדר";
       allItems[ruid].forEach((item: any) => {
         // Skip locked rows that the user toggled off — they don't contribute
         // to the orderable totals.
@@ -1005,7 +1007,7 @@ export const BOQWizardScreen = () => {
                 <div style={{width:28,height:28,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:800,background:step===i?"var(--accent)":"var(--border)",color:step===i?"#fff":"var(--text3)"}}>{i+1}</div>
                 <div style={{flex:1}}>
                   <div style={{fontSize:14,fontWeight:step===i?700:500,color:step===i?"var(--text1)":"var(--text2)"}}>{r.name}</div>
-                  <div style={{fontSize:12,color:"var(--text3)"}}>{r.size} מ"ר</div>
+                  <div style={{fontSize:12,color:"var(--text3)"}}>{getFloorLabel(r.floor, (project as any)?.housingUnits)} · {r.size} מ"ר</div>
                 </div>
               </div>
             ))}
@@ -1023,7 +1025,7 @@ export const BOQWizardScreen = () => {
               <div>
                 <h2 style={{fontSize:24,fontWeight:800,margin:0}}>{currentRoom.name}</h2>
                 <div style={{ fontSize: 13, color: 'var(--text3)', marginTop: 2 }}>
-                  {currentRoom.name} · {currentRoom.floor === -1 ? 'מרתף' : currentRoom.floor === 0 ? 'חצר / חוץ' : `קומה ${currentRoom.floor}`} · {currentRoom.size} מ"ר
+                  {currentRoom.name} · {getFloorLabel(currentRoom.floor, (project as any)?.housingUnits)} · {currentRoom.size} מ"ר
                 </div>
               </div>
               <Btn onClick={()=>{
