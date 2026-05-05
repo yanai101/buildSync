@@ -78,6 +78,7 @@ export const createProject = mutation({
     floorWastePct: v.optional(v.number()),
     hasBasement: v.optional(v.boolean()),
     hasYard: v.optional(v.boolean()),
+    housingUnits: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -100,6 +101,7 @@ export const createProject = mutation({
       ...(args.floorWastePct !== undefined ? { floorWastePct: args.floorWastePct } : {}),
       ...(args.hasBasement !== undefined ? { hasBasement: args.hasBasement } : {}),
       ...(args.hasYard !== undefined ? { hasYard: args.hasYard } : {}),
+      ...(args.housingUnits !== undefined ? { housingUnits: args.housingUnits } : {}),
     });
   }
 });
@@ -117,6 +119,7 @@ export const saveProjectSetup = mutation({
     budgetTotal: v.optional(v.number()),
     hasBasement: v.optional(v.boolean()),
     hasYard: v.optional(v.boolean()),
+    housingUnits: v.optional(v.number()),
     rooms: v.array(v.any()),
   },
   handler: async (ctx, args) => {
@@ -133,6 +136,7 @@ export const saveProjectSetup = mutation({
       ...(args.budgetTotal !== undefined ? { budgetTotal: args.budgetTotal } : {}),
       ...(args.hasBasement !== undefined ? { hasBasement: args.hasBasement } : {}),
       ...(args.hasYard !== undefined ? { hasYard: args.hasYard } : {}),
+      ...(args.housingUnits !== undefined ? { housingUnits: args.housingUnits } : {}),
     };
 
     await ctx.db.patch(args.projectId, projectPatch);

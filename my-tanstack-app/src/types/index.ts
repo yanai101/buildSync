@@ -89,6 +89,7 @@ export interface Project {
   startDate: string;
   expectedEnd: string;
   floors?: number;
+  housingUnits?: number;
   areaSqm?: number;
   progress: number;
   currentStage: string;

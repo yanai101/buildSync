@@ -114,6 +114,7 @@ export const zProject = {
   floorWastePct: z.number().optional(),
   hasBasement: z.boolean().optional(),
   hasYard: z.boolean().optional(),
+  housingUnits: z.number().optional(),
 };
 
 export const zProjectRoom = {

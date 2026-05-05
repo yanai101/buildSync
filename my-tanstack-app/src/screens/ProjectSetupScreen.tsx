@@ -22,22 +22,28 @@ export interface ProjectConfig {
   floors: number;
   hasBasement?: boolean;
   hasYard?: boolean;
+  housingUnits?: number;
   area: number;
   budgetTotal: number;
   rooms: Room[];
 }
 
-export const getFloorLabel = (f: number) => {
+export const getFloorLabel = (f: number, housingUnits?: number) => {
   if (f === -1) return "מרתף";
   if (f === 0) return "חצר / שטח חוץ";
+  if (f <= -2) {
+    const unitNumber = Math.abs(f) - 1;
+    return `יחידה נפרדת / צימר ${unitNumber}`;
+  }
   return `קומה ${f}`;
 };
 
-export const getFloorList = (floors: number, hasBasement?: boolean, hasYard?: boolean) => {
+export const getFloorList = (floors: number, hasBasement?: boolean, hasYard?: boolean, housingUnits?: number) => {
   const list = [];
   if (hasYard) list.push(0);
   if (hasBasement) list.push(-1);
   for (let i = 1; i <= floors; i++) list.push(i);
+  for (let i = 1; i <= (housingUnits || 0); i++) list.push(-1 - i);
   return list;
 };
 
@@ -67,6 +73,7 @@ export const ProjectSetupScreen = () => {
         floors: project.floors || 1,
         hasBasement: (project as any).hasBasement || false,
         hasYard: (project as any).hasYard || false,
+        housingUnits: (project as any).housingUnits || 0,
         area: project.areaSqm || 0,
         budgetTotal: (project as any).budgetTotal || 0,
         rooms: (project as any).rooms || [],
@@ -120,6 +127,7 @@ export const ProjectSetupScreen = () => {
         floors: Number(cfg.floors),
         hasBasement: Boolean(cfg.hasBasement),
         hasYard: Boolean(cfg.hasYard),
+        housingUnits: Number(cfg.housingUnits) || 0,
         areaSqm: Number(cfg.area) || totalRoomArea,
         budgetTotal: Number(cfg.budgetTotal) || 0,
         rooms: cfg.rooms,
@@ -184,6 +192,7 @@ export const ProjectSetupScreen = () => {
                    ["קומות", cfg.floors],
                    ["מרתף", cfg.hasBasement ? "יש" : "אין"],
                    ["חצר", cfg.hasYard ? "יש" : "אין"],
+                   ["יחידות דיור / צימרים", cfg.housingUnits || 0],
                    ["חדרים", cfg.rooms.length],
                    ["שטח כולל", `${displayArea} מ"ר`]
                  ].map(([k,v]) => (
@@ -292,6 +301,24 @@ export const ProjectSetupScreen = () => {
                 </div>
               </div>
               <div style={{flex:"1 1 150px"}}>
+                <div style={{fontSize:12,color:"var(--text2)",marginBottom:4,fontWeight:500}}>יחידות דיור / צימרים</div>
+                <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                  <button onClick={()=>setField("housingUnits", Math.max(0, (cfg.housingUnits||0)-1))} style={{width:32,height:32,borderRadius:8,border:"1px solid var(--border)",background:"var(--surface)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><Icon n="minus" s={14}/></button>
+                  <span style={{fontSize:18,fontWeight:700,width:20,textAlign:"center"}}>{cfg.housingUnits || 0}</span>
+                  <button onClick={()=>{
+                    if (!isProOrPremium && (cfg.housingUnits||0) >= 1) {
+                      notify({ title: 'שדרוג נדרש', body: 'הוספת יותר מיחידת דיור אחת זמינה במסלול Pro.', kind: 'error' });
+                      return;
+                    }
+                    const newCount = (cfg.housingUnits||0)+1;
+                    setField("housingUnits", newCount);
+                    if (floorRooms(-1 - newCount).length === 0) {
+                      addRoom(-1 - newCount, "bedroom", "חדר צימר/יחידה", 25);
+                    }
+                  }} style={{width:32,height:32,borderRadius:8,border:"1px solid var(--border)",background:"var(--surface)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><Icon n="plus" s={14}/></button>
+                </div>
+              </div>
+              <div style={{flex:"1 1 150px"}}>
                 <div style={{fontSize:12,color:"var(--text2)",marginBottom:4,fontWeight:500}}>שטח כולל (מ"ר)</div>
                 <input className="bp-input" type="number" value={cfg.area} onChange={e=>setField("area",Number(e.target.value))} placeholder={`או חישוב אוטומטי: ${totalRoomArea}`} style={{width:100}}/>
                 {cfg.area === 0 && <div style={{fontSize:11,color:"var(--text3)",marginTop:4}}>מחושב לפי חדרים</div>}
@@ -341,7 +368,7 @@ export const ProjectSetupScreen = () => {
             <div style={{padding:"14px 18px",borderBottom:"1px solid var(--border)",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
               <span style={{fontWeight:700,fontSize:15}}>הגדרת חדרים</span>
             </div>
-            {getFloorList(cfg.floors, cfg.hasBasement, cfg.hasYard).map((f)=>(
+            {getFloorList(cfg.floors, cfg.hasBasement, cfg.hasYard, cfg.housingUnits).map((f)=>(
               <div key={f} style={{padding:"14px 18px 8px",borderBottom:"1px solid var(--border)"}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
                   <div style={{fontSize:12,fontWeight:700,color:"var(--text3)",textTransform:"uppercase",letterSpacing:".5px"}}>{getFloorLabel(f)}</div>
@@ -364,7 +391,7 @@ export const ProjectSetupScreen = () => {
                         <span style={{fontSize:11,color:"var(--text3)",whiteSpace:"nowrap"}}>מ"ר</span>
                       </div>
                       <select className="bp-input" value={r.floor} onChange={e=>setRoom(r.uid,"floor",Number(e.target.value))} style={{width:100,flexShrink:0,fontSize:12}}>
-                        {getFloorList(cfg.floors, cfg.hasBasement, cfg.hasYard).map(fl=><option key={fl} value={fl}>{getFloorLabel(fl)}</option>)}
+                        {getFloorList(cfg.floors, cfg.hasBasement, cfg.hasYard, cfg.housingUnits).map(fl=><option key={fl} value={fl}>{getFloorLabel(fl, cfg.housingUnits)}</option>)}
                       </select>
                       <button onClick={()=>removeRoom(r.uid)} style={{background:"none",border:"none",cursor:"pointer",color:"var(--text3)",padding:4,display:"flex",flexShrink:0}}>
                         <Icon n="trash" s={14}/>
@@ -412,7 +439,7 @@ export const ProjectSetupScreen = () => {
               </div>
               <div style={{flex:"1 1 250px"}}>
                 <div style={{fontSize:12,fontWeight:700,color:"var(--text3)",marginBottom:10,textTransform:"uppercase",letterSpacing:".5px"}}>מבנה הבית</div>
-                {[["קומות",cfg.floors],["מרתף",cfg.hasBasement?"יש":"אין"],["חצר",cfg.hasYard?"יש":"אין"],["חדרים",(cfg.rooms || []).length],["שטח כולל",`${displayArea} מ"ר`]].map(([k,v])=>(
+                {[["קומות",cfg.floors],["מרתף",cfg.hasBasement?"יש":"אין"],["חצר",cfg.hasYard?"יש":"אין"],["יחידות דיור / צימרים",cfg.housingUnits||0],["חדרים",(cfg.rooms || []).length],["שטח כולל",`${displayArea} מ"ר`]].map(([k,v])=>(
                   <div key={k} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:"1px solid var(--border)",fontSize:13}}>
                     <span style={{color:"var(--text2)"}}>{k}</span><span style={{fontWeight:600}}>{v as any}</span>
                   </div>
