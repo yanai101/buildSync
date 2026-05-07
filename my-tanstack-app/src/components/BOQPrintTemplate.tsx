@@ -235,6 +235,13 @@ export const BOQPrintTemplate = React.forwardRef<HTMLDivElement, BOQPrintTemplat
            </div>
         )}
 
+        {anyPaid && (
+          <div style={{ marginTop: '32px', padding: '14px 18px', background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', breakInside: 'avoid' }}>
+            <span style={{ fontSize: '13px', color: '#166534', fontWeight: 700 }}>סה"כ שולם עד כה</span>
+            <span style={{ fontSize: '20px', color: '#15803D', fontWeight: 900 }}>{fmtMoney(calculatedPaid)}</span>
+          </div>
+        )}
+
         {/* Footer */}
         <div style={{ marginTop: '40px', paddingTop: '20px', borderTop: '1px solid #E5E7EB', textAlign: 'center', fontSize: '10px', color: '#9CA3AF' }}>
           מסמך זה הופק אוטומטית באמצעות מערכת BuildSync. לפרטים נוספים: support@buildsync.co.il
