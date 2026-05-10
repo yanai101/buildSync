@@ -18,8 +18,8 @@ export function useOnboardingTour() {
         {
           element: '#tour-nav-projects',
           popover: {
-            title: 'ברוכים הבאים ל-BuildSync! 🎉',
-            description: 'כאן תוכלו ליצור פרויקטים חדשים ולעבור בין הפרויקטים הפעילים שלכם.',
+            title: 'שלב 1: בחירת או יצירת פרויקט',
+            description: 'צרו פרויקט חדש או בחרו פרויקט קיים מתוך הרשימה, ורכזו בו את כל המידע הרלוונטי בצורה מסודרת.',
             side: 'left',
             align: 'start'
           }
@@ -27,17 +27,17 @@ export function useOnboardingTour() {
         {
           element: '#tour-nav-setup',
           popover: {
-            title: 'הגדרות בית',
-            description: 'בשלב הראשון, מגדירים את מבנה הבית ואת רשימת החדרים עבור הפרויקט.',
+            title: 'שלב 2: הגדרת הבית',
+            description: 'הגדירו את הבית שלכם: הוסיפו קומות, חדרים ויחידות דיור כדי לבנות את התשתית לפרויקט כולו.',
             side: 'left',
             align: 'start'
           }
         },
         {
-          element: '#tour-nav-stages',
+          element: '#tour-nav-contractors',
           popover: {
-            title: 'שלבי בנייה וקבלנים',
-            description: 'כאן תוכלו לנהל את התקדמות הבנייה, להגדיר קבלנים ולעקוב אחרי התשלומים לכל שלב.',
+            title: 'שלב 3: הוספת קבלנים וצוות',
+            description: 'הוסיפו קבלנים, מפקחים ובעלי מקצוע לפרויקט. נהלו את ההסכמים ואנשי הקשר שלהם בקלות.',
             side: 'left',
             align: 'start'
           }
@@ -45,8 +45,17 @@ export function useOnboardingTour() {
         {
           element: '#tour-nav-boqwizard',
           popover: {
-            title: 'אשף כמויות',
-            description: 'אשף חכם שיעזור לכם לייצר אוטומטית רשימת קניות (כתב כמויות) המבוססת על החדרים שהגדרתם.',
+            title: 'שלב 4: אשף כמויות (BOQ)',
+            description: 'השתמשו באשף כמויות חכם כדי ליצור אוטומטית רשימות קניות מבוססות על החדרים שהגדרתם.',
+            side: 'left',
+            align: 'start'
+          }
+        },
+        {
+          element: '#tour-nav-orders',
+          popover: {
+            title: 'שלב 5: מעקב הזמנות',
+            description: 'עקבו אחר כל ההזמנות שלכם במקום אחד. עדכנו סטטוס משלוחים, ספקים והעלו קבלות רכישה.',
             side: 'left',
             align: 'start'
           }
@@ -54,8 +63,8 @@ export function useOnboardingTour() {
         {
           element: '#tour-nav-budget',
           popover: {
-            title: 'ניהול תקציב',
-            description: 'מעקב מדויק אחר כל ההוצאות הפרויקט שלכם מול התקציב שהגדרתם.',
+            title: 'שלב 6: ניהול תקציב',
+            description: 'נהלו את התקציב שלכם בזמן אמת ושלטו בהוצאות כדי למנוע חריגות מהתקנון.',
             side: 'left',
             align: 'start'
           }
@@ -63,8 +72,17 @@ export function useOnboardingTour() {
         {
           element: '#tour-nav-quotes',
           popover: {
-            title: 'הצעות מחיר',
-            description: 'כאן תוכלו לרכז ולהשוות הצעות מחיר מספקים שונים בצורה מסודרת.',
+            title: 'השוואת הצעות מחיר',
+            description: 'בנוסף, תוכלו לרכז ולהשוות הצעות מחיר מספקים שונים לפני שאתם סוגרים עסקה.',
+            side: 'left',
+            align: 'start'
+          }
+        },
+        {
+          element: '#tour-nav-daily-logs',
+          popover: {
+            title: 'שלב 7: יומן עבודה ותיעוד',
+            description: 'תעדו את התקדמות הפרויקט ברמה היומית. הוסיפו תמונות, הערות שטח ומלאו צ\'קליסטים מקצועיים.',
             side: 'left',
             align: 'start'
           }
@@ -72,7 +90,7 @@ export function useOnboardingTour() {
         {
           element: '#tour-user-menu',
           popover: {
-            title: 'הגדרות אישיות',
+            title: 'הכל מוכן! יוצאים לדרך',
             description: 'כאן תוכלו לשנות את פרטי החשבון שלכם או להפעיל את המדריך הזה שוב מתי שתרצו. שיהיה בהצלחה!',
             side: 'bottom',
             align: 'end'

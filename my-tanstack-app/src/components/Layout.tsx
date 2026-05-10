@@ -4,6 +4,7 @@ import * as React from 'react'
 import { Link, useNavigate, useRouterState, Outlet } from '@tanstack/react-router'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Icon, Btn } from './Shared'
+import { WelcomeOnboardingModal } from './WelcomeOnboardingModal'
 import { useCurrentProject } from '~/hooks/useCurrentProject'
 import { useConvexAuth, useQuery, useMutation } from 'convex/react'
 import { useAuthActions } from '@convex-dev/auth/react'
@@ -98,6 +99,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const { startTour } = useOnboardingTour()
   const dbNotes = useQuery(api.queries.listNotes, project?._id ? { projectId: project._id } : "skip")
   const unreadNotesCount = dbNotes?.filter(n => !n.resolved).length || 0;
+
+  const [showWelcomeModal, setShowWelcomeModal] = React.useState(false);
 
   const COLLAPSED_KEY = 'buildsync:sidebar-collapsed-sections'
   const [collapsedSections, setCollapsedSections] = React.useState<Set<string>>(new Set())
@@ -207,19 +210,23 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     if (typeof window === 'undefined' || isLoading || isProjectLoading) return;
     if (isAuthenticated && !isPublicRoute(currentPath)) {
-      // If user has 0 projects, wait until they are actually on /projects page so the button is mounted
       if (projects.length === 0 && currentPath !== '/projects') return;
 
-      const tourCompleted = window.localStorage.getItem('buildsync:tour_completed');
-      if (!tourCompleted) {
-        window.localStorage.setItem('buildsync:tour_completed', 'true');
-        // Small delay to ensure DOM is ready and page transitioned
-        setTimeout(() => {
-          startTour();
-        }, 500);
+      const onboardingCompleted = window.localStorage.getItem('buildsync:welcome_onboarding_completed');
+      if (!onboardingCompleted) {
+        setShowWelcomeModal(true);
       }
     }
-  }, [isAuthenticated, isLoading, isProjectLoading, currentPath, startTour, projects.length]);
+  }, [isAuthenticated, isLoading, isProjectLoading, currentPath, projects.length]);
+
+  const handleCloseWelcomeModal = () => {
+    setShowWelcomeModal(false);
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('buildsync:welcome_onboarding_completed', 'true');
+      // Set old tour to true so it doesn't pop up as well
+      window.localStorage.setItem('buildsync:tour_completed', 'true');
+    }
+  };
 
   if (isPublicRoute(currentPath)) {
     return <>{children}</>
@@ -703,6 +710,17 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <WelcomeOnboardingModal 
+        isOpen={showWelcomeModal} 
+        onClose={handleCloseWelcomeModal} 
+        onStartTour={() => {
+          handleCloseWelcomeModal();
+          setTimeout(() => {
+            startTour();
+          }, 400);
+        }}
+      />
     </>
   )
 }
