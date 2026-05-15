@@ -452,7 +452,7 @@ export function SuperAdminScreen() {
                   </tr>
                 </thead>
                 <tbody>
-                  {cleanupCandidates.map((c) => (
+                  {cleanupCandidates.map((c: any) => (
                     <tr key={c.project._id} style={{ borderBottom: '1px solid var(--border)' }}>
                       <td style={{ padding: 12, fontWeight: 'bold' }}>{c.project.name}</td>
                       <td style={{ padding: 12 }}>{c.ownerName} ({c.ownerEmail})</td>
