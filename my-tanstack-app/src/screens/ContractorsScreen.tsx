@@ -10,6 +10,107 @@ import { useCurrentProject } from '../hooks/useCurrentProject';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import type { Id } from '../../convex/_generated/dataModel';
+import { useProjectFileUploader } from '../hooks/useProjectFileUploader';
+
+const LockPaymentModal = ({
+  milestone,
+  onConfirm,
+  onClose,
+  projectId,
+  contractorId,
+}: {
+  milestone: Milestone;
+  onConfirm: (fileIds: Id<'projectFiles'>[]) => Promise<void>;
+  onClose: () => void;
+  projectId: Id<'projects'>;
+  contractorId: Id<'contractors'>;
+}) => {
+  const [files, setFiles] = React.useState<{ file: File; id?: Id<'projectFiles'>; progress: number }[]>([]);
+  const [uploading, setUploading] = React.useState(false);
+  const [saving, setSaving] = React.useState(false);
+  const uploadProjectFile = useProjectFileUploader();
+
+  const handleFilesSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files?.length) return;
+    const newFiles = Array.from(e.target.files).map(file => ({ file, progress: 0 }));
+    setFiles(prev => [...prev, ...newFiles]);
+    setUploading(true);
+
+    const updatedFiles = [...files, ...newFiles];
+    
+    for (const item of newFiles) {
+      try {
+        const { fileId } = await uploadProjectFile({
+          projectId,
+          file: item.file,
+          usage: 'receipt',
+          kind: item.file.type.startsWith('image/') ? 'image' : 'document',
+          contractorId,
+        });
+        const index = updatedFiles.findIndex(f => f.file === item.file);
+        if (index !== -1) {
+          updatedFiles[index].id = fileId;
+          updatedFiles[index].progress = 100;
+          setFiles([...updatedFiles]);
+        }
+      } catch (err) {
+        console.error("Failed to upload file", err);
+      }
+    }
+    setUploading(false);
+  };
+
+  const handleConfirm = async () => {
+    setSaving(true);
+    const fileIds = files.map(f => f.id).filter((id): id is Id<'projectFiles'> => id !== undefined);
+    try {
+      await onConfirm(fileIds);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Modal title="נעילת תשלום" onClose={onClose}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div style={{ fontSize: 13, color: 'var(--text2)' }}>
+          האם ברצונך לנעול את התשלום "{milestone.name}"?
+          <br />לאחר הנעילה לא ניתן יהיה לערוך או למחוק את התשלום.
+        </div>
+        
+        <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: 16 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8 }}>צירוף מסמכים (רשות)</div>
+          <div style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 12 }}>
+            מומלץ לצרף חשבונית מס, קבלה או תצלום של הצ'ק כהוכחת תשלום. התמונות יעברו דחיסה אוטומטית.
+          </div>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {files.map((f, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 12, background: '#F9FAFB', padding: '6px 10px', borderRadius: 6 }}>
+                <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: 200 }}>{f.file.name}</span>
+                {f.progress < 100 ? (
+                  <span style={{ color: 'var(--text3)' }}>מעלה...</span>
+                ) : (
+                  <span style={{ color: 'var(--success)', fontWeight: 700 }}><Icon n="check" s={12}/> הועלה</span>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 12, padding: '10px 0', border: '1px dashed var(--border)', borderRadius: 6, cursor: 'pointer', color: 'var(--accent)', fontWeight: 700, fontSize: 13 }}>
+            <Icon n="upload" s={14}/> בחר קבצים / צלם
+            <input type="file" multiple accept="image/*,.pdf" style={{ display: 'none' }} onChange={handleFilesSelected} disabled={uploading || saving} />
+          </label>
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 10 }}>
+          <Btn variant="ghost" onClick={onClose} disabled={saving}>ביטול</Btn>
+          <Btn onClick={handleConfirm} disabled={uploading || saving}>{saving ? "נועל..." : "אשר ונעול תשלום"}</Btn>
+        </div>
+      </div>
+    </Modal>
+  );
+};
 
 const DEFAULT_SCHEDULE = [
   {name:"מקדמה לפני התחלה", pct:30, triggerText:"לפני תחילת עבודה"},
@@ -142,6 +243,7 @@ const paymentScheduleKey = (contractor: Contractor) =>
       milestone.amount,
       milestone.paid ? 'paid' : 'pending',
       milestone.readyToPay === false ? milestone.lockedReason ?? 'locked' : 'ready',
+      milestone.isLocked ? 'locked' : 'unlocked',
     ].join(':')),
   ].join('|');
 
@@ -221,12 +323,14 @@ const PaymentSchedule = ({
   onTogglePaid,
   onSaveSchedule,
   onLock,
+  onViewFile,
   locked,
 }: {
   contractor: Contractor;
   onTogglePaid: (milestone: Milestone, paid: boolean) => Promise<void>;
   onSaveSchedule: (contractor: Contractor, milestones: DraftMilestone[]) => Promise<void>;
   onLock?: (milestoneId: string) => Promise<void>;
+  onViewFile?: (file: { url: string; name: string }) => void;
   locked?: boolean;
 }) => {
   const sourceMilestones = React.useMemo(() => normalizeMilestones(contractor), [contractor]);
@@ -421,8 +525,17 @@ const PaymentSchedule = ({
       <td>
         <div style={{ display: 'flex', gap: 4 }}>
         {m.isLocked ? (
-          <div style={{ padding: "6px 8px", color: "var(--text2)", display: "flex", alignItems: "center" }}>
+          <div style={{ padding: "6px 8px", color: "var(--text2)", display: "flex", alignItems: "center", gap: 8 }}>
             <Icon n="lock" s={14}/>
+            {m.files && m.files.length > 0 && (
+              <div style={{ display: 'flex', gap: 4 }}>
+                {m.files.map(f => (
+                  <button key={f.id} onClick={() => onViewFile?.({ url: f.url, name: f.name })} title={f.name} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, background: '#EEF2FF', color: '#4F46E5', borderRadius: 4, border: 'none', cursor: 'pointer' }}>
+                    <Icon n="file-text" s={12}/>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         ) : (
           <>
@@ -430,7 +543,7 @@ const PaymentSchedule = ({
               <Btn
                 size="sm"
                 variant="ghost"
-                disabled={savingSchedule || locked}
+                disabled={savingSchedule}
                 onClick={() => onLock(m.id)}
                 title="נעל תשלום מעריכה או מחיקה"
               >
@@ -575,8 +688,11 @@ const PaymentSchedule = ({
   );
 };
 
+import { useSearch } from '@tanstack/react-router';
+
 export const ContractorsScreen = () => {
   const { projectId } = useCurrentProject();
+  const search = useSearch({ from: '/contractors', shouldThrow: false }) as { contractorId?: string } | undefined;
   const dbContractors = useQuery(api.queries.listContractors, projectId ? { projectId } : "skip");
   const dbStages = useQuery(api.queries.listStages, projectId ? { projectId } : "skip");
   const contractorsSource = useDataSource<Contractor[]>('contractors', { db: dbContractors as any });
@@ -590,7 +706,7 @@ export const ContractorsScreen = () => {
   const lockPaymentMilestone = useMutation(api.mutations.lockContractorPaymentMilestone);
   const setContractorStages = useMutation(api.stages.setContractorStages);
   const setContractorPaymentMode = useMutation(api.stages.setContractorPaymentMode);
-  const [selectedId, setSelectedId] = React.useState<string | null>(null);
+  const [selectedId, setSelectedId] = React.useState<string | null>(search?.contractorId ?? null);
   const [adding, setAdding] = React.useState(false);
   const [editingContractor, setEditingContractor] = React.useState<Contractor | null>(null);
   const [savingContractor, setSavingContractor] = React.useState(false);
@@ -604,13 +720,20 @@ export const ContractorsScreen = () => {
   const [savingStageLinks, setSavingStageLinks] = React.useState(false);
   const [savingPaymentMode, setSavingPaymentMode] = React.useState(false);
   const [form, setForm] = React.useState<ContractorForm>(emptyForm);
+  const [viewFile, setViewFile] = React.useState<{ url: string; name: string } | null>(null);
 
   const selected = contractors.find(c => String(c.id) === selectedId || String(c._id) === selectedId) ?? null;
   const stages = (dbStages ?? []) as any[];
 
   React.useEffect(() => {
-    if (selectedId && !selected) setSelectedId(null);
-  }, [selected, selectedId]);
+    if (search?.contractorId) {
+      setSelectedId(search.contractorId);
+    }
+  }, [search?.contractorId]);
+
+  React.useEffect(() => {
+    if (selectedId && !selected && !loading && contractors.length > 0) setSelectedId(null);
+  }, [selected, selectedId, loading, contractors.length]);
 
   const addContractor = async () => {
     if (!projectId || !form.name.trim()) return;
@@ -726,11 +849,11 @@ export const ContractorsScreen = () => {
     setLockTarget(milestoneId);
   };
 
-  const confirmLockPayment = async () => {
+  const confirmLockPayment = async (fileIds?: Id<'projectFiles'>[]) => {
     if (mode !== 'db' || !lockTarget) return;
     setLockingPayment(true);
     try {
-      await lockPaymentMilestone({ milestoneId: lockTarget as any });
+      await lockPaymentMilestone({ milestoneId: lockTarget as any, ...(fileIds?.length ? { fileIds } : {}) });
       setLockTarget(null);
     } catch (err) {
       setFeedback({
@@ -1033,6 +1156,7 @@ export const ContractorsScreen = () => {
               onTogglePaid={handleTogglePaid}
               onSaveSchedule={handleSaveSchedule}
               onLock={handleLockPayment}
+              onViewFile={setViewFile}
             />
             {projectId && c._id && (
               <ContractorNotesAndDocs
@@ -1059,18 +1183,19 @@ export const ContractorsScreen = () => {
             onClose={() => savingPayment ? undefined : setPendingPayment(null)}
           />
         )}
-        {lockTarget && (
-          <ConfirmDialog
-            title="נעילת תשלום"
-            message="האם לנעול תשלום זה? לא יהיה ניתן לערוך או למחוק אותו לאחר הנעילה."
-            confirmText={lockingPayment ? "נועל..." : "אשר נעילה"}
-            cancelText="ביטול"
-            loading={lockingPayment}
-            type="warning"
-            onConfirm={confirmLockPayment}
-            onClose={() => lockingPayment ? undefined : setLockTarget(null)}
-          />
-        )}
+        {lockTarget && selected && (() => {
+          const m = selected.milestones?.find(m => String(m.id) === lockTarget || String((m as any)._id) === lockTarget);
+          if (!m) return null;
+          return (
+            <LockPaymentModal
+              milestone={m}
+              projectId={projectId as Id<'projects'>}
+              contractorId={contractorDbId(selected) as Id<'contractors'>}
+              onConfirm={confirmLockPayment}
+              onClose={() => setLockTarget(null)}
+            />
+          );
+        })()}
         </div>
       </ScreenBoundary>
       {contractorModal}
@@ -1089,6 +1214,20 @@ export const ContractorsScreen = () => {
           onConfirm={confirmDeleteContractor}
           onClose={() => deletingContractor ? undefined : setDeleteTarget(null)}
         />
+      )}
+      {viewFile && (
+        <Modal title={viewFile.name} onClose={() => setViewFile(null)}>
+          <div style={{ height: '70vh', minHeight: 400, width: '100%', position: 'relative' }}>
+            <iframe 
+              src={viewFile.url} 
+              style={{ width: '100%', height: '100%', border: 'none', borderRadius: 8 }}
+              title={viewFile.name}
+            />
+          </div>
+          <div style={{ marginTop: 12, display: 'flex', justifyContent: 'center' }}>
+            <Btn variant="ghost" onClick={() => setViewFile(null)}>סגור</Btn>
+          </div>
+        </Modal>
       )}
       {feedback && (
         <FeedbackModal

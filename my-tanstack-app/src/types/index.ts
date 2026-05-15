@@ -27,6 +27,7 @@ export interface Milestone {
   readyToPay?: boolean;
   lockedReason?: string | null;
   isLocked?: boolean;
+  files?: Array<{ id: string; url: string; name: string }>;
 }
 
 export interface Payment {

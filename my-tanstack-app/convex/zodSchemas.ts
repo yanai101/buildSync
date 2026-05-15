@@ -228,6 +228,7 @@ export const zContractorPaymentMilestone = {
   sourceStageMilestoneId: zid('stageMilestones').optional(),
   sourceTaskId: zid('stageTasks').optional(),
   isLocked: z.boolean().optional(),
+  fileIds: z.array(zid('projectFiles')).optional(),
 };
 
 export const zBoqItem = {

@@ -169,6 +169,33 @@ export const toggleTask = mutation({
       if (linkedContractors.length === 0) {
         throw new Error('אי אפשר לסמן משימות — לא קושר קבלן לשלב');
       }
+    } else {
+      const stage = await ctx.db.get(task.stageId);
+      if (stage && stage.payment?.status === 'paid') {
+        throw new Error('אי אפשר לבטל משימה בשלב שכבר שולם');
+      }
+      const taskLinks = await ctx.db
+        .query('stageMilestoneTasks')
+        .withIndex('by_task', (q) => q.eq('taskId', args.taskId))
+        .collect();
+      
+      for (const link of taskLinks) {
+        const milestone = await ctx.db.get(link.milestoneId);
+        if (milestone && (milestone.status === 'paid' || milestone.isLocked)) {
+          throw new Error('אי אפשר לבטל משימה שכבר שולמה או ננעלה במסגרת אבן דרך');
+        }
+      }
+      
+      const syncedMilestones = await ctx.db
+        .query('contractorPaymentMilestones')
+        .filter(q => q.eq(q.field('sourceTaskId'), args.taskId))
+        .collect();
+        
+      for (const milestone of syncedMilestones) {
+        if (milestone.paid || milestone.isLocked) {
+          throw new Error('אי אפשר לבטל משימה שכבר שולמה או ננעלה בחשבון הקבלן');
+        }
+      }
     }
 
     await ctx.db.patch(args.taskId, { done: args.done });
@@ -529,6 +556,7 @@ export const setContractorPaymentMilestonePaid = mutation({
 export const lockContractorPaymentMilestone = mutation({
   args: {
     milestoneId: v.id('contractorPaymentMilestones'),
+    fileIds: v.optional(v.array(v.id('projectFiles'))),
   },
   handler: async (ctx, args) => {
     const milestone = await ctx.db.get(args.milestoneId);
@@ -542,6 +570,7 @@ export const lockContractorPaymentMilestone = mutation({
 
     await ctx.db.patch(args.milestoneId, {
       isLocked: true,
+      ...(args.fileIds && args.fileIds.length > 0 ? { fileIds: args.fileIds } : {}),
     });
   },
 });

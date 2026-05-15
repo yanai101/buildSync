@@ -110,6 +110,7 @@ export const listStages = query({
         role: contractor.role,
         company: contractor.company ?? '',
         budget: contractor.budget,
+        paid: contractor.paid,
         avatar: contractor.avatarLetter ?? contractor.name[0] ?? '',
         color: contractor.avatarColor ?? '#E07A38',
         paymentMode: contractorLinks.find((link) => link.contractorId === contractor._id)?.paymentMode ?? 'stage_synced',
@@ -469,6 +470,12 @@ export const listContractors = query({
           .sort((a, b) => a.sortOrder - b.sortOrder)
           .map(async (milestone) => {
             const readiness = await getSyncedPaymentReadiness(ctx, milestone);
+            const files = milestone.fileIds ? await Promise.all(milestone.fileIds.map(async (fileId) => {
+              const file = await ctx.db.get(fileId);
+              if (!file) return null;
+              const url = await ctx.storage.getUrl(file.storageId);
+              return url ? { id: file._id, url, name: file.originalName } : null;
+            })) : [];
             return {
               ...milestone,
               id: milestone._id,
@@ -481,6 +488,7 @@ export const listContractors = query({
               sourceTaskId: milestone.sourceTaskId,
               readyToPay: readiness.ready,
               lockedReason: readiness.reason,
+              files: files.filter((f): f is NonNullable<typeof f> => f !== null),
             };
           })),
       };

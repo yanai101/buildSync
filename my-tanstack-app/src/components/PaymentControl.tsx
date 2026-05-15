@@ -32,13 +32,14 @@ export const PAYMENT_STATUS = {
 
 
 // ── Simple states — what the user actually sees ──────────────────────────────
-const SIMPLE = {
+const SIMPLE: Record<string, { label: string, bg: string, fg: string, dot: string }> = {
   not_started: { label: 'לא התחיל',     bg: '#F1F5F9', fg: '#64748B', dot: '#94A3B8' },
   working:     { label: 'עדיין לא מוכן', bg: '#F3F4F6', fg: '#4B5563', dot: '#9CA3AF' },
   ready:       { label: 'מוכן לתשלום',   bg: '#D1FAE5', fg: '#065F46', dot: '#10B981' },
   paid:        { label: 'שולם',          bg: '#065F46', fg: '#FFFFFF', dot: '#10B981' },
   issue:       { label: 'מחלוקת',        bg: '#FEE2E2', fg: '#991B1B', dot: '#EF4444' },
   locked:      { label: 'בהמשך',         bg: '#F9FAFB', fg: '#9CA3AF', dot: '#D1D5DB' },
+  waiting_payment: { label: 'ממתין לתשלום', bg: '#FFFBEB', fg: '#92400E', dot: '#F59E0B' },
 };
 
 const toSimple = (status: string) => {
@@ -47,6 +48,7 @@ const toSimple = (status: string) => {
   if (status === 'draft')    return 'not_started';
   if (status === 'ready')    return 'ready';
   if (status === 'locked')   return 'locked';
+  if (status === 'waiting_payment') return 'waiting_payment';
   return 'working';
 };
 

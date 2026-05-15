@@ -10,6 +10,13 @@ function GuardedContractors() {
   return <ContractorsScreen />
 }
 
+import { z } from 'zod';
+
 export const Route = createFileRoute('/contractors')({
+  validateSearch: (search: Record<string, unknown>) => {
+    return {
+      contractorId: search.contractorId as string | undefined,
+    }
+  },
   component: GuardedContractors,
 })
