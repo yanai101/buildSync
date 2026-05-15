@@ -42,6 +42,8 @@ export const PATHS: Record<string, string[]> = {
   lock:["M5 11h14a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2v-8a2 2 0 012-2z","M7 11V7a5 5 0 0110 0v4"],
   search:["M11 19a8 8 0 100-16 8 8 0 000 16z","M21 21l-4.35-4.35"],
   wand:["M15 4V2","M15 16v-2","M8 9h2","M20 9h2","M17.8 11.8l1.4 1.4","M17.8 6.2l1.4-1.4","M12.2 6.2l-1.4-1.4","M2 22l7.5-7.5"],
+  "pie-chart":["M21.21 15.89A10 10 0 1 1 8 2.83","M22 12A10 10 0 0 0 12 2v10z"],
+  "maximize-2":["M15 3h6v6","M9 21H3v-6","M21 3l-7 7","M3 21l7-7"],
 };
 
 export const Icon = ({n, s=18, c="currentColor"}: any) => (

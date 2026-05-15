@@ -30,6 +30,7 @@ import { Route as ChecklistsRouteImport } from './routes/checklists'
 import { Route as BudgetRouteImport } from './routes/budget'
 import { Route as BoqwizardRouteImport } from './routes/boqwizard'
 import { Route as BoqRouteImport } from './routes/boq'
+import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as AccountRouteImport } from './routes/account'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as JoinCodeRouteImport } from './routes/join.$code'
@@ -139,6 +140,11 @@ const BoqRoute = BoqRouteImport.update({
   path: '/boq',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AnalyticsRoute = AnalyticsRouteImport.update({
+  id: '/analytics',
+  path: '/analytics',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AccountRoute = AccountRouteImport.update({
   id: '/account',
   path: '/account',
@@ -158,6 +164,7 @@ const JoinCodeRoute = JoinCodeRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/account': typeof AccountRoute
+  '/analytics': typeof AnalyticsRoute
   '/boq': typeof BoqRoute
   '/boqwizard': typeof BoqwizardRoute
   '/budget': typeof BudgetRoute
@@ -184,6 +191,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/account': typeof AccountRoute
+  '/analytics': typeof AnalyticsRoute
   '/boq': typeof BoqRoute
   '/boqwizard': typeof BoqwizardRoute
   '/budget': typeof BudgetRoute
@@ -211,6 +219,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/account': typeof AccountRoute
+  '/analytics': typeof AnalyticsRoute
   '/boq': typeof BoqRoute
   '/boqwizard': typeof BoqwizardRoute
   '/budget': typeof BudgetRoute
@@ -239,6 +248,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/account'
+    | '/analytics'
     | '/boq'
     | '/boqwizard'
     | '/budget'
@@ -265,6 +275,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/account'
+    | '/analytics'
     | '/boq'
     | '/boqwizard'
     | '/budget'
@@ -291,6 +302,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/account'
+    | '/analytics'
     | '/boq'
     | '/boqwizard'
     | '/budget'
@@ -318,6 +330,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AccountRoute: typeof AccountRoute
+  AnalyticsRoute: typeof AnalyticsRoute
   BoqRoute: typeof BoqRoute
   BoqwizardRoute: typeof BoqwizardRoute
   BudgetRoute: typeof BudgetRoute
@@ -491,6 +504,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BoqRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/analytics': {
+      id: '/analytics'
+      path: '/analytics'
+      fullPath: '/analytics'
+      preLoaderRoute: typeof AnalyticsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/account': {
       id: '/account'
       path: '/account'
@@ -518,6 +538,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AccountRoute: AccountRoute,
+  AnalyticsRoute: AnalyticsRoute,
   BoqRoute: BoqRoute,
   BoqwizardRoute: BoqwizardRoute,
   BudgetRoute: BudgetRoute,

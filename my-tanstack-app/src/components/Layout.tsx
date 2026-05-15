@@ -36,11 +36,13 @@ export const NAV = [
   { id: "/notes",         label: "הערות",      icon: "message",   section: "תיעוד",   roles: ALL_ROLES },
   { id: "/personal-files",label: "קבצים אישיים",icon: "file-text", section: "תיעוד",  roles: OWNER_ONLY },
   { id: "/budget",        label: "תקציב",      icon: "chart",     section: "פיננסי",  roles: OWNER_ONLY },
+  { id: "/analytics",     label: "דוחות ומדדים", icon: "pie-chart", section: "פיננסי",  roles: OWNER_MANAGER },
   { id: "/quotes",        label: "הצעות מחיר", icon: "clipboard", section: "פיננסי",  roles: OWNER_ONLY },
   { id: "/timeline",      label: "לוח זמנים", icon: "calendar",  section: "פיננסי",   roles: ALL_ROLES },
 ]
 
 export const PREMIUM_ROUTES = [
+  '/analytics',
   '/orders',
   '/boq',
   '/boqwizard',
@@ -66,6 +68,7 @@ export const PAGE_TITLES: Record<string, string> = {
   "/personal-files": "קבצים אישיים",
   "/team": "ניהול צוות",
   "/budget": "תקציב והוצאות",
+  "/analytics": "דוחות וסטטיסטיקות",
   "/quotes": "הצעות מחיר והשוואה",
   "/timeline": "לוח זמנים",
   "/account": "פרטי חשבון",
@@ -76,6 +79,7 @@ export const PAGE_SUBTITLES: Record<string, string> = {
   "/boqwizard": "עבור חדר-חדר ובנה רשימת כמויות לרכישה / יבוא",
   "/checklists": "רשימות תיוג מקצועיות לכל שלב בבנייה",
   "/daily-logs": "תיעוד יומי של התקדמות, כוח אדם, חריגות ואישורים",
+  "/analytics": "תמונת מצב גרפית של תקציב, התקדמות וסטטוס משימות",
   "/quotes": "הוסיפו הצעות לפי נושא והשוו ביניהן",
   "/account": "עדכון פרטים אישיים וסיסמה",
 }
