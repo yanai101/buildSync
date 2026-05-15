@@ -249,7 +249,7 @@ function AccountPage() {
             מכאן תוכל לשדרג את המנוי שלך, לעדכן אמצעי תשלום, או להוריד חשבוניות מהעבר דרך פורטל הלקוחות.
           </p>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-            {!isProOrPremium && !isSuperAdmin && (
+            {(!isProOrPremium || isSuperAdmin) && (
               <>
                 <a
                   href={`/api/checkout?products=0fbf2c19-6302-4bf6-b5be-d0317632513f&customerExternalId=${user._id}`}
