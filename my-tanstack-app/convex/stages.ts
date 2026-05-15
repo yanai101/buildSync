@@ -812,7 +812,9 @@ export const setContractorPaymentMode = mutation({
       : 'custom';
     const paymentStarted = contractor.paid > 0 || existingMilestones.some((milestone) => milestone.paid);
     if (paymentStarted && currentPaymentMode !== args.paymentMode) {
-      throw new Error('Cannot change payment type after contractor payments have started');
+      if (args.paymentMode === 'stage_synced') {
+        throw new Error('אי אפשר לחזור ללוח מסונכרן לשלבים אחרי שהתחילו תשלומים');
+      }
     }
 
     await ensureLegacyContractorStageLinks(ctx, args.contractorId, args.paymentMode);

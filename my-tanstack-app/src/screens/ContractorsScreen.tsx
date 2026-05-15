@@ -710,8 +710,10 @@ export const ContractorsScreen = () => {
   const [adding, setAdding] = React.useState(false);
   const [editingContractor, setEditingContractor] = React.useState<Contractor | null>(null);
   const [savingContractor, setSavingContractor] = React.useState(false);
-  const [deletingContractor, setDeletingContractor] = React.useState(false);
   const [deleteTarget, setDeleteTarget] = React.useState<Contractor | null>(null);
+  const [deletingContractor, setDeletingContractor] = React.useState(false);
+  const [confirmPaymentMode, setConfirmPaymentMode] = React.useState<{ contractor: Contractor, mode: 'stage_synced' | 'custom' } | null>(null);
+
   const [savingPayment, setSavingPayment] = React.useState(false);
   const [pendingPayment, setPendingPayment] = React.useState<{ contractor: Contractor; milestone: Milestone; paid: boolean } | null>(null);
   const [lockTarget, setLockTarget] = React.useState<string | null>(null);
@@ -887,14 +889,24 @@ export const ContractorsScreen = () => {
 
   const handlePaymentModeChange = async (contractor: Contractor, paymentMode: 'stage_synced' | 'custom') => {
     if (mode !== 'db') return;
+    const isPaid = contractorHasPaidPayments(contractor);
+    if (isPaid && paymentMode === 'custom' && contractor.paymentMode === 'stage_synced') {
+      setConfirmPaymentMode({ contractor, mode: paymentMode });
+      return;
+    }
+    executePaymentModeChange(contractor, paymentMode);
+  };
+
+  const executePaymentModeChange = async (contractor: Contractor, paymentMode: 'stage_synced' | 'custom') => {
     setSavingPaymentMode(true);
     try {
       await setContractorPaymentMode({
         contractorId: contractorDbId(contractor) as any,
         paymentMode,
       });
+      setConfirmPaymentMode(null);
     } catch (err) {
-      setFeedback({ title: "שגיאה", message: "לא הצלחנו לעדכן את מצב לוח התשלומים.", type: "error" });
+      setFeedback({ title: "שגיאה", message: err instanceof Error ? err.message : "לא הצלחנו לעדכן את מצב לוח התשלומים.", type: "error" });
     } finally {
       setSavingPaymentMode(false);
     }
@@ -1119,11 +1131,9 @@ export const ContractorsScreen = () => {
                     <div>
                       <div style={{fontSize:13,fontWeight:800}}>מקור לוח התשלומים</div>
                       <div style={{fontSize:11,color:"var(--text3)"}}>
-                        {selectedPaymentStarted
-                          ? "כבר החל תשלום לקבלן, לכן אי אפשר לשנות את סוג לוח התשלומים."
-                          : c.paymentMode === 'stage_synced'
-                            ? "התשלומים נבנים אוטומטית ממשימות ואבני הדרך של השלבים המקושרים."
-                            : "התשלומים נקבעים לפי מה שסוכם עם הקבלן."}
+                        {c.paymentMode === 'stage_synced'
+                          ? "התשלומים נבנים אוטומטית ממשימות ואבני הדרך של השלבים המקושרים."
+                          : "התשלומים נקבעים ומנוהלים באופן חופשי ועצמאי מהשלבים."}
                       </div>
                     </div>
                     <div style={{display:"flex",gap:6,background:"#F4F4F5",borderRadius:8,padding:3}}>
@@ -1136,9 +1146,9 @@ export const ContractorsScreen = () => {
                           <button
                             key={option.mode}
                             type="button"
-                            disabled={savingPaymentMode || selectedPaymentStarted || active}
+                            disabled={savingPaymentMode || active}
                             onClick={()=>handlePaymentModeChange(c, option.mode)}
-                            style={{border:"none",borderRadius:6,padding:"6px 10px",fontFamily:"'Heebo',sans-serif",fontSize:12,fontWeight:700,cursor:savingPaymentMode?"wait":selectedPaymentStarted||active?"default":"pointer",background:active?"#fff":"transparent",color:active?"var(--accent)":selectedPaymentStarted?"var(--text3)":"var(--text2)",boxShadow:active?"var(--shadow-sm)":"none",opacity:selectedPaymentStarted&&!active?0.7:1}}
+                            style={{border:"none",borderRadius:6,padding:"6px 10px",fontFamily:"'Heebo',sans-serif",fontSize:12,fontWeight:700,cursor:savingPaymentMode?"wait":active?"default":"pointer",background:active?"#fff":"transparent",color:active?"var(--accent)":"var(--text2)",boxShadow:active?"var(--shadow-sm)":"none"}}
                           >
                             {option.label}
                           </button>
@@ -1213,6 +1223,17 @@ export const ContractorsScreen = () => {
           type={contractorHasPaidPayments(deleteTarget) ? "warning" : "error"}
           onConfirm={confirmDeleteContractor}
           onClose={() => deletingContractor ? undefined : setDeleteTarget(null)}
+        />
+      )}
+      {confirmPaymentMode && (
+        <ConfirmDialog
+          title="ניתוק מסנכרון שלבים"
+          message={`שים לב: העברה למצב "לפי חוזה קבלן" תנתק את לוח התשלומים מהתקדמות שלבי הבנייה. כל המשימות שעוד לא שולמו יהפכו לעצמאיות ותוכל לערוך אותן חופשי. תשלומים שכבר שולמו יישארו ללא שינוי.`}
+          confirmText="הבנתי, שחרר מנעילה"
+          cancelText="ביטול"
+          type="info"
+          onConfirm={() => executePaymentModeChange(confirmPaymentMode.contractor, confirmPaymentMode.mode)}
+          onClose={() => setConfirmPaymentMode(null)}
         />
       )}
       {viewFile && (
