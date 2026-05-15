@@ -71,7 +71,7 @@ export const useDataMutation = (resource: MutationResource) => {
             rooms: payload.rooms
           });
         case 'addExpense':
-          return await addExpenseMutation({ projectId: payload.projectId, description: payload.description, amount: payload.amount, category: payload.category, date: payload.date, status: payload.status });
+          return await addExpenseMutation({ projectId: payload.projectId, description: payload.description, amount: payload.amount, category: payload.category, date: payload.date, status: payload.status, fileIds: payload.fileIds });
         case 'addBudgetCategory':
           return await addCategoryMutation({ projectId: payload.projectId, name: payload.name, budget: payload.budget, color: payload.color });
         case 'saveQuote':

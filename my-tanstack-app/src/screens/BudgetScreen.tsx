@@ -382,7 +382,7 @@ export const BudgetScreen = () => {
         {viewFile && (
           <Modal title={viewFile.name} onClose={() => setViewFile(null)}>
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 300 }}>
-              {viewFile.url.includes('.pdf') ? (
+              {viewFile.name?.toLowerCase().endsWith('.pdf') ? (
                 <iframe src={viewFile.url} style={{ width: '100%', height: 500, border: 'none' }} title={viewFile.name} />
               ) : (
                 <img src={viewFile.url} alt={viewFile.name} style={{ maxWidth: '100%', maxHeight: 500, objectFit: 'contain' }} />
