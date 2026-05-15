@@ -6,11 +6,13 @@ import { useDataMutation } from '../hooks/useDataMutation';
 import { useCurrentProject } from '../hooks/useCurrentProject';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
+import { Id } from '../../convex/_generated/dataModel';
 import { ScreenBoundary } from '../components/ScreenBoundary';
 import { BudgetSummaryCards } from '../components/BudgetSummaryCards';
 import { useProjectBudgetSummary } from '../hooks/useProjectBudgetSummary';
 import { useRequireRole } from '../hooks/useRequireRole';
 import { AccessDenied, AccessLoading } from '../components/AccessDenied';
+import { useProjectFileUploader } from '../hooks/useProjectFileUploader';
 
 export const BudgetScreen = () => {
   const { allowed, loading: roleLoading } = useRequireRole(['owner']);
@@ -24,7 +26,6 @@ export const BudgetScreen = () => {
   const { data: expenses, loading: expLoading, error: expError, refetch: expRefetch } = useDataSource<any[]>('expenses', { db: dbExps as any });
   const { mutate } = useDataMutation('expenses');
   
-  const [addOpen, setAddOpen] = React.useState(false);
   const [addCatOpen, setAddCatOpen] = React.useState(false);
   const [newExp, setNewExp] = React.useState({ desc: '', amount: '', cat: '', date: new Date().toISOString().split('T')[0] });
   const [newCat, setNewCat] = React.useState({ name: '', budget: '', color: '#F97316' });
@@ -32,6 +33,10 @@ export const BudgetScreen = () => {
   const [saving, setSaving] = React.useState(false);
   const [savingBudget, setSavingBudget] = React.useState(false);
   const [feedback, setFeedback] = React.useState<{ title: string; message: string; type: 'success' | 'error' | 'info' } | null>(null);
+
+  const [selectedReceiptFile, setSelectedReceiptFile] = React.useState<File | null>(null);
+  const [viewFile, setViewFile] = React.useState<{ url: string; name: string } | null>(null);
+  const uploadProjectFile = useProjectFileUploader();
 
   React.useEffect(() => {
     if (!summary) return;
@@ -72,19 +77,32 @@ export const BudgetScreen = () => {
   };
 
   const handleAddExpense = async () => {
-    if (!newExp.desc || !newExp.amount || !newExp.cat) return;
+    if (!newExp.desc || !newExp.amount) return;
     setSaving(true);
     try {
+      let fileIds: Id<'projectFiles'>[] = [];
+      if (selectedReceiptFile && projectId) {
+        const uploadResult = await uploadProjectFile({
+          projectId,
+          file: selectedReceiptFile,
+          usage: 'receipt'
+        });
+        if (uploadResult?.fileId) {
+          fileIds = [uploadResult.fileId];
+        }
+      }
+
       await mutate('addExpense', {
         projectId: projectId!,
         description: newExp.desc,
         amount: Number(newExp.amount),
-        category: newExp.cat,
+        category: newExp.cat || undefined,
         date: newExp.date,
         status: 'שולם',
+        fileIds: fileIds.length > 0 ? fileIds : undefined,
       });
-      setAddOpen(false);
       setNewExp({ desc: '', amount: '', cat: '', date: new Date().toISOString().split('T')[0] });
+      setSelectedReceiptFile(null);
       expRefetch();
       catsRefetch();
       setFeedback({ title: "הוצאה נוספה", message: `ההוצאה "${newExp.desc}" בסך ${fmtMoney(Number(newExp.amount))} נוספה בהצלחה.`, type: "success" });
@@ -167,7 +185,7 @@ export const BudgetScreen = () => {
             <div style={{width:`${spentPct}%`,background:"linear-gradient(90deg, var(--accent) 0%, #c96b30 100%)",transition:"width .6s cubic-bezier(.4,0,.2,1)",borderRadius:"99px 0 0 99px"}}/>
             <div style={{width:`${committedPct}%`,background:"#FDE68A"}}/>
           </div>
-          <div style={{display:"flex",gap:24,fontSize:12.5}}>
+          <div style={{display:"flex", flexWrap:"wrap", gap:16, fontSize:12.5}}>
             <span style={{display:"flex",alignItems:"center",gap:6}}><span style={{width:11,height:11,borderRadius:3,background:"var(--accent)",display:"inline-block"}}/> הוצא: <strong>{fmtMoney(totalSpent)}</strong> ({totalBudget ? Math.round(totalSpent/totalBudget*100) : 0}%)</span>
             <span style={{display:"flex",alignItems:"center",gap:6}}><span style={{width:11,height:11,borderRadius:3,background:"#F59E0B",display:"inline-block"}}/> מחויב: <strong>{fmtMoney(committed)}</strong> ({totalBudget ? Math.round(committed/totalBudget*100) : 0}%)</span>
             <span style={{display:"flex",alignItems:"center",gap:6}}><span style={{width:11,height:11,borderRadius:3,background:"#D1D5DB",display:"inline-block"}}/> נותר: <strong>{fmtMoney(remainingBudget)}</strong> ({remainingPct}%)</span>
@@ -195,27 +213,145 @@ export const BudgetScreen = () => {
               );
             })}
           </div>
-        ) : (
-          <div className="card" style={{padding:40, textAlign: 'center', marginBottom: 32}}>
-            <div style={{fontSize: 16, color: 'var(--text3)', marginBottom: 20}}>עדיין לא הוגדרו קטגוריות תקציב מפורטות.</div>
-            <Btn onClick={() => setAddCatOpen(true)}>הגדר קטגוריה ראשונה</Btn>
-          </div>
-        )}
+        ) : null}
 
-        {/* Expenses */}
+        {/* Side by side grid for Add Category and Add Expense */}
+        <div style={{ display: 'grid', gridTemplateColumns: (!categories || categories.length === 0) ? 'repeat(auto-fit, minmax(300px, 1fr))' : '1fr', gap: 24, marginBottom: 24 }}>
+          {/* Add Category Static Form (Only if no categories) */}
+          {(!categories || categories.length === 0) && (
+            <div className="card" style={{ padding: 20 }}>
+              <div style={{ fontWeight: 600, fontSize: 16, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Icon n="folder-plus" s={20} c="var(--accent)" />
+                הוספת קטגוריית תקציב ראשונה
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <div style={{ display: 'flex', gap: 16 }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 4 }}>שם הקטגוריה</div>
+                    <input className="bp-input" value={newCat.name} onChange={e=>setNewCat({...newCat, name: e.target.value})} placeholder="לדוג׳: אינסטלציה..." style={{width:"100%"}}/>
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 4 }}>תקציב (₪)</div>
+                    <input className="bp-input" type="number" value={newCat.budget} onChange={e=>setNewCat({...newCat, budget: e.target.value})} placeholder="0" style={{width:"100%"}}/>
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 8 }}>צבע מזהה</div>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    {COLORS.map(c => (
+                      <div 
+                        key={c} 
+                        onClick={() => setNewCat({...newCat, color: c})}
+                        style={{
+                          width: 28, height: 28, borderRadius: 8, background: c, cursor: 'pointer',
+                          border: newCat.color === c ? '3px solid #000' : 'none',
+                          boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                        }}
+                      />
+                    ))}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 4 }}>
+                  <Btn onClick={handleAddCategory} disabled={saving || !newCat.name || !newCat.budget}>{saving ? "שומר..." : "הוסף קטגוריה"}</Btn>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Occasional Expenses Static Form */}
+          <div className="card" style={{ padding: 20 }}>
+            <div style={{ fontWeight: 600, fontSize: 16, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Icon n="plus-circle" s={20} c="var(--accent)" />
+              הוספת הוצאה מזדמנת
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div style={{ display: 'flex', gap: 16 }}>
+                <div style={{ flex: 2 }}>
+                  <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 4 }}>תיאור ההוצאה</div>
+                  <input 
+                    className="bp-input" 
+                    value={newExp.desc} 
+                    onChange={e => setNewExp({...newExp, desc: e.target.value})} 
+                    placeholder="לדוג׳: חומרים..." 
+                    style={{ width: '100%' }}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 4 }}>סכום (₪)</div>
+                  <input 
+                    className="bp-input" 
+                    type="number" 
+                    value={newExp.amount} 
+                    onChange={e => setNewExp({...newExp, amount: e.target.value})} 
+                    placeholder="0" 
+                    style={{ width: '100%' }}
+                  />
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 4 }}>קטגוריה (אופציונלי)</div>
+                  <select 
+                    className="bp-input" 
+                    value={newExp.cat} 
+                    onChange={e => setNewExp({...newExp, cat: e.target.value})} 
+                    style={{ width: '100%' }}
+                  >
+                    <option value="">ללא קטגוריה</option>
+                    {categories?.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
+                  </select>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 16 }}>
+                  <label style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text2)', background: 'var(--surface)', padding: '10px 16px', borderRadius: 8, border: '1px solid var(--border)' }}>
+                    <input 
+                      type="file" 
+                      accept="image/*,.pdf" 
+                      style={{ display: 'none' }}
+                      onChange={e => {
+                        const file = e.target.files?.[0];
+                        if (file) setSelectedReceiptFile(file);
+                      }}
+                    />
+                    <Icon n={selectedReceiptFile ? "check" : "paperclip"} s={16} c={selectedReceiptFile ? "var(--success)" : "currentColor"} />
+                    {selectedReceiptFile ? "קובץ נבחר" : "הוסף קבלה"}
+                  </label>
+                </div>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+                {selectedReceiptFile ? (
+                  <div style={{ fontSize: 12, color: 'var(--text3)' }}>
+                    נבחר קובץ: <span style={{ maxWidth: 100, display: 'inline-block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', verticalAlign: 'bottom' }}>{selectedReceiptFile.name}</span>
+                    <button 
+                      onClick={() => setSelectedReceiptFile(null)} 
+                      style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', marginRight: 8, textDecoration: 'underline' }}
+                    >
+                      הסר
+                    </button>
+                  </div>
+                ) : <div/>}
+                
+                <Btn 
+                  onClick={handleAddExpense} 
+                  disabled={saving || !newExp.desc || !newExp.amount}
+                >
+                  {saving ? "שומר..." : "הוסף הוצאה"}
+                </Btn>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Expenses Table */}
         <div className="card">
           <div className="card-header" style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
             <span>הוצאות אחרונות</span>
-            <Btn size="sm" onClick={()=>setAddOpen(true)} disabled={!categories || categories.length === 0}>
-              <Icon n="plus" s={12}/> הוצאה חדשה
-            </Btn>
           </div>
           <div style={{overflowX:"auto"}}>
             {expenses && expenses.length === 0 ? (
               <div style={{padding:40,textAlign:"center",color:"var(--text3)",fontSize:13}}>לא נמצאו הוצאות.</div>
             ) : (
               <table className="bp-table" style={{width:"100%"}}>
-                <thead><tr><th>תאריך</th><th>תיאור</th><th>קטגוריה</th><th>סכום</th><th>סטטוס</th></tr></thead>
+                <thead><tr><th>תאריך</th><th>תיאור</th><th>קטגוריה</th><th>סכום</th><th>סטטוס</th><th>קבלה</th></tr></thead>
                 <tbody>
                   {expenses?.map((e,i)=>(
                     <tr key={i}>
@@ -224,6 +360,17 @@ export const BudgetScreen = () => {
                       <td style={{fontSize:12,color:"var(--text2)"}}>{e.cat}</td>
                       <td style={{fontSize:13,fontWeight:600}}>{fmtMoney(e.amount)}</td>
                       <td><Badge type={e.status==="שולם"?"done":"active"}>{e.status}</Badge></td>
+                      <td>
+                        {e.files && e.files.length > 0 && (
+                          <div 
+                            style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: 8, background: 'var(--surface)', cursor: 'pointer', color: 'var(--accent)' }}
+                            onClick={() => setViewFile(e.files[0])}
+                            title="צפה בקבלה"
+                          >
+                            <Icon n="file-text" s={16} />
+                          </div>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -232,30 +379,20 @@ export const BudgetScreen = () => {
           </div>
         </div>
 
-        {addOpen && (
-          <Modal title="הוצאה חדשה" onClose={()=>setAddOpen(false)}>
-            <div style={{display:"flex",flexDirection:"column",gap:16}}>
-              <div>
-                <div style={{fontSize:12,color:"var(--text2)",marginBottom:4}}>תיאור</div>
-                <input className="bp-input" value={newExp.desc} onChange={e=>setNewExp({...newExp, desc: e.target.value})} placeholder="לדוג׳: רכישת חומרי אינסטלציה" style={{width:"100%"}}/>
-              </div>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
-                <div>
-                  <div style={{fontSize:12,color:"var(--text2)",marginBottom:4}}>סכום</div>
-                  <input className="bp-input" type="number" value={newExp.amount} onChange={e=>setNewExp({...newExp, amount: e.target.value})} placeholder="0" style={{width:"100%"}}/>
-                </div>
-                <div>
-                  <div style={{fontSize:12,color:"var(--text2)",marginBottom:4}}>קטגוריה</div>
-                  <select className="bp-input" value={newExp.cat} onChange={e=>setNewExp({...newExp, cat: e.target.value})} style={{width:"100%"}}>
-                    <option value="">בחר קטגוריה</option>
-                    {categories?.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
-                  </select>
-                </div>
-              </div>
-              <div style={{marginTop:8,display:"flex",justifyContent:"flex-end",gap:12}}>
-                <Btn variant="ghost" onClick={()=>setAddOpen(false)}>ביטול</Btn>
-                <Btn onClick={handleAddExpense} disabled={saving}>{saving ? "שומר..." : "הוסף הוצאה"}</Btn>
-              </div>
+        {viewFile && (
+          <Modal title={viewFile.name} onClose={() => setViewFile(null)}>
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 300 }}>
+              {viewFile.url.includes('.pdf') ? (
+                <iframe src={viewFile.url} style={{ width: '100%', height: 500, border: 'none' }} title={viewFile.name} />
+              ) : (
+                <img src={viewFile.url} alt={viewFile.name} style={{ maxWidth: '100%', maxHeight: 500, objectFit: 'contain' }} />
+              )}
+            </div>
+            <div style={{ marginTop: 16, display: 'flex', justifyContent: 'flex-end' }}>
+              <Btn variant="outline" onClick={() => setViewFile(null)}>סגור</Btn>
+              <Btn style={{ marginRight: 8 }} onClick={() => window.open(viewFile.url, '_blank')}>
+                <Icon n="external-link" s={16} /> פתח בחלון חדש
+              </Btn>
             </div>
           </Modal>
         )}

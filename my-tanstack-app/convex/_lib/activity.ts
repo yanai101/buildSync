@@ -22,12 +22,15 @@ export async function insertActivity(
     }
   }
 
+  const now = Date.now();
+  await ctx.db.patch(args.projectId, { lastActivityAt: now });
+
   return await ctx.db.insert('activityFeed', {
     projectId: args.projectId,
     actorUserId: userId ?? undefined,
     actorName,
     role,
     text: args.text,
-    createdAt: Date.now(),
+    createdAt: now,
   });
 }

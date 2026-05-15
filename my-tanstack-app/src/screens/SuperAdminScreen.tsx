@@ -16,6 +16,11 @@ export function SuperAdminScreen() {
   const promoCodes = useQuery(api.superAdmin.getPromoCodes, isSuperAdmin ? {} : 'skip');
   const generatePromoCode = useMutation(api.superAdmin.generatePromoCode);
   const deletePromoCode = useMutation(api.superAdmin.deletePromoCode);
+  const [activeTab, setActiveTab] = useState<'users' | 'promo' | 'cleanup'>('users');
+
+  const cleanupCandidates = useQuery(api.cleanup.getCleanupCandidates, isSuperAdmin && activeTab === 'cleanup' ? {} : 'skip');
+  const deleteProject = useMutation(api.cleanup.manualDeleteProject);
+  const createSimulatedInactiveProject = useMutation(api.cleanup.createSimulatedInactiveProject);
 
   const [editingUser, setEditingUser] = useState<any | null>(null);
   const [showConfirmDelete, setShowConfirmDelete] = useState<Id<'users'> | null>(null);
@@ -25,7 +30,6 @@ export function SuperAdminScreen() {
   const [promoValidity, setPromoValidity] = useState<number>(1);
   const [promoMaxUses, setPromoMaxUses] = useState<number>(1);
   const [promoDuration, setPromoDuration] = useState<number>(12); // months
-  const [activeTab, setActiveTab] = useState<'users' | 'promo'>('users');
 
   // Filters state
   const [searchQuery, setSearchQuery] = useState('');
@@ -131,6 +135,25 @@ export function SuperAdminScreen() {
         >
           <Icon n="link" s={20} />
           קישורי הרשמה
+        </button>
+        <button 
+          onClick={() => setActiveTab('cleanup')}
+          style={{ 
+            background: activeTab === 'cleanup' ? 'var(--surface)' : 'transparent',
+            border: 'none',
+            borderBottom: activeTab === 'cleanup' ? '2px solid var(--accent)' : '2px solid transparent',
+            padding: '12px 24px',
+            fontSize: 16,
+            fontWeight: activeTab === 'cleanup' ? 600 : 400,
+            color: activeTab === 'cleanup' ? 'var(--text1)' : 'var(--text2)',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8
+          }}
+        >
+          <Icon n="trash-2" s={20} />
+          ניקוי פרויקטים (Data Retention)
         </button>
       </div>
 
@@ -384,6 +407,89 @@ export function SuperAdminScreen() {
           </div>
         )}
       </div>
+      )}
+
+      {activeTab === 'cleanup' && (
+        <div className="card" style={{ padding: 24, marginBottom: 24 }}>
+          <h2 style={{ fontSize: 20, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Icon n="trash-2" s={24} c="var(--danger)" />
+            ניקוי נתונים ישנים (Data Retention)
+          </h2>
+          <p style={{ color: 'var(--text2)', marginBottom: 24 }}>
+            פרויקטים המופיעים כאן עומדים בקריטריונים למחיקה: מנוי פג תוקף מעל 3 חודשים או מנוי חינמי, וללא פעילות מעל 3 חודשים. מחיקה תשמיד את כל הקבצים הפיזיים משרת האחסון והרשומות הקשורות אליהם, לא ניתן לשחזר.
+          </p>
+
+          <div style={{ marginBottom: 24 }}>
+            <Btn variant="outline" onClick={async () => {
+              try {
+                await createSimulatedInactiveProject();
+                alert('פרויקט סימולציה נוצר בהצלחה!');
+              } catch (e: any) {
+                alert('שגיאה ביצירת סימולציה: ' + e.message);
+              }
+            }}>
+              <Icon n="plus" s={18} /> יצירת פרויקט סימולציה (לבדיקה)
+            </Btn>
+          </div>
+
+          {cleanupCandidates === undefined ? (
+            <div style={{ padding: 40, textAlign: 'center' }}>טוען מועמדים למחיקה...</div>
+          ) : cleanupCandidates.length === 0 ? (
+            <div style={{ padding: 40, textAlign: 'center', color: 'var(--success)', fontWeight: 600 }}>
+              <Icon n="check-circle" s={40} style={{ display: 'block', margin: '0 auto 12px' }} />
+              אין פרויקטים המיועדים למחיקה. המערכת נקייה.
+            </div>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'right' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid var(--border)', color: 'var(--text3)', fontSize: 13 }}>
+                    <th style={{ padding: 12, fontWeight: 600 }}>שם הפרויקט</th>
+                    <th style={{ padding: 12, fontWeight: 600 }}>בעלים (אימייל)</th>
+                    <th style={{ padding: 12, fontWeight: 600 }}>ימי אי-פעילות</th>
+                    <th style={{ padding: 12, fontWeight: 600 }}>סיבת מחיקה</th>
+                    <th style={{ padding: 12, fontWeight: 600 }}>פעולות</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {cleanupCandidates.map((c) => (
+                    <tr key={c.project._id} style={{ borderBottom: '1px solid var(--border)' }}>
+                      <td style={{ padding: 12, fontWeight: 'bold' }}>{c.project.name}</td>
+                      <td style={{ padding: 12 }}>{c.ownerName} ({c.ownerEmail})</td>
+                      <td style={{ padding: 12, color: 'var(--danger)', fontWeight: 600 }}>{c.inactiveDays} ימים</td>
+                      <td style={{ padding: 12 }}>{c.reason}</td>
+                      <td style={{ padding: 12 }}>
+                        <button 
+                          onClick={async () => {
+                            if (confirm(`האם אתה בטוח שברצונך למחוק את הפרויקט "${c.project.name}" לצמיתות כולל כל המסמכים?`)) {
+                              try {
+                                await deleteProject({ projectId: c.project._id });
+                                alert('הפרויקט נמחק בהצלחה.');
+                              } catch(e: any) {
+                                alert('שגיאה: ' + e.message);
+                              }
+                            }
+                          }} 
+                          style={{ 
+                            border: 'none', 
+                            background: '#FEF2F2', 
+                            padding: '6px 12px', 
+                            borderRadius: 6, 
+                            cursor: 'pointer', 
+                            color: '#EF4444',
+                            fontWeight: 500
+                          }}
+                        >
+                          מחק לצמיתות
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       )}
 
       {!!editingUser && (

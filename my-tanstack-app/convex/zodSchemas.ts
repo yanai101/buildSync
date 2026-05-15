@@ -115,6 +115,7 @@ export const zProject = {
   hasBasement: z.boolean().optional(),
   hasYard: z.boolean().optional(),
   housingUnits: z.number().optional(),
+  lastActivityAt: z.number().optional(),
 };
 
 export const zProjectRoom = {
@@ -408,6 +409,7 @@ export const zExpense = {
   stageId: zid('stages').optional(),
   stageMilestoneId: zid('stageMilestones').optional(),
   boqItemId: zid('boqItems').optional(),
+  fileIds: z.array(zid('projectFiles')).optional(),
 };
 
 export const zTimelineBar = {

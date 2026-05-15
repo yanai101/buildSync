@@ -117,8 +117,8 @@ export const Modal = ({onClose, title, children, width=660}: any) => (
 );
 
 export const StatCard = ({label, value, sub, accent, icon}: any) => (
-  <motion.div whileHover={{y:-4,boxShadow:"var(--shadow-xl)"}} transition={{duration:0.2}} className="card" style={{padding:"24px 24px 20px",borderLeft:`4px solid ${accent||"var(--accent)"}`}}>
-    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+  <motion.div whileHover={{y:-4,boxShadow:"var(--shadow-xl)"}} transition={{duration:0.2}} className="card" style={{padding:"24px 24px 20px",borderLeft:`4px solid ${accent||"var(--accent)"}`, height: '100%'}}>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start", height: '100%'}}>
       <div>
         <div style={{fontSize:28,fontWeight:800,letterSpacing:"-1px",color:accent||"var(--text1)",lineHeight:1}}>{value}</div>
         <div style={{fontSize:14,color:"var(--text2)",marginTop:8,fontWeight:600}}>{label}</div>

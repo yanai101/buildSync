@@ -16,8 +16,12 @@ export function BudgetSummaryCards({ summary, style }: BudgetSummaryCardsProps) 
 
   return (
     <motion.div
-      className="grid-4"
-      style={style}
+      style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+        gap: 16,
+        ...style
+      }}
       variants={{ show: { transition: { staggerChildren: 0.1 } } }}
       initial="hidden"
       animate="show"
@@ -34,7 +38,7 @@ export function BudgetSummaryCards({ summary, style }: BudgetSummaryCardsProps) 
         { label: 'מחויב (חוזים)', value: fmtMoney(committed), accent: 'var(--warning)', icon: 'clipboard' },
         { label: 'יתרה פנויה', value: fmtMoney(remainingBudget), accent: 'var(--success)', icon: 'check-circle' },
       ].map((card) => (
-        <motion.div key={card.label} variants={{ hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 280, damping: 24 } } }}>
+        <motion.div key={card.label} style={{ height: '100%' }} variants={{ hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 280, damping: 24 } } }}>
           <StatCard {...card} />
         </motion.div>
       ))}
