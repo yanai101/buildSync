@@ -254,6 +254,7 @@ export const PaymentGatesPanel = ({
   onRequestReviewMs: (id: string) => void,
   onSupervisorApproveMs: (id: string) => void,
   onReleaseMs: (m: Milestone) => void,
+  onLockMs?: (id: string) => void,
 }) => {
   if (stage.payment?.milestones?.length) {
     return (
@@ -261,6 +262,7 @@ export const PaymentGatesPanel = ({
         stage={stage}
         onSupervisorApproveMs={onSupervisorApproveMs}
         onReleaseMs={onReleaseMs}
+        onLockMs={onLockMs}
       />
     );
   }
@@ -358,7 +360,7 @@ const MilestoneItem = ({
   onSupervisorApprove, onRelease,
 }: {
   stage: Stage, milestone: Milestone, gates: Gates, status: string, locked: boolean, isNext?: boolean,
-  onSupervisorApprove?: () => void, onRelease?: (m: Milestone) => void
+  onSupervisorApprove?: () => void, onRelease?: (m: Milestone) => void, onLock?: (id: string) => void
 }) => {
   if (status === 'paid') {
     return (
@@ -372,9 +374,27 @@ const MilestoneItem = ({
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13 }}>
           <Icon n="check-circle" s={14} c="var(--success)" />
           <span style={{ flex: 1, color: 'var(--text2)' }}>{milestone.name}</span>
-          <span style={{ color: 'var(--text3)', fontSize: 12 }}>
-            {fmtMoney(milestone.amount)} · שולם ב-{milestone.paidAt || '—'}
-          </span>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            {milestone.isLocked ? (
+              <div style={{ padding: "4px 6px", color: "var(--text2)", display: "flex", alignItems: "center" }} title="תשלום נעול">
+                <Icon n="lock" s={13}/>
+              </div>
+            ) : (
+              onLock && (
+                <Btn
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => onLock(milestone.id)}
+                  title="נעל תשלום מעריכה או מחיקה"
+                >
+                  <Icon n="lock" s={13}/> נעל
+                </Btn>
+              )
+            )}
+            <span style={{ color: 'var(--text3)', fontSize: 12 }}>
+              {fmtMoney(milestone.amount)} · שולם ב-{milestone.paidAt || '—'}
+            </span>
+          </div>
         </div>
         {milestone.receipts && milestone.receipts.length > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginLeft: 24 }}>
@@ -453,10 +473,12 @@ export const MilestonesPanel = ({
   stage,
   onSupervisorApproveMs,
   onReleaseMs,
+  onLockMs,
 }: {
   stage: Stage,
   onSupervisorApproveMs: (id: string) => void,
-  onReleaseMs: (m: Milestone) => void
+  onReleaseMs: (m: Milestone) => void,
+  onLockMs?: (id: string) => void
 }) => {
   const [showPaid,   setShowPaid]   = React.useState(false);
   const [showFuture, setShowFuture] = React.useState(false);
@@ -535,7 +557,7 @@ export const MilestonesPanel = ({
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {paid.map(({ m, gates, status }) => (
                 <MilestoneItem key={m.id} stage={stage} milestone={m}
-                  gates={gates} status={status} locked={false} />
+                  gates={gates} status={status} locked={false} onLock={onLockMs} />
               ))}
             </div>
           )}
@@ -582,7 +604,7 @@ export const MilestonesPanel = ({
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {future.map(({ m, gates, status }) => (
                 <MilestoneItem key={m.id} stage={stage} milestone={m}
-                  gates={gates} status={status} locked={status === 'locked'} />
+                  gates={gates} status={status} locked={status === 'locked'} onLock={onLockMs} />
               ))}
             </div>
           )}

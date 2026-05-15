@@ -26,6 +26,7 @@ export interface Milestone {
   sourceTaskId?: string;
   readyToPay?: boolean;
   lockedReason?: string | null;
+  isLocked?: boolean;
 }
 
 export interface Payment {

@@ -1011,6 +1011,26 @@ export const setStageMilestonePaid = mutation({
   },
 });
 
+export const lockStageMilestone = mutation({
+  args: {
+    milestoneId: v.id('stageMilestones'),
+  },
+  handler: async (ctx, args) => {
+    const milestone = await ctx.db.get(args.milestoneId);
+    if (!milestone) {
+      throw new Error('Stage milestone not found');
+    }
+
+    if (milestone.status !== 'paid') {
+      throw new Error('אפשר לנעול רק תשלום שסומן כשולם');
+    }
+
+    await ctx.db.patch(args.milestoneId, {
+      isLocked: true,
+    });
+  },
+});
+
 export const deleteStage = mutation({
   args: { stageId: v.id('stages') },
   handler: async (ctx, args) => {

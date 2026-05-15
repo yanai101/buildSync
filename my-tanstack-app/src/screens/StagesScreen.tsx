@@ -646,10 +646,13 @@ export const StagesScreen = () => {
   const deleteStageMutation = useMutation(api.stages.deleteStage);
   const setStagePaymentPaid = useMutation(api.stages.setStagePaymentPaid);
   const setStageMilestonePaid = useMutation(api.stages.setStageMilestonePaid);
+  const lockStageMilestone = useMutation(api.stages.lockStageMilestone);
   
   const [stages, setStages] = React.useState<Stage[]>([]);
   const [expanded, setExpanded] = React.useState<number | null>(null);
   const [releaseFor, setReleaseFor] = React.useState<{stage: Stage; milestoneId: string | null; amount: number; milestoneName: string | null} | null>(null);
+  const [lockTarget, setLockTarget] = React.useState<string | null>(null);
+  const [lockingPayment, setLockingPayment] = React.useState(false);
   const [guideOpen, setGuideOpen] = React.useState(false);
   const [addStageOpen, setAddStageOpen] = React.useState(false);
   const { role } = useRequireRole(['owner', 'manager', 'inspector', 'contractor']);
@@ -870,6 +873,27 @@ export const StagesScreen = () => {
   const requestReviewMs = (sid: number, mid: string) => {};
   const supervisorApproveMs = (sid: number, mid: string) => {};
   const releaseMs = (s: Stage, m: Milestone) => setReleaseFor({ stage: s, milestoneId: m.id, milestoneName: m.name, amount: m.amount });
+  const handleLockStageMilestone = (mid: string) => {
+    setLockTarget(mid);
+  };
+
+  const confirmLockStageMilestone = async () => {
+    if (!lockTarget) return;
+    setLockingPayment(true);
+    try {
+      await lockStageMilestone({ milestoneId: lockTarget as any });
+      setLockTarget(null);
+      refetch();
+    } catch (err) {
+      setFeedback({
+        title: "שגיאה",
+        message: err instanceof Error ? err.message : "לא הצלחנו לנעול את התשלום.",
+        type: "error",
+      });
+    } finally {
+      setLockingPayment(false);
+    }
+  };
 
   const openEditStage = (stage: Stage) => {
     setEditingStage(stage);
@@ -1340,6 +1364,7 @@ export const StagesScreen = () => {
                               onRequestReviewMs={(mid: string) => requestReviewMs(s.id, mid)}
                               onSupervisorApproveMs={(mid: string) => supervisorApproveMs(s.id, mid)}
                               onReleaseMs={(m: Milestone) => releaseMs(s, m)}
+                              onLockMs={handleLockStageMilestone}
                             />
                           )}
                         </div>
@@ -1554,6 +1579,18 @@ export const StagesScreen = () => {
         loading={deletingStage}
         onConfirm={()=>confirmDeleteStage()}
         onClose={()=>setDeleteTarget(null)}
+      />
+    )}
+    {lockTarget && (
+      <ConfirmDialog
+        title="נעילת תשלום"
+        message="האם לנעול תשלום זה? לא יהיה ניתן לערוך אותו לאחר הנעילה."
+        confirmText={lockingPayment ? "נועל..." : "אשר נעילה"}
+        cancelText="ביטול"
+        loading={lockingPayment}
+        type="warning"
+        onConfirm={confirmLockStageMilestone}
+        onClose={() => lockingPayment ? undefined : setLockTarget(null)}
       />
     )}
     {guideOpen && (

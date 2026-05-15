@@ -67,10 +67,23 @@ const roundPct = (value: number) => Math.round(value * 100) / 100;
 
 const withAmounts = (contractor: Contractor, milestones: DraftMilestone[]): DraftMilestone[] => {
   let sumAmount = 0;
-  const totalPct = roundPct(milestones.reduce((sum, m) => sum + m.pct, 0));
+  
+  // First, fix percentages for locked milestones if budget is > 0
+  const adjustedMilestones = milestones.map(m => {
+    if (m.isLocked && contractor.budget > 0) {
+       return { ...m, pct: clampPct((m.amount / contractor.budget) * 100) };
+    }
+    return m;
+  });
 
-  return milestones.map((m, i) => {
-    if (i === milestones.length - 1 && totalPct === 100 && contractor.budget > 0) {
+  const totalPct = roundPct(adjustedMilestones.reduce((sum, m) => sum + m.pct, 0));
+
+  return adjustedMilestones.map((m, i) => {
+    if (m.isLocked) {
+      sumAmount += m.amount;
+      return m;
+    }
+    if (i === adjustedMilestones.length - 1 && totalPct === 100 && contractor.budget > 0) {
       return {
         ...m,
         amount: Math.max(0, contractor.budget - sumAmount),
@@ -90,9 +103,10 @@ const normalizeMilestones = (contractor: Contractor): Milestone[] => {
   if (contractor.milestones?.length) {
     rawMilestones = contractor.milestones.map(m => ({
       ...m,
-      status: m.paid ? 'paid' : m.status,
+      paid: m.isLocked ? true : m.paid,
+      status: (m.paid || m.isLocked) ? 'paid' : m.status,
       paidAt: m.paidAt ?? null,
-      amount: 0,
+      amount: m.isLocked ? m.amount : 0,
     }));
   } else {
     const base = DEFAULT_PAYMENT_SCHEDULES[contractor.role] || DEFAULT_SCHEDULE;
@@ -142,7 +156,7 @@ const balanceMilestones = (milestones: DraftMilestone[], changedIndex: number): 
     const indexes = [
       ...Array.from({ length: changedIndex }, (_, i) => changedIndex - 1 - i),
       ...next.map((_, i) => i).filter(i => i > changedIndex),
-    ];
+    ].filter(i => !next[i].isLocked);
 
     for (const index of indexes) {
       if (delta <= 0) break;
@@ -157,14 +171,25 @@ const balanceMilestones = (milestones: DraftMilestone[], changedIndex: number): 
   }
 
   if (delta < 0) {
-    const targetIndex = changedIndex > 0 ? changedIndex - 1 : next.findIndex((_, i) => i !== changedIndex);
-    next[targetIndex >= 0 ? targetIndex : changedIndex].pct += Math.abs(delta);
+    const unlockedIndexes = next.map((_, i) => i).filter(i => i !== changedIndex && !next[i].isLocked);
+    const targetIndex = unlockedIndexes.reverse().find(i => i < changedIndex) ?? unlockedIndexes[0];
+    
+    if (targetIndex !== undefined) {
+      next[targetIndex].pct += Math.abs(delta);
+    } else {
+      next[changedIndex].pct += Math.abs(delta);
+    }
   }
 
   const balancedTotal = next.reduce((sum, m) => sum + m.pct, 0);
   if (balancedTotal !== 100) {
-    const targetIndex = next.findIndex((_, i) => i !== changedIndex);
-    next[targetIndex >= 0 ? targetIndex : changedIndex].pct += 100 - balancedTotal;
+    const unlockedIndexes = next.map((_, i) => i).filter(i => i !== changedIndex && !next[i].isLocked);
+    const targetIndex = unlockedIndexes[0];
+    if (targetIndex !== undefined) {
+      next[targetIndex].pct += 100 - balancedTotal;
+    } else {
+      next[changedIndex].pct += 100 - balancedTotal;
+    }
   }
 
   return next.map(m => ({ ...m, pct: clampPct(m.pct) }));
@@ -184,7 +209,7 @@ const DraggableMilestoneRow = ({ m, i, renderCells }: DraggableMilestoneRowProps
       value={m}
       dragListener={false}
       dragControls={controls}
-      style={{background:m.paid?"#F0FDF4":"transparent"}}
+      style={{background:(m.paid || m.isLocked)?"#F0FDF4":"transparent"}}
     >
       {renderCells(m, i, (e) => controls.start(e))}
     </Reorder.Item>
@@ -195,11 +220,13 @@ const PaymentSchedule = ({
   contractor,
   onTogglePaid,
   onSaveSchedule,
+  onLock,
   locked,
 }: {
   contractor: Contractor;
   onTogglePaid: (milestone: Milestone, paid: boolean) => Promise<void>;
   onSaveSchedule: (contractor: Contractor, milestones: DraftMilestone[]) => Promise<void>;
+  onLock?: (milestoneId: string) => Promise<void>;
   locked?: boolean;
 }) => {
   const sourceMilestones = React.useMemo(() => normalizeMilestones(contractor), [contractor]);
@@ -304,7 +331,7 @@ const PaymentSchedule = ({
         <input
           className="bp-input"
           value={m.name}
-          disabled={savingSchedule || locked || m.sourceMode === 'stage_synced'}
+          disabled={savingSchedule || locked || m.isLocked || m.sourceMode === 'stage_synced'}
           onChange={e=>updateMilestone(i, {name:e.target.value})}
           onBlur={saveOnBlur}
           style={{minWidth:150,fontSize:13,fontWeight:500}}
@@ -314,7 +341,7 @@ const PaymentSchedule = ({
         <input
           className="bp-input"
           value={m.triggerText || ""}
-          disabled={savingSchedule || locked || m.sourceMode === 'stage_synced'}
+          disabled={savingSchedule || locked || m.isLocked || m.sourceMode === 'stage_synced'}
           onChange={e=>updateMilestone(i, {triggerText:e.target.value})}
           onBlur={saveOnBlur}
           style={{minWidth:180,fontSize:12}}
@@ -329,13 +356,13 @@ const PaymentSchedule = ({
           step="any"
           placeholder="0"
           value={m.pct === 0 ? "" : Number(m.pct.toFixed(2))}
-          disabled={savingSchedule || locked || m.sourceMode === 'stage_synced'}
+          disabled={savingSchedule || locked || m.isLocked || m.sourceMode === 'stage_synced'}
           onChange={e=>{
             const val = e.target.value;
             updateMilestone(i, {pct: val === "" ? 0 : Number(val)}, true);
           }}
           onBlur={saveOnBlur}
-          style={{width:72,fontSize:13,fontWeight:600}}
+          style={{width:86,fontSize:13,fontWeight:600,textAlign:"center"}}
         />
       </td>
       <td>
@@ -348,7 +375,7 @@ const PaymentSchedule = ({
             max={contractor.budget}
             placeholder="0"
             value={m.amount === 0 ? "" : m.amount}
-            disabled={savingSchedule || locked || m.sourceMode === 'stage_synced'}
+            disabled={savingSchedule || locked || m.isLocked || m.sourceMode === 'stage_synced'}
             onChange={e => {
               if (contractor.budget > 0) {
                 const val = e.target.value;
@@ -368,16 +395,23 @@ const PaymentSchedule = ({
         )}
       </td>
       <td>
-        <label style={{display:"flex",alignItems:"center",gap:6,cursor:"pointer"}}>
-          <input
-            type="checkbox"
-            checked={Boolean(m.paid)}
-            disabled={pendingId === String(m.id) || m.isNew || syncedLocked}
-            onChange={()=>toggle(m)}
-            style={{accentColor:"var(--success)",width:14,height:14}}
-          />
-          <span className={`badge ${m.paid?"badge-done":"badge-pending"}`}>{m.paid?"שולם":"ממתין"}</span>
-        </label>
+        {m.isLocked ? (
+          <div style={{display:"flex",alignItems:"center",gap:6, paddingRight: 4}}>
+            <Icon n="check-circle" s={14} c="var(--success)"/>
+            <span className="badge badge-done">שולם (נעול)</span>
+          </div>
+        ) : (
+          <label style={{display:"flex",alignItems:"center",gap:6,cursor:"pointer"}}>
+            <input
+              type="checkbox"
+              checked={Boolean(m.paid)}
+              disabled={pendingId === String(m.id) || m.isNew || syncedLocked}
+              onChange={()=>toggle(m)}
+              style={{accentColor:"var(--success)",width:14,height:14}}
+            />
+            <span className={`badge ${m.paid?"badge-done":"badge-pending"}`}>{m.paid?"שולם":"ממתין"}</span>
+          </label>
+        )}
         {syncedLocked && (
           <div style={{fontSize:10,color:"#B45309",fontWeight:700,marginTop:3}}>
             {m.lockedReason || "השלב עדיין לא מוכן לתשלום"}
@@ -385,15 +419,38 @@ const PaymentSchedule = ({
         )}
       </td>
       <td>
-        <Btn
-          size="sm"
-          variant="ghost"
-          disabled={savingSchedule || locked || Boolean(m.paid) || m.sourceMode === 'stage_synced'}
-          onClick={()=>removeMilestone(i)}
-          style={{color:"var(--danger)"}}
-        >
-          <Icon n="trash" s={12}/> מחק
-        </Btn>
+        <div style={{ display: 'flex', gap: 4 }}>
+        {m.isLocked ? (
+          <div style={{ padding: "6px 8px", color: "var(--text2)", display: "flex", alignItems: "center" }}>
+            <Icon n="lock" s={14}/>
+          </div>
+        ) : (
+          <>
+            {m.paid && onLock && m.id && (
+              <Btn
+                size="sm"
+                variant="ghost"
+                disabled={savingSchedule || locked}
+                onClick={() => onLock(m.id)}
+                title="נעל תשלום מעריכה או מחיקה"
+              >
+                <Icon n="lock" s={14}/> נעל
+              </Btn>
+            )}
+            {!m.paid && (
+              <Btn
+                size="sm"
+                variant="ghost"
+                disabled={savingSchedule || locked || Boolean(m.paid) || m.sourceMode === 'stage_synced'}
+                onClick={()=>removeMilestone(i)}
+                style={{color:"var(--danger)"}}
+              >
+                <Icon n="trash" s={12}/> מחק
+              </Btn>
+            )}
+          </>
+        )}
+        </div>
       </td>
     </>
       );
@@ -451,7 +508,7 @@ const PaymentSchedule = ({
           {locked ? (
             <tbody>
               {milestones.map((m,i)=>(
-                <tr key={m.id} style={{background:m.paid?"#F0FDF4":"transparent"}}>
+                <tr key={m.id} style={{background:(m.paid || m.isLocked)?"#F0FDF4":"transparent"}}>
                   {renderMilestoneCells(m, i)}
                 </tr>
               ))}
@@ -530,6 +587,7 @@ export const ContractorsScreen = () => {
   const deleteContractor = useMutation(api.mutations.deleteContractor);
   const saveSchedule = useMutation(api.mutations.saveContractorPaymentSchedule);
   const setMilestonePaid = useMutation(api.mutations.setContractorPaymentMilestonePaid);
+  const lockPaymentMilestone = useMutation(api.mutations.lockContractorPaymentMilestone);
   const setContractorStages = useMutation(api.stages.setContractorStages);
   const setContractorPaymentMode = useMutation(api.stages.setContractorPaymentMode);
   const [selectedId, setSelectedId] = React.useState<string | null>(null);
@@ -540,6 +598,8 @@ export const ContractorsScreen = () => {
   const [deleteTarget, setDeleteTarget] = React.useState<Contractor | null>(null);
   const [savingPayment, setSavingPayment] = React.useState(false);
   const [pendingPayment, setPendingPayment] = React.useState<{ contractor: Contractor; milestone: Milestone; paid: boolean } | null>(null);
+  const [lockTarget, setLockTarget] = React.useState<string | null>(null);
+  const [lockingPayment, setLockingPayment] = React.useState(false);
   const [feedback, setFeedback] = React.useState<{ title: string; message: string; type: 'success' | 'error' | 'info' } | null>(null);
   const [savingStageLinks, setSavingStageLinks] = React.useState(false);
   const [savingPaymentMode, setSavingPaymentMode] = React.useState(false);
@@ -660,6 +720,27 @@ export const ContractorsScreen = () => {
         pct: milestone.pct,
       })),
     });
+  };
+
+  const handleLockPayment = (milestoneId: string) => {
+    setLockTarget(milestoneId);
+  };
+
+  const confirmLockPayment = async () => {
+    if (mode !== 'db' || !lockTarget) return;
+    setLockingPayment(true);
+    try {
+      await lockPaymentMilestone({ milestoneId: lockTarget as any });
+      setLockTarget(null);
+    } catch (err) {
+      setFeedback({
+        title: "שגיאה",
+        message: err instanceof Error ? err.message : "לא הצלחנו לנעול את התשלום. אנא נסו שוב.",
+        type: "error",
+      });
+    } finally {
+      setLockingPayment(false);
+    }
   };
 
   const handleToggleStage = async (contractor: Contractor, stageId: string, checked: boolean) => {
@@ -951,6 +1032,7 @@ export const ContractorsScreen = () => {
               locked={c.paymentMode === 'stage_synced'}
               onTogglePaid={handleTogglePaid}
               onSaveSchedule={handleSaveSchedule}
+              onLock={handleLockPayment}
             />
             {projectId && c._id && (
               <ContractorNotesAndDocs
@@ -975,6 +1057,18 @@ export const ContractorsScreen = () => {
             type={pendingPayment.paid ? "info" : "warning"}
             onConfirm={confirmPaymentChange}
             onClose={() => savingPayment ? undefined : setPendingPayment(null)}
+          />
+        )}
+        {lockTarget && (
+          <ConfirmDialog
+            title="נעילת תשלום"
+            message="האם לנעול תשלום זה? לא יהיה ניתן לערוך או למחוק אותו לאחר הנעילה."
+            confirmText={lockingPayment ? "נועל..." : "אשר נעילה"}
+            cancelText="ביטול"
+            loading={lockingPayment}
+            type="warning"
+            onConfirm={confirmLockPayment}
+            onClose={() => lockingPayment ? undefined : setLockTarget(null)}
           />
         )}
         </div>

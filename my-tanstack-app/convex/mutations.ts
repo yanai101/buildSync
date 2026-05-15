@@ -526,6 +526,26 @@ export const setContractorPaymentMilestonePaid = mutation({
   },
 });
 
+export const lockContractorPaymentMilestone = mutation({
+  args: {
+    milestoneId: v.id('contractorPaymentMilestones'),
+  },
+  handler: async (ctx, args) => {
+    const milestone = await ctx.db.get(args.milestoneId);
+    if (!milestone) {
+      throw new Error('Payment milestone not found');
+    }
+
+    if (!milestone.paid) {
+      throw new Error('אפשר לנעול רק תשלום שסומן כשולם');
+    }
+
+    await ctx.db.patch(args.milestoneId, {
+      isLocked: true,
+    });
+  },
+});
+
 export const deleteContractor = mutation({
   args: {
     contractorId: v.id('contractors'),

@@ -189,6 +189,7 @@ export const zStageMilestone = {
   paidAt: z.string().optional(),
   receipts: z.array(z.string()).optional(),
   receiptName: z.string().optional(), // legacy
+  isLocked: z.boolean().optional(),
 };
 
 export const zStageMilestoneTask = {
@@ -226,6 +227,7 @@ export const zContractorPaymentMilestone = {
   sourceStageId: zid('stages').optional(),
   sourceStageMilestoneId: zid('stageMilestones').optional(),
   sourceTaskId: zid('stageTasks').optional(),
+  isLocked: z.boolean().optional(),
 };
 
 export const zBoqItem = {
