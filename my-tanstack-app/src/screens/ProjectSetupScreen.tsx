@@ -26,6 +26,7 @@ export interface ProjectConfig {
   area: number;
   budgetTotal: number;
   rooms: Room[];
+  vatPct?: number;
 }
 
 export const getFloorLabel = (f: number, housingUnits?: number) => {
@@ -77,6 +78,7 @@ export const ProjectSetupScreen = () => {
         area: project.areaSqm || 0,
         budgetTotal: (project as any).budgetTotal || 0,
         rooms: (project as any).rooms || [],
+        vatPct: (project as any).vatPct ?? 18,
       });
     }
   }, [project]);
@@ -131,6 +133,7 @@ export const ProjectSetupScreen = () => {
         areaSqm: Number(cfg.area) || totalRoomArea,
         budgetTotal: Number(cfg.budgetTotal) || 0,
         rooms: cfg.rooms,
+        vatPct: Number(cfg.vatPct) || 18,
       });
       setIsEditing(false);
       refetch();
@@ -272,8 +275,12 @@ export const ProjectSetupScreen = () => {
                 <input className="bp-input" type="date" defaultValue="2025-01-01"/>
               </div>
               <div style={{flex:"1 1 250px"}}>
-                <div style={{fontSize:12,color:"var(--text2)",marginBottom:4,fontWeight:500}}>תקציב כולל (₪)</div>
+                <div style={{fontSize:12,color:"var(--text2)",marginBottom:4,fontWeight:500}}>תקציב כולל כולל מע"מ (₪)</div>
                 <input className="bp-input" type="number" min={0} value={cfg.budgetTotal || ''} onChange={e=>setField("budgetTotal",Number(e.target.value))}/>
+              </div>
+              <div style={{flex:"1 1 250px"}}>
+                <div style={{fontSize:12,color:"var(--text2)",marginBottom:4,fontWeight:500}}>מע"מ נוכחי (%)</div>
+                <input className="bp-input" type="number" min={0} max={100} value={cfg.vatPct || ''} onChange={e=>setField("vatPct",Number(e.target.value))}/>
               </div>
             </div>
           </div>

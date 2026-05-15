@@ -116,6 +116,7 @@ export const zProject = {
   hasYard: z.boolean().optional(),
   housingUnits: z.number().optional(),
   lastActivityAt: z.number().optional(),
+  vatPct: z.number().optional(),
 };
 
 export const zProjectRoom = {
@@ -230,6 +231,8 @@ export const zContractorPaymentMilestone = {
   sourceTaskId: zid('stageTasks').optional(),
   isLocked: z.boolean().optional(),
   fileIds: z.array(zid('projectFiles')).optional(),
+  vatAdded: z.boolean().optional(),
+  vatAmount: z.number().optional(),
 };
 
 export const zBoqItem = {

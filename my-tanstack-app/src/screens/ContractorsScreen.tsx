@@ -112,6 +112,75 @@ const LockPaymentModal = ({
   );
 };
 
+const ConfirmPaymentModal = ({
+  pendingPayment,
+  onConfirm,
+  onClose,
+  saving,
+  vatPct,
+}: {
+  pendingPayment: { contractor: Contractor; milestone: Milestone; paid: boolean };
+  onConfirm: (vatAdded: boolean) => Promise<void>;
+  onClose: () => void;
+  saving: boolean;
+  vatPct: number;
+}) => {
+  const [vatAdded, setVatAdded] = React.useState(false);
+  
+  const vatAmount = vatAdded ? Math.round(pendingPayment.milestone.amount * (vatPct / 100)) : 0;
+  const finalAmount = pendingPayment.milestone.amount + vatAmount;
+
+  return (
+    <Modal title={pendingPayment.paid ? "אישור תשלום לקבלן" : "ביטול תשלום לקבלן"} onClose={saving ? undefined : onClose}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div style={{ fontSize: 13, color: 'var(--text2)' }}>
+          {pendingPayment.paid
+            ? `לאשר תשלום עבור "${pendingPayment.milestone.name}" לקבלן ${pendingPayment.contractor.name}? הפעולה תוסיף הוצאה גלובלית לתקציב.`
+            : `לבטל את התשלום עבור "${pendingPayment.milestone.name}" לקבלן ${pendingPayment.contractor.name}? הפעולה תסיר את ההוצאה הגלובלית המקושרת.`}
+        </div>
+        
+        {pendingPayment.paid && (
+          <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: 16, background: 'var(--bg)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12, fontSize: 14 }}>
+              <span style={{ color: 'var(--text2)' }}>סכום תשלום נטו:</span>
+              <span style={{ fontWeight: 600 }}>{fmtMoney(pendingPayment.milestone.amount)}</span>
+            </div>
+            
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginBottom: 12 }}>
+              <input 
+                type="checkbox" 
+                checked={vatAdded} 
+                onChange={(e) => setVatAdded(e.target.checked)} 
+                style={{ width: 16, height: 16, accentColor: 'var(--accent)' }}
+              />
+              <span style={{ fontSize: 13, fontWeight: 600 }}>הוסף מע"מ לתשלום ({vatPct}%)</span>
+            </label>
+
+            {vatAdded && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12, fontSize: 13, color: 'var(--text2)' }}>
+                <span>סכום מע"מ:</span>
+                <span>{fmtMoney(vatAmount)}</span>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--border)', paddingTop: 12, fontSize: 15, fontWeight: 800 }}>
+              <span>סך הכל חיוב לתקציב:</span>
+              <span style={{ color: 'var(--accent)' }}>{fmtMoney(finalAmount)}</span>
+            </div>
+          </div>
+        )}
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 10 }}>
+          <Btn variant="ghost" onClick={onClose} disabled={saving}>ביטול</Btn>
+          <Btn onClick={() => onConfirm(vatAdded)} disabled={saving} style={!pendingPayment.paid ? { background: 'var(--danger)' } : {}}>
+            {saving ? "שומר..." : pendingPayment.paid ? "אשר תשלום" : "בטל תשלום"}
+          </Btn>
+        </div>
+      </div>
+    </Modal>
+  );
+};
+
 const DEFAULT_SCHEDULE = [
   {name:"מקדמה לפני התחלה", pct:30, triggerText:"לפני תחילת עבודה"},
   {name:"תשלום ביניים א'", pct:25, triggerText:"אחרי 30% מהעבודה"},
@@ -810,11 +879,15 @@ export const ContractorsScreen = () => {
     setPendingPayment({ contractor, milestone, paid });
   };
 
-  const confirmPaymentChange = async () => {
+  const confirmPaymentChange = async (vatAdded: boolean) => {
     if (!pendingPayment) return;
     setSavingPayment(true);
     try {
-      await setMilestonePaid({ milestoneId: String(pendingPayment.milestone.id) as any, paid: pendingPayment.paid });
+      await setMilestonePaid({ 
+        milestoneId: String(pendingPayment.milestone.id) as any, 
+        paid: pendingPayment.paid,
+        vatAdded
+      });
       setFeedback({
         title: pendingPayment.paid ? "תשלום אושר" : "תשלום בוטל",
         message: pendingPayment.paid
@@ -1179,19 +1252,12 @@ export const ContractorsScreen = () => {
           </div>
         </div>
         {pendingPayment && (
-          <ConfirmDialog
-            title={pendingPayment.paid ? "אישור תשלום לקבלן" : "ביטול תשלום לקבלן"}
-            message={
-              pendingPayment.paid
-                ? `לאשר תשלום של ${fmtMoney(pendingPayment.milestone.amount)} עבור "${pendingPayment.milestone.name}" לקבלן ${pendingPayment.contractor.name}? הפעולה תוסיף הוצאה גלובלית לתקציב.`
-                : `לבטל את התשלום של ${fmtMoney(pendingPayment.milestone.amount)} עבור "${pendingPayment.milestone.name}" לקבלן ${pendingPayment.contractor.name}? הפעולה תסיר את ההוצאה הגלובלית המקושרת.`
-            }
-            confirmText={savingPayment ? "שומר..." : pendingPayment.paid ? "אשר תשלום" : "בטל תשלום"}
-            cancelText="חזור"
-            loading={savingPayment}
-            type={pendingPayment.paid ? "info" : "warning"}
+          <ConfirmPaymentModal
+            pendingPayment={pendingPayment}
             onConfirm={confirmPaymentChange}
             onClose={() => savingPayment ? undefined : setPendingPayment(null)}
+            saving={savingPayment}
+            vatPct={(project as any)?.vatPct ?? 18}
           />
         )}
         {lockTarget && selected && (() => {

@@ -490,6 +490,7 @@ export const setContractorPaymentMilestonePaid = mutation({
   args: {
     milestoneId: v.id('contractorPaymentMilestones'),
     paid: v.boolean(),
+    vatAdded: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const milestone = await ctx.db.get(args.milestoneId);
@@ -502,6 +503,9 @@ export const setContractorPaymentMilestonePaid = mutation({
       throw new Error('Contractor not found');
     }
 
+    const project = await ctx.db.get(contractor.projectId);
+    const vatPct = project?.vatPct ?? 18;
+
     const existingExpense = await findContractorPaymentExpense(ctx, contractor.projectId, args.milestoneId);
     const category = await findBudgetCategoryForContractor(ctx, contractor.projectId, contractor.role);
     const today = new Date().toISOString().slice(0, 10);
@@ -513,17 +517,22 @@ export const setContractorPaymentMilestonePaid = mutation({
       }
     }
 
+    const vatAmount = args.paid && args.vatAdded ? Math.round(milestone.amount * (vatPct / 100)) : undefined;
+
     await ctx.db.patch(args.milestoneId, {
       paid: args.paid,
       paidAt: args.paid ? today : undefined,
+      vatAdded: args.paid ? args.vatAdded : undefined,
+      vatAmount,
     });
 
     if (args.paid) {
+      const finalAmount = milestone.amount + (vatAmount || 0);
       if (!existingExpense) {
         await ctx.db.insert('expenses', {
           projectId: contractor.projectId,
-          description: `תשלום לקבלן ${contractor.name} — ${milestone.name}`,
-          amount: milestone.amount,
+          description: `תשלום לקבלן ${contractor.name} — ${milestone.name}${args.vatAdded ? ' (כולל מע"מ)' : ''}`,
+          amount: finalAmount,
           expenseDate: today,
           status: 'שולם',
           categoryId: category?._id,
@@ -533,7 +542,7 @@ export const setContractorPaymentMilestonePaid = mutation({
 
         if (category) {
           await ctx.db.patch(category._id, {
-            spent: category.spent + milestone.amount,
+            spent: category.spent + finalAmount,
           });
         }
       }

@@ -120,6 +120,7 @@ export const saveProjectSetup = mutation({
     hasBasement: v.optional(v.boolean()),
     hasYard: v.optional(v.boolean()),
     housingUnits: v.optional(v.number()),
+    vatPct: v.optional(v.number()),
     rooms: v.array(v.any()),
   },
   handler: async (ctx, args) => {
@@ -137,6 +138,7 @@ export const saveProjectSetup = mutation({
       ...(args.hasBasement !== undefined ? { hasBasement: args.hasBasement } : {}),
       ...(args.hasYard !== undefined ? { hasYard: args.hasYard } : {}),
       ...(args.housingUnits !== undefined ? { housingUnits: args.housingUnits } : {}),
+      ...(args.vatPct !== undefined ? { vatPct: args.vatPct } : {}),
     };
 
     await ctx.db.patch(args.projectId, projectPatch);
