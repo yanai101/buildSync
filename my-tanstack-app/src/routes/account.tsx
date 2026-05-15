@@ -255,13 +255,15 @@ function AccountPage() {
                   href={`/api/checkout?products=0fbf2c19-6302-4bf6-b5be-d0317632513f&customerExternalId=${user._id}`}
                   style={{ textDecoration: 'none' }}
                 >
-                  <Btn variant="primary" style={{ padding: '8px 16px' }}>שדרג למנוי חודשי</Btn>
+                  <Btn variant="ghost" style={{ padding: '8px 16px' }}>שדרג למנוי חודשי</Btn>
                 </a>
                 <a
                   href={`/api/checkout?products=140a20ee-cfa9-4f0c-b1ca-21234c5f80fb&customerExternalId=${user._id}`}
                   style={{ textDecoration: 'none' }}
                 >
-                  <Btn variant="outline" style={{ padding: '8px 16px', background: '#fff' }}>שדרג למנוי שנתי</Btn>
+                  <Btn variant="primary" style={{ padding: '8px 16px' }}>
+                    שדרג למנוי שנתי (17% הנחה)
+                  </Btn>
                 </a>
               </>
             )}
@@ -270,7 +272,7 @@ function AccountPage() {
                 href={`/api/portal?customerId=${user.polarCustomerId}`}
                 style={{ textDecoration: 'none' }}
               >
-                <Btn variant="secondary" style={{ padding: '8px 16px' }}>
+                <Btn variant="ghost" style={{ padding: '8px 16px' }}>
                   <Icon n="credit-card" s={14} /> נהל מנוי וחשבוניות
                 </Btn>
               </a>
