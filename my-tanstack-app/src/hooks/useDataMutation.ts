@@ -32,7 +32,7 @@ export const useDataMutation = (resource: MutationResource) => {
   const updateChecklistItemMutation = useMutation(api.checklists.updateChecklistItem);
   const updateChecklistTitleMutation = useMutation(api.checklists.updateChecklistTitle);
 
-  const defaultDbResources: MutationResource[] = ['contractors', 'photos', 'notes', 'project', 'projects', 'expenses', 'budget', 'quotes', 'checklists'];
+  const defaultDbResources: MutationResource[] = ['contractors', 'photos', 'notes', 'project', 'projects', 'expenses', 'budget', 'quotes', 'checklists', 'stages', 'tasks', 'boq', 'timeline'];
   const savedMode = localStorage.getItem(`buildsync:ds:${resource}`);
   const isMock = savedMode ? savedMode !== 'db' : !defaultDbResources.includes(resource);
 
