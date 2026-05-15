@@ -52,7 +52,7 @@ const recomputeContractorPaid = async (ctx: MutationCtx, contractorId: Id<'contr
 
   const paid = milestones
     .filter((milestone) => milestone.paid)
-    .reduce((total, milestone) => total + milestone.amount, 0);
+    .reduce((total, milestone) => total + milestone.amount + (milestone.vatAmount || 0), 0);
 
   await ctx.db.patch(contractorId, { paid });
 };
@@ -246,6 +246,7 @@ export const createContractor = mutation({
     email: v.optional(v.string()),
     budget: v.number(),
     avatarColor: v.string(),
+    includesVat: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const contractorId = await ctx.db.insert('contractors', {
@@ -261,6 +262,7 @@ export const createContractor = mutation({
       paid: 0,
       avatarLetter: args.name[0] ?? '',
       avatarColor: args.avatarColor,
+      includesVat: args.includesVat,
     });
 
     if (args.role === 'קבלן עד מפתח') {
@@ -310,6 +312,7 @@ export const updateContractor = mutation({
     phone: v.optional(v.string()),
     email: v.optional(v.string()),
     budget: v.number(),
+    includesVat: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const contractor = await ctx.db.get(args.contractorId);
@@ -322,6 +325,7 @@ export const updateContractor = mutation({
       phone: args.phone,
       email: args.email,
       budget: args.budget,
+      includesVat: args.includesVat,
     });
     
     // If budget changed, sync if paymentMode is 'stage_synced' (budget will redistribute)

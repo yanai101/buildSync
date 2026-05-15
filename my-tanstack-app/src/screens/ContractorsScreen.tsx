@@ -216,6 +216,7 @@ type ContractorForm = {
   phone: string;
   email: string;
   budget: number | "";
+  includesVat: boolean;
 };
 
 const emptyForm: ContractorForm = {
@@ -225,6 +226,7 @@ const emptyForm: ContractorForm = {
   phone: "",
   email: "",
   budget: "",
+  includesVat: false,
 };
 
 const contractorDbId = (contractor: Contractor) => String(contractor._id ?? contractor.id);
@@ -539,26 +541,37 @@ const PaymentSchedule = ({
         />
       </td>
       <td>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          <span style={{ fontSize: 13, color: "var(--text2)", fontWeight: 400 }}>₪</span>
-          <input
-            className="bp-input"
-            type="number"
-            min={0}
-            max={contractor.budget}
-            placeholder="0"
-            value={m.amount === 0 ? "" : m.amount}
-            disabled={savingSchedule || locked || m.isLocked || m.sourceMode === 'stage_synced'}
-            onChange={e => {
-              if (contractor.budget > 0) {
-                const val = e.target.value;
-                const newPct = val === "" ? 0 : (Number(val) / contractor.budget) * 100;
-                updateMilestone(i, { pct: newPct }, true);
-              }
-            }}
-            onBlur={saveOnBlur}
-            style={{ width: 90, fontSize: 13, fontWeight: 700, color: m.paid ? "var(--success)" : "var(--text1)" }}
-          />
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <span style={{ fontSize: 13, color: "var(--text2)", fontWeight: 400 }}>₪</span>
+            <input
+              className="bp-input"
+              type="number"
+              min={0}
+              max={contractor.budget}
+              placeholder="0"
+              value={m.amount === 0 ? "" : m.amount}
+              disabled={savingSchedule || locked || m.isLocked || m.sourceMode === 'stage_synced'}
+              onChange={e => {
+                if (contractor.budget > 0) {
+                  const val = e.target.value;
+                  const newPct = val === "" ? 0 : (Number(val) / contractor.budget) * 100;
+                  updateMilestone(i, { pct: newPct }, true);
+                }
+              }}
+              onBlur={saveOnBlur}
+              style={{ width: 90, fontSize: 13, fontWeight: 700, color: m.paid ? "var(--success)" : "var(--text1)" }}
+            />
+          </div>
+          {m.paid && m.vatAmount ? (
+            <div style={{ fontSize: 10, color: "var(--success)", fontWeight: 600, marginTop: 2, paddingRight: 16 }}>
+              + {fmtMoney(m.vatAmount)} מע"מ
+            </div>
+          ) : (!contractor.includesVat ? (
+            <div style={{ fontSize: 10, color: "var(--text3)", marginTop: 2, paddingRight: 16 }}>
+              + מע"מ
+            </div>
+          ) : null)}
         </div>
       </td>
       <td style={{fontSize:12,color:"var(--text3)"}}>
@@ -833,6 +846,7 @@ export const ContractorsScreen = () => {
           phone: form.phone.trim() || undefined,
           email: form.email.trim() || undefined,
           budget: Number(form.budget) || 0,
+          includesVat: form.includesVat,
         });
         setEditingContractor(null);
       } else {
@@ -845,6 +859,7 @@ export const ContractorsScreen = () => {
           email: form.email.trim() || undefined,
           budget: Number(form.budget) || 0,
           avatarColor: COLORS[contractors.length % COLORS.length],
+          includesVat: form.includesVat,
         });
         setAdding(false);
       }
@@ -868,6 +883,7 @@ export const ContractorsScreen = () => {
       phone: contractor.phone || "",
       email: contractor.email || "",
       budget: contractor.budget || "",
+      includesVat: contractor.includesVat || false,
     });
     setEditingContractor(contractor);
   };
@@ -1052,12 +1068,28 @@ export const ContractorsScreen = () => {
           ].map(([k,label])=>(
             <div key={k}>
               <div style={{fontSize:12,color:"var(--text2)",marginBottom:3,fontWeight:500}}>{label}</div>
-              <input className="bp-input" value={form[k as keyof ContractorForm]} onChange={e=>setForm(f=>({...f,[k]:e.target.value}))}/>
+              <input className="bp-input" value={form[k as keyof ContractorForm] as string} onChange={e=>setForm(f=>({...f,[k]:e.target.value}))}/>
             </div>
           ))}
           <div>
             <div style={{fontSize:12,color:"var(--text2)",marginBottom:3,fontWeight:500}}>תקציב מוסכם (₪)</div>
             <input className="bp-input" type="number" placeholder="0" value={form.budget} onChange={e=>setForm(f=>({...f,budget:e.target.value === "" ? "" : Number(e.target.value)}))}/>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", paddingTop: 18 }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+              <input 
+                type="checkbox" 
+                checked={form.includesVat} 
+                onChange={(e) => setForm(f => ({ ...f, includesVat: e.target.checked }))} 
+                style={{ width: 16, height: 16, accentColor: 'var(--accent)' }}
+              />
+              <span style={{ fontSize: 13, fontWeight: 500 }}>הסכום כולל מע"מ</span>
+            </label>
+            {!form.includesVat && form.budget !== "" && Number(form.budget) > 0 && (
+              <div style={{ fontSize: 12, color: "var(--text3)", marginTop: 4 }}>
+                * סה"כ תקציב ברוטו: {fmtMoney(Number(form.budget) * (1 + ((project as any)?.vatPct ?? 18) / 100))}
+              </div>
+            )}
           </div>
         </div>
         <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:4}}>
@@ -1135,16 +1167,33 @@ export const ContractorsScreen = () => {
                 <span>{c.email || "—"}</span>
               </div>
             </div>
-            <div className="card card-body">
-              <div style={{fontSize:13,fontWeight:600,marginBottom:10}}>סיכום תשלומים</div>
-              {[["תקציב מוסכם",fmtMoney(c.budget)],["שולם",fmtMoney(c.paid)],["יתרה",fmtMoney(c.budget-c.paid)]].map(([k,v],i)=>(
-                <div key={i} style={{display:"flex",justifyContent:"space-between",fontSize:13,padding:"5px 0",borderBottom:i<2?"1px solid var(--border)":"none"}}>
-                  <span style={{color:"var(--text2)"}}>{k}</span><span style={{fontWeight:600}}>{v}</span>
-                </div>
-              ))}
-              <div style={{marginTop:10}}><ProgressBar value={c.budget?c.paid/c.budget*100:0} color="var(--success)" height={5}/></div>
-              <div style={{fontSize:11,color:"var(--text3)",marginTop:4,textAlign:"left"}}>{c.budget?Math.round(c.paid/c.budget*100):0}% שולם</div>
-            </div>
+              <div className="card card-body">
+                <div style={{fontSize:13,fontWeight:600,marginBottom:10}}>סיכום תשלומים</div>
+                {(() => {
+                  const grossBudget = c.includesVat ? c.budget : Math.round(c.budget * (1 + ((project as any)?.vatPct ?? 18) / 100));
+                  
+                  return (
+                    <>
+                      <div style={{display:"flex",justifyContent:"space-between",fontSize:13,padding:"5px 0",borderBottom:"1px solid var(--border)"}}>
+                        <span style={{color:"var(--text2)"}}>תקציב בסיס (נטו)</span><span style={{fontWeight:600}}>{fmtMoney(c.budget)}</span>
+                      </div>
+                      {!c.includesVat && (
+                        <div style={{display:"flex",justifyContent:"space-between",fontSize:13,padding:"5px 0",borderBottom:"1px solid var(--border)"}}>
+                          <span style={{color:"var(--text2)"}}>תקציב כולל מע"מ (ברוטו)</span><span style={{fontWeight:600}}>{fmtMoney(grossBudget)}</span>
+                        </div>
+                      )}
+                      <div style={{display:"flex",justifyContent:"space-between",fontSize:13,padding:"5px 0",borderBottom:"1px solid var(--border)"}}>
+                        <span style={{color:"var(--text2)"}}>סך הכל שולם (ברוטו)</span><span style={{fontWeight:600}}>{fmtMoney(c.paid)}</span>
+                      </div>
+                      <div style={{display:"flex",justifyContent:"space-between",fontSize:13,padding:"5px 0"}}>
+                        <span style={{color:"var(--text2)"}}>יתרה לתשלום</span><span style={{fontWeight:600}}>{fmtMoney(grossBudget - c.paid)}</span>
+                      </div>
+                      <div style={{marginTop:10}}><ProgressBar value={grossBudget ? c.paid / grossBudget * 100 : 0} color="var(--success)" height={5}/></div>
+                      <div style={{fontSize:11,color:"var(--text3)",marginTop:4,textAlign:"left"}}>{grossBudget ? Math.round(c.paid / grossBudget * 100) : 0}% שולם</div>
+                    </>
+                  );
+                })()}
+              </div>
           </div>
           <div style={{display:"flex",flexDirection:"column",gap:16}}>
             <div className="card">

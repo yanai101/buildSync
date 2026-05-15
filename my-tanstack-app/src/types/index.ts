@@ -28,6 +28,8 @@ export interface Milestone {
   lockedReason?: string | null;
   isLocked?: boolean;
   files?: Array<{ id: string; url: string; name: string }>;
+  vatAdded?: boolean;
+  vatAmount?: number;
 }
 
 export interface Payment {
@@ -134,6 +136,7 @@ export interface Contractor {
     sortOrder: number;
     paymentMode?: 'stage_synced' | 'custom';
   }>;
+  includesVat?: boolean;
 }
 
 export interface Room {

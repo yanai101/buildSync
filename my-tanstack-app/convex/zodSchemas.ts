@@ -214,6 +214,7 @@ export const zContractor = {
   avatarLetter: z.string().optional(),
   avatarColor: z.string().optional(),
   userId: zid('users').optional(),
+  includesVat: z.boolean().optional(),
 };
 
 export const zContractorPaymentMilestone = {
