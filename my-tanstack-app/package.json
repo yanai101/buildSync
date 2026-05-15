@@ -12,6 +12,8 @@
   "dependencies": {
     "@auth/core": "^0.37.4",
     "@convex-dev/auth": "^0.0.91",
+    "@polar-sh/sdk": "^0.47.1",
+    "@polar-sh/tanstack-start": "^0.4.6",
     "@tanstack/react-router": "^1.168.23",
     "@tanstack/react-router-devtools": "^1.166.13",
     "@tanstack/react-start": "^1.167.42",

@@ -34,6 +34,9 @@ import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as AccountRouteImport } from './routes/account'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as JoinCodeRouteImport } from './routes/join.$code'
+import { Route as ApiPortalRouteImport } from './routes/api/portal'
+import { Route as ApiCheckoutRouteImport } from './routes/api/checkout'
+import { Route as ApiWebhookPolarRouteImport } from './routes/api/webhook/polar'
 
 const TimelineRoute = TimelineRouteImport.update({
   id: '/timeline',
@@ -160,6 +163,21 @@ const JoinCodeRoute = JoinCodeRouteImport.update({
   path: '/join/$code',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPortalRoute = ApiPortalRouteImport.update({
+  id: '/api/portal',
+  path: '/api/portal',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiCheckoutRoute = ApiCheckoutRouteImport.update({
+  id: '/api/checkout',
+  path: '/api/checkout',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiWebhookPolarRoute = ApiWebhookPolarRouteImport.update({
+  id: '/api/webhook/polar',
+  path: '/api/webhook/polar',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -186,7 +204,10 @@ export interface FileRoutesByFullPath {
   '/super-admin': typeof SuperAdminRoute
   '/team': typeof TeamRoute
   '/timeline': typeof TimelineRoute
+  '/api/checkout': typeof ApiCheckoutRoute
+  '/api/portal': typeof ApiPortalRoute
   '/join/$code': typeof JoinCodeRoute
+  '/api/webhook/polar': typeof ApiWebhookPolarRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -213,7 +234,10 @@ export interface FileRoutesByTo {
   '/super-admin': typeof SuperAdminRoute
   '/team': typeof TeamRoute
   '/timeline': typeof TimelineRoute
+  '/api/checkout': typeof ApiCheckoutRoute
+  '/api/portal': typeof ApiPortalRoute
   '/join/$code': typeof JoinCodeRoute
+  '/api/webhook/polar': typeof ApiWebhookPolarRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -241,7 +265,10 @@ export interface FileRoutesById {
   '/super-admin': typeof SuperAdminRoute
   '/team': typeof TeamRoute
   '/timeline': typeof TimelineRoute
+  '/api/checkout': typeof ApiCheckoutRoute
+  '/api/portal': typeof ApiPortalRoute
   '/join/$code': typeof JoinCodeRoute
+  '/api/webhook/polar': typeof ApiWebhookPolarRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -270,7 +297,10 @@ export interface FileRouteTypes {
     | '/super-admin'
     | '/team'
     | '/timeline'
+    | '/api/checkout'
+    | '/api/portal'
     | '/join/$code'
+    | '/api/webhook/polar'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -297,7 +327,10 @@ export interface FileRouteTypes {
     | '/super-admin'
     | '/team'
     | '/timeline'
+    | '/api/checkout'
+    | '/api/portal'
     | '/join/$code'
+    | '/api/webhook/polar'
   id:
     | '__root__'
     | '/'
@@ -324,7 +357,10 @@ export interface FileRouteTypes {
     | '/super-admin'
     | '/team'
     | '/timeline'
+    | '/api/checkout'
+    | '/api/portal'
     | '/join/$code'
+    | '/api/webhook/polar'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -352,7 +388,10 @@ export interface RootRouteChildren {
   SuperAdminRoute: typeof SuperAdminRoute
   TeamRoute: typeof TeamRoute
   TimelineRoute: typeof TimelineRoute
+  ApiCheckoutRoute: typeof ApiCheckoutRoute
+  ApiPortalRoute: typeof ApiPortalRoute
   JoinCodeRoute: typeof JoinCodeRoute
+  ApiWebhookPolarRoute: typeof ApiWebhookPolarRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -532,6 +571,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof JoinCodeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/portal': {
+      id: '/api/portal'
+      path: '/api/portal'
+      fullPath: '/api/portal'
+      preLoaderRoute: typeof ApiPortalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/checkout': {
+      id: '/api/checkout'
+      path: '/api/checkout'
+      fullPath: '/api/checkout'
+      preLoaderRoute: typeof ApiCheckoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/webhook/polar': {
+      id: '/api/webhook/polar'
+      path: '/api/webhook/polar'
+      fullPath: '/api/webhook/polar'
+      preLoaderRoute: typeof ApiWebhookPolarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -560,7 +620,10 @@ const rootRouteChildren: RootRouteChildren = {
   SuperAdminRoute: SuperAdminRoute,
   TeamRoute: TeamRoute,
   TimelineRoute: TimelineRoute,
+  ApiCheckoutRoute: ApiCheckoutRoute,
+  ApiPortalRoute: ApiPortalRoute,
   JoinCodeRoute: JoinCodeRoute,
+  ApiWebhookPolarRoute: ApiWebhookPolarRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -36,6 +36,8 @@ export default defineSchema({
     isSuspended: v.optional(v.boolean()),
     subscriptionTier: v.optional(v.string()),
     subscriptionExpiresAt: v.optional(v.number()),
+    polarCustomerId: v.optional(v.string()),
+    polarSubscriptionId: v.optional(v.string()),
   })
     .index('email', ['email'])
     .index('phone', ['phone']),

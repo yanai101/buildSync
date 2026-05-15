@@ -242,6 +242,41 @@ function AccountPage() {
         </form>
       </div>
 
+      <div className="card" style={{ padding: 24, border: '1px solid var(--accent)', background: 'var(--accent-light)' }}>
+        <SectionHeader title="ניהול מנוי (Polar.sh)" subtitle="שדרוג וניהול חשבוניות" />
+        <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <p style={{ fontSize: 13, color: 'var(--text2)' }}>
+            מכאן תוכל לשדרג את המנוי שלך, לעדכן אמצעי תשלום, או להוריד חשבוניות מהעבר דרך פורטל הלקוחות.
+          </p>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+            {!isProOrPremium && !isSuperAdmin && (
+              <>
+                <a
+                  href={`/api/checkout?products=0fbf2c19-6302-4bf6-b5be-d0317632513f&customerExternalId=${user._id}`}
+                  style={{ textDecoration: 'none' }}
+                >
+                  <Btn variant="primary" style={{ padding: '8px 16px' }}>שדרג למנוי חודשי</Btn>
+                </a>
+                <a
+                  href={`/api/checkout?products=140a20ee-cfa9-4f0c-b1ca-21234c5f80fb&customerExternalId=${user._id}`}
+                  style={{ textDecoration: 'none' }}
+                >
+                  <Btn variant="outline" style={{ padding: '8px 16px', background: '#fff' }}>שדרג למנוי שנתי</Btn>
+                </a>
+              </>
+            )}
+            <a
+              href={`/api/portal?customerId=${user.polarCustomerId || ''}`}
+              style={{ textDecoration: 'none' }}
+            >
+              <Btn variant="secondary" style={{ padding: '8px 16px' }}>
+                <Icon n="credit-card" s={14} /> נהל מנוי וחשבוניות
+              </Btn>
+            </a>
+          </div>
+        </div>
+      </div>
+
       <div className="card" style={{ padding: 24 }}>
         <SectionHeader title="שינוי סיסמה" subtitle="מומלץ להחליף סיסמה אחת לכמה חודשים" />
 

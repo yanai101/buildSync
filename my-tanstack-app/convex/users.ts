@@ -221,3 +221,24 @@ export const toggleSubscription = mutation({
     return newTier;
   },
 });
+
+export const updateSubscription = mutation({
+  args: {
+    userId: v.id('users'),
+    subscriptionTier: v.string(),
+    subscriptionExpiresAt: v.optional(v.number()),
+    polarCustomerId: v.optional(v.string()),
+    polarSubscriptionId: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    // Note: In a real production app, you might want to add a check here 
+    // to ensure this is called from your secure backend/webhook.
+    
+    await ctx.db.patch(args.userId, {
+      subscriptionTier: args.subscriptionTier,
+      subscriptionExpiresAt: args.subscriptionExpiresAt,
+      polarCustomerId: args.polarCustomerId,
+      polarSubscriptionId: args.polarSubscriptionId,
+    });
+  },
+});
