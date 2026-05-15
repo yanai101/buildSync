@@ -1142,13 +1142,14 @@ export const ContractorsScreen = () => {
                         {mode:'custom' as const,label:'לפי חוזה קבלן'},
                       ].map(option => {
                         const active = (c.paymentMode ?? 'custom') === option.mode;
+                        const isDisabled = savingPaymentMode || active || (selectedPaymentStarted && option.mode === 'stage_synced');
                         return (
                           <button
                             key={option.mode}
                             type="button"
-                            disabled={savingPaymentMode || active}
+                            disabled={isDisabled}
                             onClick={()=>handlePaymentModeChange(c, option.mode)}
-                            style={{border:"none",borderRadius:6,padding:"6px 10px",fontFamily:"'Heebo',sans-serif",fontSize:12,fontWeight:700,cursor:savingPaymentMode?"wait":active?"default":"pointer",background:active?"#fff":"transparent",color:active?"var(--accent)":"var(--text2)",boxShadow:active?"var(--shadow-sm)":"none"}}
+                            style={{border:"none",borderRadius:6,padding:"6px 10px",fontFamily:"'Heebo',sans-serif",fontSize:12,fontWeight:700,cursor:savingPaymentMode?"wait":isDisabled?"default":"pointer",background:active?"#fff":"transparent",color:active?"var(--accent)":isDisabled&&!active?"var(--text3)":"var(--text2)",boxShadow:active?"var(--shadow-sm)":"none",opacity:isDisabled&&!active?0.6:1}}
                           >
                             {option.label}
                           </button>
