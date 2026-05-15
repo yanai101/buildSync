@@ -760,7 +760,7 @@ const PaymentSchedule = ({
 import { useSearch } from '@tanstack/react-router';
 
 export const ContractorsScreen = () => {
-  const { projectId } = useCurrentProject();
+  const { projectId, project } = useCurrentProject();
   const search = useSearch({ from: '/contractors', shouldThrow: false }) as { contractorId?: string } | undefined;
   const dbContractors = useQuery(api.queries.listContractors, projectId ? { projectId } : "skip");
   const dbStages = useQuery(api.queries.listStages, projectId ? { projectId } : "skip");
