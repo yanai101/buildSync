@@ -246,6 +246,7 @@ export const PaymentGatesPanel = ({
   onRequestReviewMs,
   onSupervisorApproveMs,
   onReleaseMs,
+  onLockMs,
 }: {
   stage: Stage,
   gates: Gates,
@@ -359,7 +360,7 @@ export const PaymentGatesPanel = ({
 // ── MilestonesPanel — focus on the next thing to pay ─────────────────────────
 const MilestoneItem = ({
   stage, milestone, gates, status, locked, isNext,
-  onSupervisorApprove, onRelease,
+  onSupervisorApprove, onRelease, onLock
 }: {
   stage: Stage, milestone: Milestone, gates: Gates, status: string, locked: boolean, isNext?: boolean,
   onSupervisorApprove?: () => void, onRelease?: (m: Milestone) => void, onLock?: (id: string) => void

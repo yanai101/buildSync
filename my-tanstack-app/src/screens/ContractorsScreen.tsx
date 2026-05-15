@@ -32,7 +32,7 @@ const LockPaymentModal = ({
 
   const handleFilesSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files?.length) return;
-    const newFiles = Array.from(e.target.files).map(file => ({ file, progress: 0 }));
+    const newFiles: { file: File; id?: Id<'projectFiles'>; progress: number }[] = Array.from(e.target.files).map(file => ({ file, progress: 0 }));
     setFiles(prev => [...prev, ...newFiles]);
     setUploading(true);
 
@@ -845,7 +845,7 @@ export const ContractorsScreen = () => {
     });
   };
 
-  const handleLockPayment = (milestoneId: string) => {
+  const handleLockPayment = async (milestoneId: string) => {
     setLockTarget(milestoneId);
   };
 
