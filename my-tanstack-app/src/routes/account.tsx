@@ -265,14 +265,16 @@ function AccountPage() {
                 </a>
               </>
             )}
-            <a
-              href={`/api/portal?customerId=${user.polarCustomerId || ''}`}
-              style={{ textDecoration: 'none' }}
-            >
-              <Btn variant="secondary" style={{ padding: '8px 16px' }}>
-                <Icon n="credit-card" s={14} /> נהל מנוי וחשבוניות
-              </Btn>
-            </a>
+            {user.polarCustomerId && (
+              <a
+                href={`/api/portal?customerId=${user.polarCustomerId}`}
+                style={{ textDecoration: 'none' }}
+              >
+                <Btn variant="secondary" style={{ padding: '8px 16px' }}>
+                  <Icon n="credit-card" s={14} /> נהל מנוי וחשבוניות
+                </Btn>
+              </a>
+            )}
           </div>
         </div>
       </div>
