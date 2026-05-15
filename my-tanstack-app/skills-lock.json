@@ -31,6 +31,12 @@
       "skillPath": "skills/convex-quickstart/SKILL.md",
       "computedHash": "8735052585ff81bb6ad4b362a7bb599413288e55d071c8ddf4f798b6d989ebac"
     },
+    "convex-security-check": {
+      "source": "waynesutton/convexskills",
+      "sourceType": "github",
+      "skillPath": "skills/convex-security-check/SKILL.md",
+      "computedHash": "b53e061304bb81d037c6dd4e38762d27a596523bcbeab43c58e0b05140449802"
+    },
     "convex-setup-auth": {
       "source": "get-convex/agent-skills",
       "sourceType": "github",

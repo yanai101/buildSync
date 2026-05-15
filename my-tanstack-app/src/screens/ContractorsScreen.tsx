@@ -45,7 +45,7 @@ type ContractorForm = {
   role: string;
   phone: string;
   email: string;
-  budget: number;
+  budget: number | "";
 };
 
 const emptyForm: ContractorForm = {
@@ -54,7 +54,7 @@ const emptyForm: ContractorForm = {
   role: "קבלן עד מפתח",
   phone: "",
   email: "",
-  budget: 0,
+  budget: "",
 };
 
 const contractorDbId = (contractor: Contractor) => String(contractor._id ?? contractor.id);
@@ -62,7 +62,7 @@ const stageDbId = (stage: { id?: unknown; _id?: unknown; stageId?: unknown }) =>
 
 type DraftMilestone = Milestone & { isNew?: boolean };
 
-const clampPct = (pct: number) => Math.max(0, Math.min(100, Math.round(Number.isFinite(pct) ? pct : 0)));
+const clampPct = (pct: number) => Math.max(0, Math.min(100, Math.round((Number.isFinite(pct) ? pct : 0) * 10000) / 10000));
 const roundPct = (value: number) => Math.round(value * 100) / 100;
 
 const withAmounts = (contractor: Contractor, milestones: DraftMilestone[]): DraftMilestone[] => {
@@ -326,14 +326,41 @@ const PaymentSchedule = ({
           type="number"
           min={0}
           max={100}
-          value={m.pct}
+          step="any"
+          placeholder="0"
+          value={m.pct === 0 ? "" : Number(m.pct.toFixed(2))}
           disabled={savingSchedule || locked || m.sourceMode === 'stage_synced'}
-          onChange={e=>updateMilestone(i, {pct:Number(e.target.value)}, true)}
+          onChange={e=>{
+            const val = e.target.value;
+            updateMilestone(i, {pct: val === "" ? 0 : Number(val)}, true);
+          }}
           onBlur={saveOnBlur}
           style={{width:72,fontSize:13,fontWeight:600}}
         />
       </td>
-      <td style={{fontSize:13,fontWeight:700,color:m.paid?"var(--success)":"var(--text1)"}}>{fmtMoney(m.amount)}</td>
+      <td>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <span style={{ fontSize: 13, color: "var(--text2)", fontWeight: 400 }}>₪</span>
+          <input
+            className="bp-input"
+            type="number"
+            min={0}
+            max={contractor.budget}
+            placeholder="0"
+            value={m.amount === 0 ? "" : m.amount}
+            disabled={savingSchedule || locked || m.sourceMode === 'stage_synced'}
+            onChange={e => {
+              if (contractor.budget > 0) {
+                const val = e.target.value;
+                const newPct = val === "" ? 0 : (Number(val) / contractor.budget) * 100;
+                updateMilestone(i, { pct: newPct }, true);
+              }
+            }}
+            onBlur={saveOnBlur}
+            style={{ width: 90, fontSize: 13, fontWeight: 700, color: m.paid ? "var(--success)" : "var(--text1)" }}
+          />
+        </div>
+      </td>
       <td style={{fontSize:12,color:"var(--text3)"}}>
         {m.paidAt || "—"}
         {m.sourceMode === 'stage_synced' && (
@@ -410,7 +437,7 @@ const PaymentSchedule = ({
       <div style={{padding:"10px 18px 0"}}>
         <div style={{height:8,background:"var(--border)",borderRadius:4,overflow:"hidden",display:"flex"}}>
           {milestones.map((m,i)=>(
-            <div key={m.id} style={{width:`${m.pct}%`,background:m.paid?"var(--success)":"transparent",borderLeft:i>0?"1px solid var(--bg)":""}} title={`${m.name}: ${m.pct}%`}/>
+            <div key={m.id} style={{width:`${m.pct}%`,background:m.paid?"var(--success)":"transparent",borderLeft:i>0?"1px solid var(--bg)":""}} title={`${m.name}: ${roundPct(m.pct)}%`}/>
           ))}
         </div>
         <div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:"var(--text3)",marginTop:4}}>
@@ -463,10 +490,19 @@ const PaymentSchedule = ({
             </div>
             <div style={{flex:"0 0 80px"}}>
               <div style={{fontSize:11,color:"var(--text2)",marginBottom:3}}>אחוז %</div>
-              <input className="bp-input" type="number" value={newM.pct} onChange={e=>setNewM(n=>({...n,pct:Number(e.target.value)}))} min={1} max={100}/>
+              <input className="bp-input" type="number" placeholder="0" value={newM.pct === 0 ? "" : Number(newM.pct.toFixed(2))} onChange={e=>{
+                const val = e.target.value;
+                setNewM(n=>({...n,pct:val === "" ? 0 : Number(val)}));
+              }} min={0} max={100} step="any"/>
             </div>
-            <div style={{fontSize:12,color:"var(--text2)",alignSelf:"center",paddingBottom:2}}>
-              = {fmtMoney(Math.round(contractor.budget*newM.pct/100))}
+            <div style={{flex:"0 0 100px"}}>
+              <div style={{fontSize:11,color:"var(--text2)",marginBottom:3}}>סכום ₪</div>
+              <input className="bp-input" type="number" placeholder="0" value={Math.round(contractor.budget * newM.pct / 100) === 0 ? "" : Math.round(contractor.budget * newM.pct / 100)} onChange={e=>{
+                if (contractor.budget > 0) {
+                  const val = e.target.value;
+                  setNewM(n=>({...n,pct:val === "" ? 0 : (Number(val) / contractor.budget) * 100}));
+                }
+              }} min={0} max={contractor.budget}/>
             </div>
             <div style={{display:"flex",gap:6}}>
               <Btn onClick={addMilestone} disabled={savingNew || scheduleOverBudget}><Icon n="plus" s={13}/> הוסף</Btn>
@@ -577,7 +613,7 @@ export const ContractorsScreen = () => {
       role: contractor.role || "קבלן עד מפתח",
       phone: contractor.phone || "",
       email: contractor.email || "",
-      budget: contractor.budget || 0,
+      budget: contractor.budget || "",
     });
     setEditingContractor(contractor);
   };
@@ -732,7 +768,7 @@ export const ContractorsScreen = () => {
           ))}
           <div>
             <div style={{fontSize:12,color:"var(--text2)",marginBottom:3,fontWeight:500}}>תקציב מוסכם (₪)</div>
-            <input className="bp-input" type="number" value={form.budget} onChange={e=>setForm(f=>({...f,budget:Number(e.target.value)}))}/>
+            <input className="bp-input" type="number" placeholder="0" value={form.budget} onChange={e=>setForm(f=>({...f,budget:e.target.value === "" ? "" : Number(e.target.value)}))}/>
           </div>
         </div>
         <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:4}}>
