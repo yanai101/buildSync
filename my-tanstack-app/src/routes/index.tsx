@@ -573,9 +573,9 @@ function LandingPage() {
                
                <ul className="bullet-list" style={{ gap: 24 }}>
                  <li className="bullet-item"><Icon n="message-circle" s={24} c="#EF4444" style={{marginTop:2, opacity: 0.7}} /> <div style={{ color: '#ccc', fontSize: '1.2rem' }}>תמונות והחלטות מפוזרות בוואטסאפ</div></li>
-                 <li className="bullet-item"><Icon n="help-circle" s={24} c="#EF4444" style={{marginTop:2, opacity: 0.7}} /> <div style={{ color: '#ccc', fontSize: '1.2rem' }}>"מה הסטטוס של החשמל?"</div></li>
-                 <li className="bullet-item"><Icon n="phone-call" s={24} c="#EF4444" style={{marginTop:2, opacity: 0.7}} /> <div style={{ color: '#ccc', fontSize: '1.2rem' }}>קבלנים מתקשרים כל היום בשאלות</div></li>
-                 <li className="bullet-item"><Icon n="alert-triangle" s={24} c="#EF4444" style={{marginTop:2, opacity: 0.7}} /> <div style={{ color: '#ccc', fontSize: '1.2rem' }}>אין מעקב מסודר על חריגות תשלומים</div></li>
+                 <li className="bullet-item"><Icon n="message" s={24} c="#EF4444" style={{marginTop:2, opacity: 0.7}} /> <div style={{ color: '#ccc', fontSize: '1.2rem' }}>"מה הסטטוס של החשמל?"</div></li>
+                 <li className="bullet-item"><Icon n="phone" s={24} c="#EF4444" style={{marginTop:2, opacity: 0.7}} /> <div style={{ color: '#ccc', fontSize: '1.2rem' }}>קבלנים מתקשרים כל היום בשאלות</div></li>
+                 <li className="bullet-item"><Icon n="alert" s={24} c="#EF4444" style={{marginTop:2, opacity: 0.7}} /> <div style={{ color: '#ccc', fontSize: '1.2rem' }}>אין מעקב מסודר על חריגות תשלומים</div></li>
                  <li className="bullet-item"><Icon n="users" s={24} c="#EF4444" style={{marginTop:2, opacity: 0.7}} /> <div style={{ color: '#ccc', fontSize: '1.2rem' }}>ויכוחים אינסופיים של "לא אמרת לי"</div></li>
                </ul>
              </motion.div>
@@ -594,7 +594,7 @@ function LandingPage() {
                  <li className="bullet-item"><Icon n="pie-chart" s={24} c="#10B981" style={{marginTop:2}} /> <div style={{ color: '#fff', fontSize: '1.2rem', fontWeight: 500 }}>תקציב, חריגות ותשלומים במקום אחד</div></li>
                  <li className="bullet-item"><Icon n="file-text" s={24} c="#10B981" style={{marginTop:2}} /> <div style={{ color: '#fff', fontSize: '1.2rem', fontWeight: 500 }}>יומן עבודה יומי חתום ומגובה</div></li>
                  <li className="bullet-item"><Icon n="eye" s={24} c="#10B981" style={{marginTop:2}} /> <div style={{ color: '#fff', fontSize: '1.2rem', fontWeight: 500 }}>הלקוח רואה הכל בזמן אמת באפליקציה</div></li>
-                 <li className="bullet-item"><Icon n="shield" s={24} c="#10B981" style={{marginTop:2}} /> <div style={{ color: '#fff', fontSize: '1.2rem', fontWeight: 500 }}>שקט נפשי - הכל שמור, מסודר ומוגן</div></li>
+                 <li className="bullet-item"><Icon n="lock" s={24} c="#10B981" style={{marginTop:2}} /> <div style={{ color: '#fff', fontSize: '1.2rem', fontWeight: 500 }}>שקט נפשי - הכל שמור, מסודר ומוגן</div></li>
                </ul>
              </motion.div>
            </div>
@@ -609,14 +609,14 @@ function LandingPage() {
              {/* SUPERVISOR */}
              <motion.div variants={fadeIn} style={{ background: 'rgba(20,20,25,0.85)', backdropFilter: 'blur(12px)', padding: 40, borderRadius: 24, border: '1px solid rgba(224,122,56,0.15)', display: 'flex', flexDirection: 'column' }}>
                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10, background: 'rgba(224,122,56,0.1)', color: 'var(--accent)', padding: '6px 16px', borderRadius: 20, fontSize: 14, fontWeight: 'bold', marginBottom: 24, alignSelf: 'flex-start' }}>
-                 <Icon n="briefcase" s={16} /> עבור המפקח
+                 <Icon n="layers" s={16} /> עבור המפקח
                </div>
                <h3 style={{ fontSize: '2.2rem', fontWeight: 800, marginBottom: 32, lineHeight: 1.2 }}>הופכים את השירות שלך לפרימיום.</h3>
                <ul className="bullet-list" style={{ gap: 20, marginBottom: 40, flex: 1 }}>
                  <li className="bullet-item"><Icon n="star" s={24} c="var(--accent)" style={{marginTop:2}} /> <div style={{fontSize: '1.15rem', color: '#eee'}}>אזור אישי ומרשים לכל לקוח</div></li>
-                 <li className="bullet-item"><Icon n="phone-off" s={24} c="var(--accent)" style={{marginTop:2}} /> <div style={{fontSize: '1.15rem', color: '#eee'}}>פחות טלפונים, הודעות ועדכונים ידניים</div></li>
+                 <li className="bullet-item"><Icon n="phone" s={24} c="var(--accent)" style={{marginTop:2}} /> <div style={{fontSize: '1.15rem', color: '#eee'}}>פחות טלפונים, הודעות ועדכונים ידניים</div></li>
                  <li className="bullet-item"><Icon n="camera" s={24} c="var(--accent)" style={{marginTop:2}} /> <div style={{fontSize: '1.15rem', color: '#eee'}}>תיעוד מלא ומגובה לכל החלטה בשטח</div></li>
-                 <li className="bullet-item"><Icon n="award" s={24} c="var(--accent)" style={{marginTop:2}} /> <div style={{fontSize: '1.15rem', color: '#eee'}}>כלי טכנולוגי שמבדל אותך ממפקחים אחרים</div></li>
+                 <li className="bullet-item"><Icon n="star" s={24} c="var(--accent)" style={{marginTop:2}} /> <div style={{fontSize: '1.15rem', color: '#eee'}}>כלי טכנולוגי שמבדל אותך ממפקחים אחרים</div></li>
                </ul>
                <div style={{ padding: 24, background: 'rgba(255,255,255,0.03)', borderRadius: 12, borderLeft: '4px solid var(--accent)', color: '#aaa', fontSize: '1.1rem', fontStyle: 'italic', lineHeight: 1.6 }}>
                  "לקוחות לא מקבלים ממני רק פיקוח - הם מקבלים מערכת ניהול ובקרה מלאה שנותנת להם לישון בשקט."
@@ -630,10 +630,10 @@ function LandingPage() {
                </div>
                <h3 style={{ fontSize: '2.2rem', fontWeight: 800, marginBottom: 32, lineHeight: 1.2 }}>לדעת בדיוק מה קורה בנכס שלך.</h3>
                <ul className="bullet-list" style={{ gap: 20, marginBottom: 40, flex: 1 }}>
-                 <li className="bullet-item"><Icon n="activity" s={24} c="#3B82F6" style={{marginTop:2}} /> <div style={{fontSize: '1.15rem', color: '#eee'}}>מעקב התקדמות ויזואלי בזמן אמת</div></li>
-                 <li className="bullet-item"><Icon n="dollar-sign" s={24} c="#3B82F6" style={{marginTop:2}} /> <div style={{fontSize: '1.15rem', color: '#eee'}}>שקיפות מלאה על התקציב ולאן הולך הכסף</div></li>
-                 <li className="bullet-item"><Icon n="folder" s={24} c="#3B82F6" style={{marginTop:2}} /> <div style={{fontSize: '1.15rem', color: '#eee'}}>כל התמונות, החוזים והאישורים במקום אחד</div></li>
-                 <li className="bullet-item"><Icon n="shield-check" s={24} c="#3B82F6" style={{marginTop:2}} /> <div style={{fontSize: '1.15rem', color: '#eee'}}>בקרה קפדנית שמונעת הפתעות וטעויות יקרות</div></li>
+                 <li className="bullet-item"><Icon n="chart" s={24} c="#3B82F6" style={{marginTop:2}} /> <div style={{fontSize: '1.15rem', color: '#eee'}}>מעקב התקדמות ויזואלי בזמן אמת</div></li>
+                 <li className="bullet-item"><Icon n="chart" s={24} c="#3B82F6" style={{marginTop:2}} /> <div style={{fontSize: '1.15rem', color: '#eee'}}>שקיפות מלאה על התקציב ולאן הולך הכסף</div></li>
+                 <li className="bullet-item"><Icon n="clipboard" s={24} c="#3B82F6" style={{marginTop:2}} /> <div style={{fontSize: '1.15rem', color: '#eee'}}>כל התמונות, החוזים והאישורים במקום אחד</div></li>
+                 <li className="bullet-item"><Icon n="check-circle" s={24} c="#3B82F6" style={{marginTop:2}} /> <div style={{fontSize: '1.15rem', color: '#eee'}}>בקרה קפדנית שמונעת הפתעות וטעויות יקרות</div></li>
                </ul>
                <div style={{ padding: 24, background: 'rgba(255,255,255,0.03)', borderRadius: 12, borderLeft: '4px solid #3B82F6', color: '#aaa', fontSize: '1.1rem', fontStyle: 'italic', lineHeight: 1.6 }}>
                  "השקעה קטנה שמגינה על פרויקט של מיליונים. השקט הנפשי שלי שווה כל שקל."
@@ -663,7 +663,7 @@ function LandingPage() {
              <motion.div variants={fadeIn} className="info-card" style={{ padding: 32, background: 'rgba(20,20,25,0.85)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.05)' }}>
                <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20 }}>
                  <div style={{ width: 56, height: 56, borderRadius: 16, background: 'rgba(245, 158, 11, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                   <Icon n="alert-triangle" s={28} c="#F59E0B" />
+                   <Icon n="alert" s={28} c="#F59E0B" />
                  </div>
                  <h4 style={{ fontSize: '1.4rem', fontWeight: 800, margin: 0 }}>טעות באיטום או צנרת</h4>
                </div>
