@@ -549,7 +549,7 @@ function LandingPage() {
 
       {/* 6. THE "WHY BUILDSYNC" / VALUE PROP SECTION */}
       {/* 6.1 HERO HOOK */}
-      <section className="section-padding" style={{ background: '#0a0a0c', borderTop: '1px solid rgba(255,255,255,0.02)', paddingBottom: 60 }}>
+      <section className="section-padding" style={{ background: 'linear-gradient(180deg, rgba(10,10,12,0.95) 0%, rgba(10,10,12,0.8) 100%), url(/images/bg_communication.png) center/cover no-repeat', borderTop: '1px solid rgba(255,255,255,0.02)', paddingBottom: 80 }}>
         <div className="content-width">
            <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeIn} style={{ textAlign: 'center', maxWidth: 900, margin: '0 auto', marginBottom: 80 }}>
             <h2 className="gradient-text" style={{ fontSize: 'clamp(2.5rem, 5vw, 4.5rem)', fontWeight: 900, marginBottom: 24, lineHeight: 1.1, letterSpacing: '-0.02em' }}>
@@ -563,7 +563,7 @@ function LandingPage() {
            {/* 6.2 BEFORE / AFTER */}
            <div className="card-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: 40 }}>
              {/* BEFORE */}
-             <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} viewport={{ once: true }} style={{ background: 'linear-gradient(180deg, rgba(239, 68, 68, 0.05) 0%, rgba(20,20,25,0.8) 100%)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: 24, padding: 40, position: 'relative', overflow: 'hidden' }}>
+             <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} viewport={{ once: true }} style={{ background: 'linear-gradient(180deg, rgba(239, 68, 68, 0.05) 0%, rgba(20,20,25,0.85) 100%)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: 24, padding: 40, position: 'relative', overflow: 'hidden', backdropFilter: 'blur(10px)' }}>
                <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 32 }}>
                  <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'rgba(239, 68, 68, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                    <Icon n="x" s={28} c="#EF4444" />
@@ -581,7 +581,7 @@ function LandingPage() {
              </motion.div>
 
              {/* AFTER */}
-             <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.2 }} viewport={{ once: true }} style={{ background: 'linear-gradient(180deg, rgba(16, 185, 129, 0.05) 0%, rgba(20,20,25,0.8) 100%)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: 24, padding: 40, position: 'relative', overflow: 'hidden', boxShadow: '0 20px 40px rgba(16, 185, 129, 0.05)' }}>
+             <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.2 }} viewport={{ once: true }} style={{ background: 'linear-gradient(180deg, rgba(16, 185, 129, 0.05) 0%, rgba(20,20,25,0.85) 100%)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: 24, padding: 40, position: 'relative', overflow: 'hidden', boxShadow: '0 20px 40px rgba(16, 185, 129, 0.05)', backdropFilter: 'blur(10px)' }}>
                <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 32 }}>
                  <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'rgba(16, 185, 129, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                    <Icon n="check" s={28} c="#10B981" />
@@ -602,12 +602,12 @@ function LandingPage() {
       </section>
 
       {/* 6.3 SPLIT VALUE PROP */}
-      <section className="section-padding" style={{ background: '#111115' }}>
+      <section className="section-padding" style={{ background: 'linear-gradient(180deg, rgba(17,17,21,0.95) 0%, rgba(17,17,21,0.7) 100%), url(/images/bg_smart_system.png) center/cover no-repeat', borderTop: '1px solid rgba(255,255,255,0.03)' }}>
         <div className="content-width">
            <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-100px" }} variants={staggerContainer} className="card-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: 60 }}>
              
              {/* SUPERVISOR */}
-             <motion.div variants={fadeIn} style={{ background: 'rgba(20,20,25,0.6)', padding: 40, borderRadius: 24, border: '1px solid rgba(224,122,56,0.15)', display: 'flex', flexDirection: 'column' }}>
+             <motion.div variants={fadeIn} style={{ background: 'rgba(20,20,25,0.85)', backdropFilter: 'blur(12px)', padding: 40, borderRadius: 24, border: '1px solid rgba(224,122,56,0.15)', display: 'flex', flexDirection: 'column' }}>
                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10, background: 'rgba(224,122,56,0.1)', color: 'var(--accent)', padding: '6px 16px', borderRadius: 20, fontSize: 14, fontWeight: 'bold', marginBottom: 24, alignSelf: 'flex-start' }}>
                  <Icon n="briefcase" s={16} /> עבור המפקח
                </div>
@@ -624,7 +624,7 @@ function LandingPage() {
              </motion.div>
 
              {/* HOME OWNER */}
-             <motion.div variants={fadeIn} style={{ background: 'rgba(20,20,25,0.6)', padding: 40, borderRadius: 24, border: '1px solid rgba(59,130,246,0.15)', display: 'flex', flexDirection: 'column' }}>
+             <motion.div variants={fadeIn} style={{ background: 'rgba(20,20,25,0.85)', backdropFilter: 'blur(12px)', padding: 40, borderRadius: 24, border: '1px solid rgba(59,130,246,0.15)', display: 'flex', flexDirection: 'column' }}>
                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10, background: 'rgba(59,130,246,0.1)', color: '#3B82F6', padding: '6px 16px', borderRadius: 20, fontSize: 14, fontWeight: 'bold', marginBottom: 24, alignSelf: 'flex-start' }}>
                  <Icon n="home" s={16} /> עבור בעלי הבית / יזמים
                </div>
@@ -645,10 +645,10 @@ function LandingPage() {
       </section>
 
       {/* 6.4 ROI SECTION */}
-      <section className="section-padding" style={{ background: 'linear-gradient(180deg, #111115 0%, #0a0a0c 100%)', borderBottom: '1px solid rgba(255,255,255,0.02)' }}>
+      <section className="section-padding" style={{ background: 'linear-gradient(180deg, rgba(17,17,21,0.95) 0%, rgba(10,10,12,0.85) 100%), url(/images/flying_money_bg.png) center/cover no-repeat', backgroundAttachment: 'fixed', borderTop: '1px solid rgba(255,255,255,0.03)', borderBottom: '1px solid rgba(255,255,255,0.02)' }}>
         <div className="content-width">
            <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-50px" }} variants={staggerContainer} className="card-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))' }}>
-             <motion.div variants={fadeIn} className="info-card" style={{ padding: 32, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
+             <motion.div variants={fadeIn} className="info-card" style={{ padding: 32, background: 'rgba(20,20,25,0.85)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.05)' }}>
                <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20 }}>
                  <div style={{ width: 56, height: 56, borderRadius: 16, background: 'rgba(239, 68, 68, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                    <Icon n="clock" s={28} c="#EF4444" />
@@ -660,10 +660,10 @@ function LandingPage() {
                </p>
              </motion.div>
 
-             <motion.div variants={fadeIn} className="info-card" style={{ padding: 32, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
+             <motion.div variants={fadeIn} className="info-card" style={{ padding: 32, background: 'rgba(20,20,25,0.85)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.05)' }}>
                <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20 }}>
                  <div style={{ width: 56, height: 56, borderRadius: 16, background: 'rgba(245, 158, 11, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                   <Icon n="droplet" s={28} c="#F59E0B" />
+                   <Icon n="alert-triangle" s={28} c="#F59E0B" />
                  </div>
                  <h4 style={{ fontSize: '1.4rem', fontWeight: 800, margin: 0 }}>טעות באיטום או צנרת</h4>
                </div>
@@ -672,7 +672,7 @@ function LandingPage() {
                </p>
              </motion.div>
 
-             <motion.div variants={fadeIn} className="info-card" style={{ padding: 32, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
+             <motion.div variants={fadeIn} className="info-card" style={{ padding: 32, background: 'rgba(20,20,25,0.85)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.05)' }}>
                <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20 }}>
                  <div style={{ width: 56, height: 56, borderRadius: 16, background: 'rgba(16, 185, 129, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                    <Icon n="file-text" s={28} c="#10B981" />
