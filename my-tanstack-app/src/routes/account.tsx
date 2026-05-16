@@ -1,12 +1,18 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, useSearch } from '@tanstack/react-router'
 import * as React from 'react'
 import { useAction, useMutation, useQuery } from 'convex/react'
 import { Btn, Input, Icon } from '~/components/Shared'
 import { api } from '../../convex/_generated/api'
 import { useSubscription } from '~/hooks/useSubscription'
+import { useAppNotify } from '~/hooks/useAppNotify'
 
 export const Route = createFileRoute('/account')({
   component: AccountPage,
+  validateSearch: (search: Record<string, unknown>) => {
+    return {
+      success: search.success as boolean | undefined,
+    }
+  },
 })
 
 const AVATAR_COLORS = [
@@ -28,11 +34,25 @@ const ROLE_LABELS: Record<string, string> = {
 }
 
 function AccountPage() {
+  const { success } = Route.useSearch()
+  const { notify } = useAppNotify()
+
   const user = useQuery(api.users.me, {})
   const updateProfile = useMutation(api.users.updateProfile)
   const updatePassword = useAction(api.users.updatePassword)
   const toggleSubscription = useMutation(api.users.toggleSubscription)
   const { isProOrPremium, tier, isSuperAdmin } = useSubscription()
+
+  React.useEffect(() => {
+    if (success) {
+      notify({
+        title: 'תשלום בוצע בהצלחה!',
+        body: 'המנוי שלך הופעל ועודכן במערכת.',
+        kind: 'success'
+      })
+      // Optionally, we could clean up the URL here using router.navigate
+    }
+  }, [success, notify])
 
   const [profile, setProfile] = React.useState({
     name: '',

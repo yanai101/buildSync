@@ -9,7 +9,8 @@ import { usePersonalFileUploader } from '../hooks/usePersonalFileUploader';
 import { useAppNotify } from '../hooks/useAppNotify';
 import { useRequireRole } from '../hooks/useRequireRole';
 import { AccessDenied, AccessLoading } from '../components/AccessDenied';
-
+import { useSubscription } from '../hooks/useSubscription';
+import { PremiumLock } from '../components/Shared';
 const MAX_FILES = 20;
 
 const formatBytes = (bytes: number): string => {
@@ -36,6 +37,7 @@ const decompress = (bytes: Uint8Array): Promise<Uint8Array> =>
 export const PersonalFilesScreen = () => {
   const { allowed, loading: roleLoading } = useRequireRole(['owner']);
   const identity = useQuery(api.users.currentIdentity, {});
+  const { isProOrPremium } = useSubscription();
 
   const files = useQuery(
     api.personalFiles.listMyPersonalFiles,
@@ -164,7 +166,12 @@ export const PersonalFilesScreen = () => {
   }
 
   return (
-    <div className="page-content" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <PremiumLock
+      isLocked={!isProOrPremium}
+      title="כספת אישית ומסמכים"
+      description="גיבוי, שמירה וניהול של כל הקבצים והמסמכים החשובים של הפרויקט. שדרג ל-Pro כדי לקבל גישה."
+    >
+      <div className="page-content" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {permission === 'default' && (
         <div
           className="card"
@@ -378,6 +385,7 @@ export const PersonalFilesScreen = () => {
           );
         })}
       </div>
-    </div>
+      </div>
+    </PremiumLock>
   );
 };

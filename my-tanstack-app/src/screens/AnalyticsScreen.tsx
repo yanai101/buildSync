@@ -7,7 +7,8 @@ import { ScreenBoundary } from '../components/ScreenBoundary';
 import { BudgetSummaryCards } from '../components/BudgetSummaryCards';
 import { AccessDenied, AccessLoading } from '../components/AccessDenied';
 import { useRequireRole } from '../hooks/useRequireRole';
-import { Modal, Icon } from '../components/Shared';
+import { useSubscription } from '../hooks/useSubscription';
+import { Modal, Icon, PremiumLock } from '../components/Shared';
 import {
   PieChart, Pie, Cell, Tooltip, ResponsiveContainer,
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend,
@@ -19,6 +20,7 @@ const COLORS = ['#E07A38', '#10B981', '#3B82F6', '#8B5CF6', '#EC4899', '#F59E0B'
 export const AnalyticsScreen = () => {
   const { allowed, loading: roleLoading } = useRequireRole(['owner', 'manager']);
   const { projectId } = useCurrentProject();
+  const { isProOrPremium } = useSubscription();
   const [expandedChart, setExpandedChart] = React.useState<string | null>(null);
   
   const { summary, isPending: summaryPending } = useProjectBudgetSummary();
@@ -86,8 +88,13 @@ export const AnalyticsScreen = () => {
   if (loading) return <ScreenBoundary loading={true} onRetry={() => {}}><div/></ScreenBoundary>;
 
   return (
-    <ScreenBoundary>
-      <div className="page-header">
+    <PremiumLock
+      isLocked={!isProOrPremium}
+      title="דוחות וסטטיסטיקות מתקדמות"
+      description="ניתוח נתונים, גרפים, והתפלגות הוצאות ומשימות. שדרג ל-Pro כדי לקבל גישה."
+    >
+      <ScreenBoundary>
+        <div className="page-header">
         <h1 className="page-title">דוחות וסטטיסטיקות</h1>
       </div>
       
@@ -342,5 +349,6 @@ export const AnalyticsScreen = () => {
         </Modal>
       )}
     </ScreenBoundary>
+    </PremiumLock>
   );
 };
