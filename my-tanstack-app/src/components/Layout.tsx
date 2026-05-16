@@ -48,6 +48,7 @@ export const PREMIUM_ROUTES = [
   '/boqwizard',
   '/permits',
   '/daily-logs',
+  '/personal-files',
   // Optional: add more like '/team' if needed
 ]
 
