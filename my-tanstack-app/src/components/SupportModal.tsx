@@ -12,6 +12,7 @@ export function SupportModal({ onClose }: SupportModalProps) {
   const [topic, setTopic] = React.useState<'bug' | 'feature' | 'billing' | 'general' | 'other'>('bug');
   const [message, setMessage] = React.useState('');
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [isSuccess, setIsSuccess] = React.useState(false);
 
   const submitTicket = useMutation(api.support.submitTicket);
   const { notify } = useAppNotify();
@@ -28,12 +29,15 @@ export function SupportModal({ onClose }: SupportModalProps) {
         urlContext: window.location.href, // Captures current URL for debugging
       });
       
+      setIsSuccess(true);
+      // Fallback notify just in case it works globally
       notify({
         title: 'הפנייה נשלחה',
         body: 'תודה רבה! הפנייה שלך הועברה לצוות ותטופל בהקדם.',
         kind: 'success'
       });
-      onClose();
+      // Optionally auto close after 3 seconds:
+      // setTimeout(() => onClose(), 3000);
     } catch (err) {
       console.error(err);
       notify({
@@ -41,6 +45,7 @@ export function SupportModal({ onClose }: SupportModalProps) {
         body: 'אירעה שגיאה בשליחת הפנייה. נסה שוב מאוחר יותר.',
         kind: 'error'
       });
+      alert('אירעה שגיאה בשליחת הפנייה. נסה שוב מאוחר יותר.');
     } finally {
       setIsSubmitting(false);
     }
@@ -82,84 +87,101 @@ export function SupportModal({ onClose }: SupportModalProps) {
           gap: 16,
         }}
       >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h2 style={{ margin: 0, fontSize: 20, color: 'var(--text1)' }}>יצירת קשר / תמיכה</h2>
-          <button
-            onClick={onClose}
-            style={{
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              color: 'var(--text3)',
-              padding: 4,
-            }}
-          >
-            <Icon n="x" s={20} />
-          </button>
-        </div>
-
-        <p style={{ margin: 0, color: 'var(--text2)', fontSize: 14 }}>
-          נשמח לעזור לך! ספר לנו במה מדובר.
-        </p>
-
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div>
-            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text1)', marginBottom: 6 }}>
-              נושא הפנייה
-            </label>
-            <select
-              value={topic}
-              onChange={(e) => setTopic(e.target.value as any)}
-              style={{
-                width: '100%',
-                padding: '10px 12px',
-                borderRadius: 8,
-                border: '1px solid var(--border)',
-                background: 'var(--bg)',
-                color: 'var(--text1)',
-                fontSize: 14,
-                fontFamily: 'inherit',
-              }}
-            >
-              {topicOptions.map(opt => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text1)', marginBottom: 6 }}>
-              פירוט הבעיה או ההצעה
-            </label>
-            <textarea
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              placeholder="פרט ככל שניתן..."
-              rows={5}
-              style={{
-                width: '100%',
-                padding: '10px 12px',
-                borderRadius: 8,
-                border: '1px solid var(--border)',
-                background: 'var(--bg)',
-                color: 'var(--text1)',
-                fontSize: 14,
-                fontFamily: 'inherit',
-                resize: 'vertical',
-              }}
-              required
-            />
-          </div>
-
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 8 }}>
-            <Btn type="button" variant="ghost" onClick={onClose}>
-              ביטול
-            </Btn>
-            <Btn type="submit" variant="primary" disabled={isSubmitting || !message.trim()}>
-              {isSubmitting ? 'שולח...' : 'שלח פנייה'}
+        {isSuccess ? (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '32px 16px', textAlign: 'center' }}>
+            <div style={{ width: 64, height: 64, borderRadius: '50%', background: '#D1FAE5', color: '#10B981', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+              <Icon n="check" s={32} />
+            </div>
+            <h2 style={{ fontSize: 20, color: 'var(--text1)', marginBottom: 8, marginTop: 0 }}>הפנייה נשלחה בהצלחה!</h2>
+            <p style={{ color: 'var(--text2)', fontSize: 15, marginBottom: 24 }}>
+              תודה רבה! הפנייה שלך הועברה לצוות המערכת ותטופל בהקדם.
+            </p>
+            <Btn variant="primary" onClick={onClose} style={{ minWidth: 120, justifyContent: 'center' }}>
+              סגור
             </Btn>
           </div>
-        </form>
+        ) : (
+          <>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h2 style={{ margin: 0, fontSize: 20, color: 'var(--text1)' }}>יצירת קשר / תמיכה</h2>
+              <button
+                onClick={onClose}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: 'var(--text3)',
+                  padding: 4,
+                }}
+              >
+                <Icon n="x" s={20} />
+              </button>
+            </div>
+
+            <p style={{ margin: 0, color: 'var(--text2)', fontSize: 14 }}>
+              נשמח לעזור לך! ספר לנו במה מדובר.
+            </p>
+
+            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text1)', marginBottom: 6 }}>
+                  נושא הפנייה
+                </label>
+                <select
+                  value={topic}
+                  onChange={(e) => setTopic(e.target.value as any)}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    borderRadius: 8,
+                    border: '1px solid var(--border)',
+                    background: 'var(--bg)',
+                    color: 'var(--text1)',
+                    fontSize: 14,
+                    fontFamily: 'inherit',
+                  }}
+                >
+                  {topicOptions.map(opt => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text1)', marginBottom: 6 }}>
+                  פירוט הבעיה או ההצעה
+                </label>
+                <textarea
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  placeholder="פרט ככל שניתן..."
+                  rows={5}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    borderRadius: 8,
+                    border: '1px solid var(--border)',
+                    background: 'var(--bg)',
+                    color: 'var(--text1)',
+                    fontSize: 14,
+                    fontFamily: 'inherit',
+                    resize: 'vertical',
+                  }}
+                  required
+                />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 8 }}>
+                <Btn type="button" variant="ghost" onClick={onClose}>
+                  ביטול
+                </Btn>
+                <Btn type="submit" variant="primary" disabled={isSubmitting || !message.trim()}>
+                  {isSubmitting ? 'שולח...' : 'שלח פנייה'}
+                </Btn>
+              </div>
+            </form>
+          </>
+        )}
       </div>
     </div>
   );

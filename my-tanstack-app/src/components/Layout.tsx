@@ -109,6 +109,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const [showWelcomeModal, setShowWelcomeModal] = React.useState(false);
   const [showSupportModal, setShowSupportModal] = React.useState(false);
 
+  const supportTicketCount = useQuery(api.support.getOpenTicketCount, identity?.isSuperAdmin ? {} : 'skip') || 0;
+
   const COLLAPSED_KEY = 'buildsync:sidebar-collapsed-sections'
   const [collapsedSections, setCollapsedSections] = React.useState<Set<string>>(new Set())
 
@@ -433,9 +435,29 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 onClick={() => setMenuOpen((v) => !v)}
                 aria-haspopup="menu"
                 aria-expanded={menuOpen}
-                style={{ width: 30, height: 30, borderRadius: "50%", background: "var(--accent-light)", color: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 13, cursor: "pointer", border: "none", padding: 0 }}
+                style={{ width: 30, height: 30, borderRadius: "50%", background: "var(--accent-light)", color: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 13, cursor: "pointer", border: "none", padding: 0, position: "relative" }}
               >
                 {(identity?.name?.[0] ?? identity?.email?.[0] ?? 'א').toUpperCase()}
+                {identity?.isSuperAdmin && supportTicketCount > 0 && (
+                  <span style={{
+                    position: "absolute",
+                    top: -4,
+                    right: -4,
+                    background: "var(--danger)",
+                    color: "white",
+                    fontSize: 10,
+                    fontWeight: 800,
+                    width: 16,
+                    height: 16,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    borderRadius: "50%",
+                    border: "2px solid var(--surface)"
+                  }}>
+                    {supportTicketCount}
+                  </span>
+                )}
               </button>
               {menuOpen && (
                 <div
