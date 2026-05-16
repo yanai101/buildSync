@@ -1,14 +1,17 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { Checkout } from "@polar-sh/tanstack-start";
 
+const isProd = process.env.NODE_ENV === 'production';
+const baseUrl = isProd ? 'https://buildsync.co.il' : 'http://localhost:3000';
+
 export const Route = createFileRoute("/api/checkout")({
   server: {
     handlers: {
       GET: Checkout({
         accessToken: process.env.POLAR_ACCESS_TOKEN,
-        successUrl: process.env.SUCCESS_URL || "http://localhost:3000/account?success=true",
-        returnUrl: process.env.RETURN_URL || "http://localhost:3000/account",
-        server: "sandbox", // TODO: change to production when ready
+        successUrl: `${baseUrl}/account?success=true`,
+        returnUrl: `${baseUrl}/account`,
+        server: "production", // Using production for both since products are created there
         theme: "light",
       }),
     },

@@ -2,6 +2,9 @@ import { createFileRoute } from '@tanstack/react-router'
 import { CustomerPortal } from "@polar-sh/tanstack-start";
 // In a real app we'd get the user from session. Here we will pass customerId via query param.
 
+const isProd = process.env.NODE_ENV === 'production';
+const baseUrl = isProd ? 'https://buildsync.co.il' : 'http://localhost:3000';
+
 export const Route = createFileRoute("/api/portal")({
   server: {
     handlers: {
@@ -11,8 +14,8 @@ export const Route = createFileRoute("/api/portal")({
           const url = new URL(request.url);
           return url.searchParams.get("customerId") || "";
         },
-        returnUrl: process.env.RETURN_URL || "http://localhost:3000/account",
-        server: "sandbox", 
+        returnUrl: `${baseUrl}/account`,
+        server: "production", 
       }),
     },
   },
