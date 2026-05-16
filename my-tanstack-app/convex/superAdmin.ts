@@ -221,14 +221,17 @@ export const cancelUserSubscription = action({
 
     if (targetUser.polarSubscriptionId) {
       const polarToken = process.env.POLAR_ACCESS_TOKEN;
-      if (!polarToken) throw new Error("Missing POLAR_ACCESS_TOKEN");
-      const polar = new Polar({ accessToken: polarToken });
-      
-      try {
-        await polar.subscriptions.revoke({ id: targetUser.polarSubscriptionId });
-      } catch (err: any) {
-        console.error("Failed to revoke subscription in Polar:", err);
-        // We do not throw here, so that the local database still updates to free.
+      if (!polarToken) {
+        console.warn("Missing POLAR_ACCESS_TOKEN in Convex environment variables. Skipping Polar revocation.");
+      } else {
+        const polar = new Polar({ accessToken: polarToken, server: "sandbox" });
+        
+        try {
+          await polar.subscriptions.revoke({ id: targetUser.polarSubscriptionId });
+        } catch (err: any) {
+          console.error("Failed to revoke subscription in Polar:", err);
+          // We do not throw here, so that the local database still updates to free.
+        }
       }
     }
 
