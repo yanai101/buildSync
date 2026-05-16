@@ -168,4 +168,8 @@ export default defineSchema({
   orders: defineTable(zodToConvexFields(s.zOrder))
     .index('by_project', ['projectId'])
     .index('by_project_status', ['projectId', 'status']),
+
+  supportTickets: defineTable(zodToConvexFields(s.zSupportTicket))
+    .index('by_user', ['userId'])
+    .index('by_status', ['status']),
 });

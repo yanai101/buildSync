@@ -1,0 +1,61 @@
+➜ Listening on: http://localhost:3000/ (all interfaces)
+SDKError: API error occurred: Status 401. Body: {"error":"Unauthorized","detail":"Unauthorized"}
+    at matchFunc (file:///Users/yanaiedri/projects/BuildPro/my-tanstack-app/.output/server/_libs/@polar-sh/sdk+%5B...%5D.mjs:9476:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async $do$165 (file:///Users/yanaiedri/projects/BuildPro/my-tanstack-app/.output/server/_libs/@polar-sh/sdk+%5B...%5D.mjs:13405:19) {
+  statusCode: 401,
+  body: '{"error":"Unauthorized","detail":"Unauthorized"}',
+  headers: Headers {
+    date: 'Sat, 16 May 2026 18:53:09 GMT',
+    'content-type': 'application/json',
+    'content-length': '41',
+    connection: 'keep-alive',
+    'content-encoding': 'br',
+    'rndr-id': '37a59e04-5445-43ad',
+    server: 'cloudflare',
+    vary: 'Accept-Encoding',
+    'www-authenticate': 'Bearer realm="polar"',
+    'x-render-origin-server': 'uvicorn',
+    'cf-cache-status': 'DYNAMIC',
+    'report-to': '{"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=sJkPKKQsaEdWJwpTqMJiqzKcNBEkERzgdHVndeFPvF6fU9vBPZQh1nMrFdI7Gr7Ftgc7mCYj4Rtnl7r1mwReiirpTnaoYpCEjOb26JcV0XS6KkNCCpedNytqLTQNEQ%3D%3D"}]}',
+    nel: '{"report_to":"cf-nel","success_fraction":0.0,"max_age":604800}',
+    'cf-ray': '9fcc9565be1643de-TLV',
+    'alt-svc': 'h3=":443"; ma=86400'
+  },
+  contentType: 'application/json',
+  rawResponse: Response {
+    status: 401,
+    statusText: 'Unauthorized',
+    headers: Headers {
+      date: 'Sat, 16 May 2026 18:53:09 GMT',
+      'content-type': 'application/json',
+      'content-length': '41',
+      connection: 'keep-alive',
+      'content-encoding': 'br',
+      'rndr-id': '37a59e04-5445-43ad',
+      server: 'cloudflare',
+      vary: 'Accept-Encoding',
+      'www-authenticate': 'Bearer realm="polar"',
+      'x-render-origin-server': 'uvicorn',
+      'cf-cache-status': 'DYNAMIC',
+      'report-to': '{"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=sJkPKKQsaEdWJwpTqMJiqzKcNBEkERzgdHVndeFPvF6fU9vBPZQh1nMrFdI7Gr7Ftgc7mCYj4Rtnl7r1mwReiirpTnaoYpCEjOb26JcV0XS6KkNCCpedNytqLTQNEQ%3D%3D"}]}',
+      nel: '{"report_to":"cf-nel","success_fraction":0.0,"max_age":604800}',
+      'cf-ray': '9fcc9565be1643de-TLV',
+      'alt-svc': 'h3=":443"; ma=86400'
+    },
+    body: ReadableStream { locked: true, state: 'closed', supportsBYOB: true },
+    bodyUsed: true,
+    ok: false,
+    redirected: false,
+    type: 'basic',
+    url: 'https://api.polar.sh/v1/checkouts/'
+  }
+}
+[unhandledRejection] RangeError [ERR_HTTP_INVALID_STATUS_CODE]: Invalid status code: 0
+    at ServerResponse.writeHead (node:_http_server:373:11)
+    at writeHead (file:///Users/yanaiedri/projects/BuildPro/my-tanstack-app/.output/server/_libs/h3+rou3+srvx.mjs:313:15)
+    at sendNodeResponse (file:///Users/yanaiedri/projects/BuildPro/my-tanstack-app/.output/server/_libs/h3+rou3+srvx.mjs:307:2)
+    at file:///Users/yanaiedri/projects/BuildPro/my-tanstack-app/.output/server/_libs/h3+rou3+srvx.mjs:724:62
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'ERR_HTTP_INVALID_STATUS_CODE'
+}

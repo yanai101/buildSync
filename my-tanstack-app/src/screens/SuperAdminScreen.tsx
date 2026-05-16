@@ -17,11 +17,15 @@ export function SuperAdminScreen() {
   const promoCodes = useQuery(api.superAdmin.getPromoCodes, isSuperAdmin ? {} : 'skip');
   const generatePromoCode = useMutation(api.superAdmin.generatePromoCode);
   const deletePromoCode = useMutation(api.superAdmin.deletePromoCode);
-  const [activeTab, setActiveTab] = useState<'users' | 'promo' | 'cleanup'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'promo' | 'cleanup' | 'support'>('users');
 
   const cleanupCandidates = useQuery(api.cleanup.getCleanupCandidates, isSuperAdmin && activeTab === 'cleanup' ? {} : 'skip');
   const deleteProject = useMutation(api.cleanup.manualDeleteProject);
   const createSimulatedInactiveProject = useMutation(api.cleanup.createSimulatedInactiveProject);
+
+  const supportTickets = useQuery(api.support.getOpenTickets, isSuperAdmin && activeTab === 'support' ? {} : 'skip');
+  const supportTicketCount = useQuery(api.support.getOpenTicketCount, isSuperAdmin ? {} : 'skip') || 0;
+  const resolveTicket = useMutation(api.support.resolveTicket);
 
   const [editingUser, setEditingUser] = useState<any | null>(null);
   const [showConfirmDelete, setShowConfirmDelete] = useState<Id<'users'> | null>(null);
@@ -155,6 +159,39 @@ export function SuperAdminScreen() {
         >
           <Icon n="trash-2" s={20} />
           ניקוי פרויקטים (Data Retention)
+        </button>
+        <button 
+          onClick={() => setActiveTab('support')}
+          style={{ 
+            background: activeTab === 'support' ? 'var(--surface)' : 'transparent',
+            border: 'none',
+            borderBottom: activeTab === 'support' ? '2px solid var(--accent)' : '2px solid transparent',
+            padding: '12px 24px',
+            fontSize: 16,
+            fontWeight: activeTab === 'support' ? 600 : 400,
+            color: activeTab === 'support' ? 'var(--text1)' : 'var(--text2)',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            position: 'relative'
+          }}
+        >
+          <Icon n="help-circle" s={20} />
+          פניות תמיכה
+          {supportTicketCount > 0 && (
+            <span style={{
+              background: 'var(--danger)',
+              color: 'white',
+              fontSize: 11,
+              fontWeight: 800,
+              padding: '2px 6px',
+              borderRadius: 10,
+              marginLeft: 4,
+            }}>
+              {supportTicketCount}
+            </span>
+          )}
         </button>
       </div>
 
@@ -647,6 +684,60 @@ export function SuperAdminScreen() {
             </div>
           </div>
         </Modal>
+      )}
+
+      {activeTab === 'support' && (
+        <div className="card" style={{ padding: 24, marginBottom: 24 }}>
+          <h2 style={{ fontSize: 24, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
+            <Icon n="help-circle" s={28} c="var(--accent)" />
+            פניות תמיכה למערכת
+          </h2>
+          
+          {!supportTickets ? (
+            <div>טוען פניות...</div>
+          ) : supportTickets.length === 0 ? (
+            <div style={{ color: 'var(--text3)' }}>אין פניות פתוחות כרגע. עבודה יפה! 🎉</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {supportTickets.map((ticket: any) => (
+                <div key={ticket._id} style={{ border: '1px solid var(--border)', borderRadius: 12, padding: 16, background: 'var(--bg)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
+                        {ticket.topic === 'bug' && <span style={{ background: '#FEE2E2', color: '#EF4444', padding: '2px 8px', borderRadius: 12, fontSize: 12 }}>באג</span>}
+                        {ticket.topic === 'feature' && <span style={{ background: '#DBEAFE', color: '#3B82F6', padding: '2px 8px', borderRadius: 12, fontSize: 12 }}>הצעה לשיפור</span>}
+                        {ticket.topic === 'billing' && <span style={{ background: '#FEF3C7', color: '#F59E0B', padding: '2px 8px', borderRadius: 12, fontSize: 12 }}>חיוב</span>}
+                        {ticket.topic === 'general' && <span style={{ background: '#E0E7FF', color: '#6366F1', padding: '2px 8px', borderRadius: 12, fontSize: 12 }}>כללי</span>}
+                        {ticket.topic === 'other' && <span style={{ background: '#F3F4F6', color: '#4B5563', padding: '2px 8px', borderRadius: 12, fontSize: 12 }}>אחר</span>}
+                        <span style={{ fontSize: 12, color: 'var(--text3)' }}>
+                          נשלח בתאריך: {new Date(ticket._creationTime).toLocaleDateString('he-IL')} {new Date(ticket._creationTime).toLocaleTimeString('he-IL')}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: 14, color: 'var(--text1)', marginTop: 12, whiteSpace: 'pre-wrap', background: 'var(--surface)', padding: 12, borderRadius: 8 }}>
+                        {ticket.message}
+                      </div>
+                      <div style={{ fontSize: 13, color: 'var(--text2)', marginTop: 12 }}>
+                        <strong>מאת:</strong> {ticket.user.name} ({ticket.user.email} {ticket.user.phone ? `| ${ticket.user.phone}` : ''})
+                      </div>
+                      {ticket.urlContext && (
+                        <div style={{ fontSize: 13, color: 'var(--text3)', marginTop: 4 }}>
+                          <strong>נשלח מכתובת:</strong> <a href={ticket.urlContext} target="_blank" rel="noreferrer">{ticket.urlContext}</a>
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <Btn onClick={async () => {
+                        await resolveTicket({ ticketId: ticket._id });
+                      }} variant="primary" style={{ padding: '6px 12px', fontSize: 13 }}>
+                        <Icon n="check" s={14} /> סמן כטופל
+                      </Btn>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       )}
 
       {!!showConfirmDelete && (

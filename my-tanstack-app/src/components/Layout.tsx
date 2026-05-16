@@ -12,6 +12,7 @@ import { api } from '../../convex/_generated/api'
 import { useOnboardingTour } from '~/hooks/useOnboardingTour'
 import { useRequireRole } from '~/hooks/useRequireRole'
 import { useSubscription } from '~/hooks/useSubscription'
+import { SupportModal } from './SupportModal'
 
 type NavRole = 'owner' | 'manager' | 'inspector' | 'contractor'
 const ALL_ROLES: NavRole[] = ['owner', 'manager', 'inspector', 'contractor']
@@ -106,6 +107,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const unreadNotesCount = dbNotes?.filter(n => !n.resolved).length || 0;
 
   const [showWelcomeModal, setShowWelcomeModal] = React.useState(false);
+  const [showSupportModal, setShowSupportModal] = React.useState(false);
 
   const COLLAPSED_KEY = 'buildsync:sidebar-collapsed-sections'
   const [collapsedSections, setCollapsedSections] = React.useState<Set<string>>(new Set())
@@ -451,6 +453,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                     )}
                   </div>
                   <div style={{ height: 1, background: "var(--border)", margin: "6px 0" }} />
+                  <div style={{ height: 1, background: "var(--border)", margin: "6px 0" }} />
                   <Link
                     to="/account"
                     onClick={() => setMenuOpen(false)}
@@ -469,6 +472,33 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                     <Icon n="settings" s={14} />
                     פרטי חשבון
                   </Link>
+
+                  <button
+                    onClick={() => {
+                      setMenuOpen(false);
+                      setShowSupportModal(true);
+                    }}
+                    style={{
+                      width: "100%",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      padding: "8px 10px",
+                      borderRadius: 8,
+                      color: "var(--text1)",
+                      fontSize: 13,
+                      fontWeight: 600,
+                      background: "transparent",
+                      border: "none",
+                      cursor: "pointer",
+                      textAlign: "right",
+                      fontFamily: "inherit",
+                    }}
+                  >
+                    <Icon n="help-circle" s={14} />
+                    פנייה לתמיכה
+                  </button>
+
                   {identity?.isSuperAdmin && (
                     <>
                       <div style={{ height: 1, background: "var(--border)", margin: "6px 0" }} />
@@ -726,6 +756,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           }, 400);
         }}
       />
+
+      {showSupportModal && (
+        <SupportModal onClose={() => setShowSupportModal(false)} />
+      )}
     </>
   )
 }

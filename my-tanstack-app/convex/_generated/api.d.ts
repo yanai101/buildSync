@@ -38,6 +38,7 @@ import type * as quotes from "../quotes.js";
 import type * as seed from "../seed.js";
 import type * as stages from "../stages.js";
 import type * as superAdmin from "../superAdmin.js";
+import type * as support from "../support.js";
 import type * as timeline from "../timeline.js";
 import type * as users from "../users.js";
 import type * as zodSchemas from "../zodSchemas.js";
@@ -79,6 +80,7 @@ declare const fullApi: ApiFromModules<{
   seed: typeof seed;
   stages: typeof stages;
   superAdmin: typeof superAdmin;
+  support: typeof support;
   timeline: typeof timeline;
   users: typeof users;
   zodSchemas: typeof zodSchemas;

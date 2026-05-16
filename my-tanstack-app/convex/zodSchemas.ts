@@ -587,3 +587,12 @@ export const zProjectAlert = {
   dateLabel: z.string().optional(),
   createdAt: z.number(),
 };
+
+export const zSupportTicket = {
+  userId: zid('users'),
+  topic: z.enum(['bug', 'feature', 'billing', 'general', 'other']),
+  message: z.string(),
+  status: z.enum(['open', 'in-progress', 'resolved']),
+  urlContext: z.string().optional(),
+  resolvedAt: z.number().optional(),
+};
