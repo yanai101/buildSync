@@ -11,7 +11,7 @@ export const Route = createFileRoute("/api/checkout")({
         accessToken: process.env.POLAR_ACCESS_TOKEN,
         successUrl: `${baseUrl}/account?success=true`,
         returnUrl: `${baseUrl}/account`,
-        server: "production", // Using production for both since products are created there
+        server: "sandbox", // Restoring sandbox because the token is a sandbox token!
         theme: "light",
       }),
     },

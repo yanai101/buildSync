@@ -15,7 +15,7 @@ export const Route = createFileRoute("/api/portal")({
           return url.searchParams.get("customerId") || "";
         },
         returnUrl: `${baseUrl}/account`,
-        server: "production", 
+        server: "sandbox", 
       }),
     },
   },
