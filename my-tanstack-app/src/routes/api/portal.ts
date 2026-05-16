@@ -8,15 +8,27 @@ const baseUrl = isProd ? 'https://buildsync.co.il' : 'http://localhost:3000';
 export const Route = createFileRoute("/api/portal")({
   server: {
     handlers: {
-      GET: CustomerPortal({
-        accessToken: process.env.POLAR_ACCESS_TOKEN!,
-        getCustomerId: async (request: Request) => {
-          const url = new URL(request.url);
-          return url.searchParams.get("customerId") || "";
-        },
-        returnUrl: `${baseUrl}/account`,
-        server: "sandbox", 
-      }),
+      GET: async (event) => {
+        const url = new URL(event.request.url);
+        const customerId = url.searchParams.get("customerId");
+        
+        // If customerId is missing or literally the string "undefined", redirect back
+        if (!customerId || customerId === "undefined") {
+          return new Response(null, {
+            status: 302,
+            headers: { Location: `${baseUrl}/account?error=no_customer_id` },
+          });
+        }
+
+        const handler = CustomerPortal({
+          accessToken: process.env.POLAR_ACCESS_TOKEN!,
+          getCustomerId: async () => customerId,
+          returnUrl: `${baseUrl}/account`,
+          server: "sandbox", 
+        });
+
+        return handler(event);
+      },
     },
   },
 });
