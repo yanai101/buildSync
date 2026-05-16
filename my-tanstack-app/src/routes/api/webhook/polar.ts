@@ -45,10 +45,14 @@ export const Route = createFileRoute("/api/webhook/polar")({
           
           if (userId) {
             try {
+              // If the subscription is active, trialing, OR if it's canceled but the period end is still in the future, keep them on their tier.
+              const expiresAtMs = subscription.currentPeriodEnd ? new Date(subscription.currentPeriodEnd).getTime() : undefined;
+              const isStillActive = subscription.status === "active" || subscription.status === "trialing" || (expiresAtMs && Date.now() < expiresAtMs);
+              
               await convex.mutation(api.users.updateSubscription, {
                 userId: userId as any,
-                subscriptionTier: subscription.status === "active" || subscription.status === "trialing" ? tier : "free",
-                subscriptionExpiresAt: subscription.currentPeriodEnd ? new Date(subscription.currentPeriodEnd).getTime() : undefined,
+                subscriptionTier: isStillActive ? tier : "free",
+                subscriptionExpiresAt: expiresAtMs,
                 polarCustomerId: subscription.customerId || (subscription as any).customer_id,
                 polarSubscriptionId: subscription.id,
               });
@@ -63,17 +67,22 @@ export const Route = createFileRoute("/api/webhook/polar")({
         onSubscriptionCanceled: async (payload) => {
           const subscription = payload.data;
           const userId = subscription.customer?.externalId || (subscription as any).customer?.external_id || subscription.customer?.metadata?.userId;
+          const tier = subscription.product?.name?.toLowerCase().includes("premium") ? "premium" : "pro";
           
           if (userId) {
             try {
+              // Even if canceled, if they have time left in the billing period, let them keep it.
+              const expiresAtMs = subscription.currentPeriodEnd ? new Date(subscription.currentPeriodEnd).getTime() : undefined;
+              const hasTimeLeft = expiresAtMs && Date.now() < expiresAtMs;
+
               await convex.mutation(api.users.updateSubscription, {
                 userId: userId as any,
-                subscriptionTier: "free",
-                subscriptionExpiresAt: undefined,
+                subscriptionTier: hasTimeLeft ? tier : "free",
+                subscriptionExpiresAt: hasTimeLeft ? expiresAtMs : undefined,
                 polarCustomerId: subscription.customerId || (subscription as any).customer_id,
                 polarSubscriptionId: subscription.id,
               });
-              console.log("Successfully canceled subscription for user", userId);
+              console.log("Successfully processed cancellation event for user", userId);
             } catch (err) {
               console.error("Failed to update subscription in Convex:", err);
             }
