@@ -553,7 +553,7 @@ function LandingPage() {
         <div className="content-width">
            <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeIn} style={{ textAlign: 'center', maxWidth: 900, margin: '0 auto', marginBottom: 80 }}>
             <h2 className="gradient-text" style={{ fontSize: 'clamp(2.5rem, 5vw, 4.5rem)', fontWeight: 900, marginBottom: 24, lineHeight: 1.1, letterSpacing: '-0.02em' }}>
-              בנייה של מיליונים<br/>לא מנהלים בוואטסאפ.
+              השקעה של מיליונים<br/>לא משאירים למזל.
             </h2>
             <p style={{ color: '#a0a0a0', fontSize: '1.4rem', maxWidth: 700, margin: '0 auto', lineHeight: 1.6 }}>
               BuildSync מחברת בין המפקח בשטח לבין בעלי הבית —<br/>עם תיעוד, תקציב, יומני עבודה ותמונות בזמן אמת.
@@ -601,50 +601,7 @@ function LandingPage() {
         </div>
       </section>
 
-      {/* 6.3 SPLIT VALUE PROP */}
-      <section className="section-padding" style={{ background: 'linear-gradient(180deg, rgba(17,17,21,0.95) 0%, rgba(17,17,21,0.7) 100%), url(/images/bg_split_value_prop.png) center/cover no-repeat', borderTop: '1px solid rgba(255,255,255,0.03)' }}>
-        <div className="content-width">
-           <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-100px" }} variants={staggerContainer} className="card-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: 60 }}>
-             
-             {/* SUPERVISOR */}
-             <motion.div variants={fadeIn} style={{ background: 'rgba(20,20,25,0.85)', backdropFilter: 'blur(12px)', padding: 40, borderRadius: 24, border: '1px solid rgba(224,122,56,0.15)', display: 'flex', flexDirection: 'column' }}>
-               <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10, background: 'rgba(224,122,56,0.1)', color: 'var(--accent)', padding: '6px 16px', borderRadius: 20, fontSize: 14, fontWeight: 'bold', marginBottom: 24, alignSelf: 'flex-start' }}>
-                 <Icon n="layers" s={16} /> עבור המפקח
-               </div>
-               <h3 style={{ fontSize: '2.2rem', fontWeight: 800, marginBottom: 32, lineHeight: 1.2 }}>הופכים את השירות שלך לפרימיום.</h3>
-               <ul className="bullet-list" style={{ gap: 20, marginBottom: 40, flex: 1 }}>
-                 <li className="bullet-item"><Icon n="star" s={24} c="var(--accent)" style={{marginTop:2}} /> <div style={{fontSize: '1.15rem', color: '#eee'}}>אזור אישי ומרשים לכל לקוח</div></li>
-                 <li className="bullet-item"><Icon n="phone" s={24} c="var(--accent)" style={{marginTop:2}} /> <div style={{fontSize: '1.15rem', color: '#eee'}}>פחות טלפונים, הודעות ועדכונים ידניים</div></li>
-                 <li className="bullet-item"><Icon n="camera" s={24} c="var(--accent)" style={{marginTop:2}} /> <div style={{fontSize: '1.15rem', color: '#eee'}}>תיעוד מלא ומגובה לכל החלטה בשטח</div></li>
-                 <li className="bullet-item"><Icon n="star" s={24} c="var(--accent)" style={{marginTop:2}} /> <div style={{fontSize: '1.15rem', color: '#eee'}}>כלי טכנולוגי שמבדל אותך ממפקחים אחרים</div></li>
-               </ul>
-               <div style={{ padding: 24, background: 'rgba(255,255,255,0.03)', borderRadius: 12, borderLeft: '4px solid var(--accent)', color: '#aaa', fontSize: '1.1rem', fontStyle: 'italic', lineHeight: 1.6 }}>
-                 "לקוחות לא מקבלים ממני רק פיקוח - הם מקבלים מערכת ניהול ובקרה מלאה שנותנת להם לישון בשקט."
-               </div>
-             </motion.div>
-
-             {/* HOME OWNER */}
-             <motion.div variants={fadeIn} style={{ background: 'rgba(20,20,25,0.85)', backdropFilter: 'blur(12px)', padding: 40, borderRadius: 24, border: '1px solid rgba(59,130,246,0.15)', display: 'flex', flexDirection: 'column' }}>
-               <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10, background: 'rgba(59,130,246,0.1)', color: '#3B82F6', padding: '6px 16px', borderRadius: 20, fontSize: 14, fontWeight: 'bold', marginBottom: 24, alignSelf: 'flex-start' }}>
-                 <Icon n="home" s={16} /> עבור בעלי הבית / יזמים
-               </div>
-               <h3 style={{ fontSize: '2.2rem', fontWeight: 800, marginBottom: 32, lineHeight: 1.2 }}>לדעת בדיוק מה קורה בנכס שלך.</h3>
-               <ul className="bullet-list" style={{ gap: 20, marginBottom: 40, flex: 1 }}>
-                 <li className="bullet-item"><Icon n="chart" s={24} c="#3B82F6" style={{marginTop:2}} /> <div style={{fontSize: '1.15rem', color: '#eee'}}>מעקב התקדמות ויזואלי בזמן אמת</div></li>
-                 <li className="bullet-item"><Icon n="chart" s={24} c="#3B82F6" style={{marginTop:2}} /> <div style={{fontSize: '1.15rem', color: '#eee'}}>שקיפות מלאה על התקציב ולאן הולך הכסף</div></li>
-                 <li className="bullet-item"><Icon n="clipboard" s={24} c="#3B82F6" style={{marginTop:2}} /> <div style={{fontSize: '1.15rem', color: '#eee'}}>כל התמונות, החוזים והאישורים במקום אחד</div></li>
-                 <li className="bullet-item"><Icon n="check-circle" s={24} c="#3B82F6" style={{marginTop:2}} /> <div style={{fontSize: '1.15rem', color: '#eee'}}>בקרה קפדנית שמונעת הפתעות וטעויות יקרות</div></li>
-               </ul>
-               <div style={{ padding: 24, background: 'rgba(255,255,255,0.03)', borderRadius: 12, borderLeft: '4px solid #3B82F6', color: '#aaa', fontSize: '1.1rem', fontStyle: 'italic', lineHeight: 1.6 }}>
-                 "השקעה קטנה שמגינה על פרויקט של מיליונים. השקט הנפשי שלי שווה כל שקל."
-               </div>
-             </motion.div>
-
-           </motion.div>
-        </div>
-      </section>
-
-      {/* 6.4 ROI SECTION */}
+      {/* 6.3 ROI SECTION */}
       <section className="section-padding" style={{ background: 'linear-gradient(180deg, rgba(17,17,21,0.95) 0%, rgba(10,10,12,0.85) 100%), url(/images/bg_roi_section.png) center/cover no-repeat', backgroundAttachment: 'fixed', borderTop: '1px solid rgba(255,255,255,0.03)', borderBottom: '1px solid rgba(255,255,255,0.02)' }}>
         <div className="content-width">
            <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-50px" }} variants={staggerContainer} className="card-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))' }}>
@@ -683,6 +640,49 @@ function LandingPage() {
                  כשהכל מתועד באפליקציה אין ויכוחים של "לא שילמת לי" או "לא סוכם על התוספת הזו". <strong style={{color:'#fff'}}>מונע מריבות ותשלומי כפל.</strong>
                </p>
              </motion.div>
+           </motion.div>
+        </div>
+      </section>
+
+      {/* 6.4 SPLIT VALUE PROP */}
+      <section className="section-padding" style={{ background: 'linear-gradient(180deg, rgba(17,17,21,0.95) 0%, rgba(17,17,21,0.7) 100%), url(/images/bg_split_value_prop.png) center/cover no-repeat', borderTop: '1px solid rgba(255,255,255,0.03)' }}>
+        <div className="content-width">
+           <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-100px" }} variants={staggerContainer} className="card-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: 60 }}>
+             
+             {/* SUPERVISOR */}
+             <motion.div variants={fadeIn} style={{ background: 'rgba(20,20,25,0.85)', backdropFilter: 'blur(12px)', padding: 40, borderRadius: 24, border: '1px solid rgba(224,122,56,0.15)', display: 'flex', flexDirection: 'column' }}>
+               <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10, background: 'rgba(224,122,56,0.1)', color: 'var(--accent)', padding: '6px 16px', borderRadius: 20, fontSize: 14, fontWeight: 'bold', marginBottom: 24, alignSelf: 'flex-start' }}>
+                 <Icon n="layers" s={16} /> עבור המפקח
+               </div>
+               <h3 style={{ fontSize: '2.2rem', fontWeight: 800, marginBottom: 32, lineHeight: 1.2 }}>הופכים את השירות שלך לפרימיום.</h3>
+               <ul className="bullet-list" style={{ gap: 20, marginBottom: 40, flex: 1 }}>
+                 <li className="bullet-item"><Icon n="star" s={24} c="var(--accent)" style={{marginTop:2}} /> <div style={{fontSize: '1.15rem', color: '#eee'}}>אזור אישי ומרשים לכל לקוח</div></li>
+                 <li className="bullet-item"><Icon n="phone" s={24} c="var(--accent)" style={{marginTop:2}} /> <div style={{fontSize: '1.15rem', color: '#eee'}}>פחות טלפונים, הודעות ועדכונים ידניים</div></li>
+                 <li className="bullet-item"><Icon n="camera" s={24} c="var(--accent)" style={{marginTop:2}} /> <div style={{fontSize: '1.15rem', color: '#eee'}}>תיעוד מלא ומגובה לכל החלטה בשטח</div></li>
+                 <li className="bullet-item"><Icon n="star" s={24} c="var(--accent)" style={{marginTop:2}} /> <div style={{fontSize: '1.15rem', color: '#eee'}}>כלי טכנולוגי שמבדל אותך ממפקחים אחרים</div></li>
+               </ul>
+               <div style={{ padding: 24, background: 'rgba(255,255,255,0.03)', borderRadius: 12, borderLeft: '4px solid var(--accent)', color: '#aaa', fontSize: '1.1rem', fontStyle: 'italic', lineHeight: 1.6 }}>
+                 "לקוחות לא מקבלים ממני רק פיקוח - הם מקבלים מערכת ניהול ובקרה מלאה שנותנת להם לישון בשקט."
+               </div>
+             </motion.div>
+
+             {/* HOME OWNER */}
+             <motion.div variants={fadeIn} style={{ background: 'rgba(20,20,25,0.85)', backdropFilter: 'blur(12px)', padding: 40, borderRadius: 24, border: '1px solid rgba(59,130,246,0.15)', display: 'flex', flexDirection: 'column' }}>
+               <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10, background: 'rgba(59,130,246,0.1)', color: '#3B82F6', padding: '6px 16px', borderRadius: 20, fontSize: 14, fontWeight: 'bold', marginBottom: 24, alignSelf: 'flex-start' }}>
+                 <Icon n="home" s={16} /> עבור בעלי הבית / יזמים
+               </div>
+               <h3 style={{ fontSize: '2.2rem', fontWeight: 800, marginBottom: 32, lineHeight: 1.2 }}>לדעת בדיוק מה קורה בנכס שלך.</h3>
+               <ul className="bullet-list" style={{ gap: 20, marginBottom: 40, flex: 1 }}>
+                 <li className="bullet-item"><Icon n="chart" s={24} c="#3B82F6" style={{marginTop:2}} /> <div style={{fontSize: '1.15rem', color: '#eee'}}>מעקב התקדמות ויזואלי בזמן אמת</div></li>
+                 <li className="bullet-item"><Icon n="chart" s={24} c="#3B82F6" style={{marginTop:2}} /> <div style={{fontSize: '1.15rem', color: '#eee'}}>שקיפות מלאה על התקציב ולאן הולך הכסף</div></li>
+                 <li className="bullet-item"><Icon n="clipboard" s={24} c="#3B82F6" style={{marginTop:2}} /> <div style={{fontSize: '1.15rem', color: '#eee'}}>כל התמונות, החוזים והאישורים במקום אחד</div></li>
+                 <li className="bullet-item"><Icon n="check-circle" s={24} c="#3B82F6" style={{marginTop:2}} /> <div style={{fontSize: '1.15rem', color: '#eee'}}>בקרה קפדנית שמונעת הפתעות וטעויות יקרות</div></li>
+               </ul>
+               <div style={{ padding: 24, background: 'rgba(255,255,255,0.03)', borderRadius: 12, borderLeft: '4px solid #3B82F6', color: '#aaa', fontSize: '1.1rem', fontStyle: 'italic', lineHeight: 1.6 }}>
+                 "השקעה קטנה שמגינה על פרויקט של מיליונים. השקט הנפשי שלי שווה כל שקל."
+               </div>
+             </motion.div>
+
            </motion.div>
         </div>
       </section>
