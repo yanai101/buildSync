@@ -17,7 +17,8 @@ export const Route = createFileRoute("/api/webhook/polar")({
         },
         onSubscriptionCreated: async (payload) => {
           const subscription = payload.data;
-          const userId = subscription.customer?.metadata?.userId || subscription.customerId;
+          // Use externalId first, then fallback to metadata.userId
+          const userId = subscription.customer?.externalId || (subscription as any).customer?.external_id || subscription.customer?.metadata?.userId;
           const tier = subscription.product?.name?.toLowerCase().includes("premium") ? "premium" : "pro";
           
           if (userId) {
@@ -26,18 +27,20 @@ export const Route = createFileRoute("/api/webhook/polar")({
                 userId: userId as any,
                 subscriptionTier: tier,
                 subscriptionExpiresAt: subscription.currentPeriodEnd ? new Date(subscription.currentPeriodEnd).getTime() : undefined,
-                polarCustomerId: subscription.customerId,
+                polarCustomerId: subscription.customerId || (subscription as any).customer_id,
                 polarSubscriptionId: subscription.id,
               });
               console.log("Successfully updated subscription for user", userId);
             } catch (err) {
               console.error("Failed to update subscription in Convex:", err);
             }
+          } else {
+            console.warn("No userId found for subscription:", subscription.id);
           }
         },
         onSubscriptionUpdated: async (payload) => {
           const subscription = payload.data;
-          const userId = subscription.customer?.metadata?.userId || subscription.customerId;
+          const userId = subscription.customer?.externalId || (subscription as any).customer?.external_id || subscription.customer?.metadata?.userId;
           const tier = subscription.product?.name?.toLowerCase().includes("premium") ? "premium" : "pro";
           
           if (userId) {
@@ -46,18 +49,20 @@ export const Route = createFileRoute("/api/webhook/polar")({
                 userId: userId as any,
                 subscriptionTier: subscription.status === "active" || subscription.status === "trialing" ? tier : "free",
                 subscriptionExpiresAt: subscription.currentPeriodEnd ? new Date(subscription.currentPeriodEnd).getTime() : undefined,
-                polarCustomerId: subscription.customerId,
+                polarCustomerId: subscription.customerId || (subscription as any).customer_id,
                 polarSubscriptionId: subscription.id,
               });
               console.log("Successfully updated subscription for user", userId);
             } catch (err) {
               console.error("Failed to update subscription in Convex:", err);
             }
+          } else {
+            console.warn("No userId found for subscription:", subscription.id);
           }
         },
         onSubscriptionCanceled: async (payload) => {
           const subscription = payload.data;
-          const userId = subscription.customer?.metadata?.userId || subscription.customerId;
+          const userId = subscription.customer?.externalId || (subscription as any).customer?.external_id || subscription.customer?.metadata?.userId;
           
           if (userId) {
             try {
@@ -65,13 +70,15 @@ export const Route = createFileRoute("/api/webhook/polar")({
                 userId: userId as any,
                 subscriptionTier: "free",
                 subscriptionExpiresAt: undefined,
-                polarCustomerId: subscription.customerId,
+                polarCustomerId: subscription.customerId || (subscription as any).customer_id,
                 polarSubscriptionId: subscription.id,
               });
               console.log("Successfully canceled subscription for user", userId);
             } catch (err) {
               console.error("Failed to update subscription in Convex:", err);
             }
+          } else {
+            console.warn("No userId found for subscription:", subscription.id);
           }
         }
       }),
