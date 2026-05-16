@@ -3,7 +3,9 @@ import { Webhooks } from "@polar-sh/tanstack-start";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "../../../../convex/_generated/api";
 
-const convex = new ConvexHttpClient(process.env.VITE_CONVEX_URL || "");
+// We instantiate this lazily or safely
+const getConvexUrl = () => process.env.CONVEX_URL || process.env.VITE_CONVEX_URL || "http://127.0.0.1:3210";
+const convex = new ConvexHttpClient(getConvexUrl());
 
 export const Route = createFileRoute("/api/webhook/polar")({
   server: {
