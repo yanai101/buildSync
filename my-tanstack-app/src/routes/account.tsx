@@ -243,10 +243,19 @@ function AccountPage() {
             <ReadOnlyField label="תאריך פתיחת חשבון" value={createdAt} />
             <ReadOnlyField 
               label="סוג מנוי" 
-              value={isSuperAdmin ? 'מנהל מערכת (Premium)' : isProOrPremium ? 'מנוי Pro פעיל' : 'חשבון חינמי (Free)'} 
+              value={isSuperAdmin ? 'מנהל מערכת (Premium)' : isProOrPremium ? 'מנוי פעיל' : 'חשבון חינמי (Free)'} 
               color={isProOrPremium || isSuperAdmin ? 'var(--accent)' : 'var(--text2)'}
             />
           </div>
+
+          {user.subscriptionExpiresAt && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 16, marginTop: -4 }}>
+              <ReadOnlyField 
+                label="סיום תקופת חיוב נוכחית (תאריך חידוש או סיום)" 
+                value={new Date(user.subscriptionExpiresAt).toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit', year: 'numeric' })} 
+              />
+            </div>
+          )}
 
           {profileMsg && <Banner {...profileMsg} />}
 
