@@ -355,7 +355,7 @@ export const PremiumLock = ({ isLocked, title = "פיצ'ר זה זמין ב-Pro"
           </div>
           <h3 style={{ fontSize: 22, fontWeight: 800, marginBottom: 12, color: 'var(--text1)' }}>{title}</h3>
           <p style={{ fontSize: 15, color: 'var(--text2)', marginBottom: 24, lineHeight: 1.5 }}>{description}</p>
-          <Btn style={{ width: '100%', justifyContent: 'center', background: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)', boxShadow: '0 4px 12px rgba(217,119,6,0.3)' }} onClick={() => alert('שדרוג חשבון יתווסף בהמשך')}>
+          <Btn style={{ width: '100%', justifyContent: 'center', background: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)', boxShadow: '0 4px 12px rgba(217,119,6,0.3)' }} onClick={() => window.location.href = '/account'}>
             <Icon n="star" s={16} /> שדרג ל-Pro
           </Btn>
         </motion.div>
