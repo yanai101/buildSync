@@ -184,6 +184,64 @@ export const forceResetPassword = action({
   },
 });
 
+export const getUserById = query({
+  args: { userId: v.id('users') },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.userId);
+  },
+});
+
+import { Polar } from '@polar-sh/sdk';
+
+export const cancelUserSubscription = action({
+  args: { 
+    userId: v.id('users'),
+    isSuspended: v.optional(v.boolean()),
+    role: v.optional(v.union(
+      v.literal('owner'),
+      v.literal('manager'),
+      v.literal('inspector'),
+      v.literal('contractor')
+    )),
+  },
+  handler: async (ctx, args) => {
+    const authUserId = await getAuthUserId(ctx);
+    if (!authUserId) throw new Error("Unauthorized");
+    
+    // Check if superadmin
+    const me = await ctx.runQuery(api.users.me, {});
+    if (!me?.isSuperAdmin) {
+      throw new Error("Unauthorized: Not Super Admin");
+    }
+
+    const targetUser = await ctx.runQuery(api.superAdmin.getUserById, { userId: args.userId });
+    if (!targetUser) {
+      throw new Error("User not found");
+    }
+
+    if (targetUser.polarSubscriptionId) {
+      const polarToken = process.env.POLAR_ACCESS_TOKEN;
+      if (!polarToken) throw new Error("Missing POLAR_ACCESS_TOKEN");
+      const polar = new Polar({ accessToken: polarToken });
+      
+      try {
+        await polar.subscriptions.revoke({ id: targetUser.polarSubscriptionId });
+      } catch (err: any) {
+        console.error("Failed to revoke subscription in Polar:", err);
+        // We do not throw here, so that the local database still updates to free.
+      }
+    }
+
+    await ctx.runMutation(api.superAdmin.updateUserStatus, {
+      userId: args.userId,
+      subscriptionTier: 'free',
+      subscriptionExpiresAt: null,
+      isSuspended: args.isSuspended,
+      role: args.role,
+    });
+  }
+});
+
 export const getUserAccounts = query({
   args: { userId: v.id('users') },
   handler: async (ctx, args) => {

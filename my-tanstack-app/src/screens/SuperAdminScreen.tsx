@@ -10,6 +10,7 @@ export function SuperAdminScreen() {
   const isSuperAdmin = identity?.isSuperAdmin;
   const users = useQuery(api.superAdmin.getAllUsers, isSuperAdmin ? {} : 'skip');
   const updateUserStatus = useMutation(api.superAdmin.updateUserStatus);
+  const cancelUserSubscription = useAction(api.superAdmin.cancelUserSubscription);
   const deleteUserCascade = useMutation(api.superAdmin.deleteUserCascade);
   const forceResetPassword = useAction(api.superAdmin.forceResetPassword);
   
@@ -556,23 +557,33 @@ export function SuperAdminScreen() {
               <Btn 
                 variant="primary" 
                 onClick={async () => {
-                  let expiresAt = editingUser.subscriptionExpiresAt;
-                  if (!['pro', 'premium'].includes(editingUser.subscriptionTier)) {
-                    expiresAt = null; // Clear if downgraded to Free
-                  } else if (editingUser.newSubscriptionDays) {
-                    expiresAt = Date.now() + editingUser.newSubscriptionDays * 24 * 60 * 60 * 1000;
-                  } else if (!expiresAt) {
-                    // Default to 1 year if they didn't specify and don't have one
-                    expiresAt = Date.now() + 365 * 24 * 60 * 60 * 1000;
-                  }
+                  try {
+                    let expiresAt = editingUser.subscriptionExpiresAt;
+                    if (!['pro', 'premium'].includes(editingUser.subscriptionTier)) {
+                      // Downgrading to free/none
+                      await cancelUserSubscription({ 
+                        userId: editingUser._id,
+                        isSuspended: editingUser.isSuspended 
+                      });
+                    } else {
+                      if (editingUser.newSubscriptionDays) {
+                        expiresAt = Date.now() + editingUser.newSubscriptionDays * 24 * 60 * 60 * 1000;
+                      } else if (!expiresAt) {
+                        // Default to 1 year if they didn't specify and don't have one
+                        expiresAt = Date.now() + 365 * 24 * 60 * 60 * 1000;
+                      }
 
-                  await updateUserStatus({
-                    userId: editingUser._id,
-                    isSuspended: editingUser.isSuspended,
-                    subscriptionTier: editingUser.subscriptionTier,
-                    subscriptionExpiresAt: expiresAt,
-                  });
-                  setEditingUser(null);
+                      await updateUserStatus({
+                        userId: editingUser._id,
+                        isSuspended: editingUser.isSuspended,
+                        subscriptionTier: editingUser.subscriptionTier,
+                        subscriptionExpiresAt: expiresAt,
+                      });
+                    }
+                    setEditingUser(null);
+                  } catch (e: any) {
+                    alert('שגיאה בשמירת פרטים: ' + e.message);
+                  }
                 }}
                 style={{ flex: 1, justifyContent: 'center' }}
               >
