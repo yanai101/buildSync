@@ -549,7 +549,7 @@ function LandingPage() {
 
       {/* 6. THE "WHY BUILDSYNC" / VALUE PROP SECTION */}
       {/* 6.1 HERO HOOK */}
-      <section className="section-padding" style={{ background: 'linear-gradient(180deg, rgba(10,10,12,0.95) 0%, rgba(10,10,12,0.8) 100%), url(/images/bg_communication.png) center/cover no-repeat', borderTop: '1px solid rgba(255,255,255,0.02)', paddingBottom: 80 }}>
+      <section className="section-padding" style={{ background: 'linear-gradient(180deg, rgba(10,10,12,0.95) 0%, rgba(10,10,12,0.8) 100%), url(/images/bg_hero_chaos.png) center/cover no-repeat', borderTop: '1px solid rgba(255,255,255,0.02)', paddingBottom: 80 }}>
         <div className="content-width">
            <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeIn} style={{ textAlign: 'center', maxWidth: 900, margin: '0 auto', marginBottom: 80 }}>
             <h2 className="gradient-text" style={{ fontSize: 'clamp(2.5rem, 5vw, 4.5rem)', fontWeight: 900, marginBottom: 24, lineHeight: 1.1, letterSpacing: '-0.02em' }}>
@@ -602,7 +602,7 @@ function LandingPage() {
       </section>
 
       {/* 6.3 SPLIT VALUE PROP */}
-      <section className="section-padding" style={{ background: 'linear-gradient(180deg, rgba(17,17,21,0.95) 0%, rgba(17,17,21,0.7) 100%), url(/images/bg_smart_system.png) center/cover no-repeat', borderTop: '1px solid rgba(255,255,255,0.03)' }}>
+      <section className="section-padding" style={{ background: 'linear-gradient(180deg, rgba(17,17,21,0.95) 0%, rgba(17,17,21,0.7) 100%), url(/images/bg_split_value_prop.png) center/cover no-repeat', borderTop: '1px solid rgba(255,255,255,0.03)' }}>
         <div className="content-width">
            <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-100px" }} variants={staggerContainer} className="card-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: 60 }}>
              
@@ -645,7 +645,7 @@ function LandingPage() {
       </section>
 
       {/* 6.4 ROI SECTION */}
-      <section className="section-padding" style={{ background: 'linear-gradient(180deg, rgba(17,17,21,0.95) 0%, rgba(10,10,12,0.85) 100%), url(/images/flying_money_bg.png) center/cover no-repeat', backgroundAttachment: 'fixed', borderTop: '1px solid rgba(255,255,255,0.03)', borderBottom: '1px solid rgba(255,255,255,0.02)' }}>
+      <section className="section-padding" style={{ background: 'linear-gradient(180deg, rgba(17,17,21,0.95) 0%, rgba(10,10,12,0.85) 100%), url(/images/bg_roi_section.png) center/cover no-repeat', backgroundAttachment: 'fixed', borderTop: '1px solid rgba(255,255,255,0.03)', borderBottom: '1px solid rgba(255,255,255,0.02)' }}>
         <div className="content-width">
            <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-50px" }} variants={staggerContainer} className="card-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))' }}>
              <motion.div variants={fadeIn} className="info-card" style={{ padding: 32, background: 'rgba(20,20,25,0.85)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.05)' }}>
