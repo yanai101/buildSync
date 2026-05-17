@@ -279,22 +279,12 @@ function AccountPage() {
           </p>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
             {(!isProOrPremium || isSuperAdmin) && (
-              <>
-                <a
-                  href={`/api/checkout?products=0fbf2c19-6302-4bf6-b5be-d0317632513f&customerExternalId=${user._id}`}
-                  style={{ textDecoration: 'none' }}
-                >
-                  <Btn variant="ghost" style={{ padding: '8px 16px', background: '#fff', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', color: 'var(--text1)' }}>שדרג למנוי חודשי</Btn>
-                </a>
-                <a
-                  href={`/api/checkout?products=140a20ee-cfa9-4f0c-b1ca-21234c5f80fb&customerExternalId=${user._id}`}
-                  style={{ textDecoration: 'none' }}
-                >
-                  <Btn variant="primary" style={{ padding: '8px 16px' }}>
-                    שדרג למנוי שנתי (17% הנחה)
-                  </Btn>
-                </a>
-              </>
+              <a
+                href={`https://sandbox-api.polar.sh/v1/checkout-links/polar_cl_qSDmSBTp3aQIXVdzXixNtm1btQgvXvXg2hF8j4VfGCw/redirect?customer_external_id=${user._id}`}
+                style={{ textDecoration: 'none' }}
+              >
+                <Btn variant="primary" style={{ padding: '8px 24px', fontSize: '1rem', fontWeight: 600 }}>שדרג למנוי Pro</Btn>
+              </a>
             )}
             {user.polarCustomerId && (
               <a
