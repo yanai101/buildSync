@@ -256,7 +256,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
       <nav className="sidebar">
-        <div className="sidebar-logo" style={{ padding: '0px 16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <Link to="/dashboard" className="sidebar-logo" style={{ textDecoration: 'none' }}>
           <img 
             src="/logo.png" 
             alt="BuildSync Icon" 
@@ -269,7 +269,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             }} 
           />
           <div className="sidebar-logo-text" style={{ margin: 0 }}>Build<span>Sync</span></div>
-        </div>
+        </Link>
 
         <div className="sidebar-scroll">
           {sections.map(sec => {

@@ -82,7 +82,7 @@ body {
 .sidebar-scroll::-webkit-scrollbar { width: 6px; }
 .sidebar-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,.08); border-radius: 3px; }
 .sidebar-scroll::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,.14); }
-.sidebar-logo { padding: 28px 20px 22px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid rgba(255,255,255,.05); }
+.sidebar-logo { padding: 28px 20px 22px; display: flex; align-items: center; justify-content: center; gap: 12px; border-bottom: 1px solid rgba(255,255,255,.05); }
 .sidebar-logo-mark {
   width: 36px; height: 36px;
   background: linear-gradient(135deg, var(--accent) 0%, #b85e26 100%);
@@ -90,7 +90,7 @@ body {
   font-weight: 800; font-size: 18px; color: #fff; flex-shrink: 0;
   box-shadow: var(--shadow-glow);
 }
-.sidebar-logo-text { font-size: 21px; font-weight: 800; color: #fff; letter-spacing: -.5px; }
+.sidebar-logo-text { font-size: 21px; font-weight: 800; color: #fff; letter-spacing: -.5px; line-height: 1; display: flex; align-items: center; margin-top: 2px; }
 .sidebar-logo-text span { color: var(--accent); }
 .nav-section {
   width: 100%;
