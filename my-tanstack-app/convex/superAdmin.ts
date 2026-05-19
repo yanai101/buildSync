@@ -19,8 +19,8 @@ export const getAllUsers = query({
   handler: async (ctx) => {
     await checkSuperAdmin(ctx);
     const users = await ctx.db.query('users').collect();
-    
-    // Attach project counts to each user
+
+    // Fetch project counts in parallel using the index
     const usersWithStats = await Promise.all(
       users.map(async (u) => {
         const projects = await ctx.db
@@ -31,12 +31,14 @@ export const getAllUsers = query({
           ...u,
           projectCount: projects.length,
         };
-      })
+      }),
     );
-    
+
     return usersWithStats;
   },
 });
+
+
 
 export const updateUserStatus = mutation({
   args: {

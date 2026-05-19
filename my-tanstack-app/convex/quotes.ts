@@ -1,5 +1,6 @@
 import { query, mutation } from './_generated/server';
 import { v } from 'convex/values';
+import type { Id } from './_generated/dataModel';
 
 export const listQuotes = query({
   args: { projectId: v.id('projects') },
@@ -9,20 +10,33 @@ export const listQuotes = query({
       .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
       .collect();
 
-    return await Promise.all(quotes.map(async (quote) => {
-      if (!quote.projectFileId) {
-        return quote;
-      }
-      const file = await ctx.db.get(quote.projectFileId);
-      if (!file) {
-        return quote;
-      }
+    // Batch-fetch all referenced project files at once
+    const fileIds = [...new Set(quotes.map((q) => q.projectFileId).filter(Boolean))] as Id<'projectFiles'>[];
+    const rawFileDocs = await Promise.all(fileIds.map((id) => ctx.db.get(id)));
+    const fileDocs = rawFileDocs.filter(
+      (f): f is NonNullable<Awaited<ReturnType<typeof ctx.db.get<'projectFiles'>>>> => f !== null && 'storageId' in f,
+    );
+    const fileById = new Map(fileDocs.map((f) => [String(f._id), f]));
+
+    // Batch-fetch all storage URLs in parallel
+    const storageIds = [...new Set(fileDocs.map((f) => String(f.storageId)))];
+    const urlByStorageId = new Map<string, string | null>();
+    await Promise.all(
+      storageIds.map(async (storageId) => {
+        urlByStorageId.set(storageId, await ctx.storage.getUrl(storageId as any));
+      }),
+    );
+
+    return quotes.map((quote) => {
+      if (!quote.projectFileId) return quote;
+      const file = fileById.get(String(quote.projectFileId));
+      if (!file) return quote;
       return {
         ...quote,
         fileName: quote.fileName || file.originalName,
-        fileUrl: await ctx.storage.getUrl(file.storageId) ?? quote.fileUrl,
+        fileUrl: urlByStorageId.get(String(file.storageId)) ?? quote.fileUrl,
       };
-    }));
+    });
   },
 });
 

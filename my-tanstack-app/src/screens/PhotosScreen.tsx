@@ -5,7 +5,7 @@ import { useDataSource } from '../hooks/useDataSource';
 import { useDataMutation } from '../hooks/useDataMutation';
 import { useCurrentProject } from '../hooks/useCurrentProject';
 import { useProjectFileUploader } from '../hooks/useProjectFileUploader';
-import { useMutation, useQuery } from 'convex/react';
+import { useMutation, usePaginatedQuery, useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import type { Id } from '../../convex/_generated/dataModel';
 import { ScreenBoundary } from '../components/ScreenBoundary';
@@ -182,9 +182,21 @@ const DefectsTable = ({ photos, onSelect, contractors, setFeedback }: { photos: 
 
 export const PhotosScreen = () => {
   const { projectId } = useCurrentProject();
-  const dbPhotos = useQuery(api.queries.listPhotos, projectId ? { projectId } : "skip");
+
+  // Paginated photos — 50 per page
+  const {
+    results: paginatedPhotos,
+    status: photosStatus,
+    loadMore,
+  } = usePaginatedQuery(
+    api.queries.listPhotos,
+    projectId ? { projectId } : 'skip',
+    { initialNumItems: 50 },
+  );
+  const totalCount = useQuery(api.queries.getPhotosCount, projectId ? { projectId } : 'skip');
+
   const currentIdentity = useQuery(api.users.currentIdentity, {});
-  const { data: initialPhotos, loading, error, refetch, mode } = useDataSource<any[]>('photos', { db: dbPhotos as any });
+  const { data: initialPhotos, loading, error, refetch, mode } = useDataSource<any[]>('photos', { db: paginatedPhotos as any });
   const { mutate } = useDataMutation('photos');
   const { mutate: notesMutate } = useDataMutation('notes');
   const [viewMode, setViewMode] = React.useState<"gallery" | "snagging">("gallery");
@@ -208,8 +220,40 @@ export const PhotosScreen = () => {
   );
   
   React.useEffect(() => {
-    if (initialPhotos) setPhotos(initialPhotos);
-  }, [initialPhotos]);
+    if (!paginatedPhotos) return;
+    setPhotos(prev => {
+      // Build a map of current local blob previews so we don't overwrite them
+      // with potentially-stale Convex URLs before Convex catches up
+      const blobUrlById = new Map<string, string>();
+      for (const p of prev) {
+        const id = String(p._id ?? p.id);
+        if (p.fileUrl?.startsWith('blob:')) {
+          blobUrlById.set(id, p.fileUrl);
+        }
+      }
+      return paginatedPhotos.map((p: any) => {
+        const id = String(p._id ?? p.id);
+        const blobUrl = blobUrlById.get(id);
+        // Keep the local blob URL until Convex provides a fresh signed URL
+        // A fresh URL means Convex has processed the new version
+        if (blobUrl && p.fileUrl && !p.fileUrl.startsWith('blob:')) {
+          // Convex returned a new URL — check if it's different from the old one
+          // by comparing versionNumber (incremented after save)
+          const prevPhoto = prev.find(x => String(x._id ?? x.id) === id);
+          if (prevPhoto && p.versionNumber > (prevPhoto.versionNumber ?? 0)) {
+            // New version landed — use Convex URL and revoke the blob
+            URL.revokeObjectURL(blobUrl);
+            return p;
+          }
+          // Still waiting for Convex — keep the blob preview
+          return { ...p, fileUrl: blobUrl };
+        }
+        return p;
+      });
+    });
+  }, [paginatedPhotos]);
+
+
 
   const [drawMode, setDrawMode] = React.useState("pen");
   const [drawColor, setDrawColor] = React.useState("#FF3B30");
@@ -521,21 +565,33 @@ export const PhotosScreen = () => {
         })),
       });
 
-      setPhotos(prev => prev.map(p => (
+      // Create a preview URL for the new version so the UI updates immediately
+      // (before Convex returns the signed storage URL)
+      const previewUrl = URL.createObjectURL(blob);
+
+      setPhotos(prev => prev.map(p =>
         p.id === selected.id || p._id === selected._id
-          ? { ...p, notesCount: (p.notesCount || 0) + (noteText.trim() ? 1 : 0), versionNumber: nextVersion }
-          : p
-      )));
+          ? {
+              ...p,
+              fileUrl: previewUrl,
+              versionNumber: nextVersion,
+              latestVersionId: createdFileId,
+              notesCount: (p.notesCount || 0) + (noteText.trim() ? 1 : 0),
+            }
+          : p,
+      ));
       setSelected((prev: any) => prev ? {
         ...prev,
-        notesCount: (prev.notesCount || 0) + (noteText.trim() ? 1 : 0),
+        fileUrl: previewUrl,
         versionNumber: nextVersion,
+        latestVersionId: createdFileId,
+        notesCount: (prev.notesCount || 0) + (noteText.trim() ? 1 : 0),
       } : prev);
-      setNoteText("");
+      setNoteText('');
       setDrawings([]);
       setPreviewDrawing(null);
-      refetch();
-      setFeedback({ title: "נשמר", message: "ההערה והסימונים נשמרו כגרסה חדשה.", type: "success" });
+      setFeedback({ title: 'נשמר', message: 'ההערה והסימונים נשמרו כגרסה חדשה.', type: 'success' });
+
     } catch (err) {
       if (createdFileId) {
         try {
@@ -760,7 +816,30 @@ export const PhotosScreen = () => {
           </motion.div>
         ))}
       </motion.div>
+
+      {/* Pagination footer */}
+      {(photosStatus !== 'Exhausted' || (totalCount !== undefined && totalCount > photos.length)) && (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, marginTop: 24 }}>
+          {totalCount !== undefined && (
+            <span style={{ fontSize: 12, color: 'var(--text2)' }}>
+              מוצגות {photos.length} תמונות מתוך {totalCount}
+            </span>
+          )}
+          {photosStatus !== 'Exhausted' && (
+            <Btn
+              size="sm"
+              variant="outline"
+              onClick={() => loadMore(50)}
+              disabled={photosStatus === 'LoadingMore'}
+            >
+              <Icon n={photosStatus === 'LoadingMore' ? 'loader' : 'chevron-down'} s={14} />
+              {photosStatus === 'LoadingMore' ? 'טוען...' : 'טעינת עוד תמונות'}
+            </Btn>
+          )}
+        </div>
+      )}
       </>
+
       ) : (
         <DefectsTable 
           photos={photos.filter(p => p.tag === 'בעיה' || p.tag === 'בדיקה')} 

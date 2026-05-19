@@ -16,7 +16,8 @@ export const getCleanupCandidates = query({
     if (!user || !user.isSuperAdmin) throw new Error('Unauthorized');
 
     const now = Date.now();
-    const projects = await ctx.db.query('projects').collect();
+    // Paginated scan — avoid full table read on large DBs
+    const projects = await ctx.db.query('projects').take(200);
     const candidates = [];
 
     for (const project of projects) {
@@ -54,7 +55,8 @@ export const performCleanupBatch = internalMutation({
   args: {},
   handler: async (ctx) => {
     const now = Date.now();
-    const projects = await ctx.db.query('projects').collect();
+    // Process a limited batch per cron run — avoids scanning the whole table each day
+    const projects = await ctx.db.query('projects').take(50);
 
     // We only process one project per batch to avoid timeout
     for (const project of projects) {

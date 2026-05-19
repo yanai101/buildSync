@@ -598,13 +598,13 @@ export const deleteContractor = mutation({
       throw new Error('Contractor not found');
     }
 
-    // Handle expenses related to this contractor
-    const allExpenses = await ctx.db
+    // Fetch only expenses linked to this contractor — filter at DB level, not in memory
+    const contractorExpenses = await ctx.db
       .query('expenses')
       .withIndex('by_project', (q) => q.eq('projectId', contractor.projectId))
+      .filter((q) => q.eq(q.field('contractorId'), args.contractorId))
       .collect();
-    
-    const contractorExpenses = allExpenses.filter(e => e.contractorId === args.contractorId);
+
     let paidAmountPreserved = 0;
     let paidCountPreserved = 0;
 

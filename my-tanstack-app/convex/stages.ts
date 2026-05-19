@@ -18,20 +18,33 @@ export const list = query({
       .withIndex('by_project_sort', (q) => q.eq('projectId', args.projectId))
       .collect();
 
-    const tasks = await ctx.db
-      .query('stageTasks')
-      .collect(); // In production, filter by stage IDs
+    // Batch-fetch tasks for all stages using the index — avoids full table scan
+    const tasksByStage = new Map<string, typeof allTasks>();
+    const allTasks = (
+      await Promise.all(
+        stages.map((s) =>
+          ctx.db
+            .query('stageTasks')
+            .withIndex('by_stage', (q) => q.eq('stageId', s._id))
+            .collect(),
+        ),
+      )
+    ).flat();
+    for (const task of allTasks) {
+      const key = String(task.stageId);
+      const bucket = tasksByStage.get(key) ?? [];
+      bucket.push(task);
+      tasksByStage.set(key, bucket);
+    }
 
-    return stages.map(s => ({
+    return stages.map((s) => ({
       ...s,
       id: Number(s.sortOrder), // Map to legacy ID if needed
       progress: s.progressPct,
-      tasks: tasks
-        .filter(t => t.stageId === s._id)
-        .map(t => ({
-          ...t,
-          id: t._id, // Keep ID for updates
-        })),
+      tasks: (tasksByStage.get(String(s._id)) ?? []).map((t) => ({
+        ...t,
+        id: t._id, // Keep ID for updates
+      })),
     }));
   },
 });
@@ -758,12 +771,22 @@ export const setContractorStages = mutation({
       .withIndex('by_project_sort', (q) => q.eq('projectId', contractor.projectId))
       .collect();
 
+    // Batch-fetch all stageContractors for this project in one query, then group by stageId
+    const allLinks = await ctx.db
+      .query('stageContractors')
+      .withIndex('by_project', (q) => q.eq('projectId', contractor.projectId))
+      .take(2000);
+    const linksByStageId = new Map<string, typeof allLinks>();
+    for (const link of allLinks) {
+      const key = String(link.stageId);
+      const bucket = linksByStageId.get(key) ?? [];
+      bucket.push(link);
+      linksByStageId.set(key, bucket);
+    }
+
     let changed = 0;
     for (const stage of stages) {
-      const links = await ctx.db
-        .query('stageContractors')
-        .withIndex('by_stage', (q) => q.eq('stageId', stage._id))
-        .collect();
+      const links = (linksByStageId.get(String(stage._id)) ?? []);
       const currentIds = links
         .sort((a, b) => a.sortOrder - b.sortOrder)
         .map((link) => link.contractorId);
@@ -785,6 +808,7 @@ export const setContractorStages = mutation({
       await syncStageContractors(ctx, contractor.projectId, stage._id, nextIds);
       changed += 1;
     }
+
 
     return { changed };
   },

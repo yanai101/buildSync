@@ -1,5 +1,7 @@
 import { query } from './_generated/server';
 import { v } from 'convex/values';
+import { paginationOptsValidator } from 'convex/server';
+import type { Id } from './_generated/dataModel';
 import { getAuthUserId } from '@convex-dev/auth/server';
 import { getSyncedPaymentReadiness } from './_lib/contractorPaymentSync';
 
@@ -255,34 +257,92 @@ export const listBoq = query({
 
 
 export const listPhotos = query({
-  args: { projectId: v.id('projects') },
+  args: {
+    projectId: v.id('projects'),
+    paginationOpts: paginationOptsValidator,
+  },
   handler: async (ctx, args) => {
-    const photos = await ctx.db
+    const result = await ctx.db
       .query('photos')
       .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
-      .take(200);
+      .paginate(args.paginationOpts);
 
-    return await Promise.all(photos.map(async (photo) => {
-      const notes = await ctx.db
-        .query('photoNotes')
-        .withIndex('by_photo', (q) => q.eq('photoId', photo._id))
-        .take(100);
+    const photos = result.page;
+
+    // 1. Batch-fetch all photo notes counts
+    const notesPerPhoto = new Map<string, number>();
+    await Promise.all(
+      photos.map(async (photo) => {
+        const notes = await ctx.db
+          .query('photoNotes')
+          .withIndex('by_photo', (q) => q.eq('photoId', photo._id))
+          .take(100);
+        notesPerPhoto.set(String(photo._id), notes.length);
+      }),
+    );
+
+    // 2. Batch-fetch all projectFiles referenced by photos
+    const projectFileIds = [
+      ...new Set(photos.map((p) => p.projectFileId).filter(Boolean)),
+    ] as Id<'projectFiles'>[];
+    const projectFileDocs = (await Promise.all(projectFileIds.map((id) => ctx.db.get(id)))).filter(
+      (f): f is NonNullable<Awaited<ReturnType<typeof ctx.db.get<'projectFiles'>>>> => f !== null && 'storageId' in f,
+    );
+    const projectFileById = new Map(projectFileDocs.map((f) => [String(f._id), f]));
+
+    // 3. Batch-fetch latest photo versions
+    const latestVersionsByPhoto = new Map<string, any>();
+    await Promise.all(
+      photos.map(async (photo) => {
+        const versions = await ctx.db
+          .query('photoFileVersions')
+          .withIndex('by_photo_versionNumber', (q) => q.eq('photoId', photo._id))
+          .order('desc')
+          .take(1);
+        if (versions[0]) latestVersionsByPhoto.set(String(photo._id), versions[0]);
+      }),
+    );
+
+    // 4. Batch-fetch annotated project files from latest versions
+    const annotatedFileIds = [
+      ...new Set(
+        [...latestVersionsByPhoto.values()]
+          .map((v) => v.annotatedProjectFileId)
+          .filter(Boolean),
+      ),
+    ] as Id<'projectFiles'>[];
+    const annotatedFileDocs = (await Promise.all(annotatedFileIds.map((id) => ctx.db.get(id)))).filter(
+      (f): f is NonNullable<Awaited<ReturnType<typeof ctx.db.get<'projectFiles'>>>> => f !== null && 'storageId' in f,
+    );
+    const annotatedFileById = new Map(annotatedFileDocs.map((f) => [String(f._id), f]));
+
+    // 5. Batch-fetch all unique storage URLs in one pass
+    const allStorageIds = new Set<string>();
+    for (const f of [...projectFileDocs, ...annotatedFileDocs]) {
+      if (f?.storageId) allStorageIds.add(String(f.storageId));
+    }
+    const storageUrlById = new Map<string, string | null>();
+    await Promise.all(
+      [...allStorageIds].map(async (storageId) => {
+        const url = await ctx.storage.getUrl(storageId as any);
+        storageUrlById.set(storageId, url);
+      }),
+    );
+
+    const page = photos.map((photo) => {
       const projectFile = photo.projectFileId
-        ? await ctx.db.get(photo.projectFileId)
+        ? projectFileById.get(String(photo.projectFileId)) ?? null
         : null;
-      const latestVersion = await ctx.db
-        .query('photoFileVersions')
-        .withIndex('by_photo_versionNumber', (q) => q.eq('photoId', photo._id))
-        .order('desc')
-        .take(1);
-      const latestVersionFile = latestVersion[0]
-        ? await ctx.db.get(latestVersion[0].annotatedProjectFileId)
+      const latestVersion = latestVersionsByPhoto.get(String(photo._id)) ?? null;
+      const latestVersionFile = latestVersion
+        ? annotatedFileById.get(String(latestVersion.annotatedProjectFileId)) ?? null
         : null;
+
       const storageUrl = projectFile
-        ? await ctx.storage.getUrl(projectFile.storageId)
+        ? storageUrlById.get(String(projectFile.storageId)) ?? null
         : null;
       const latestVersionUrl = latestVersionFile
-        ? await ctx.storage.getUrl(latestVersionFile.storageId)
+        ? storageUrlById.get(String(latestVersionFile.storageId)) ?? null
         : null;
       const displayFile = photo.tag === 'אישור' ? projectFile : (latestVersionFile ?? projectFile);
 
@@ -292,26 +352,41 @@ export const listPhotos = query({
         stage: photo.stageLabel,
         date: photo.takenOn,
         originalFileUrl: storageUrl ?? photo.fileUrl,
-        fileUrl: photo.tag === 'אישור'
-          ? storageUrl ?? photo.fileUrl
-          : latestVersionUrl ?? storageUrl ?? photo.fileUrl,
-        versionNumber: photo.tag === 'אישור' ? 0 : latestVersion[0]?.versionNumber ?? 0,
-        latestVersionId: photo.tag === 'אישור' ? null : latestVersion[0]?._id ?? null,
+        fileUrl:
+          photo.tag === 'אישור'
+            ? storageUrl ?? photo.fileUrl
+            : latestVersionUrl ?? storageUrl ?? photo.fileUrl,
+        versionNumber: photo.tag === 'אישור' ? 0 : latestVersion?.versionNumber ?? 0,
+        latestVersionId: photo.tag === 'אישור' ? null : latestVersion?._id ?? null,
         file: displayFile
           ? {
-            id: displayFile._id,
-            originalName: displayFile.originalName,
-            storedName: displayFile.storedName,
-            originalSize: displayFile.originalSize,
-            storedSize: displayFile.storedSize,
-            storedMimeType: displayFile.storedMimeType,
-            width: displayFile.width,
-            height: displayFile.height,
-          }
+              id: displayFile._id,
+              originalName: displayFile.originalName,
+              storedName: displayFile.storedName,
+              originalSize: displayFile.originalSize,
+              storedSize: displayFile.storedSize,
+              storedMimeType: displayFile.storedMimeType,
+              width: displayFile.width,
+              height: displayFile.height,
+            }
           : null,
-        notesCount: notes.length,
+        notesCount: notesPerPhoto.get(String(photo._id)) ?? 0,
       };
-    }));
+    });
+
+    return { ...result, page };
+  },
+});
+
+/** Lightweight count query — used by the UI to show "50 of 120" */
+export const getPhotosCount = query({
+  args: { projectId: v.id('projects') },
+  handler: async (ctx, args) => {
+    const photos = await ctx.db
+      .query('photos')
+      .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
+      .collect();
+    return photos.length;
   },
 });
 

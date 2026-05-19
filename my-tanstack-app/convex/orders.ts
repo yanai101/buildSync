@@ -17,16 +17,29 @@ export const list = query({
       .query('orders')
       .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
       .collect();
-      
-    return await Promise.all(orders.map(async (order) => {
-      const documentsWithUrls = await Promise.all(
-        (order.deliveryDocuments || []).map(async (doc) => ({
-          ...doc,
-          url: await ctx.storage.getUrl(doc.storageId),
-        }))
-      );
-      return { ...order, deliveryDocuments: documentsWithUrls };
+
+    // Batch all storageIds from all delivery documents in one pass
+    const allStorageIds = new Set<string>();
+    for (const order of orders) {
+      for (const doc of order.deliveryDocuments ?? []) {
+        allStorageIds.add(String(doc.storageId));
+      }
+    }
+    const urlByStorageId = new Map<string, string | null>();
+    await Promise.all(
+      [...allStorageIds].map(async (storageId) => {
+        urlByStorageId.set(storageId, await ctx.storage.getUrl(storageId as any));
+      }),
+    );
+
+    return orders.map((order) => ({
+      ...order,
+      deliveryDocuments: (order.deliveryDocuments ?? []).map((doc) => ({
+        ...doc,
+        url: urlByStorageId.get(String(doc.storageId)) ?? null,
+      })),
     }));
+
   },
 });
 

@@ -9,6 +9,7 @@ type ProjectContextType = {
   selectedProjectId: string | null;
   setSelectedProjectId: (id: string | null) => void;
   isInitialized: boolean;
+  user: any; // shared — avoids second api.users.me subscription
 };
 
 const ProjectContext = React.createContext<ProjectContextType | undefined>(undefined);
@@ -49,7 +50,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
   }, [storageKey]);
 
   return (
-    <ProjectContext.Provider value={{ selectedProjectId, setSelectedProjectId, isInitialized }}>
+    <ProjectContext.Provider value={{ selectedProjectId, setSelectedProjectId, isInitialized, user }}>
       {children}
     </ProjectContext.Provider>
   );
@@ -60,11 +61,11 @@ export function useCurrentProject() {
   if (!context) {
     throw new Error('useCurrentProject must be used within a ProjectProvider');
   }
-  const { selectedProjectId, setSelectedProjectId, isInitialized } = context;
+  const { selectedProjectId, setSelectedProjectId, isInitialized, user } = context;
 
   const isMock = typeof window !== 'undefined' && localStorage.getItem('buildsync:ds:project') === 'mock';
   const dbProjects = useQuery(api.projects.listMine, {});
-  const user = useQuery(api.users.me, {});
+  // user is already subscribed in ProjectProvider — reuse from context (no second useQuery)
 
   const projects = React.useMemo(() => {
     if (isMock) {
