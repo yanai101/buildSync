@@ -241,18 +241,18 @@ function AccountPage() {
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <ReadOnlyField label="תאריך פתיחת חשבון" value={createdAt} />
-            <ReadOnlyField 
-              label="סוג מנוי" 
-              value={isSuperAdmin ? 'מנהל מערכת (Premium)' : isProOrPremium ? 'מנוי פעיל' : 'חשבון חינמי (Free)'} 
+            <ReadOnlyField
+              label="סוג מנוי"
+              value={isSuperAdmin ? 'מנהל מערכת (Premium)' : isProOrPremium ? 'מנוי פעיל' : 'חשבון חינמי (Free)'}
               color={isProOrPremium || isSuperAdmin ? 'var(--accent)' : 'var(--text2)'}
             />
           </div>
 
           {user.subscriptionExpiresAt && (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 16, marginTop: -4 }}>
-              <ReadOnlyField 
-                label="סיום תקופת חיוב נוכחית (תאריך חידוש או סיום)" 
-                value={new Date(user.subscriptionExpiresAt).toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit', year: 'numeric' })} 
+              <ReadOnlyField
+                label="סיום תקופת חיוב נוכחית (תאריך חידוש או סיום)"
+                value={new Date(user.subscriptionExpiresAt).toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit', year: 'numeric' })}
               />
             </div>
           )}
@@ -281,13 +281,13 @@ function AccountPage() {
             {(!isProOrPremium || isSuperAdmin) && (
               <>
                 <a
-                  href={`/api/checkout?products=0fbf2c19-6302-4bf6-b5be-d0317632513f&customerExternalId=${user._id}`}
+                  href={`/api/checkout?products=30b1595a-9bda-4258-95e6-6836de2c7547&customerExternalId=${user._id}`}
                   style={{ textDecoration: 'none' }}
                 >
                   <Btn variant="ghost" style={{ padding: '8px 16px', background: '#fff', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', color: 'var(--text1)' }}>שדרג למנוי חודשי</Btn>
                 </a>
                 <a
-                  href={`/api/checkout?products=140a20ee-cfa9-4f0c-b1ca-21234c5f80fb&customerExternalId=${user._id}`}
+                  href={`/api/checkout?products=a2eab161-dd1c-48b4-b870-bd7d7a0a3101&customerExternalId=${user._id}`}
                   style={{ textDecoration: 'none' }}
                 >
                   <Btn variant="primary" style={{ padding: '8px 16px' }}>
