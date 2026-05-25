@@ -24,7 +24,7 @@ export const Route = createFileRoute("/api/portal")({
           accessToken: process.env.POLAR_ACCESS_TOKEN!,
           getCustomerId: async () => customerId,
           returnUrl: `${baseUrl}/account`,
-          server: "sandbox", 
+          server: (process.env.POLAR_SERVER as "sandbox" | "production") || "sandbox", 
         });
 
         return handler(event);

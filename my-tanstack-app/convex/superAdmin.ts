@@ -226,7 +226,10 @@ export const cancelUserSubscription = action({
       if (!polarToken) {
         console.warn("Missing POLAR_ACCESS_TOKEN in Convex environment variables. Skipping Polar revocation.");
       } else {
-        const polar = new Polar({ accessToken: polarToken, server: "sandbox" });
+        const polar = new Polar({
+          accessToken: polarToken,
+          server: (process.env.POLAR_SERVER as "sandbox" | "production") || "sandbox"
+        });
         
         try {
           await polar.subscriptions.revoke({ id: targetUser.polarSubscriptionId });
