@@ -142,9 +142,33 @@ function LandingPage() {
             <div className="sidebar-logo-text" style={{ fontSize: 28, color: '#fff', margin: 0 }}>Build<span style={{color: 'var(--accent)'}}>Sync</span></div>
           </div>
           <div style={{ display: 'flex', gap: 24, alignItems: 'center' }}>
-            <div style={{ color: '#aaa', fontWeight: 600, fontSize: 14, border: '1px solid rgba(255,255,255,0.1)', padding: '6px 16px', borderRadius: 20, background: 'rgba(255,255,255,0.05)' }}>
-              השקה בקרוב
-            </div>
+            <Link
+              to="/login"
+              style={{
+                color: '#fff',
+                fontWeight: 700,
+                fontSize: 14,
+                border: '1px solid rgba(255,255,255,0.15)',
+                padding: '8px 20px',
+                borderRadius: 20,
+                background: 'rgba(255,255,255,0.06)',
+                textDecoration: 'none',
+                transition: 'all 0.2s',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.4)';
+                e.currentTarget.style.background = 'rgba(255,255,255,0.12)';
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)';
+                e.currentTarget.style.background = 'rgba(255,255,255,0.06)';
+              }}
+            >
+              נסה עכשיו
+            </Link>
           </div>
         </header>
 
@@ -167,8 +191,7 @@ function LandingPage() {
           </motion.p>
           
           <motion.div variants={fadeIn} style={{ display: 'flex', gap: 24, justifyContent: 'center', flexWrap: 'wrap' }}>
-            <div className="cta-btn" style={{ opacity: 0.6, cursor: 'not-allowed', filter: 'grayscale(100%)' }}>הקם פרויקט - בקרוב</div>
-            <div className="cta-secondary" style={{ opacity: 0.5, cursor: 'not-allowed' }}>תצוגת תכלית - בקרוב</div>
+            <Link to="/login" className="cta-btn">הקם פרויקט</Link>
           </motion.div>
         </motion.div>
       </section>
@@ -764,30 +787,28 @@ function LandingPage() {
         
         <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeIn} style={{ position: 'relative', zIndex: 1, maxWidth: 900, margin: '0 auto' }}>
           <div style={{ display: 'inline-block', padding: '6px 16px', marginBottom: '24px', fontSize: '0.875rem', fontWeight: 'bold', color: '#fff', background: 'rgba(255,255,255,0.15)', borderRadius: '999px', border: '1px solid rgba(255,255,255,0.3)', backdropFilter: 'blur(4px)', textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>
-            בקרוב באוויר
+            ההרשמה פתוחה
           </div>
           <h2 style={{ fontSize: 'clamp(3rem, 6vw, 4.5rem)', fontWeight: 900, marginBottom: 30, textShadow: '0 10px 30px rgba(0,0,0,0.5)', lineHeight: 1.1, letterSpacing: '-0.02em' }}>
             מוכנים לעבוד חכם יותר?
           </h2>
           <p style={{ fontSize: 'clamp(1.3rem, 2vw, 1.6rem)', margin: '0 auto 50px', opacity: 0.95, lineHeight: 1.6, textShadow: '0 2px 10px rgba(0,0,0,0.3)' }}>
-            המערכת שתחסוך לכם זמן וכסף בכל פרויקט כבר ממש מעבר לפינה. אל תישארו מאחור – הירשמו עכשיו כדי לקבל הודעה לפני כולם ביום ההשקה.
+            המערכת שתחסוך לכם זמן וכסף בכל פרויקט כבר זמינה עבורכם. אל תישארו מאחור – הירשמו עכשיו והתחילו לנהל את הבנייה שלכם בצורה מקצועית.
           </p>
           <div style={{ display: 'flex', justifyContent: 'center', gap: 20, flexWrap: 'wrap' }}>
-            <a 
-              href="https://forms.gle/iawiAgr9noE7TPDw5" 
-              target="_blank" 
-              rel="noopener noreferrer"
+            <Link 
+              to="/login"
               className="cta-btn hover-scale" 
               style={{ background: '#fff', color: 'var(--accent)', boxShadow: '0 10px 25px rgba(0,0,0,0.3)', display: 'inline-flex', alignItems: 'center', gap: '12px', textDecoration: 'none' }}
             >
-              תעדכנו אותי כשהאפליקציה באוויר!
+              התחל לעבוד חכם עכשיו
               <svg style={{ width: 20, height: 20, transform: 'rotate(180deg)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
               </svg>
-            </a>
+            </Link>
           </div>
           <p style={{ marginTop: '24px', fontSize: '0.9rem', color: 'rgba(255,255,255,0.7)' }}>
-            * מבטיחים לא להספים. תקבלו הודעה רק כשיהיה משהו מעניין באמת.
+            * הצטרפו למאות מנהלים, קבלנים ויזמים שכבר משדרגים את הבנייה שלהם.
           </p>
         </motion.div>
       </section>

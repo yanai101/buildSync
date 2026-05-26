@@ -57,10 +57,40 @@ function RegisterPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!form.name || !form.email || !form.phone || !form.password) {
-      setError('אנא מלא את כל השדות חובה (שם, אימייל, טלפון וסיסמה).')
+    
+    // 1. Check if any fields are empty
+    if (!form.name.trim() || !form.email.trim() || !form.phone.trim() || !form.password) {
+      setError('אנא מלא את כל השדות (שם, אימייל, טלפון וסיסמה).')
       return
     }
+
+    // 2. Name validation (at least 2 characters)
+    if (form.name.trim().length < 2) {
+      setError('השם המלא חייב להכיל לפחות 2 תווים.')
+      return
+    }
+
+    // 3. Email format validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(form.email)) {
+      setError('אנא הזן כתובת אימייל תקינה (לדוגמה: name@company.com).')
+      return
+    }
+
+    // 4. Israeli mobile phone number validation
+    const phoneRegex = /^05\d-?\d{7}$/
+    if (!phoneRegex.test(form.phone)) {
+      setError('אנא הזן מספר טלפון נייד תקין (לדוגמה: 050-1234567).')
+      return
+    }
+
+    // 5. Strong password validation (at least 8 characters, 1 uppercase, 1 lowercase, 1 digit)
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/
+    if (!passwordRegex.test(form.password)) {
+      setError('הסיסמה חייבת להכיל לפחות 8 תווים, כולל אות גדולה (A-Z), אות קטנה (a-z) ומספר.')
+      return
+    }
+
     setError(null)
     setLoading(true)
     
@@ -212,7 +242,10 @@ function RegisterPage() {
             </div>
 
             <div>
-              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text1)', marginBottom: 6 }}>סיסמה</label>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
+                <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text1)' }}>סיסמה</label>
+                <span style={{ fontSize: 11, color: 'var(--text3)' }}>לפחות 8 תווים, כולל אותיות A-Z, a-z ומספר</span>
+              </div>
               <Input type="password" value={form.password} onChange={(v: string) => setForm({...form, password: v})} placeholder="••••••••" style={{ width: '100%' }} />
             </div>
 
