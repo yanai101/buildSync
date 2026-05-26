@@ -15,7 +15,7 @@ function ProjectsRoute() {
   const navigate = useNavigate();
   const { user, projects, projectId, setCurrentProject, isMock } = useCurrentProject();
   const { mutate } = useDataMutation('project');
-  const { isProOrPremium } = useSubscription();
+  const { isSelfProOrPremium } = useSubscription();
   
   const [isWizardOpen, setIsWizardOpen] = React.useState(false);
   const [isDeleting, setIsDeleting] = React.useState<string | null>(null);
@@ -24,10 +24,11 @@ function ProjectsRoute() {
   const [feedback, setFeedback] = React.useState<{ title: string; message: string; type: 'success' | 'error' | 'info' } | null>(null);
 
   const handleOpenWizard = () => {
-    if (!isProOrPremium && projects.length >= 1) {
+    const ownedProjects = projects.filter((p: any) => p.ownerUserId === user?._id);
+    if (!isSelfProOrPremium && ownedProjects.length >= 1) {
       setFeedback({
         title: "הגבלת חשבון חינמי",
-        message: "במסלול החינמי ניתן לנהל פרויקט אחד בלבד. שדרג למסלול Pro כדי להוסיף ולנהל פרויקטים נוספים.",
+        message: "במסלול החינמי ניתן להקים ולנהל פרויקט אחד בלבד בבעלותך. שדרג למסלול Pro כדי להוסיף ולנהל פרויקטים נוספים.",
         type: "info"
       });
       return;
@@ -40,8 +41,9 @@ function ProjectsRoute() {
       setFeedback({ title: "פעולה חסומה", message: "יצירת פרויקטים אינה זמינה במצב דמו (Mock).", type: "info" });
       return;
     }
-    if (!isProOrPremium && projects.length >= 1) {
-      setFeedback({ title: "הגבלת חשבון חינמי", message: "לא ניתן ליצור פרויקט נוסף במסלול החינמי.", type: "error" });
+    const ownedProjects = projects.filter((p: any) => p.ownerUserId === user?._id);
+    if (!isSelfProOrPremium && ownedProjects.length >= 1) {
+      setFeedback({ title: "הגבלת חשבון חינמי", message: "לא ניתן ליצור פרויקט נוסף בבעלותך במסלול החינמי.", type: "error" });
       return;
     }
     setIsSaving(true);

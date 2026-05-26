@@ -262,9 +262,21 @@ export const JoinScreen = ({ code }: Props) => {
   const peek = useQuery(api.invitations.peekInvitation, { code });
   const redeem = useAction(api.invitations.redeemInvitation);
   const redeemExisting = useMutation(api.invitations.redeemInvitationExistingUser);
-  const { signIn } = useAuthActions();
+  const { signIn, signOut } = useAuthActions();
   const { isAuthenticated } = useConvexAuth();
   const navigate = useNavigate();
+
+  const emailExists = useQuery(
+    api.users.isEmailTaken,
+    peek?.invitedEmail ? { email: peek.invitedEmail } : 'skip'
+  );
+  const currentUser = useQuery(api.users.me);
+
+  const isDifferentUser = !!(
+    peek?.invitedEmail &&
+    currentUser?.email &&
+    peek.invitedEmail.trim().toLowerCase() !== currentUser.email.trim().toLowerCase()
+  );
 
   const [form, setForm] = React.useState({ name: '', email: '', phone: '', password: '' });
   const [submitting, setSubmitting] = React.useState(false);
@@ -390,6 +402,27 @@ export const JoinScreen = ({ code }: Props) => {
       return;
     }
 
+    if (emailExists) {
+      if (!form.password) {
+        setError('נא להזין סיסמה כדי להתחבר');
+        setSubmitting(false);
+        return;
+      }
+      try {
+        await signIn('password', {
+          flow: 'signIn',
+          email: peek.invitedEmail!.trim().toLowerCase(),
+          password: form.password,
+        });
+        await redeemExisting({ code });
+        navigate({ to: '/' });
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'התחברות נכשלה. אנא ודא שהסיסמה נכונה.');
+        setSubmitting(false);
+      }
+      return;
+    }
+
     if (!form.name || !form.email || !form.password) {
       setError('יש למלא שם, אימייל וסיסמה');
       setSubmitting(false);
@@ -467,8 +500,10 @@ export const JoinScreen = ({ code }: Props) => {
             </h1>
             <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14, margin: 0, lineHeight: 1.7 }}>
               {isAuthenticated
-                ? 'אתה כבר מחובר למערכת. לחץ על הכפתור כדי להצטרף לפרויקט.'
-                : 'צור חשבון אישי ב-BuildPro כדי להתחיל לעבוד על הפרויקט.'}
+                ? 'אתה מחובר למערכת. לחץ על הכפתור כדי להצטרף לפרויקט עכשיו.'
+                : emailExists
+                  ? 'ברוך שובך! נראה שיש לך כבר חשבון. הזן סיסמה כדי להתחבר ולהצטרף.'
+                  : 'צור חשבון אישי ב-BuildPro כדי להתחיל לעבוד על הפרויקט.'}
             </p>
           </div>
 
@@ -482,20 +517,109 @@ export const JoinScreen = ({ code }: Props) => {
           {/* Form / CTA */}
           {isAuthenticated ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {isDifferentUser && (
+                <div style={{
+                  background: 'rgba(245,158,11,0.08)',
+                  border: '1px solid rgba(245,158,11,0.2)',
+                  borderRadius: 12, padding: '14px 18px', marginBottom: 12,
+                  textAlign: 'right', fontSize: 13, color: '#FBBF24', lineHeight: 1.6
+                }}>
+                  <div style={{ fontWeight: 800, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    ⚠️ שומת לב: חשבון שונה מחובר
+                  </div>
+                  <div style={{ marginBottom: 10 }}>
+                    הוזמנת כ-<strong>{peek.invitedEmail}</strong>, אך אתה מחובר כעת כ-<strong>{currentUser?.email}</strong>.
+                  </div>
+                  <div style={{ display: 'flex', gap: 10 }}>
+                    <button
+                      onClick={() => signOut()}
+                      style={{
+                        background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)',
+                        borderRadius: 6, padding: '6px 12px', color: '#fff', fontSize: 12, cursor: 'pointer',
+                        transition: 'background 0.2s', fontFamily: "'Heebo', sans-serif"
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.15)'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
+                    >
+                      התנתק והתחבר כמשתמש הנכון
+                    </button>
+                    <button
+                      onClick={handleSubmit}
+                      disabled={submitting}
+                      style={{
+                        background: 'linear-gradient(135deg, #E07A38 0%, #B45309 100%)', border: 'none',
+                        borderRadius: 6, padding: '6px 12px', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                        boxShadow: '0 2px 8px rgba(224,122,56,0.2)', fontFamily: "'Heebo', sans-serif"
+                      }}
+                    >
+                      המשך כ-{currentUser?.name || currentUser?.email?.split('@')[0]}
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {error && <ErrorBox msg={error} />}
+
+              {!isDifferentUser && (
+                <button
+                  onClick={handleSubmit}
+                  disabled={submitting}
+                  style={joinBtnStyle(submitting)}
+                >
+                  {submitting ? (
+                    <>
+                      <span style={{ width: 16, height: 16, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.4)', borderTopColor: '#fff', display: 'inline-block', animation: 'spin 0.8s linear infinite' }} />
+                      מצטרף לפרויקט...
+                    </>
+                  ) : '🔑  הצטרף לפרויקט עכשיו'}
+                </button>
+              )}
+            </div>
+          ) : emailExists ? (
+            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <FieldRow label="אימייל">
+                <div style={{
+                  width: '100%', boxSizing: 'border-box',
+                  background: 'rgba(255,255,255,0.04)',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  borderRadius: 10, padding: '11px 14px',
+                  color: 'rgba(255,255,255,0.6)', fontSize: 14, fontFamily: "'Heebo', sans-serif",
+                  display: 'flex', alignItems: 'center', gap: 8
+                }}>
+                  📧 {peek.invitedEmail}
+                  <span style={{
+                    marginRight: 'auto', fontSize: 11, background: 'rgba(74,158,219,0.15)',
+                    color: '#4A9EDB', padding: '2px 8px', borderRadius: 4, fontWeight: 700
+                  }}>
+                    רשום במערכת
+                  </span>
+                </div>
+              </FieldRow>
+
+              <FieldRow label="סיסמה">
+                <StyledInput
+                  type="password"
+                  value={form.password}
+                  onChange={(v) => setForm({ ...form, password: v })}
+                  placeholder="••••••••"
+                />
+              </FieldRow>
+
+              {error && <ErrorBox msg={error} />}
+
               <button
-                onClick={handleSubmit}
+                type="submit"
                 disabled={submitting}
                 style={joinBtnStyle(submitting)}
               >
                 {submitting ? (
                   <>
                     <span style={{ width: 16, height: 16, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.4)', borderTopColor: '#fff', display: 'inline-block', animation: 'spin 0.8s linear infinite' }} />
-                    מצטרף לפרויקט...
+                    מתחבר ומצטרף...
                   </>
-                ) : '🔑  הצטרף לפרויקט עכשיו'}
+                ) : '🔑  התחבר והצטרף לפרויקט'}
               </button>
-            </div>
+            </form>
           ) : (
             <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <FieldRow label="שם מלא">

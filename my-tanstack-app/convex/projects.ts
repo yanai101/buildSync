@@ -82,10 +82,30 @@ export const createProject = mutation({
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Unauthorized");
+
+    const user = await ctx.db.get(userId);
+    if (!user) throw new Error("User not found");
+
+    const isExpired = user.subscriptionExpiresAt ? Date.now() > user.subscriptionExpiresAt : false;
+    const tier = user.subscriptionTier || 'free';
+    const isSelfProOrPremium = user.isSuperAdmin || (!isExpired && (tier === 'pro' || tier === 'premium'));
+
+    if (!isSelfProOrPremium) {
+      const myOwnedProjects = await ctx.db
+        .query('projects')
+        .withIndex('by_ownerUserId', (q) => q.eq('ownerUserId', userId))
+        .collect();
+
+      if (myOwnedProjects.length >= 1) {
+        throw new Error("מגבלת חשבון חינמי: לא ניתן ליצור יותר מפרויקט אחד בבעלותך. שדרג ל-Pro כדי ליצור פרויקטים נוספים.");
+      }
+    }
+
     return await ctx.db.insert('projects', {
       name: args.name,
       address: args.address,
-      ownerUserId: userId ?? undefined,
+      ownerUserId: userId,
       ownerName: args.ownerName || "בעל הבית",
       managerName: args.managerName || "טרם הוגדר",
       inspectorName: args.inspectorName || "טרם הוגדר",
@@ -206,5 +226,28 @@ export const deleteProject = mutation({
     }
 
     await performProjectDeletion(ctx as any, args.projectId);
+  }
+});
+
+export const getOwnerSubscription = query({
+  args: { projectId: v.id('projects') },
+  handler: async (ctx, args) => {
+    const project = await ctx.db.get(args.projectId);
+    if (!project || !project.ownerUserId) {
+      return { tier: 'free', isProOrPremium: false };
+    }
+    const owner = await ctx.db.get(project.ownerUserId);
+    if (!owner) {
+      return { tier: 'free', isProOrPremium: false };
+    }
+    const now = Date.now();
+    const isExpired = owner.subscriptionExpiresAt ? now > owner.subscriptionExpiresAt : false;
+    const tier = owner.subscriptionTier || 'free';
+    const activeTier = owner.isSuperAdmin ? 'premium' : (isExpired ? 'free' : tier);
+    const isProOrPremium = activeTier === 'pro' || activeTier === 'premium';
+    return {
+      tier: activeTier,
+      isProOrPremium,
+    };
   }
 });
