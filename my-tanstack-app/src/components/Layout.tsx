@@ -521,6 +521,25 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                     פנייה לתמיכה
                   </button>
 
+                  <a
+                    href="mailto:support@buildsync.co.il"
+                    onClick={() => setMenuOpen(false)}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      padding: "8px 10px",
+                      borderRadius: 8,
+                      color: "var(--text1)",
+                      fontSize: 13,
+                      fontWeight: 600,
+                      textDecoration: "none",
+                    }}
+                  >
+                    <Icon n="mail" s={14} />
+                    שליחת מייל לתמיכה
+                  </a>
+
                   {identity?.isSuperAdmin && (
                     <>
                       <div style={{ height: 1, background: "var(--border)", margin: "6px 0" }} />

@@ -5,6 +5,7 @@ import { Btn, Input, Icon } from '~/components/Shared'
 import { api } from '../../convex/_generated/api'
 import { useSubscription } from '~/hooks/useSubscription'
 import { useAppNotify } from '~/hooks/useAppNotify'
+import { SupportModal } from '~/components/SupportModal'
 
 export const Route = createFileRoute('/account')({
   component: AccountPage,
@@ -36,6 +37,7 @@ const ROLE_LABELS: Record<string, string> = {
 function AccountPage() {
   const { success } = Route.useSearch()
   const { notify } = useAppNotify()
+  const [showSupportModal, setShowSupportModal] = React.useState(false)
 
   const user = useQuery(api.users.me, {})
   const updateProfile = useMutation(api.users.updateProfile)
@@ -358,6 +360,62 @@ function AccountPage() {
         </form>
       </div>
 
+      <div className="card" style={{ padding: 24 }}>
+        <SectionHeader title="תמיכה ויצירת קשר" subtitle="זקוק לעזרה? נשמח לסייע לך בכל שאלה, תקלה או הצעה לשיפור." />
+        <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <p style={{ fontSize: 13, color: 'var(--text2)', lineHeight: 1.6 }}>
+            מערכת BuildSync נבנתה במטרה להקל על תהליך הבנייה והניהול. אם נתקלת בבעיה, יש לך שאלה לגבי חיוב או שימוש במערכת, או רעיון לשיפור - צור קשר.
+          </p>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 8 }}>
+            <Btn
+              onClick={() => setShowSupportModal(true)}
+              variant="primary"
+              style={{ padding: '10px 20px' }}
+            >
+              <Icon n="message-circle" s={16} />
+              פתיחת פניית תמיכה
+            </Btn>
+            
+            <a href="mailto:support@buildsync.co.il" style={{ textDecoration: 'none' }}>
+              <Btn variant="ghost" style={{ padding: '10px 20px', background: 'var(--surface)', color: 'var(--text1)' }}>
+                <Icon n="mail" s={16} />
+                שליחת מייל
+              </Btn>
+            </a>
+
+            <button
+              type="button"
+              onClick={() => {
+                navigator.clipboard.writeText('support@buildsync.co.il');
+                notify({
+                  title: 'הכתובת הועתקה',
+                  body: 'כתובת האימייל support@buildsync.co.il הועתקה ללוח העריכה שלך.',
+                  kind: 'success'
+                });
+              }}
+              style={{
+                background: 'none',
+                border: '1px solid var(--border)',
+                borderRadius: 10,
+                cursor: 'pointer',
+                padding: '10px 14px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                fontSize: 13,
+                fontWeight: 600,
+                color: 'var(--text2)',
+                fontFamily: 'inherit',
+                transition: 'all 0.2s'
+              }}
+            >
+              <Icon n="clipboard" s={14} />
+              העתקת כתובת אימייל
+            </button>
+          </div>
+        </div>
+      </div>
+
       <div className="card" style={{ padding: 24, background: '#FFF7ED', borderColor: '#FDBA74' }}>
         <SectionHeader
           title="פעולות נוספות (בקרוב)"
@@ -384,6 +442,10 @@ function AccountPage() {
             </Btn>
           </div>
         </div>
+      )}
+
+      {showSupportModal && (
+        <SupportModal onClose={() => setShowSupportModal(false)} />
       )}
     </div>
   )

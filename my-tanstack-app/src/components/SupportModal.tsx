@@ -16,6 +16,18 @@ export function SupportModal({ onClose }: SupportModalProps) {
 
   const submitTicket = useMutation(api.support.submitTicket);
   const { notify } = useAppNotify();
+  const [copied, setCopied] = React.useState(false);
+
+  const handleCopyEmail = () => {
+    navigator.clipboard.writeText('support@buildsync.co.il');
+    setCopied(true);
+    notify({
+      title: 'הכתובת הועתקה',
+      body: 'כתובת האימייל support@buildsync.co.il הועתקה ללוח העריכה שלך.',
+      kind: 'success'
+    });
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -180,6 +192,77 @@ export function SupportModal({ onClose }: SupportModalProps) {
                 </Btn>
               </div>
             </form>
+
+            <div style={{
+              marginTop: 8,
+              paddingTop: 16,
+              borderTop: '1px solid var(--border)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 8
+            }}>
+              <div style={{ fontSize: 12, color: 'var(--text3)', fontWeight: 600 }}>
+                מעוניין לפנות אלינו במייל ישיר?
+              </div>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '10px 14px',
+                borderRadius: 8,
+                background: 'var(--bg)',
+                border: '1px solid var(--border)',
+                gap: 12
+              }}>
+                <a
+                  href="mailto:support@buildsync.co.il"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    color: 'var(--accent)',
+                    textDecoration: 'none',
+                    fontSize: 14,
+                    fontWeight: 700,
+                    direction: 'ltr'
+                  }}
+                >
+                  <Icon n="mail" s={16} c="var(--accent)" />
+                  support@buildsync.co.il
+                </a>
+                <button
+                  type="button"
+                  onClick={handleCopyEmail}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: 'var(--text3)',
+                    padding: 4,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    fontSize: 12,
+                    fontWeight: 600,
+                    transition: 'color 0.2s'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text1)'}
+                  onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text3)'}
+                >
+                  {copied ? (
+                    <>
+                      <Icon n="check" s={14} c="#10B981" />
+                      הועתק!
+                    </>
+                  ) : (
+                    <>
+                      <Icon n="clipboard" s={14} />
+                      העתק
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
           </>
         )}
       </div>
