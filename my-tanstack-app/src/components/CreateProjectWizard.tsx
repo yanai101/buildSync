@@ -28,7 +28,7 @@ export function CreateProjectWizard({ onClose, onSave, saving }: CreateProjectWi
     { title: "בסיס", icon: "home" },
     { title: "מבנה", icon: "layers" },
     { title: "צוות", icon: "users" },
-    { title: "תקציב", icon: "trending-up" }
+    { title: "תקציב", icon: "chart" }
   ];
 
   const update = (fields: Partial<typeof data>) => setData(prev => ({ ...prev, ...fields }));
@@ -287,7 +287,11 @@ export function CreateProjectWizard({ onClose, onSave, saving }: CreateProjectWi
             disabled={!isValid() || saving}
           >
             {saving ? 'יוצר...' : step === STEPS.length - 1 ? 'צור פרויקט' : 'המשך'}
-            {!saving && step < STEPS.length - 1 && <Icon n="chevron-right" s={14} />}
+            {!saving && step < STEPS.length - 1 && (
+              <span style={{ display: 'inline-flex', transform: 'rotate(180deg)' }}>
+                <Icon n="chevron-right" s={14} />
+              </span>
+            )}
           </Btn>
         </div>
       </div>
