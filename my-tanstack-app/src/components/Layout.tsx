@@ -114,10 +114,35 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     if (typeof window === 'undefined') return;
 
+    // 1. Check if running in standalone mode (already open as PWA)
     const checkStandalone = window.matchMedia('(display-mode: standalone)').matches || 
                             (window.navigator as any).standalone === true;
-    setIsStandalone(checkStandalone);
-    if (checkStandalone) return;
+    
+    // 2. Check if marked as installed in localStorage
+    const isMarkedInstalled = localStorage.getItem('buildsync:pwa-installed') === 'true';
+
+    if (checkStandalone || isMarkedInstalled) {
+      setIsStandalone(true);
+      if (checkStandalone) return;
+    }
+
+    // 3. Check Chromium's getInstalledRelatedApps API
+    if ('navigator' in window && 'getInstalledRelatedApps' in navigator) {
+      (navigator as any).getInstalledRelatedApps().then((relatedApps: any[]) => {
+        if (relatedApps && relatedApps.length > 0) {
+          localStorage.setItem('buildsync:pwa-installed', 'true');
+          setIsStandalone(true);
+        }
+      }).catch(() => {});
+    }
+
+    // 4. Listen to the native appinstalled event (fired when installation completes)
+    const handleAppInstalled = () => {
+      localStorage.setItem('buildsync:pwa-installed', 'true');
+      setIsStandalone(true);
+    };
+
+    window.addEventListener('appinstalled', handleAppInstalled);
 
     // Check if there is already a captured prompt on window (from early head script)
     if ((window as any).deferredPrompt) {
@@ -161,6 +186,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('appinstalled', handleAppInstalled);
     };
   }, []);
 
