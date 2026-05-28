@@ -3,7 +3,7 @@
 import * as React from 'react'
 import { Link, useNavigate, useRouterState, Outlet } from '@tanstack/react-router'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Icon, Btn } from './Shared'
+import { Icon, Btn, Modal } from './Shared'
 import { WelcomeOnboardingModal } from './WelcomeOnboardingModal'
 import { useCurrentProject } from '~/hooks/useCurrentProject'
 import { useConvexAuth, useQuery, useMutation } from 'convex/react'
@@ -107,29 +107,34 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const { startTour } = useOnboardingTour()
 
   const [deferredPrompt, setDeferredPrompt] = React.useState<any>(null);
-  const [showPWAInstall, setShowPWAInstall] = React.useState(false);
+  const [showPWABanner, setShowPWABanner] = React.useState(false);
+  const [isStandalone, setIsStandalone] = React.useState(false);
+  const [showPWAInstructions, setShowPWAInstructions] = React.useState(false);
 
   React.useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    // Check if app is already running in standalone display mode
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
-                        (window.navigator as any).standalone === true;
-    if (isStandalone) return;
+    const checkStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+                            (window.navigator as any).standalone === true;
+    setIsStandalone(checkStandalone);
+    if (checkStandalone) return;
 
-    // Check if user dismissed it recently (14 days quiet period)
+    // Check quiet period ONLY for automatic banner
     const dismissedTime = localStorage.getItem('buildsync:install-prompt-dismissed');
+    let isQuiet = false;
     if (dismissedTime) {
       const fourteenDays = 14 * 24 * 60 * 60 * 1000;
       if (Date.now() - parseInt(dismissedTime, 10) < fourteenDays) {
-        return;
+        isQuiet = true;
       }
     }
 
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e);
-      setShowPWAInstall(true);
+      if (!isQuiet) {
+        setShowPWABanner(true);
+      }
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
@@ -149,7 +154,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   const handlePWAInstall = async () => {
     if (!deferredPrompt) return;
-    setShowPWAInstall(false);
+    setShowPWABanner(false);
     deferredPrompt.prompt();
     const { outcome } = await deferredPrompt.userChoice;
     console.log(`User response to the install prompt: ${outcome}`);
@@ -157,8 +162,16 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   };
 
   const handlePWADismiss = () => {
-    setShowPWAInstall(false);
+    setShowPWABanner(false);
     localStorage.setItem('buildsync:install-prompt-dismissed', Date.now().toString());
+  };
+
+  const handleManualPWAInstall = () => {
+    if (deferredPrompt) {
+      handlePWAInstall();
+    } else {
+      setShowPWAInstructions(true);
+    }
   };
   const dbNotes = useQuery(api.queries.listNotes, project?._id ? { projectId: project._id } : "skip")
   const unreadNotesCount = dbNotes?.filter(n => !n.resolved).length || 0;
@@ -571,11 +584,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                     סרטוני הדרכה
                   </Link>
 
-                  {showPWAInstall && (
+                  {!isStandalone && (
                     <button
                       onClick={() => {
                         setMenuOpen(false);
-                        handlePWAInstall();
+                        handleManualPWAInstall();
                       }}
                       style={{
                         width: "100%",
@@ -595,7 +608,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                       }}
                     >
                       <Icon n="download" s={14} c="var(--accent)" />
-                      התקנת אפליקציה
+                      הוסף למסך הבית
                     </button>
                   )}
 
@@ -892,11 +905,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               <div>
                 <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text3)', marginBottom: 8, padding: '0 8px', textTransform: 'uppercase', letterSpacing: 0.5 }}>חשבון ותמיכה</div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                  {showPWAInstall && (
+                  {!isStandalone && (
                     <button
                       onClick={() => {
                         setMobileMenuOpen(false);
-                        handlePWAInstall();
+                        handleManualPWAInstall();
                       }}
                       style={{
                         display: 'flex',
@@ -916,7 +929,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                       }}
                     >
                       <Icon n="download" s={18} c="var(--accent)" />
-                      <span style={{ fontSize: 13, fontWeight: 700 }}>התקנת אפליקציה</span>
+                      <span style={{ fontSize: 13, fontWeight: 700 }}>הוסף למסך הבית</span>
                     </button>
                   )}
                   <Link
@@ -981,9 +994,14 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       )}
 
       <PWAInstallPrompt 
-        showPrompt={showPWAInstall}
+        showPrompt={showPWABanner}
         onInstall={handlePWAInstall}
         onDismiss={handlePWADismiss}
+      />
+
+      <PWAInstructionsModal 
+        isOpen={showPWAInstructions}
+        onClose={() => setShowPWAInstructions(false)}
       />
     </>
   )
@@ -1076,5 +1094,106 @@ function PWAInstallPrompt({ showPrompt, onInstall, onDismiss }: { showPrompt: bo
         </motion.div>
       )}
     </AnimatePresence>
+  );
+}
+
+function PWAInstructionsModal({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) {
+  const [device, setDevice] = React.useState<'ios' | 'other'>('other');
+
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const ua = window.navigator.userAgent.toLowerCase();
+    if (ua.includes('iphone') || ua.includes('ipad') || ua.includes('ipod') || (ua.includes('macintosh') && 'ontouchend' in document)) {
+      setDevice('ios');
+    }
+  }, []);
+
+  if (!isOpen) return null;
+
+  return (
+    <Modal onClose={onClose} title="התקנת אפליקציית BuildSync" width={460}>
+      <div style={{ direction: 'rtl', textAlign: 'right' }}>
+        
+        {device === 'ios' ? (
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+              <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--accent-light)', color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Icon n="phone" s={18} />
+              </div>
+              <h4 style={{ margin: 0, fontSize: 15, fontWeight: 800 }}>מדריך התקנה למכשירי iPhone / iPad</h4>
+            </div>
+            
+            <p style={{ fontSize: 13.5, color: 'var(--text2)', lineHeight: 1.6, marginBottom: 20 }}>
+              דפדפן ספארי (Safari) ב-iOS אינו תומך בהתקנה אוטומטית בלחיצת כפתור, אך ניתן להתקין את האפליקציה בקלות רבה באופן ידני:
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div style={{ display: 'flex', gap: 12, background: 'var(--bg)', padding: 12, borderRadius: 12, border: '1px solid var(--border)' }}>
+                <div style={{ fontWeight: 800, color: 'var(--accent)', fontSize: 14 }}>1.</div>
+                <div style={{ fontSize: 13, color: 'var(--text1)', lineHeight: 1.4 }}>
+                  לחצו על כפתור <strong>השיתוף (Share)</strong> בדפדפן ספארי <span style={{ fontSize: 14 }}>📤</span> (נמצא בתחתית המסך באייפון או בראש המסך באייפד).
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: 12, background: 'var(--bg)', padding: 12, borderRadius: 12, border: '1px solid var(--border)' }}>
+                <div style={{ fontWeight: 800, color: 'var(--accent)', fontSize: 14 }}>2.</div>
+                <div style={{ fontSize: 13, color: 'var(--text1)', lineHeight: 1.4 }}>
+                  גללו מעט למטה בתפריט שנפתח ובחרו בצירוף <strong>"הוסף למסך הבית" (Add to Home Screen)</strong> <span style={{ fontSize: 14 }}>➕</span>.
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: 12, background: 'var(--bg)', padding: 12, borderRadius: 12, border: '1px solid var(--border)' }}>
+                <div style={{ fontWeight: 800, color: 'var(--accent)', fontSize: 14 }}>3.</div>
+                <div style={{ fontSize: 13, color: 'var(--text1)', lineHeight: 1.4 }}>
+                  לחצו על <strong>"הוסף" (Add)</strong> בפינה הימנית העליונה. האפליקציה תופיע מיד על מסך הבית שלכם!
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+              <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--accent-light)', color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Icon n="settings" s={18} />
+              </div>
+              <h4 style={{ margin: 0, fontSize: 15, fontWeight: 800 }}>התקנה ידנית בדפדפני Android / Chrome</h4>
+            </div>
+
+            <p style={{ fontSize: 13.5, color: 'var(--text2)', lineHeight: 1.6, marginBottom: 20 }}>
+              במידה וחלון ההתקנה האוטומטי אינו מופיע, ניתן להתקין את האפליקציה בקלות ישירות מתפריט הדפדפן:
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div style={{ display: 'flex', gap: 12, background: 'var(--bg)', padding: 12, borderRadius: 12, border: '1px solid var(--border)' }}>
+                <div style={{ fontWeight: 800, color: 'var(--accent)', fontSize: 14 }}>1.</div>
+                <div style={{ fontSize: 13, color: 'var(--text1)', lineHeight: 1.4 }}>
+                  לחצו על כפתור <strong>שלוש הנקודות</strong> (או כפתור התפריט) בפינת הדפדפן.
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: 12, background: 'var(--bg)', padding: 12, borderRadius: 12, border: '1px solid var(--border)' }}>
+                <div style={{ fontWeight: 800, color: 'var(--accent)', fontSize: 14 }}>2.</div>
+                <div style={{ fontSize: 13, color: 'var(--text1)', lineHeight: 1.4 }}>
+                  חפשו ולחצו על האפשרות <strong>"התקן אפליקציה" (Install app)</strong> או <strong>"הוסף למסך הבית" (Add to Home screen)</strong>.
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: 12, background: 'var(--bg)', padding: 12, borderRadius: 12, border: '1px solid var(--border)' }}>
+                <div style={{ fontWeight: 800, color: 'var(--accent)', fontSize: 14 }}>3.</div>
+                <div style={{ fontSize: 13, color: 'var(--text1)', lineHeight: 1.4 }}>
+                  אשרו את ההתקנה בחלונית שתקפוץ. האפליקציה תותקן ותהיה זמינה מיידית לשימוש!
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div style={{ display: 'flex', justifyContent: 'center', marginTop: 24 }}>
+          <Btn onClick={onClose} style={{ width: '100%', justifyContent: 'center' }}>
+            הבנתי, תודה
+          </Btn>
+        </div>
+      </div>
+    </Modal>
   );
 }
