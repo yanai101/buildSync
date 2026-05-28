@@ -105,6 +105,53 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false)
   const menuRef = React.useRef<HTMLDivElement>(null)
   const { startTour } = useOnboardingTour()
+
+  const [deferredPrompt, setDeferredPrompt] = React.useState<any>(null);
+  const [showPWAInstall, setShowPWAInstall] = React.useState(false);
+
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    // Check if app is already running in standalone display mode
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+                        (window.navigator as any).standalone === true;
+    if (isStandalone) return;
+
+    // Check if user dismissed it recently (14 days quiet period)
+    const dismissedTime = localStorage.getItem('buildsync:install-prompt-dismissed');
+    if (dismissedTime) {
+      const fourteenDays = 14 * 24 * 60 * 60 * 1000;
+      if (Date.now() - parseInt(dismissedTime, 10) < fourteenDays) {
+        return;
+      }
+    }
+
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setShowPWAInstall(true);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
+  }, []);
+
+  const handlePWAInstall = async () => {
+    if (!deferredPrompt) return;
+    setShowPWAInstall(false);
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    console.log(`User response to the install prompt: ${outcome}`);
+    setDeferredPrompt(null);
+  };
+
+  const handlePWADismiss = () => {
+    setShowPWAInstall(false);
+    localStorage.setItem('buildsync:install-prompt-dismissed', Date.now().toString());
+  };
   const dbNotes = useQuery(api.queries.listNotes, project?._id ? { projectId: project._id } : "skip")
   const unreadNotesCount = dbNotes?.filter(n => !n.resolved).length || 0;
 
@@ -516,6 +563,34 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                     סרטוני הדרכה
                   </Link>
 
+                  {showPWAInstall && (
+                    <button
+                      onClick={() => {
+                        setMenuOpen(false);
+                        handlePWAInstall();
+                      }}
+                      style={{
+                        width: "100%",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        padding: "8px 10px",
+                        borderRadius: 8,
+                        color: "var(--accent)",
+                        fontSize: 13,
+                        fontWeight: 700,
+                        background: "transparent",
+                        border: "none",
+                        cursor: "pointer",
+                        textAlign: "right",
+                        fontFamily: "inherit",
+                      }}
+                    >
+                      <Icon n="download" s={14} c="var(--accent)" />
+                      התקנת אפליקציה
+                    </button>
+                  )}
+
                   <button
                     onClick={() => {
                       setMenuOpen(false);
@@ -809,6 +884,33 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               <div>
                 <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text3)', marginBottom: 8, padding: '0 8px', textTransform: 'uppercase', letterSpacing: 0.5 }}>חשבון ותמיכה</div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                  {showPWAInstall && (
+                    <button
+                      onClick={() => {
+                        setMobileMenuOpen(false);
+                        handlePWAInstall();
+                      }}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 10,
+                        padding: '12px',
+                        background: 'var(--accent-light)',
+                        color: 'var(--accent)',
+                        borderRadius: 12,
+                        fontWeight: 700,
+                        border: '1px solid var(--accent)',
+                        cursor: 'pointer',
+                        textAlign: 'right',
+                        fontFamily: 'inherit',
+                        gridColumn: 'span 2',
+                        width: '100%'
+                      }}
+                    >
+                      <Icon n="download" s={18} c="var(--accent)" />
+                      <span style={{ fontSize: 13, fontWeight: 700 }}>התקנת אפליקציה</span>
+                    </button>
+                  )}
                   <Link
                     to="/guides"
                     style={{
@@ -870,71 +972,16 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <SupportModal onClose={() => setShowSupportModal(false)} />
       )}
 
-      <PWAInstallPrompt />
+      <PWAInstallPrompt 
+        showPrompt={showPWAInstall}
+        onInstall={handlePWAInstall}
+        onDismiss={handlePWADismiss}
+      />
     </>
   )
 }
 
-function PWAInstallPrompt() {
-  const [deferredPrompt, setDeferredPrompt] = React.useState<any>(null);
-  const [showPrompt, setShowPrompt] = React.useState(false);
-
-  React.useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    // Check if app is already running in standalone display mode
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
-                        (window.navigator as any).standalone === true;
-    if (isStandalone) return;
-
-    // Check if user dismissed it recently (14 days quiet period)
-    const dismissedTime = localStorage.getItem('buildsync:install-prompt-dismissed');
-    if (dismissedTime) {
-      const fourteenDays = 14 * 24 * 60 * 60 * 1000;
-      if (Date.now() - parseInt(dismissedTime, 10) < fourteenDays) {
-        return;
-      }
-    }
-
-    const handleBeforeInstallPrompt = (e: Event) => {
-      // Prevent the mini-infobar from appearing on mobile
-      e.preventDefault();
-      // Stash the event so it can be triggered later.
-      setDeferredPrompt(e);
-      // Show the custom install prompt
-      setShowPrompt(true);
-    };
-
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-
-    return () => {
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-    };
-  }, []);
-
-  const handleInstallClick = async () => {
-    if (!deferredPrompt) return;
-    
-    // Hide the custom install prompt UI
-    setShowPrompt(false);
-    
-    // Show the browser install prompt
-    deferredPrompt.prompt();
-    
-    // Wait for the user to respond to the prompt
-    const { outcome } = await deferredPrompt.userChoice;
-    console.log(`User response to the install prompt: ${outcome}`);
-    
-    // We've used the prompt, and can't use it again, discard it
-    setDeferredPrompt(null);
-  };
-
-  const handleDismissClick = () => {
-    setShowPrompt(false);
-    // Set dismissal timestamp in localStorage
-    localStorage.setItem('buildsync:install-prompt-dismissed', Date.now().toString());
-  };
-
+function PWAInstallPrompt({ showPrompt, onInstall, onDismiss }: { showPrompt: boolean, onInstall: () => void, onDismiss: () => void }) {
   return (
     <AnimatePresence>
       {showPrompt && (
@@ -992,7 +1039,7 @@ function PWAInstallPrompt() {
           {/* Actions */}
           <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
             <Btn
-              onClick={handleInstallClick}
+              onClick={onInstall}
               style={{
                 flex: 1,
                 justifyContent: 'center',
@@ -1005,7 +1052,7 @@ function PWAInstallPrompt() {
             </Btn>
             <Btn
               variant="ghost"
-              onClick={handleDismissClick}
+              onClick={onDismiss}
               style={{
                 flex: 1,
                 justifyContent: 'center',
