@@ -191,21 +191,19 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     if (deferredPrompt) {
       handlePWAInstall();
     } else {
-      // If they are on desktop Chromium, tell them to check the address bar
       if (typeof window !== 'undefined') {
         const ua = window.navigator.userAgent.toLowerCase();
-        const isMobile = /iphone|ipad|ipod|android|webos|blackberry|iemobile|opera mini/i.test(ua);
-        const isChrome = ua.includes('chrome') || ua.includes('chromium') || ua.includes('edg/') || ua.includes('opr/');
+        const isIOS = /iphone|ipad|ipod/.test(ua) || (ua.includes('macintosh') && 'ontouchend' in document);
         
-        if (isChrome && !isMobile) {
+        if (isIOS) {
+          // iOS Safari requires manual "Add to Home Screen" instructions
+          setShowPWAInstructions(true);
+        } else {
+          // Android or Desktop Chrome/Firefox/Edge when beforeinstallprompt is not directly triggerable
           setShowOmniboxToast(true);
           setTimeout(() => setShowOmniboxToast(false), 6000);
-          return;
         }
       }
-      
-      // Fallback for other browsers (like iOS Safari / Android Chrome when prompt is unavailable)
-      setShowPWAInstructions(true);
     }
   };
   const dbNotes = useQuery(api.queries.listNotes, project?._id ? { projectId: project._id } : "skip")
@@ -1048,6 +1046,16 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 }
 
 function PWAOmniboxToast({ show, onClose }: { show: boolean, onClose: () => void }) {
+  const [platform, setPlatform] = React.useState<'android' | 'desktop'>('desktop');
+
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const ua = window.navigator.userAgent.toLowerCase();
+    if (ua.includes('android')) {
+      setPlatform('android');
+    }
+  }, []);
+
   return (
     <AnimatePresence>
       {show && (
@@ -1064,7 +1072,7 @@ function PWAOmniboxToast({ show, onClose }: { show: boolean, onClose: () => void
             zIndex: 1100,
             maxWidth: 440,
             width: 'calc(100vw - 32px)',
-            background: 'rgba(255, 255, 255, 0.9)',
+            background: 'rgba(255, 255, 255, 0.95)',
             backdropFilter: 'blur(16px)',
             WebkitBackdropFilter: 'blur(16px)',
             border: '1px solid rgba(224, 122, 56, 0.3)',
@@ -1092,9 +1100,15 @@ function PWAOmniboxToast({ show, onClose }: { show: boolean, onClose: () => void
             <Icon n="download" s={16} />
           </div>
           <div style={{ flex: 1, fontSize: 13, lineHeight: 1.4, textAlign: 'right' }}>
-            <strong style={{ fontWeight: 800 }}>ההתקנה זמינה בשורת הכתובות!</strong>
+            <strong style={{ fontWeight: 800 }}>
+              {platform === 'android' ? 'התקנת אפליקציית BuildSync' : 'ההתקנה זמינה בדפדפן!'}
+            </strong>
             <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>
-              לחצו על סמל ההתקנה (סמל מחשב עם חץ למטה) שבצד ימין של שורת הכתובות בדפדפן.
+              {platform === 'android' ? (
+                'לחצו על סמל שלוש הנקודות בפינת הדפדפן ובחרו "התקן אפליקציה" או "הוסף למסך הבית".'
+              ) : (
+                'לחצו על סמל ההתקנה (סמל מחשב עם חץ למטה) שבצד ימין של שורת הכתובות.'
+              )}
             </div>
           </div>
           <button 
