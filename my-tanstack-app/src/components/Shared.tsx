@@ -44,6 +44,8 @@ export const PATHS: Record<string, string[]> = {
   wand:["M15 4V2","M15 16v-2","M8 9h2","M20 9h2","M17.8 11.8l1.4 1.4","M17.8 6.2l1.4-1.4","M12.2 6.2l-1.4-1.4","M2 22l7.5-7.5"],
   "pie-chart":["M21.21 15.89A10 10 0 1 1 8 2.83","M22 12A10 10 0 0 0 12 2v10z"],
   "maximize-2":["M15 3h6v6","M9 21H3v-6","M21 3l-7 7","M3 21l7-7"],
+  video:["M23 7l-7 5 7 5V7z","M1 5h14a2 2 0 012 2v10a2 2 0 01-2 2H1a2 2 0 01-2-2V7a2 2 0 012-2z"],
+  play:["M5 3l14 9-14 9V3z"],
 };
 
 export const Icon = ({n, s=18, c="currentColor"}: any) => (

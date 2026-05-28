@@ -23,6 +23,7 @@ import { Route as PermitsRouteImport } from './routes/permits'
 import { Route as OrdersRouteImport } from './routes/orders'
 import { Route as NotesRouteImport } from './routes/notes'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as GuidesRouteImport } from './routes/guides'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as DailyLogsRouteImport } from './routes/daily-logs'
 import { Route as ContractorsRouteImport } from './routes/contractors'
@@ -108,6 +109,11 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const GuidesRoute = GuidesRouteImport.update({
+  id: '/guides',
+  path: '/guides',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -190,6 +196,7 @@ export interface FileRoutesByFullPath {
   '/contractors': typeof ContractorsRoute
   '/daily-logs': typeof DailyLogsRoute
   '/dashboard': typeof DashboardRoute
+  '/guides': typeof GuidesRoute
   '/login': typeof LoginRoute
   '/notes': typeof NotesRoute
   '/orders': typeof OrdersRoute
@@ -220,6 +227,7 @@ export interface FileRoutesByTo {
   '/contractors': typeof ContractorsRoute
   '/daily-logs': typeof DailyLogsRoute
   '/dashboard': typeof DashboardRoute
+  '/guides': typeof GuidesRoute
   '/login': typeof LoginRoute
   '/notes': typeof NotesRoute
   '/orders': typeof OrdersRoute
@@ -251,6 +259,7 @@ export interface FileRoutesById {
   '/contractors': typeof ContractorsRoute
   '/daily-logs': typeof DailyLogsRoute
   '/dashboard': typeof DashboardRoute
+  '/guides': typeof GuidesRoute
   '/login': typeof LoginRoute
   '/notes': typeof NotesRoute
   '/orders': typeof OrdersRoute
@@ -283,6 +292,7 @@ export interface FileRouteTypes {
     | '/contractors'
     | '/daily-logs'
     | '/dashboard'
+    | '/guides'
     | '/login'
     | '/notes'
     | '/orders'
@@ -313,6 +323,7 @@ export interface FileRouteTypes {
     | '/contractors'
     | '/daily-logs'
     | '/dashboard'
+    | '/guides'
     | '/login'
     | '/notes'
     | '/orders'
@@ -343,6 +354,7 @@ export interface FileRouteTypes {
     | '/contractors'
     | '/daily-logs'
     | '/dashboard'
+    | '/guides'
     | '/login'
     | '/notes'
     | '/orders'
@@ -374,6 +386,7 @@ export interface RootRouteChildren {
   ContractorsRoute: typeof ContractorsRoute
   DailyLogsRoute: typeof DailyLogsRoute
   DashboardRoute: typeof DashboardRoute
+  GuidesRoute: typeof GuidesRoute
   LoginRoute: typeof LoginRoute
   NotesRoute: typeof NotesRoute
   OrdersRoute: typeof OrdersRoute
@@ -494,6 +507,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/guides': {
+      id: '/guides'
+      path: '/guides'
+      fullPath: '/guides'
+      preLoaderRoute: typeof GuidesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/dashboard': {
       id: '/dashboard'
       path: '/dashboard'
@@ -606,6 +626,7 @@ const rootRouteChildren: RootRouteChildren = {
   ContractorsRoute: ContractorsRoute,
   DailyLogsRoute: DailyLogsRoute,
   DashboardRoute: DashboardRoute,
+  GuidesRoute: GuidesRoute,
   LoginRoute: LoginRoute,
   NotesRoute: NotesRoute,
   OrdersRoute: OrdersRoute,

@@ -74,6 +74,7 @@ export const PAGE_TITLES: Record<string, string> = {
   "/quotes": "הצעות מחיר והשוואה",
   "/timeline": "לוח זמנים",
   "/account": "פרטי חשבון",
+  "/guides": "סרטוני הדרכה",
 }
 
 export const PAGE_SUBTITLES: Record<string, string> = {
@@ -84,6 +85,7 @@ export const PAGE_SUBTITLES: Record<string, string> = {
   "/analytics": "תמונת מצב גרפית של תקציב, התקדמות וסטטוס משימות",
   "/quotes": "הוסיפו הצעות לפי נושא והשוו ביניהן",
   "/account": "עדכון פרטים אישיים וסיסמה",
+  "/guides": "למדו כיצד להפיק את המרב מ-BuildSync בעזרת מדריכי וידאו קצרים",
 }
 
 const BOTTOM_NAV = ["/dashboard", "/boqwizard", "/photos", "/notes"].map(id => NAV.find(n => n.id === id)!)
@@ -495,6 +497,25 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                     פרטי חשבון
                   </Link>
 
+                  <Link
+                    to="/guides"
+                    onClick={() => setMenuOpen(false)}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      padding: "8px 10px",
+                      borderRadius: 8,
+                      color: "var(--text1)",
+                      fontSize: 13,
+                      fontWeight: 600,
+                      textDecoration: "none",
+                    }}
+                  >
+                    <Icon n="video" s={14} />
+                    סרטוני הדרכה
+                  </Link>
+
                   <button
                     onClick={() => {
                       setMenuOpen(false);
@@ -781,6 +802,53 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                     </div>
                   );
                 })}
+              </div>
+
+              <div className="section-divider" style={{ margin: '20px 0 16px' }} />
+
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text3)', marginBottom: 8, padding: '0 8px', textTransform: 'uppercase', letterSpacing: 0.5 }}>חשבון ותמיכה</div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                  <Link
+                    to="/guides"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 10,
+                      padding: '12px',
+                      background: currentPath === '/guides' ? 'var(--accent-light)' : 'var(--bg)',
+                      color: currentPath === '/guides' ? 'var(--accent)' : 'var(--text1)',
+                      borderRadius: 12,
+                      textDecoration: 'none',
+                      fontWeight: currentPath === '/guides' ? 700 : 500,
+                      border: currentPath === '/guides' ? '1px solid var(--accent)' : '1px solid var(--border)'
+                    }}
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    <Icon n="video" s={18} />
+                    <span style={{ fontSize: 13 }}>סרטוני הדרכה</span>
+                  </Link>
+
+                  <Link
+                    to="/account"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 10,
+                      padding: '12px',
+                      background: currentPath === '/account' ? 'var(--accent-light)' : 'var(--bg)',
+                      color: currentPath === '/account' ? 'var(--accent)' : 'var(--text1)',
+                      borderRadius: 12,
+                      textDecoration: 'none',
+                      fontWeight: currentPath === '/account' ? 700 : 500,
+                      border: currentPath === '/account' ? '1px solid var(--accent)' : '1px solid var(--border)'
+                    }}
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    <Icon n="settings" s={18} />
+                    <span style={{ fontSize: 13 }}>פרטי חשבון</span>
+                  </Link>
+                </div>
               </div>
             </motion.div>
           </motion.div>
