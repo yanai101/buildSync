@@ -133,6 +133,65 @@ export const GuidesScreen = () => {
   return (
     <ScreenBoundary loading={false} error={null}>
       <div className="page-content" style={{ paddingBottom: '100px' }}>
+        <style dangerouslySetInnerHTML={{ __html: `
+          .guides-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+            gap: 24px;
+          }
+          .guides-tabs {
+            display: flex;
+            border-bottom: 1px solid var(--border);
+            background: rgba(249,250,251,0.5);
+          }
+          .guides-tab-btn {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 16px;
+            border: none;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.2s;
+            position: relative;
+          }
+          .guides-playlist {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+          }
+          
+          @media (max-width: 992px) {
+            .guides-grid {
+              grid-template-columns: 1fr;
+              gap: 20px;
+            }
+            .guides-playlist {
+              display: grid;
+              grid-template-columns: 1fr 1fr;
+              gap: 12px;
+            }
+          }
+          
+          @media (max-width: 600px) {
+            .guides-tabs {
+              overflow-x: auto;
+              white-space: nowrap;
+              justify-content: flex-start;
+              -webkit-overflow-scrolling: touch;
+            }
+            .guides-tab-btn {
+              flex: 0 0 auto;
+              padding: 12px 16px;
+              font-size: 12.5px;
+            }
+            .guides-playlist {
+              grid-template-columns: 1fr;
+            }
+          }
+        `}} />
         
         {/* Header Grid */}
         <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28, gap: 16 }}>
@@ -167,7 +226,7 @@ export const GuidesScreen = () => {
         {/* Main Grid Content */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
           
-          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)', gap: 24 }} className="grid-2">
+          <div className="guides-grid">
             
             {/* Left Column: Player & Meta */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -281,7 +340,7 @@ export const GuidesScreen = () => {
 
               {/* Tabs Section */}
               <div className="card" style={{ overflow: 'hidden' }}>
-                <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', background: 'rgba(249,250,251,0.5)' }}>
+                <div className="guides-tabs">
                   {([
                     { id: 'topics', label: 'נושאי המדריך', icon: 'clipboard' },
                     { id: 'tips', label: 'טיפים מקצועיים', icon: 'wand' },
@@ -292,23 +351,12 @@ export const GuidesScreen = () => {
                       <button
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id)}
+                        className="guides-tab-btn"
                         style={{
-                          flex: 1,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: 8,
-                          padding: '16px',
-                          border: 'none',
                           background: isCurrent ? 'var(--surface)' : 'transparent',
                           color: isCurrent ? 'var(--accent)' : 'var(--text2)',
                           fontWeight: isCurrent ? 700 : 500,
-                          fontSize: 13,
-                          cursor: 'pointer',
                           borderBottom: isCurrent ? '2px solid var(--accent)' : '2px solid transparent',
-                          fontFamily: 'inherit',
-                          transition: 'all 0.2s',
-                          position: 'relative',
                         }}
                       >
                         <Icon n={tab.icon} s={16} c={isCurrent ? 'var(--accent)' : 'var(--text3)'} />
@@ -457,7 +505,7 @@ export const GuidesScreen = () => {
                   <h3 style={{ fontSize: 15, fontWeight: 800, margin: 0 }}>סרטוני הדרכה זמינים</h3>
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div className="guides-playlist">
                   {GUIDES.map((guide, idx) => {
                     const isActive = selectedGuide.id === guide.id;
                     const isWatched = watchedVideos.includes(guide.id);
