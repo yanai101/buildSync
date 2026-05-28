@@ -110,7 +110,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const [showPWABanner, setShowPWABanner] = React.useState(false);
   const [isStandalone, setIsStandalone] = React.useState(false);
   const [showPWAInstructions, setShowPWAInstructions] = React.useState(false);
-  const [showOmniboxToast, setShowOmniboxToast] = React.useState(false);
 
   React.useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -198,10 +197,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         if (isIOS) {
           // iOS Safari requires manual "Add to Home Screen" instructions
           setShowPWAInstructions(true);
-        } else {
-          // Android or Desktop Chrome/Firefox/Edge when beforeinstallprompt is not directly triggerable
-          setShowOmniboxToast(true);
-          setTimeout(() => setShowOmniboxToast(false), 6000);
         }
       }
     }
@@ -1036,100 +1031,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         isOpen={showPWAInstructions}
         onClose={() => setShowPWAInstructions(false)}
       />
-
-      <PWAOmniboxToast 
-        show={showOmniboxToast}
-        onClose={() => setShowOmniboxToast(false)}
-      />
     </>
   )
-}
-
-function PWAOmniboxToast({ show, onClose }: { show: boolean, onClose: () => void }) {
-  const [platform, setPlatform] = React.useState<'android' | 'desktop'>('desktop');
-
-  React.useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const ua = window.navigator.userAgent.toLowerCase();
-    if (ua.includes('android')) {
-      setPlatform('android');
-    }
-  }, []);
-
-  return (
-    <AnimatePresence>
-      {show && (
-        <motion.div
-          initial={{ opacity: 0, y: -50, scale: 0.95 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: -30, scale: 0.95 }}
-          transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-          style={{
-            position: 'fixed',
-            top: 24,
-            left: '50%',
-            transform: 'translateX(-50%)',
-            zIndex: 1100,
-            maxWidth: 440,
-            width: 'calc(100vw - 32px)',
-            background: 'rgba(255, 255, 255, 0.95)',
-            backdropFilter: 'blur(16px)',
-            WebkitBackdropFilter: 'blur(16px)',
-            border: '1px solid rgba(224, 122, 56, 0.3)',
-            borderRadius: 16,
-            padding: '12px 16px',
-            boxShadow: '0 10px 30px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(224, 122, 56, 0.05)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 12,
-            direction: 'rtl',
-            color: 'var(--text1)'
-          }}
-        >
-          <div style={{
-            width: 32,
-            height: 32,
-            borderRadius: 8,
-            background: 'var(--accent-light)',
-            color: 'var(--accent)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            flexShrink: 0
-          }}>
-            <Icon n="download" s={16} />
-          </div>
-          <div style={{ flex: 1, fontSize: 13, lineHeight: 1.4, textAlign: 'right' }}>
-            <strong style={{ fontWeight: 800 }}>
-              {platform === 'android' ? 'התקנת אפליקציית BuildSync' : 'ההתקנה זמינה בדפדפן!'}
-            </strong>
-            <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>
-              {platform === 'android' ? (
-                'לחצו על סמל שלוש הנקודות בפינת הדפדפן ובחרו "התקן אפליקציה" או "הוסף למסך הבית".'
-              ) : (
-                'לחצו על סמל ההתקנה (סמל מחשב עם חץ למטה) שבצד ימין של שורת הכתובות.'
-              )}
-            </div>
-          </div>
-          <button 
-            onClick={onClose}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              cursor: 'pointer',
-              color: 'var(--text3)',
-              padding: 4,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}
-          >
-            <Icon n="x" s={14} />
-          </button>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
 }
 
 function PWAInstallPrompt({ showPrompt, onInstall, onDismiss }: { showPrompt: boolean, onInstall: () => void, onDismiss: () => void }) {
