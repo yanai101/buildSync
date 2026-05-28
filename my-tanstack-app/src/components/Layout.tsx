@@ -869,6 +869,157 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       {showSupportModal && (
         <SupportModal onClose={() => setShowSupportModal(false)} />
       )}
+
+      <PWAInstallPrompt />
     </>
   )
+}
+
+function PWAInstallPrompt() {
+  const [deferredPrompt, setDeferredPrompt] = React.useState<any>(null);
+  const [showPrompt, setShowPrompt] = React.useState(false);
+
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    // Check if app is already running in standalone display mode
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+                        (window.navigator as any).standalone === true;
+    if (isStandalone) return;
+
+    // Check if user dismissed it recently (14 days quiet period)
+    const dismissedTime = localStorage.getItem('buildsync:install-prompt-dismissed');
+    if (dismissedTime) {
+      const fourteenDays = 14 * 24 * 60 * 60 * 1000;
+      if (Date.now() - parseInt(dismissedTime, 10) < fourteenDays) {
+        return;
+      }
+    }
+
+    const handleBeforeInstallPrompt = (e: Event) => {
+      // Prevent the mini-infobar from appearing on mobile
+      e.preventDefault();
+      // Stash the event so it can be triggered later.
+      setDeferredPrompt(e);
+      // Show the custom install prompt
+      setShowPrompt(true);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) return;
+    
+    // Hide the custom install prompt UI
+    setShowPrompt(false);
+    
+    // Show the browser install prompt
+    deferredPrompt.prompt();
+    
+    // Wait for the user to respond to the prompt
+    const { outcome } = await deferredPrompt.userChoice;
+    console.log(`User response to the install prompt: ${outcome}`);
+    
+    // We've used the prompt, and can't use it again, discard it
+    setDeferredPrompt(null);
+  };
+
+  const handleDismissClick = () => {
+    setShowPrompt(false);
+    // Set dismissal timestamp in localStorage
+    localStorage.setItem('buildsync:install-prompt-dismissed', Date.now().toString());
+  };
+
+  return (
+    <AnimatePresence>
+      {showPrompt && (
+        <motion.div
+          initial={{ opacity: 0, y: 50, scale: 0.95 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 30, scale: 0.95 }}
+          transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+          style={{
+            position: 'fixed',
+            bottom: 'max(20px, calc(85px + env(safe-area-inset-bottom)))',
+            insetInlineEnd: 24,
+            zIndex: 1000,
+            maxWidth: 380,
+            width: 'calc(100vw - 48px)',
+            background: 'rgba(255, 255, 255, 0.85)',
+            backdropFilter: 'blur(16px)',
+            WebkitBackdropFilter: 'blur(16px)',
+            border: '1px solid rgba(224, 122, 56, 0.2)',
+            borderRadius: 20,
+            padding: 16,
+            boxShadow: '0 20px 40px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(224, 122, 56, 0.05)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 12,
+            direction: 'rtl'
+          }}
+        >
+          {/* Header */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{
+              width: 42,
+              height: 42,
+              borderRadius: 12,
+              background: 'linear-gradient(135deg, var(--accent) 0%, #c96b30 100%)',
+              color: '#fff',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 8px 16px rgba(224, 122, 56, 0.25)'
+            }}>
+              <Icon n="download" s={20} c="#fff" />
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 800, fontSize: 14.5, color: 'var(--text1)' }}>התקנת אפליקציית BuildSync</div>
+              <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>פלטפורמה לניהול בנייה ושיפוצים</div>
+            </div>
+          </div>
+
+          {/* Description */}
+          <p style={{ fontSize: 12.5, color: 'var(--text2)', lineHeight: 1.5, margin: 0 }}>
+            הוסיפו את BuildSync למסך הבית לגישה מהירה ונוחה במיוחד מהנייד ומהדסקטופ – בדיוק כמו אפליקציה רגילה!
+          </p>
+
+          {/* Actions */}
+          <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+            <Btn
+              onClick={handleInstallClick}
+              style={{
+                flex: 1,
+                justifyContent: 'center',
+                padding: '8px 16px',
+                fontSize: 12.5,
+                borderRadius: 10
+              }}
+            >
+              התקנה
+            </Btn>
+            <Btn
+              variant="ghost"
+              onClick={handleDismissClick}
+              style={{
+                flex: 1,
+                justifyContent: 'center',
+                padding: '8px 16px',
+                fontSize: 12.5,
+                borderRadius: 10,
+                color: 'var(--text2)'
+              }}
+            >
+              לא עכשיו
+            </Btn>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
 }
