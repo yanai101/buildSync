@@ -110,6 +110,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const [showPWABanner, setShowPWABanner] = React.useState(false);
   const [isStandalone, setIsStandalone] = React.useState(false);
   const [showPWAInstructions, setShowPWAInstructions] = React.useState(false);
+  const [showOmniboxToast, setShowOmniboxToast] = React.useState(false);
 
   React.useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -119,19 +120,39 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     setIsStandalone(checkStandalone);
     if (checkStandalone) return;
 
-    // Check quiet period ONLY for automatic banner
-    const dismissedTime = localStorage.getItem('buildsync:install-prompt-dismissed');
-    let isQuiet = false;
-    if (dismissedTime) {
-      const fourteenDays = 14 * 24 * 60 * 60 * 1000;
-      if (Date.now() - parseInt(dismissedTime, 10) < fourteenDays) {
-        isQuiet = true;
+    // Check if there is already a captured prompt on window (from early head script)
+    if ((window as any).deferredPrompt) {
+      const prompt = (window as any).deferredPrompt;
+      setDeferredPrompt(prompt);
+      
+      // Check quiet period for automatic banner
+      const dismissedTime = localStorage.getItem('buildsync:install-prompt-dismissed');
+      let isQuiet = false;
+      if (dismissedTime) {
+        const fourteenDays = 14 * 24 * 60 * 60 * 1000;
+        if (Date.now() - parseInt(dismissedTime, 10) < fourteenDays) {
+          isQuiet = true;
+        }
+      }
+      if (!isQuiet) {
+        setShowPWABanner(true);
       }
     }
 
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
+      (window as any).deferredPrompt = e;
       setDeferredPrompt(e);
+      
+      // Check quiet period ONLY for automatic banner
+      const dismissedTime = localStorage.getItem('buildsync:install-prompt-dismissed');
+      let isQuiet = false;
+      if (dismissedTime) {
+        const fourteenDays = 14 * 24 * 60 * 60 * 1000;
+        if (Date.now() - parseInt(dismissedTime, 10) < fourteenDays) {
+          isQuiet = true;
+        }
+      }
       if (!isQuiet) {
         setShowPWABanner(true);
       }
@@ -170,6 +191,20 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     if (deferredPrompt) {
       handlePWAInstall();
     } else {
+      // If they are on desktop Chromium, tell them to check the address bar
+      if (typeof window !== 'undefined') {
+        const ua = window.navigator.userAgent.toLowerCase();
+        const isMobile = /iphone|ipad|ipod|android|webos|blackberry|iemobile|opera mini/i.test(ua);
+        const isChrome = ua.includes('chrome') || ua.includes('chromium') || ua.includes('edg/') || ua.includes('opr/');
+        
+        if (isChrome && !isMobile) {
+          setShowOmniboxToast(true);
+          setTimeout(() => setShowOmniboxToast(false), 6000);
+          return;
+        }
+      }
+      
+      // Fallback for other browsers (like iOS Safari / Android Chrome when prompt is unavailable)
       setShowPWAInstructions(true);
     }
   };
@@ -1003,8 +1038,84 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         isOpen={showPWAInstructions}
         onClose={() => setShowPWAInstructions(false)}
       />
+
+      <PWAOmniboxToast 
+        show={showOmniboxToast}
+        onClose={() => setShowOmniboxToast(false)}
+      />
     </>
   )
+}
+
+function PWAOmniboxToast({ show, onClose }: { show: boolean, onClose: () => void }) {
+  return (
+    <AnimatePresence>
+      {show && (
+        <motion.div
+          initial={{ opacity: 0, y: -50, scale: 0.95 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: -30, scale: 0.95 }}
+          transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+          style={{
+            position: 'fixed',
+            top: 24,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 1100,
+            maxWidth: 440,
+            width: 'calc(100vw - 32px)',
+            background: 'rgba(255, 255, 255, 0.9)',
+            backdropFilter: 'blur(16px)',
+            WebkitBackdropFilter: 'blur(16px)',
+            border: '1px solid rgba(224, 122, 56, 0.3)',
+            borderRadius: 16,
+            padding: '12px 16px',
+            boxShadow: '0 10px 30px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(224, 122, 56, 0.05)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            direction: 'rtl',
+            color: 'var(--text1)'
+          }}
+        >
+          <div style={{
+            width: 32,
+            height: 32,
+            borderRadius: 8,
+            background: 'var(--accent-light)',
+            color: 'var(--accent)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0
+          }}>
+            <Icon n="download" s={16} />
+          </div>
+          <div style={{ flex: 1, fontSize: 13, lineHeight: 1.4, textAlign: 'right' }}>
+            <strong style={{ fontWeight: 800 }}>ההתקנה זמינה בשורת הכתובות!</strong>
+            <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>
+              לחצו על סמל ההתקנה (סמל מחשב עם חץ למטה) שבצד ימין של שורת הכתובות בדפדפן.
+            </div>
+          </div>
+          <button 
+            onClick={onClose}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              color: 'var(--text3)',
+              padding: 4,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+          >
+            <Icon n="x" s={14} />
+          </button>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
 }
 
 function PWAInstallPrompt({ showPrompt, onInstall, onDismiss }: { showPrompt: boolean, onInstall: () => void, onDismiss: () => void }) {

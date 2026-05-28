@@ -51,6 +51,16 @@ function RootDocument({ children }: { children: React.ReactNode }) {
     <html lang="he" dir="rtl">
       <head>
         <HeadContent />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              window.addEventListener('beforeinstallprompt', (e) => {
+                e.preventDefault();
+                window.deferredPrompt = e;
+              });
+            `,
+          }}
+        />
       </head>
       <body>
         <div id="root">
