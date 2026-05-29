@@ -63,6 +63,7 @@ export const createInvitation = mutation({
     invitedEmail: v.optional(v.string()),
     invitedName: v.optional(v.string()),
     contractorId: v.optional(v.id('contractors')),
+    allowBudgetView: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const { userId } = await requireProjectOwner(ctx, args.projectId);
@@ -113,6 +114,7 @@ export const createInvitation = mutation({
       ...(args.invitedEmail ? { invitedEmail: args.invitedEmail } : {}),
       ...(args.invitedName ? { invitedName: args.invitedName } : {}),
       ...(args.contractorId ? { contractorId: args.contractorId } : {}),
+      allowBudgetView: args.allowBudgetView,
     });
 
     return { id, code, expiresAt };
@@ -201,13 +203,24 @@ export const _completeRedemption = internalMutation({
     if (inv.revokedAt) throw new Error('ההזמנה בוטלה');
     if (inv.expiresAt <= Date.now()) throw new Error('ההזמנה פגה');
 
+    const allowBudgetView = inv.allowBudgetView ?? (inv.role !== 'contractor');
+
     if (inv.role === 'manager') {
-      await ctx.db.patch(inv.projectId, { managerUserId: args.newUserId });
+      await ctx.db.patch(inv.projectId, { 
+        managerUserId: args.newUserId,
+        managerCanViewBudget: allowBudgetView,
+      });
     } else if (inv.role === 'inspector') {
-      await ctx.db.patch(inv.projectId, { inspectorUserId: args.newUserId });
+      await ctx.db.patch(inv.projectId, { 
+        inspectorUserId: args.newUserId,
+        inspectorCanViewBudget: allowBudgetView,
+      });
     } else if (inv.role === 'contractor') {
       if (inv.contractorId) {
-        await ctx.db.patch(inv.contractorId, { userId: args.newUserId });
+        await ctx.db.patch(inv.contractorId, { 
+          userId: args.newUserId,
+          canViewBudget: allowBudgetView,
+        });
       } else {
         await ctx.db.insert('contractors', {
           projectId: inv.projectId,
@@ -218,6 +231,7 @@ export const _completeRedemption = internalMutation({
           budget: 0,
           paid: 0,
           userId: args.newUserId,
+          canViewBudget: allowBudgetView,
         });
       }
     }
@@ -295,13 +309,24 @@ export const redeemInvitationExistingUser = mutation({
     if (inv.revokedAt) throw new Error('ההזמנה בוטלה');
     if (inv.expiresAt <= Date.now()) throw new Error('ההזמנה פגה');
 
+    const allowBudgetView = inv.allowBudgetView ?? (inv.role !== 'contractor');
+
     if (inv.role === 'manager') {
-      await ctx.db.patch(inv.projectId, { managerUserId: userId });
+      await ctx.db.patch(inv.projectId, { 
+        managerUserId: userId,
+        managerCanViewBudget: allowBudgetView,
+      });
     } else if (inv.role === 'inspector') {
-      await ctx.db.patch(inv.projectId, { inspectorUserId: userId });
+      await ctx.db.patch(inv.projectId, { 
+        inspectorUserId: userId,
+        inspectorCanViewBudget: allowBudgetView,
+      });
     } else if (inv.role === 'contractor') {
       if (inv.contractorId) {
-        await ctx.db.patch(inv.contractorId, { userId: userId });
+        await ctx.db.patch(inv.contractorId, { 
+          userId: userId,
+          canViewBudget: allowBudgetView,
+        });
       } else {
         await ctx.db.insert('contractors', {
           projectId: inv.projectId,
@@ -312,6 +337,7 @@ export const redeemInvitationExistingUser = mutation({
           budget: 0,
           paid: 0,
           userId: userId,
+          canViewBudget: allowBudgetView,
         });
       }
     }
@@ -374,17 +400,63 @@ export const listProjectMembers = query({
         ? { userId: owner._id, name: owner.name ?? owner.email ?? '', email: owner.email ?? null }
         : null,
       manager: manager
-        ? { userId: manager._id, name: manager.name ?? manager.email ?? '', email: manager.email ?? null }
+        ? { 
+            userId: manager._id, 
+            name: manager.name ?? manager.email ?? '', 
+            email: manager.email ?? null,
+            canViewBudget: project.managerCanViewBudget !== false,
+          }
         : null,
       inspector: inspector
-        ? { userId: inspector._id, name: inspector.name ?? inspector.email ?? '', email: inspector.email ?? null }
+        ? { 
+            userId: inspector._id, 
+            name: inspector.name ?? inspector.email ?? '', 
+            email: inspector.email ?? null,
+            canViewBudget: project.inspectorCanViewBudget !== false,
+          }
         : null,
       contractors: contractors.map((c) => ({
         contractorId: c._id,
         name: c.name,
         role: c.role,
         hasLogin: !!c.userId,
+        canViewBudget: c.canViewBudget === true,
       })),
     };
+  },
+});
+
+export const updateMemberBudgetPermission = mutation({
+  args: {
+    projectId: v.id('projects'),
+    role: v.union(v.literal('manager'), v.literal('inspector'), v.literal('contractor')),
+    contractorId: v.optional(v.id('contractors')),
+    canViewBudget: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    await requireProjectOwner(ctx, args.projectId);
+
+    if (args.role === 'manager') {
+      await ctx.db.patch(args.projectId, {
+        managerCanViewBudget: args.canViewBudget,
+      });
+    } else if (args.role === 'inspector') {
+      await ctx.db.patch(args.projectId, {
+        inspectorCanViewBudget: args.canViewBudget,
+      });
+    } else if (args.role === 'contractor') {
+      if (!args.contractorId) {
+        throw new Error('Contractor ID is required for contractor permission updates');
+      }
+      const contractor = await ctx.db.get(args.contractorId);
+      if (!contractor || contractor.projectId !== args.projectId) {
+        throw new Error('Contractor not found or does not belong to this project');
+      }
+      await ctx.db.patch(args.contractorId, {
+        canViewBudget: args.canViewBudget,
+      });
+    }
+
+    return { success: true };
   },
 });

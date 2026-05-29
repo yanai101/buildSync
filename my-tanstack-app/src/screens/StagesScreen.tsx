@@ -635,10 +635,13 @@ const StageCreationGuide = ({
 export const StagesScreen = () => {
   const { projectId } = useCurrentProject();
   const navigate = useNavigate();
+  const accessInfo = useQuery(api.projects.getProjectAccessInfo, projectId ? { projectId } : "skip");
+  const canViewBudget = accessInfo?.canViewBudget ?? false;
+
   const dbStages = useQuery(api.queries.listStages, projectId ? { projectId } : "skip");
   const project = useQuery(api.queries.getProject, projectId ? { projectId } : "skip");
   const initialData = (dbStages ?? null) as Stage[] | null;
-  const loading = Boolean(projectId) && dbStages === undefined;
+  const loading = Boolean(projectId) && (dbStages === undefined || accessInfo === undefined);
   const error = null as Error | null;
   const refetch = React.useCallback(() => {}, []);
   const { mutate } = useDataMutation('stages');
@@ -1189,7 +1192,7 @@ export const StagesScreen = () => {
           )}
         </div>
 
-        {!isContractor && (
+        {!isContractor && canViewBudget && (
         <div className="card" style={{marginBottom:20,borderColor:paymentSummary.isOverLimit ? "var(--danger)" : paymentSummary.isNearLimit ? "var(--warning)" : "var(--border)"}}>
           <div className="card-header" style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12}}>
             <span>מעקב תשלומי שלבים</span>
@@ -1297,10 +1300,12 @@ export const StagesScreen = () => {
                     })()}
                   </div>
                 )}
-                <div style={{display:"flex",gap:8}} onClick={e=>e.stopPropagation()}>
-                  <Btn size="sm" variant="ghost" onClick={()=>openEditStage(s)}><Icon n="edit" s={13}/> ערוך</Btn>
-                  <Btn size="sm" variant="ghost" onClick={()=>requestDeleteStage(s)}><Icon n="trash" s={13}/> מחק</Btn>
-                </div>
+                {canViewBudget && (
+                  <div style={{display:"flex",gap:8}} onClick={e=>e.stopPropagation()}>
+                    <Btn size="sm" variant="ghost" onClick={()=>openEditStage(s)}><Icon n="edit" s={13}/> ערוך</Btn>
+                    <Btn size="sm" variant="ghost" onClick={()=>requestDeleteStage(s)}><Icon n="trash" s={13}/> מחק</Btn>
+                  </div>
+                )}
                 <Icon n={expanded===s.id?"arrow-up":"arrow-down"} s={18} c="var(--text3)"/>
               </div>
 
@@ -1344,7 +1349,7 @@ export const StagesScreen = () => {
                                     </div>
                                   )}
                                   <span style={{fontSize:13,color:t.done?"var(--text3)":"var(--text1)",textDecoration:t.done?"line-through":"none",flex:"1 1 150px"}}>{t.name}</span>
-                                  {taskPayment && (
+                                  {canViewBudget && taskPayment && (
                                     <span style={{
                                       fontSize:11,
                                       fontWeight:700,
@@ -1365,106 +1370,108 @@ export const StagesScreen = () => {
                           </div>
                         </div>
 
-                        <div style={{flex:"1 1 300px"}}>
-                          <div style={{fontSize:13,fontWeight:700,color:"var(--text2)",marginBottom:12}}>תשלום ואישור</div>
-                          {(s.contractorPaymentWarnings?.length ?? 0) > 0 && (
-                            <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:10}}>
-                              {s.contractorPaymentWarnings!.map(warning => (
-                                <div key={warning.contractorId} style={{border:"1px solid #FCD34D",background:"#FFFBEB",color:"#92400E",borderRadius:8,padding:"8px 10px",fontSize:12,fontWeight:700,lineHeight:1.45}}>
-                                  {warning.reason}
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                          {(() => {
-                            const customPaymentContractors = (s.contractors || []).filter((c: any) => c.paymentMode !== 'stage_synced');
-                            if (s.hasSyncedContractorPayments || customPaymentContractors.length > 0) {
-                              return (
-                                <div style={{display:"flex",flexDirection:"column",gap:16}}>
-                                  {s.hasSyncedContractorPayments && (
-                                    <div className="card" style={{background:"#fff"}}>
-                                      <div className="card-body" style={{display:"flex",flexDirection:"column",gap:10}}>
-                                        <div style={{fontSize:13,fontWeight:800}}>התשלום מסונכרן לקבלנים</div>
-                                        <div style={{fontSize:12,color:"var(--text3)"}}>
-                                          אבני התשלום מגיעות ממשימות ואבני הדרך של השלב, ואישור התשלום מתבצע בלוח התשלומים של הקבלן כדי למנוע הוצאה כפולה.
-                                        </div>
-                                        {(s.contractorPayments || []).map((contractorPayment: any) => (
-                                          <div key={contractorPayment.contractorId} style={{border:"1px solid var(--border)",borderRadius:8,padding:10}}>
-                                            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-                                              <div style={{fontSize:12,fontWeight:800}}>{contractorPayment.contractorName}</div>
-                                              <Btn size="sm" variant="ghost" onClick={() => navigate({ to: '/contractors', search: { contractorId: contractorPayment.contractorId } })}>
-                                                <Icon n="external-link" s={12}/> שלם לקבלן
-                                              </Btn>
+                        {canViewBudget && (
+                          <div style={{flex:"1 1 300px"}}>
+                            <div style={{fontSize:13,fontWeight:700,color:"var(--text2)",marginBottom:12}}>תשלום ואישור</div>
+                            {(s.contractorPaymentWarnings?.length ?? 0) > 0 && (
+                              <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:10}}>
+                                {s.contractorPaymentWarnings!.map(warning => (
+                                  <div key={warning.contractorId} style={{border:"1px solid #FCD34D",background:"#FFFBEB",color:"#92400E",borderRadius:8,padding:"8px 10px",fontSize:12,fontWeight:700,lineHeight:1.45}}>
+                                    {warning.reason}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            {(() => {
+                              const customPaymentContractors = (s.contractors || []).filter((c: any) => c.paymentMode !== 'stage_synced');
+                              if (s.hasSyncedContractorPayments || customPaymentContractors.length > 0) {
+                                return (
+                                  <div style={{display:"flex",flexDirection:"column",gap:16}}>
+                                    {s.hasSyncedContractorPayments && (
+                                      <div className="card" style={{background:"#fff"}}>
+                                        <div className="card-body" style={{display:"flex",flexDirection:"column",gap:10}}>
+                                          <div style={{fontSize:13,fontWeight:800}}>התשלום מסונכרן לקבלנים</div>
+                                          <div style={{fontSize:12,color:"var(--text3)"}}>
+                                            אבני התשלום מגיעות ממשימות ואבני הדרך של השלב, ואישור התשלום מתבצע בלוח התשלומים של הקבלן כדי למנוע הוצאה כפולה.
+                                          </div>
+                                          {(s.contractorPayments || []).map((contractorPayment: any) => (
+                                            <div key={contractorPayment.contractorId} style={{border:"1px solid var(--border)",borderRadius:8,padding:10}}>
+                                              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                                                <div style={{fontSize:12,fontWeight:800}}>{contractorPayment.contractorName}</div>
+                                                <Btn size="sm" variant="ghost" onClick={() => navigate({ to: '/contractors', search: { contractorId: contractorPayment.contractorId } })}>
+                                                  <Icon n="external-link" s={12}/> שלם לקבלן
+                                                </Btn>
+                                              </div>
+                                              <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                                                {contractorPayment.milestones.map((milestone: any) => (
+                                                  <div key={milestone.id} style={{display:"flex",justifyContent:"space-between",gap:8,alignItems:"center",fontSize:12}}>
+                                                    <span style={{fontWeight:700}}>{milestone.name}</span>
+                                                    <span style={{color:milestone.paid?"var(--success)":milestone.readyToPay === false?"#B45309":"var(--text2)",fontWeight:800,textAlign:"left"}}>
+                                                      {milestone.paid ? "שולם" : milestone.readyToPay === false ? (milestone.lockedReason || "לא מוכן") : "ממתין"} · {fmtMoney(milestone.amount)}
+                                                    </span>
+                                                  </div>
+                                                ))}
+                                              </div>
                                             </div>
-                                            <div style={{display:"flex",flexDirection:"column",gap:6}}>
-                                              {contractorPayment.milestones.map((milestone: any) => (
-                                                <div key={milestone.id} style={{display:"flex",justifyContent:"space-between",gap:8,alignItems:"center",fontSize:12}}>
-                                                  <span style={{fontWeight:700}}>{milestone.name}</span>
-                                                  <span style={{color:milestone.paid?"var(--success)":milestone.readyToPay === false?"#B45309":"var(--text2)",fontWeight:800,textAlign:"left"}}>
-                                                    {milestone.paid ? "שולם" : milestone.readyToPay === false ? (milestone.lockedReason || "לא מוכן") : "ממתין"} · {fmtMoney(milestone.amount)}
-                                                  </span>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    )}
+                                    {customPaymentContractors.length > 0 && (
+                                      <div className="card" style={{background:"#fff"}}>
+                                        <div className="card-body" style={{display:"flex",flexDirection:"column",gap:10}}>
+                                          <div style={{fontSize:13,fontWeight:800}}>התשלום מנוהל בחוזה הקבלן</div>
+                                          <div style={{fontSize:12,color:"var(--text3)"}}>
+                                            שלב זה הוא חלק מחוזה עבודה כולל מול הקבלן, התשלומים מתבצעים לפי אבני הדרך שהוגדרו מולו בלוח התשלומים.
+                                          </div>
+                                          {customPaymentContractors.map((contractor: any) => (
+                                            <div key={contractor.id} style={{border:"1px solid var(--border)",borderRadius:8,padding:10}}>
+                                              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                                                <div style={{fontSize:12,fontWeight:800}}>{contractor.name}</div>
+                                                <Btn size="sm" variant="ghost" onClick={() => navigate({ to: '/contractors', search: { contractorId: contractor.id } })}>
+                                                  <Icon n="external-link" s={12}/> חוזה קבלן
+                                                </Btn>
+                                              </div>
+                                              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,fontSize:12}}>
+                                                <div>
+                                                  <div style={{color:"var(--text2)",marginBottom:2}}>תקציב החוזה</div>
+                                                  <div style={{fontWeight:700}}>{fmtMoney(contractor.budget || 0)}</div>
                                                 </div>
-                                              ))}
+                                                <div>
+                                                  <div style={{color:"var(--text2)",marginBottom:2}}>שולם עד כה</div>
+                                                  <div style={{fontWeight:700,color:contractor.paid >= contractor.budget && contractor.budget > 0 ? "var(--success)" : "var(--text1)"}}>{fmtMoney(contractor.paid || 0)}</div>
+                                                </div>
+                                              </div>
+                                              {contractor.paid < contractor.budget && contractor.budget > 0 && (
+                                                <div style={{marginTop:8}}>
+                                                  <ProgressBar value={(contractor.paid / contractor.budget) * 100} color="var(--success)" height={4} />
+                                                </div>
+                                              )}
                                             </div>
-                                          </div>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  )}
-                                  {customPaymentContractors.length > 0 && (
-                                    <div className="card" style={{background:"#fff"}}>
-                                      <div className="card-body" style={{display:"flex",flexDirection:"column",gap:10}}>
-                                        <div style={{fontSize:13,fontWeight:800}}>התשלום מנוהל בחוזה הקבלן</div>
-                                        <div style={{fontSize:12,color:"var(--text3)"}}>
-                                          שלב זה הוא חלק מחוזה עבודה כולל מול הקבלן, התשלומים מתבצעים לפי אבני הדרך שהוגדרו מולו בלוח התשלומים.
+                                          ))}
                                         </div>
-                                        {customPaymentContractors.map((contractor: any) => (
-                                          <div key={contractor.id} style={{border:"1px solid var(--border)",borderRadius:8,padding:10}}>
-                                            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-                                              <div style={{fontSize:12,fontWeight:800}}>{contractor.name}</div>
-                                              <Btn size="sm" variant="ghost" onClick={() => navigate({ to: '/contractors', search: { contractorId: contractor.id } })}>
-                                                <Icon n="external-link" s={12}/> חוזה קבלן
-                                              </Btn>
-                                            </div>
-                                            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,fontSize:12}}>
-                                              <div>
-                                                <div style={{color:"var(--text2)",marginBottom:2}}>תקציב החוזה</div>
-                                                <div style={{fontWeight:700}}>{fmtMoney(contractor.budget || 0)}</div>
-                                              </div>
-                                              <div>
-                                                <div style={{color:"var(--text2)",marginBottom:2}}>שולם עד כה</div>
-                                                <div style={{fontWeight:700,color:contractor.paid >= contractor.budget && contractor.budget > 0 ? "var(--success)" : "var(--text1)"}}>{fmtMoney(contractor.paid || 0)}</div>
-                                              </div>
-                                            </div>
-                                            {contractor.paid < contractor.budget && contractor.budget > 0 && (
-                                              <div style={{marginTop:8}}>
-                                                <ProgressBar value={(contractor.paid / contractor.budget) * 100} color="var(--success)" height={4} />
-                                              </div>
-                                            )}
-                                          </div>
-                                        ))}
                                       </div>
-                                    </div>
-                                  )}
-                                </div>
+                                    )}
+                                  </div>
+                                );
+                              }
+                              return (
+                                <PaymentGatesPanel
+                                  stage={s}
+                                  gates={computeGates(s)}
+                                  status={resolveStatus(s, computeGates(s))}
+                                  onRequestReview={() => requestReview(s.id, (s as any)._id)}
+                                  onSupervisorApprove={() => supervisorApprove(s.id, (s as any)._id)}
+                                  onReleasePayment={() => setReleaseFor({ stage: s, milestoneId: null, milestoneName: null, amount: s.payment?.amount || 0 })}
+                                  onRequestReviewMs={(mid: string) => requestReviewMs(s.id, mid)}
+                                  onSupervisorApproveMs={(mid: string) => supervisorApproveMs(s.id, mid)}
+                                  onReleaseMs={(m: Milestone) => releaseMs(s, m)}
+                                  onLockMs={handleLockStageMilestone}
+                                />
                               );
-                            }
-                            return (
-                              <PaymentGatesPanel
-                                stage={s}
-                                gates={computeGates(s)}
-                                status={resolveStatus(s, computeGates(s))}
-                                onRequestReview={() => requestReview(s.id, (s as any)._id)}
-                                onSupervisorApprove={() => supervisorApprove(s.id, (s as any)._id)}
-                                onReleasePayment={() => setReleaseFor({ stage: s, milestoneId: null, milestoneName: null, amount: s.payment?.amount || 0 })}
-                                onRequestReviewMs={(mid: string) => requestReviewMs(s.id, mid)}
-                                onSupervisorApproveMs={(mid: string) => supervisorApproveMs(s.id, mid)}
-                                onReleaseMs={(m: Milestone) => releaseMs(s, m)}
-                                onLockMs={handleLockStageMilestone}
-                              />
-                            );
-                          })()}
-                        </div>
+                            })()}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </motion.div>

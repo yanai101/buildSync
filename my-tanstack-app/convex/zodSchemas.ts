@@ -117,6 +117,8 @@ export const zProject = {
   housingUnits: z.number().optional(),
   lastActivityAt: z.number().optional(),
   vatPct: z.number().optional(),
+  managerCanViewBudget: z.boolean().optional(),
+  inspectorCanViewBudget: z.boolean().optional(),
 };
 
 export const zProjectRoom = {
@@ -215,6 +217,7 @@ export const zContractor = {
   avatarColor: z.string().optional(),
   userId: zid('users').optional(),
   includesVat: z.boolean().optional(),
+  canViewBudget: z.boolean().optional(),
 };
 
 export const zContractorPaymentMilestone = {
@@ -320,6 +323,7 @@ export const zProjectInvitation = {
   consumedAt: z.number().optional(),
   expiresAt: z.number(),
   revokedAt: z.number().optional(),
+  allowBudgetView: z.boolean().optional(),
 };
 
 export const zPersonalFile = {

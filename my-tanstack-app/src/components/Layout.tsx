@@ -101,6 +101,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const { isProOrPremium } = useSubscription()
   const { signOut } = useAuthActions()
   const identity = useQuery(api.users.currentIdentity, {})
+  const accessInfo = useQuery(
+    api.projects.getProjectAccessInfo,
+    project?._id ? { projectId: project._id } : "skip"
+  )
+  const canViewBudget = accessInfo?.canViewBudget ?? false
   const [menuOpen, setMenuOpen] = React.useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false)
   const menuRef = React.useRef<HTMLDivElement>(null)
@@ -398,10 +403,15 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <div className="sidebar-scroll">
           {sections.map(sec => {
             const userRole = resolvedRole ?? 'owner'
-            const items = NAV.filter(n =>
-              n.section === sec &&
-              (!n.roles || n.roles.includes(userRole as any))
-            )
+            const BUDGET_ROUTES = ['/budget', '/analytics', '/quotes']
+            const items = NAV.filter(n => {
+              if (n.section !== sec) return false
+              if (BUDGET_ROUTES.includes(n.id)) {
+                if (userRole === 'owner') return true
+                return canViewBudget
+              }
+              return !n.roles || n.roles.includes(userRole as any)
+            })
             if (items.length === 0) return null
             const hasActive = items.some(n => n.id === currentPath)
             const collapsed = collapsedSections.has(sec)
@@ -905,10 +915,15 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 {sections.map(sec => {
                   const userRole = resolvedRole ?? 'owner'
-                  const items = NAV.filter(n =>
-                    n.section === sec &&
-                    (!n.roles || n.roles.includes(userRole as any))
-                  )
+                  const BUDGET_ROUTES = ['/budget', '/analytics', '/quotes']
+                  const items = NAV.filter(n => {
+                    if (n.section !== sec) return false
+                    if (BUDGET_ROUTES.includes(n.id)) {
+                      if (userRole === 'owner') return true
+                      return canViewBudget
+                    }
+                    return !n.roles || n.roles.includes(userRole as any)
+                  })
                   if (items.length === 0) return null
                   
                   return (

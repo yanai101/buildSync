@@ -22,8 +22,12 @@ export const DashboardScreen = () => {
   const deleteAlert = useMutation(api.dashboard.deleteAlert);
   const deleteAllAlerts = useMutation(api.dashboard.deleteAllAlerts);
 
-  if (!dashboard) {
-    return <ScreenBoundary loading={loading} error={error} onRetry={refetch}><div/></ScreenBoundary>;
+  const projectId = dashboard?.project?._id;
+  const accessInfo = useQuery(api.projects.getProjectAccessInfo, projectId ? { projectId } : "skip");
+  const canViewBudget = accessInfo?.canViewBudget ?? false;
+
+  if (!dashboard || accessInfo === undefined) {
+    return <ScreenBoundary loading={loading || accessInfo === undefined} error={error} onRetry={refetch}><div/></ScreenBoundary>;
   }
 
   const { project, stats, stages, recentActivity, topOverruns, alerts } = dashboard;
@@ -151,7 +155,7 @@ export const DashboardScreen = () => {
           </div>
         )})()}
 
-        {role !== 'contractor' && <BudgetSummaryCards summary={stats} style={{marginBottom:24}} />}
+        {canViewBudget && <BudgetSummaryCards summary={stats} style={{marginBottom:24}} />}
 
         <div style={{display: "flex", flexWrap: "wrap", gap: 20}}>
           {/* Left col */}
@@ -183,7 +187,7 @@ export const DashboardScreen = () => {
             </div>
 
             {/* Budget overview */}
-            {role !== 'contractor' && (
+            {canViewBudget && (
               <div className="card">
               <div className="card-header" style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
                 <span>תקציב ותשלומים</span>
@@ -210,7 +214,7 @@ export const DashboardScreen = () => {
             </div>
             )}
 
-            {role !== 'contractor' && (
+            {canViewBudget && (
             <div className="card">
               <div className="card-header">חריגות מובילות</div>
               <div className="card-body" style={{paddingTop:12}}>

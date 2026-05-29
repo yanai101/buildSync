@@ -18,17 +18,20 @@ import {
 const COLORS = ['#E07A38', '#10B981', '#3B82F6', '#8B5CF6', '#EC4899', '#F59E0B', '#6366F1', '#14B8A6'];
 
 export const AnalyticsScreen = () => {
-  const { allowed, loading: roleLoading } = useRequireRole(['owner', 'manager']);
+  const { allowed, loading: roleLoading } = useRequireRole(['owner', 'manager', 'inspector', 'contractor']);
   const { projectId } = useCurrentProject();
   const { isProOrPremium } = useSubscription();
   const [expandedChart, setExpandedChart] = React.useState<string | null>(null);
   
+  const accessInfo = useQuery(api.projects.getProjectAccessInfo, projectId ? { projectId } : "skip");
+  const canViewBudget = accessInfo?.canViewBudget ?? false;
+
   const { summary, isPending: summaryPending } = useProjectBudgetSummary();
-  const categories = useQuery(api.budget.listCategories, projectId ? { projectId } : "skip");
-  const expenses = useQuery(api.budget.listExpenses, projectId ? { projectId } : "skip");
+  const categories = useQuery(api.budget.listCategories, projectId && canViewBudget ? { projectId } : "skip");
+  const expenses = useQuery(api.budget.listExpenses, projectId && canViewBudget ? { projectId } : "skip");
   const stages = useQuery(api.stages.list, projectId ? { projectId } : "skip");
 
-  const loading = roleLoading || summaryPending || categories === undefined || expenses === undefined || stages === undefined;
+  const loading = roleLoading || accessInfo === undefined || stages === undefined || (canViewBudget && (summaryPending || categories === undefined || expenses === undefined));
 
   // Process data for charts
   const categoryData = useMemo(() => {
@@ -99,74 +102,78 @@ export const AnalyticsScreen = () => {
       </div>
       
       <div className="page-content">
-        {summary && <BudgetSummaryCards summary={summary} style={{ marginBottom: 32 }} />}
+        {canViewBudget && summary && <BudgetSummaryCards summary={summary} style={{ marginBottom: 32 }} />}
 
         <div className="grid-2">
           {/* Budget Distribution */}
-          <div className="card" style={{ padding: 24, minHeight: 380 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>התפלגות הוצאות לפי קטגוריה</h2>
-              <button onClick={() => setExpandedChart('budgetDistribution')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)' }}>
-                <Icon n="maximize-2" s={16} />
-              </button>
-            </div>
-            {categoryData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie
-                    data={categoryData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={70}
-                    outerRadius={100}
-                    paddingAngle={5}
-                    dataKey="value"
-                  >
-                    {categoryData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color || COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(value: any) => `₪${Number(value).toLocaleString()}`} />
-                  <Legend verticalAlign="bottom" height={36} />
-                </PieChart>
-              </ResponsiveContainer>
-            ) : (
-              <div style={{ height: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text3)' }}>
-                אין מספיק נתונים להצגה
+          {canViewBudget && (
+            <div className="card" style={{ padding: 24, minHeight: 380 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>התפלגות הוצאות לפי קטגוריה</h2>
+                <button onClick={() => setExpandedChart('budgetDistribution')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)' }}>
+                  <Icon n="maximize-2" s={16} />
+                </button>
               </div>
-            )}
-          </div>
+              {categoryData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={300}>
+                  <PieChart>
+                    <Pie
+                      data={categoryData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={70}
+                      outerRadius={100}
+                      paddingAngle={5}
+                      dataKey="value"
+                    >
+                      {categoryData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color || COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(value: any) => `₪${Number(value).toLocaleString()}`} />
+                    <Legend verticalAlign="bottom" height={36} />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <div style={{ height: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text3)' }}>
+                  אין מספיק נתונים להצגה
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Expenses over time */}
-          <div className="card" style={{ padding: 24, minHeight: 380 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>מגמת הוצאות (חודשי)</h2>
-              <button onClick={() => setExpandedChart('expensesOverTime')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)' }}>
-                <Icon n="maximize-2" s={16} />
-              </button>
-            </div>
-            {expensesOverTime.length > 0 ? (
-              <ResponsiveContainer width="100%" height={300}>
-                <AreaChart data={expensesOverTime}>
-                  <defs>
-                    <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="var(--accent)" stopOpacity={0.8}/>
-                      <stop offset="95%" stopColor="var(--accent)" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'var(--text2)' }} />
-                  <YAxis orientation="right" tickFormatter={(val) => `₪${(val/1000)}k`} axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'var(--text2)' }} width={60} />
-                  <Tooltip formatter={(value: any) => `₪${Number(value).toLocaleString()}`} />
-                  <Area type="monotone" dataKey="total" name="סה״כ הוצאות" stroke="var(--accent)" strokeWidth={3} fillOpacity={1} fill="url(#colorTotal)" />
-                </AreaChart>
-              </ResponsiveContainer>
-            ) : (
-              <div style={{ height: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text3)' }}>
-                אין מספיק נתונים להצגה
+          {canViewBudget && (
+            <div className="card" style={{ padding: 24, minHeight: 380 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>מגמת הוצאות (חודשי)</h2>
+                <button onClick={() => setExpandedChart('expensesOverTime')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)' }}>
+                  <Icon n="maximize-2" s={16} />
+                </button>
               </div>
-            )}
-          </div>
+              {expensesOverTime.length > 0 ? (
+                <ResponsiveContainer width="100%" height={300}>
+                  <AreaChart data={expensesOverTime}>
+                    <defs>
+                      <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="var(--accent)" stopOpacity={0.8}/>
+                        <stop offset="95%" stopColor="var(--accent)" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
+                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'var(--text2)' }} />
+                    <YAxis orientation="right" tickFormatter={(val) => `₪${(val/1000)}k`} axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'var(--text2)' }} width={60} />
+                    <Tooltip formatter={(value: any) => `₪${Number(value).toLocaleString()}`} />
+                    <Area type="monotone" dataKey="total" name="סה״כ הוצאות" stroke="var(--accent)" strokeWidth={3} fillOpacity={1} fill="url(#colorTotal)" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              ) : (
+                <div style={{ height: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text3)' }}>
+                  אין מספיק נתונים להצגה
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Task Status */}
           <div className="card" style={{ padding: 24, minHeight: 380 }}>

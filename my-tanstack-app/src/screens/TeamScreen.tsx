@@ -69,6 +69,34 @@ export const TeamScreen = () => {
   const revokeInvitation = useMutation(api.invitations.revokeInvitation);
   const removeMember = useMutation(api.invitations.removeMember);
   const unlinkContractor = useMutation(api.invitations.unlinkContractorLogin);
+  const updateBudgetPermission = useMutation(api.invitations.updateMemberBudgetPermission);
+
+  const handleToggleBudgetPermission = async (
+    role: 'manager' | 'inspector' | 'contractor',
+    canView: boolean,
+    contractorId?: Id<'contractors'>
+  ) => {
+    if (!projectId) return;
+    try {
+      await updateBudgetPermission({
+        projectId,
+        role,
+        contractorId,
+        canViewBudget: canView,
+      });
+      await notify({
+        title: 'הרשאה עודכנה בהצלחה',
+        body: `הרשאת צפייה בתקציב עודכנה`,
+        kind: 'success',
+      });
+    } catch (err) {
+      await notify({
+        title: 'עדכון הרשאה נכשל',
+        body: err instanceof Error ? err.message : 'אירעה שגיאה',
+        kind: 'error',
+      });
+    }
+  };
 
   const [showInvite, setShowInvite] = React.useState(false);
   const [inviteForm, setInviteForm] = React.useState<{
@@ -76,7 +104,8 @@ export const TeamScreen = () => {
     name: string;
     email: string;
     contractorId: string;
-  }>({ role: 'manager', name: '', email: '', contractorId: '' });
+    allowBudgetView: boolean;
+  }>({ role: 'manager', name: '', email: '', contractorId: '', allowBudgetView: true });
   const [createdCode, setCreatedCode] = React.useState<{ code: string; expiresAt: number } | null>(null);
   const [submitting, setSubmitting] = React.useState(false);
 
@@ -122,7 +151,7 @@ export const TeamScreen = () => {
       });
       return;
     }
-    setInviteForm({ role: 'manager', name: '', email: '', contractorId: '' });
+    setInviteForm({ role: 'manager', name: '', email: '', contractorId: '', allowBudgetView: true });
     setCreatedCode(null);
     setShowInvite(true);
   };
@@ -138,6 +167,7 @@ export const TeamScreen = () => {
       const result = await createInvitation({
         projectId,
         role: inviteForm.role,
+        allowBudgetView: inviteForm.allowBudgetView,
         ...(inviteForm.name ? { invitedName: inviteForm.name } : {}),
         ...(inviteForm.email ? { invitedEmail: inviteForm.email } : {}),
         ...(inviteForm.role === 'contractor' && inviteForm.contractorId
@@ -244,6 +274,12 @@ export const TeamScreen = () => {
             roleLabel="מנהל עבודה"
             name={members?.manager?.name ?? null}
             email={members?.manager?.email}
+            canViewBudget={members?.manager?.canViewBudget}
+            onToggleBudget={
+              members?.manager
+                ? (val) => void handleToggleBudgetPermission('manager', val)
+                : undefined
+            }
             onRemove={
               members?.manager
                 ? () => void handleRemoveMember('manager', members.manager!.name)
@@ -254,6 +290,12 @@ export const TeamScreen = () => {
             roleLabel="מפקח"
             name={members?.inspector?.name ?? null}
             email={members?.inspector?.email}
+            canViewBudget={members?.inspector?.canViewBudget}
+            onToggleBudget={
+              members?.inspector
+                ? (val) => void handleToggleBudgetPermission('inspector', val)
+                : undefined
+            }
             onRemove={
               members?.inspector
                 ? () => void handleRemoveMember('inspector', members.inspector!.name)
@@ -303,6 +345,15 @@ export const TeamScreen = () => {
                   <div style={{ fontSize: 11, color: 'var(--text3)' }}>{c.role}</div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, cursor: 'pointer', userSelect: 'none', color: 'var(--text2)' }}>
+                    <input
+                      type="checkbox"
+                      checked={c.canViewBudget}
+                      onChange={(e) => void handleToggleBudgetPermission('contractor', e.target.checked, c.contractorId)}
+                      style={{ width: 14, height: 14, cursor: 'pointer' }}
+                    />
+                    צפייה בתקציב
+                  </label>
                   <span
                     style={{
                       fontSize: 11,
@@ -510,7 +561,12 @@ export const TeamScreen = () => {
                 <Select
                   value={inviteForm.role}
                   onChange={(v: string) =>
-                    setInviteForm({ ...inviteForm, role: v as InviteRole, contractorId: '' })
+                    setInviteForm({ 
+                      ...inviteForm, 
+                      role: v as InviteRole, 
+                      contractorId: '', 
+                      allowBudgetView: v !== 'contractor' 
+                    })
                   }
                   style={{ width: '100%' }}
                 >
@@ -541,6 +597,18 @@ export const TeamScreen = () => {
                   placeholder="name@company.com"
                   style={{ width: '100%' }}
                 />
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4, padding: '4px 0' }}>
+                <input
+                  type="checkbox"
+                  id="allowBudgetView"
+                  checked={inviteForm.allowBudgetView}
+                  onChange={(e) => setInviteForm({ ...inviteForm, allowBudgetView: e.target.checked })}
+                  style={{ width: 16, height: 16, cursor: 'pointer' }}
+                />
+                <label htmlFor="allowBudgetView" style={{ fontSize: 13, fontWeight: 600, cursor: 'pointer', userSelect: 'none', color: 'var(--text1)' }}>
+                  אפשר צפייה בתקציב והוצאות פרויקט
+                </label>
               </div>
               {inviteForm.role === 'contractor' && (
                 <div>
@@ -583,11 +651,15 @@ const MemberRow = ({
   roleLabel,
   name,
   email,
+  canViewBudget,
+  onToggleBudget,
   onRemove,
 }: {
   roleLabel: string;
   name: string | null;
   email?: string | null;
+  canViewBudget?: boolean;
+  onToggleBudget?: (val: boolean) => void;
   onRemove?: () => void;
 }) => (
   <div
@@ -606,21 +678,34 @@ const MemberRow = ({
       <div style={{ fontSize: 14, fontWeight: 600 }}>{name ?? 'טרם שובץ'}</div>
       {email && <div style={{ fontSize: 11, color: 'var(--text3)' }}>{email}</div>}
     </div>
-    {onRemove && (
-      <button
-        type="button"
-        onClick={onRemove}
-        title="הסר"
-        style={{
-          background: 'none',
-          border: 'none',
-          padding: 6,
-          cursor: 'pointer',
-          color: 'var(--danger)',
-        }}
-      >
-        <Icon n="x" s={14} />
-      </button>
-    )}
+    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      {name && onToggleBudget !== undefined && (
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, cursor: 'pointer', userSelect: 'none', color: 'var(--text2)' }}>
+          <input
+            type="checkbox"
+            checked={canViewBudget}
+            onChange={(e) => onToggleBudget(e.target.checked)}
+            style={{ width: 14, height: 14, cursor: 'pointer' }}
+          />
+          צפייה בתקציב
+        </label>
+      )}
+      {onRemove && (
+        <button
+          type="button"
+          onClick={onRemove}
+          title="הסר"
+          style={{
+            background: 'none',
+            border: 'none',
+            padding: 6,
+            cursor: 'pointer',
+            color: 'var(--danger)',
+          }}
+        >
+          <Icon n="x" s={14} />
+        </button>
+      )}
+    </div>
   </div>
 );

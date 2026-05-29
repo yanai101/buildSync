@@ -1,10 +1,13 @@
 import { query, mutation } from './_generated/server';
 import { v } from 'convex/values';
 import { getFinancialSummary } from './_lib/financialSummary';
+import { canUserViewBudget, requireProjectBudgetView } from './_lib/projectAccess';
 
 export const getSummary = query({
   args: { projectId: v.id('projects') },
   handler: async (ctx, args) => {
+    const allowed = await canUserViewBudget(ctx, args.projectId);
+    if (!allowed) return null;
     const project = await ctx.db.get(args.projectId);
     if (!project) return null;
     return await getFinancialSummary(ctx, project);
@@ -14,6 +17,8 @@ export const getSummary = query({
 export const listCategories = query({
   args: { projectId: v.id('projects') },
   handler: async (ctx, args) => {
+    const allowed = await canUserViewBudget(ctx, args.projectId);
+    if (!allowed) return [];
     return await ctx.db
       .query('budgetCategories')
       .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
@@ -24,6 +29,8 @@ export const listCategories = query({
 export const listExpenses = query({
   args: { projectId: v.id('projects') },
   handler: async (ctx, args) => {
+    const allowed = await canUserViewBudget(ctx, args.projectId);
+    if (!allowed) return [];
     const expenses = await ctx.db
       .query('expenses')
       .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
@@ -75,6 +82,7 @@ export const addCategory = mutation({
     color: v.string(),
   },
   handler: async (ctx, args) => {
+    await requireProjectBudgetView(ctx, args.projectId);
     const categories = await ctx.db
       .query('budgetCategories')
       .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
@@ -102,6 +110,7 @@ export const addExpense = mutation({
     fileIds: v.optional(v.array(v.id('projectFiles'))),
   },
   handler: async (ctx, args) => {
+    await requireProjectBudgetView(ctx, args.projectId);
     let category = null;
     if (args.category) {
       category = await ctx.db

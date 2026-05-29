@@ -77,3 +77,55 @@ export const requireProjectOwner = async (ctx: Ctx, projectId: Id<'projects'>) =
 
   return { userId, user, project };
 };
+
+export const canUserViewBudget = async (ctx: Ctx, projectId: Id<'projects'>): Promise<boolean> => {
+  const userId = await getAuthUserId(ctx);
+  if (!userId) {
+    return false;
+  }
+
+  const [user, project] = await Promise.all([
+    ctx.db.get(userId),
+    ctx.db.get(projectId),
+  ]);
+
+  if (!project) {
+    return false;
+  }
+
+  // 1. Owner and SuperAdmin always have full budget view
+  if (project.ownerUserId === userId || user?.isSuperAdmin) {
+    return true;
+  }
+
+  // 2. Project Manager
+  if (project.managerUserId === userId) {
+    return project.managerCanViewBudget !== false;
+  }
+
+  // 3. Project Inspector
+  if (project.inspectorUserId === userId) {
+    return project.inspectorCanViewBudget !== false;
+  }
+
+  // 4. Contractor (look for a contractor record linked to this userId)
+  const contractorRecord = await ctx.db
+    .query('contractors')
+    .withIndex('by_project', (q) => q.eq('projectId', projectId))
+    .filter((q) => q.eq(q.field('userId'), userId))
+    .first();
+
+  if (contractorRecord) {
+    return contractorRecord.canViewBudget === true;
+  }
+
+  return false;
+};
+
+export const requireProjectBudgetView = async (ctx: Ctx, projectId: Id<'projects'>) => {
+  const allowed = await canUserViewBudget(ctx, projectId);
+  if (!allowed) {
+    throw new Error('אין לך הרשאה לצפות בנתוני התקציב של פרויקט זה');
+  }
+};
+

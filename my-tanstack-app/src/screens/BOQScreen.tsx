@@ -292,10 +292,13 @@ import { useSubscription } from '../hooks/useSubscription';
 import { useAppNotify } from '../hooks/useAppNotify';
 
 export const BOQScreen = () => {
-  const { allowed, loading: roleLoading } = useRequireRole(['owner', 'manager', 'inspector']);
+  const { allowed, loading: roleLoading } = useRequireRole(['owner', 'manager', 'inspector', 'contractor']);
   const { projectId } = useCurrentProject();
   const { notify } = useAppNotify();
   const { isProOrPremium } = useSubscription();
+  const accessInfo = useQuery(api.projects.getProjectAccessInfo, projectId ? { projectId } : "skip");
+  const canViewBudget = accessInfo?.canViewBudget ?? false;
+
   const dbBoq = useQuery(api.queries.listBoq, projectId && allowed ? { projectId } : "skip");
   const dbProject = useQuery(api.projects.getWithDetails, projectId && allowed ? { projectId } : "skip");
   const addBoqItem = useMutation(api.mutations.addBoqItem);
@@ -305,7 +308,7 @@ export const BOQScreen = () => {
 
   const initialBoq = dbBoq ?? null;
   const project = (dbProject ?? null) as Project | null;
-  const loading = !!projectId && (dbBoq === undefined || dbProject === undefined);
+  const loading = !!projectId && (dbBoq === undefined || dbProject === undefined || accessInfo === undefined);
   
   const [items, setItems] = React.useState<Record<string, BOQItem[]>>({});
   const [room, setRoom] = React.useState<string>("");
@@ -601,12 +604,14 @@ export const BOQScreen = () => {
           <select className="bp-input" value={room} onChange={e=>setRoom(e.target.value)} style={{width:"auto",minWidth:180}}>
             {rooms.map((r: Room)=><option key={r.uid} value={r.uid}>{r.name} ({getFloorLabel(r.floor, (project as any)?.housingUnits)})</option>)}
           </select>
-          <div style={{display:"flex",gap:12,flexWrap:"wrap",alignItems:"center",rowGap:6}}>
-            <span style={{fontSize:13,color:"var(--text2)"}}>סה"כ חדר: <strong>{fmtMoney(total)}</strong></span>
-            <span style={{fontSize:13,color:"var(--text3)"}}>כלל הבית: <strong>{fmtMoney(allTotal)}</strong></span>
-            <span style={{fontSize:13,color:"var(--success)"}}>שולם בחדר: <strong>{fmtMoney(roomPaid)}</strong></span>
-            <span style={{fontSize:13,color:"var(--success)"}}>שולם בכלל הבית: <strong>{fmtMoney(allPaid)}</strong></span>
-          </div>
+          {canViewBudget && (
+            <div style={{display:"flex",gap:12,flexWrap:"wrap",alignItems:"center",rowGap:6}}>
+              <span style={{fontSize:13,color:"var(--text2)"}}>סה"כ חדר: <strong>{fmtMoney(total)}</strong></span>
+              <span style={{fontSize:13,color:"var(--text3)"}}>כלל הבית: <strong>{fmtMoney(allTotal)}</strong></span>
+              <span style={{fontSize:13,color:"var(--success)"}}>שולם בחדר: <strong>{fmtMoney(roomPaid)}</strong></span>
+              <span style={{fontSize:13,color:"var(--success)"}}>שולם בכלל הבית: <strong>{fmtMoney(allPaid)}</strong></span>
+            </div>
+          )}
           <div style={{marginRight:"auto",display:"flex",gap:8}}>
             <Btn size="sm" variant="ghost" onClick={() => (window as any).location.href='/boqwizard'}><Icon n="settings" s={13}/> אשף כמויות</Btn>
             <Btn size="sm" variant="ghost" onClick={handleExportPDF} disabled={exporting}>
@@ -649,7 +654,7 @@ export const BOQScreen = () => {
                   />
                 )}
               </div>
-              {ITEM_FORM_FIELDS.map(([k,label])=>(
+              {ITEM_FORM_FIELDS.filter(([k]) => k !== 'unitPrice' || canViewBudget).map(([k,label])=>(
                 <div key={k}>
                   <div style={{fontSize:11,color:"var(--text2)",marginBottom:3}}>{label}</div>
                   <input
@@ -695,11 +700,21 @@ export const BOQScreen = () => {
             <div key={cat} className="card" style={{marginBottom:16}}>
               <div className="card-header" style={{fontSize:13,display:"flex",justifyContent:"space-between"}}>
                 <span>{cat}</span>
-                <span style={{fontWeight:400,color:"var(--text3)"}}>{fmtMoney(roomItems.filter((i)=>i.cat===cat).reduce((a,i)=>a+i.qty*i.unitPrice,0))}</span>
+                {canViewBudget && <span style={{fontWeight:400,color:"var(--text3)"}}>{fmtMoney(roomItems.filter((i)=>i.cat===cat).reduce((a,i)=>a+i.qty*i.unitPrice,0))}</span>}
               </div>
               <div style={{overflowX:"auto"}}>
                 <table className="bp-table" style={{width:"100%"}}>
-                  <thead><tr><th>פריט / מפרט</th><th>כמות</th><th>מחיר יח'</th><th>סה"כ</th><th>ספק</th><th>סטטוס</th><th></th></tr></thead>
+                  <thead>
+                    <tr>
+                      <th>פריט / מפרט</th>
+                      <th>כמות</th>
+                      {canViewBudget && <th>מחיר יח'</th>}
+                      {canViewBudget && <th>סה"כ</th>}
+                      <th>ספק</th>
+                      <th>סטטוס</th>
+                      <th></th>
+                    </tr>
+                  </thead>
                   <tbody>
                     {roomItems.filter(i=>i.cat===cat).map(i=>(
                       <tr key={i.id}>
@@ -712,8 +727,8 @@ export const BOQScreen = () => {
                           {i.notes && <div style={{fontSize:11,color:"var(--text3)",marginTop:2}}>הערות: {i.notes}</div>}
                         </td>
                         <td style={{fontSize:13}}>{i.qty} {i.unit}</td>
-                        <td style={{fontSize:13}}>{fmtMoney(i.unitPrice)}</td>
-                        <td style={{fontSize:13,fontWeight:700}}>{fmtMoney(i.qty*i.unitPrice)}</td>
+                        {canViewBudget && <td style={{fontSize:13}}>{fmtMoney(i.unitPrice)}</td>}
+                        {canViewBudget && <td style={{fontSize:13,fontWeight:700}}>{fmtMoney(i.qty*i.unitPrice)}</td>}
                         <td style={{fontSize:12,color:"var(--text2)"}}>{i.supplier}</td>
                         <td>
                           <button

@@ -15,12 +15,18 @@ import { AccessDenied, AccessLoading } from '../components/AccessDenied';
 import { useProjectFileUploader } from '../hooks/useProjectFileUploader';
 
 export const BudgetScreen = () => {
-  const { allowed, loading: roleLoading } = useRequireRole(['owner']);
-  const { projectId } = useCurrentProject();
-  const dbCats = useQuery(api.budget.listCategories, projectId && allowed ? { projectId } : "skip");
-  const dbExps = useQuery(api.budget.listExpenses, projectId && allowed ? { projectId } : "skip");
+  const { project, projectId } = useCurrentProject();
+  const currentIdentity = useQuery(api.users.currentIdentity, {});
+  const accessInfo = useQuery(api.projects.getProjectAccessInfo, projectId ? { projectId } : "skip");
+  const canView = accessInfo?.canViewBudget ?? false;
+  const accessLoading = accessInfo === undefined || currentIdentity === undefined;
+
+  const dbCats = useQuery(api.budget.listCategories, projectId && canView ? { projectId } : "skip");
+  const dbExps = useQuery(api.budget.listExpenses, projectId && canView ? { projectId } : "skip");
   const updateBudgetTotal = useMutation(api.projects.updateBudgetTotal);
   const { summary, isPending: summaryPending } = useProjectBudgetSummary();
+
+  const isOwner = project ? (project as any).ownerUserId === currentIdentity?.userId || currentIdentity?.isSuperAdmin : false;
 
   const { data: categories, loading: catsLoading, error: catsError, refetch: catsRefetch } = useDataSource<any[]>('budget_cats', { db: dbCats as any });
   const { data: expenses, loading: expLoading, error: expError, refetch: expRefetch } = useDataSource<any[]>('expenses', { db: dbExps as any });
@@ -47,8 +53,8 @@ export const BudgetScreen = () => {
   const error = catsError || expError;
   const refetch = () => { catsRefetch(); expRefetch(); };
 
-  if (roleLoading) return <AccessLoading />;
-  if (!allowed) return <AccessDenied message="צפייה וניהול תקציב מורשים ליזם הפרויקט בלבד." />;
+  if (accessLoading) return <AccessLoading />;
+  if (!canView) return <AccessDenied message="אין לך הרשאה לצפות בנתוני התקציב של פרויקט זה." />;
 
   if (loading) return <ScreenBoundary loading={true} onRetry={refetch}><div/></ScreenBoundary>;
   if (error) return <ScreenBoundary error={error} onRetry={refetch}><div/></ScreenBoundary>;
@@ -169,10 +175,13 @@ export const BudgetScreen = () => {
               onChange={e=>setBudgetDraft(e.target.value)}
               placeholder="0"
               style={{width:180,fontWeight:700}}
+              disabled={!isOwner}
             />
-            <Btn onClick={handleSaveProjectBudget} disabled={savingBudget || !projectId}>
-              {savingBudget ? "שומר..." : "שמור תקציב"}
-            </Btn>
+            {isOwner && (
+              <Btn onClick={handleSaveProjectBudget} disabled={savingBudget || !projectId}>
+                {savingBudget ? "שומר..." : "שמור תקציב"}
+              </Btn>
+            )}
           </div>
         </div>
 
