@@ -18,6 +18,7 @@ export const useDataMutation = (resource: MutationResource) => {
   const deleteQuoteMutation = useMutation(api.quotes.deleteQuote);
   const addQuoteTopicMutation = useMutation(api.quotes.addTopic);
   const saveNoteMutation = useMutation(api.mutations.saveNote);
+  const markMessagesAsReadMutation = useMutation(api.mutations.markMessagesAsRead);
   const savePhotoAnnotationMutation = useMutation(api.mutations.savePhotoAnnotation);
   const deletePhotoMutation = useMutation(api.mutations.deletePhoto);
   const updatePhotoTagMutation = useMutation(api.mutations.updatePhotoTag);
@@ -36,7 +37,7 @@ export const useDataMutation = (resource: MutationResource) => {
   const savedMode = localStorage.getItem(`buildsync:ds:${resource}`);
   const isMock = savedMode ? savedMode !== 'db' : !defaultDbResources.includes(resource);
 
-  const mutate = useCallback(async (action: 'add' | 'update' | 'delete' | 'toggleTask' | 'saveBoq' | 'saveProjectSetup' | 'addExpense' | 'saveNote' | 'savePhotoAnnotation' | 'deletePhoto' | 'updatePhotoTag' | 'createProject' | 'deleteProject' | 'addBudgetCategory' | 'saveQuote' | 'deleteQuote' | 'addQuoteTopic' | 'addChecklist' | 'deleteChecklist' | 'addChecklistItem' | 'toggleChecklistItem' | 'deleteChecklistItem' | 'updateChecklistItem' | 'updateChecklistTitle', payload: any) => {
+  const mutate = useCallback(async (action: 'add' | 'update' | 'delete' | 'toggleTask' | 'saveBoq' | 'saveProjectSetup' | 'addExpense' | 'saveNote' | 'markMessagesAsRead' | 'savePhotoAnnotation' | 'deletePhoto' | 'updatePhotoTag' | 'createProject' | 'deleteProject' | 'addBudgetCategory' | 'saveQuote' | 'deleteQuote' | 'addQuoteTopic' | 'addChecklist' | 'deleteChecklist' | 'addChecklistItem' | 'toggleChecklistItem' | 'deleteChecklistItem' | 'updateChecklistItem' | 'updateChecklistTitle', payload: any) => {
     if (isMock) {
       console.log(`[MOCK MUTATION] ${resource}:${action}`, payload);
       return { success: true, mock: true };
@@ -82,6 +83,8 @@ export const useDataMutation = (resource: MutationResource) => {
           return await addQuoteTopicMutation({ ...payload });
         case 'saveNote':
           return await saveNoteMutation({ projectId: payload.projectId, text: payload.text, thread: payload.thread, recipientContractorId: payload.recipientContractorId });
+        case 'markMessagesAsRead':
+          return await markMessagesAsReadMutation({ projectId: payload.projectId, thread: payload.thread, ...(payload.filterContractorId ? { filterContractorId: payload.filterContractorId } : {}) });
         case 'savePhotoAnnotation':
           return await savePhotoAnnotationMutation({ photoId: payload.photoId, noteText: payload.noteText, role: payload.role });
         case 'deletePhoto':
@@ -128,7 +131,7 @@ export const useDataMutation = (resource: MutationResource) => {
       console.error(`[DB MUTATION ERROR] ${resource}:${action}`, err);
       throw err;
     }
-  }, [isMock, resource, genericUpdate, genericAdd, genericRemove, toggleTaskMutation, saveBoqMutation, saveProjectSetupMutation, addExpenseMutation, saveNoteMutation, savePhotoAnnotationMutation, deletePhotoMutation, updatePhotoTagMutation, createProjectMutation, deleteProjectMutation, addChecklistMutation, deleteChecklistMutation, addChecklistItemMutation, toggleChecklistItemMutation, deleteChecklistItemMutation, updateChecklistItemMutation, updateChecklistTitleMutation]);
+  }, [isMock, resource, genericUpdate, genericAdd, genericRemove, toggleTaskMutation, saveBoqMutation, saveProjectSetupMutation, addExpenseMutation, saveNoteMutation, markMessagesAsReadMutation, savePhotoAnnotationMutation, deletePhotoMutation, updatePhotoTagMutation, createProjectMutation, deleteProjectMutation, addChecklistMutation, deleteChecklistMutation, addChecklistItemMutation, toggleChecklistItemMutation, deleteChecklistItemMutation, updateChecklistItemMutation, updateChecklistTitleMutation]);
 
   return { mutate };
 };

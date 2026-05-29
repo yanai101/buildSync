@@ -1068,6 +1068,72 @@ export const saveNote = mutation({
   },
 });
 
+export const markMessagesAsRead = mutation({
+  args: {
+    projectId: v.id('projects'),
+    thread: v.union(v.literal('internal'), v.literal('contractor')),
+    filterContractorId: v.optional(v.id('contractors')),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error('Not authenticated');
+    }
+
+    const user = await ctx.db.get(userId);
+    if (!user?.role) {
+      throw new Error('Missing user role');
+    }
+
+    const messages = await ctx.db
+      .query('messages')
+      .withIndex('by_project_thread', (q) =>
+        q.eq('projectId', args.projectId).eq('thread', args.thread)
+      )
+      .take(200);
+
+    const unread = messages.filter(
+      (m) => m.readAt === undefined && m.fromUserId !== userId
+    );
+
+    const now = Date.now();
+
+    if (user.role === 'contractor') {
+      const contractor = await ctx.db
+        .query('contractors')
+        .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
+        .filter((q) => q.eq(q.field('userId'), userId))
+        .first();
+
+      if (!contractor) return;
+
+      for (const msg of unread) {
+        const isAddressedToMe =
+          msg.recipientContractorId === undefined ||
+          msg.recipientContractorId === contractor._id;
+        if (isAddressedToMe) {
+          await ctx.db.patch(msg._id, { readAt: now });
+        }
+      }
+    } else {
+      // owner / manager / inspector
+      for (const msg of unread) {
+        if (args.filterContractorId) {
+          // Only mark messages from the currently-viewed contractor
+          if (
+            msg.role === 'contractor' &&
+            msg.recipientContractorId === args.filterContractorId
+          ) {
+            await ctx.db.patch(msg._id, { readAt: now });
+          }
+        } else {
+          await ctx.db.patch(msg._id, { readAt: now });
+        }
+      }
+    }
+  },
+});
+
 export const savePhotoAnnotation = mutation({
   args: {
     photoId: v.id('photos'),

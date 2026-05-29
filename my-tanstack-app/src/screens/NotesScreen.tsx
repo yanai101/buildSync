@@ -17,7 +17,6 @@ export interface Note {
   date: string;
   time: string;
   thread: string;
-  resolved: boolean;
 }
 
 const getContractorIdStr = (val: any): string => {
@@ -27,6 +26,28 @@ const getContractorIdStr = (val: any): string => {
     return String(val._id ?? val.id ?? "");
   }
   return String(val);
+};
+
+// WhatsApp-style read receipt tick component
+const ReadTick = ({ readAt }: { readAt?: number }) => {
+  const isRead = !!readAt;
+  return (
+    <span
+      style={{
+        fontSize: 13,
+        color: isRead ? '#3B82F6' : 'var(--text3)',
+        letterSpacing: -2,
+        fontWeight: 700,
+        display: 'inline-flex',
+        alignItems: 'center',
+        userSelect: 'none',
+        marginRight: 2,
+      }}
+      title={isRead ? 'נקרא' : 'נשלח'}
+    >
+      {isRead ? '✓✓' : '✓'}
+    </span>
+  );
 };
 
 export const NotesScreen = () => {
@@ -91,6 +112,31 @@ export const NotesScreen = () => {
     }
   }, [filterContractorId, thread]);
 
+  // Auto-mark incoming messages as read when the user views a thread.
+  // Optimistic local update fires immediately so counts reset without waiting for DB roundtrip.
+  React.useEffect(() => {
+    if (mode !== 'db' || !projectId || thread === 'all') return;
+    const activeThread = thread as 'internal' | 'contractor';
+    const fcId = thread === 'contractor' && filterContractorId !== 'all' ? filterContractorId : undefined;
+    const myUserId = currentIdentity?.userId;
+    const now = Date.now();
+
+    setNotes(prev => prev.map(n => {
+      if ((n as any).readAt) return n;
+      if (n.thread !== activeThread) return n;
+      if ((n as any).fromUserId === myUserId) return n;
+      if (fcId && getContractorIdStr((n as any).recipientContractorId) !== fcId) return n;
+      return { ...n, readAt: now } as any;
+    }));
+
+    mutate('markMessagesAsRead', {
+      projectId,
+      thread: activeThread,
+      filterContractorId: fcId,
+    }).catch(() => { /* best-effort */ });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [thread, filterContractorId, notes.length]);
+
   const filtered = React.useMemo(() => {
     let list = thread === "all" ? notes : notes.filter(n => n.thread === thread);
     if (thread === "contractor" && filterContractorId !== "all") {
@@ -103,13 +149,30 @@ export const NotesScreen = () => {
     return list;
   }, [notes, thread, filterContractorId]);
 
+  // Compute unread counts per contractor (messages they sent that we haven't read)
+  const unreadByContractor = React.useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const n of notes) {
+      if (n.thread !== 'contractor') continue;
+      if (n.role !== 'contractor') continue;
+      if ((n as any).readAt) continue;
+      // Contractor messages carry their own contractor id as recipientContractorId
+      const cId = getContractorIdStr((n as any).recipientContractorId);
+      if (!cId) continue;
+      counts[cId] = (counts[cId] ?? 0) + 1;
+    }
+    return counts;
+  }, [notes]);
+
+  const totalUnread = Object.values(unreadByContractor).reduce((s, v) => s + v, 0);
+
   const send = async () => {
     if(!text.trim()) return;
     const roleForMessage = activeRole || myRole;
     const name = mode === 'db'
       ? currentIdentity?.name || currentIdentity?.email || (ROLE_LABELS as any)[roleForMessage] || 'משתמש'
       : ["בעל הבית","אבי כהן","רון לוי","יעקב פרץ"][["owner","manager","inspector","contractor"].indexOf(myRole)];
-    
+
     // Optimistic
     const newNote = {
       id: Date.now() as any,
@@ -119,7 +182,6 @@ export const NotesScreen = () => {
       date: "היום",
       time: new Date().toTimeString().slice(0,5),
       thread: targetThread,
-      resolved: false,
       recipientContractorId: targetThread === 'contractor' && recipientContractorId !== 'all' ? recipientContractorId : undefined,
       recipientName: targetThread === 'contractor' && recipientContractorId !== 'all' ? contractors.find((c: any) => getContractorIdStr(c._id ?? c.id) === getContractorIdStr(recipientContractorId))?.name : undefined,
     };
@@ -140,14 +202,6 @@ export const NotesScreen = () => {
     }
   };
 
-  const toggleResolved = async (id: number, dbId?: string) => {
-    setNotes(prev=>prev.map(n=>n.id===id?{...n,resolved:!n.resolved}:n));
-    if (dbId) {
-      const note = notes.find(n => n.id === id);
-      await mutate('update', { id: dbId, patch: { resolved: !note?.resolved } });
-    }
-  };
-
   return (
     <ScreenBoundary loading={loading} error={error} onRetry={refetch}>
       <div className="page-content" style={{display:"flex",flexDirection:"column",height:"calc(100vh - 130px)"}}>
@@ -159,26 +213,91 @@ export const NotesScreen = () => {
                 <button key={t.id} onClick={()=>setThread(t.id)} style={{padding:"6px 14px",border:"none",borderRadius:6,cursor:"pointer",fontFamily:"'Heebo',sans-serif",fontSize:13,fontWeight:thread===t.id?600:400,background:thread===t.id?"var(--accent)":"transparent",color:thread===t.id?"#fff":"var(--text2)",transition:"background .15s, color .15s"}}>
                   {t.label}
                   <span style={{marginRight:5,fontSize:11,opacity:.7}}>{t.id==="all"?notes.length:notes.filter(n=>n.thread===t.id).length}</span>
+                  {t.id === 'contractor' && totalUnread > 0 && thread !== 'contractor' && (
+                    <span style={{marginRight:4,background:'#DC2626',color:'#fff',borderRadius:10,fontSize:10,padding:'1px 6px',fontWeight:700}}>
+                      {totalUnread}
+                    </span>
+                  )}
                 </button>
               ))}
             </div>
           )}
 
           {thread === 'contractor' && canSeeAllChats && contractors.length > 0 && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 13, color: 'var(--text2)', fontWeight: 600 }}>סינון לפי קבלן:</span>
-              <Select
-                value={filterContractorId}
-                onChange={setFilterContractorId}
-                style={{ fontSize: 12, width: 'auto', padding: '6px 12px', background: 'var(--surface)' }}
-              >
-                <option value="all">כל השיחות (כל הקבלנים)</option>
-                {contractors.map((c: any) => (
-                  <option key={getContractorIdStr(c._id ?? c.id)} value={getContractorIdStr(c._id ?? c.id)}>
-                    {c.name} ({c.role})
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {/* Unread chips above the select */}
+              {Object.keys(unreadByContractor).length > 0 && (
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  {contractors
+                    .filter((c: any) => {
+                      const cId = getContractorIdStr(c._id ?? c.id);
+                      return (unreadByContractor[cId] ?? 0) > 0;
+                    })
+                    .map((c: any) => {
+                      const cId = getContractorIdStr(c._id ?? c.id);
+                      const count = unreadByContractor[cId] ?? 0;
+                      const isActive = filterContractorId === cId;
+                      return (
+                        <button
+                          key={cId}
+                          onClick={() => setFilterContractorId(isActive ? 'all' : cId)}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 5,
+                            padding: '4px 10px',
+                            borderRadius: 20,
+                            border: `2px solid ${isActive ? '#DC2626' : 'transparent'}`,
+                            background: isActive ? '#FEF2F2' : '#FEE2E2',
+                            color: '#DC2626',
+                            fontSize: 12,
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            fontFamily: "'Heebo',sans-serif",
+                            transition: 'all .15s',
+                          }}
+                        >
+                          🔴 {c.name}
+                          <span style={{
+                            background: '#DC2626',
+                            color: '#fff',
+                            borderRadius: '50%',
+                            width: 18,
+                            height: 18,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: 10,
+                          }}>
+                            {count}
+                          </span>
+                        </button>
+                      );
+                    })}
+                </div>
+              )}
+              {/* Contractor filter select */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 13, color: 'var(--text2)', fontWeight: 600 }}>סינון לפי קבלן:</span>
+                <Select
+                  value={filterContractorId}
+                  onChange={setFilterContractorId}
+                  style={{ fontSize: 12, width: 'auto', padding: '6px 12px', background: 'var(--surface)' }}
+                >
+                  <option value="all">
+                    כל השיחות{totalUnread > 0 ? ` (${totalUnread} חדשות)` : ''}
                   </option>
-                ))}
-              </Select>
+                  {contractors.map((c: any) => {
+                    const cId = getContractorIdStr(c._id ?? c.id);
+                    const unread = unreadByContractor[cId] ?? 0;
+                    return (
+                      <option key={cId} value={cId}>
+                        {c.name} ({c.role}){unread > 0 ? ` — ${unread} חדשות` : ''}
+                      </option>
+                    );
+                  })}
+                </Select>
+              </div>
             </div>
           )}
         </div>
@@ -204,8 +323,11 @@ export const NotesScreen = () => {
           ) : (
             <AnimatePresence initial={false}>
             {filtered.map((n,i)=>{
-              const isMe = n.role===activeRole;
+              const isMe = mode === 'db'
+                ? (n as any).fromUserId === currentIdentity?.userId
+                : n.role === activeRole;
               const color = (ROLE_COLORS as any)[n.role]||"#888";
+              const readAt = (n as any).readAt as number | undefined;
               return (
                 <motion.div
                   key={n.id}
@@ -222,7 +344,7 @@ export const NotesScreen = () => {
                       <div style={{padding:"13px 17px",borderRadius:16,fontSize:14,lineHeight:1.65,background:isMe?"linear-gradient(135deg, var(--accent) 0%, #c96b30 100%)":"var(--surface)",color:isMe?"#fff":"var(--text1)",border:isMe?"none":"1px solid var(--border)",boxShadow:isMe?"0 3px 12px rgba(224,122,56,0.28)":"var(--shadow-sm)",borderTopLeftRadius:isMe?16:4,borderTopRightRadius:isMe?4:16}}>
                         {n.text}
                       </div>
-                      <div style={{marginTop:6,display:"flex",gap:6,justifyContent:isMe?"flex-end":"flex-start",flexWrap:"wrap",alignItems:"center"}}>
+                      <div style={{marginTop:4,display:"flex",gap:6,justifyContent:isMe?"flex-end":"flex-start",flexWrap:"wrap",alignItems:"center"}}>
                         {n.thread === "contractor" && (
                           <span
                             style={{
@@ -240,9 +362,10 @@ export const NotesScreen = () => {
                               : "📣 ציבורי לקבלנים"}
                           </span>
                         )}
-                        <motion.button whileTap={{scale:0.9}} onClick={()=>toggleResolved(n.id, (n as any)._id)} style={{fontSize:11,color:n.resolved?"var(--success)":"var(--text3)",background:"none",border:"none",cursor:"pointer",fontFamily:"'Heebo',sans-serif",fontWeight:n.resolved?700:400}}>
-                          {n.resolved?"✓ טופל":"סמן כטופל"}
-                        </motion.button>
+                        {/* Read receipt tick — only for messages I sent, in db mode */}
+                        {isMe && mode === 'db' && (
+                          <ReadTick readAt={readAt} />
+                        )}
                       </div>
                     </div>
                   </div>

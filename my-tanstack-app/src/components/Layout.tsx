@@ -234,7 +234,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     }
   };
   const dbNotes = useQuery(api.queries.listNotes, project?._id ? { projectId: project._id } : "skip")
-  const unreadNotesCount = dbNotes?.filter(n => !n.resolved).length || 0;
+  const unreadNotesCount = dbNotes?.filter(n => !(n as any).readAt && (n as any).fromUserId !== identity?.userId).length || 0;
 
   const [showWelcomeModal, setShowWelcomeModal] = React.useState(false);
   const [showSupportModal, setShowSupportModal] = React.useState(false);
