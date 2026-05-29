@@ -9,7 +9,7 @@ import { useDashboardOverview } from '../hooks/useDashboardOverview';
 import { BudgetSummaryCards } from '../components/BudgetSummaryCards';
 import { useRequireRole } from '../hooks/useRequireRole';
 
-import { useMutation } from 'convex/react';
+import { useMutation, useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 
 export const DashboardScreen = () => {
