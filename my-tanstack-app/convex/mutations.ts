@@ -77,6 +77,44 @@ const createDefaultContractorPaymentSchedule = async (
   }
 };
 
+const resolveMilestoneId = async (
+  ctx: MutationCtx,
+  idStr: string,
+): Promise<Id<'contractorPaymentMilestones'>> => {
+  if (idStr.includes('-')) {
+    const [contractorIdStr, indexStr] = idStr.split('-');
+    const contractorId = ctx.db.normalizeId('contractors', contractorIdStr);
+    if (!contractorId) throw new Error('קבלן לא נמצא');
+    
+    const contractor = await ctx.db.get(contractorId);
+    if (!contractor) throw new Error('קבלן לא נמצא');
+
+    let milestones = await ctx.db
+      .query('contractorPaymentMilestones')
+      .withIndex('by_contractor', (q) => q.eq('contractorId', contractorId))
+      .collect();
+
+    if (milestones.length === 0) {
+      await createDefaultContractorPaymentSchedule(ctx, contractorId, contractor.budget);
+      milestones = await ctx.db
+        .query('contractorPaymentMilestones')
+        .withIndex('by_contractor', (q) => q.eq('contractorId', contractorId))
+        .collect();
+    }
+
+    const index = parseInt(indexStr, 10);
+    const sorted = milestones.sort((a, b) => a.sortOrder - b.sortOrder);
+    const milestoneDoc = sorted[index];
+    if (!milestoneDoc) throw new Error('אבן דרך לא נמצאה');
+    
+    return milestoneDoc._id;
+  }
+
+  const parsedId = ctx.db.normalizeId('contractorPaymentMilestones', idStr);
+  if (!parsedId) throw new Error('מזהה אבן דרך לא תקין');
+  return parsedId;
+};
+
 const findContractorPaymentExpense = async (
   ctx: MutationCtx,
   projectId: Id<'projects'>,
@@ -412,7 +450,7 @@ export const saveContractorPaymentSchedule = mutation({
   args: {
     contractorId: v.id('contractors'),
     milestones: v.array(v.object({
-      milestoneId: v.optional(v.id('contractorPaymentMilestones')),
+      milestoneId: v.optional(v.string()),
       name: v.string(),
       triggerText: v.string(),
       pct: v.number(),
@@ -441,11 +479,16 @@ export const saveContractorPaymentSchedule = mutation({
       .query('contractorPaymentMilestones')
       .withIndex('by_contractor', (q) => q.eq('contractorId', args.contractorId))
       .take(200);
-    const incomingIds = new Set(
-      args.milestones
-        .map((milestone) => milestone.milestoneId)
-        .filter((id): id is Id<'contractorPaymentMilestones'> => Boolean(id)),
-    );
+
+    const incomingIds = new Set<Id<'contractorPaymentMilestones'>>();
+    for (const milestone of args.milestones) {
+      if (milestone.milestoneId && !milestone.milestoneId.includes('-')) {
+        const parsedId = ctx.db.normalizeId('contractorPaymentMilestones', milestone.milestoneId);
+        if (parsedId) {
+          incomingIds.add(parsedId);
+        }
+      }
+    }
 
     for (const milestone of existingMilestones) {
       if (!incomingIds.has(milestone._id)) {
@@ -460,8 +503,13 @@ export const saveContractorPaymentSchedule = mutation({
       const milestone = args.milestones[i];
       const amount = Math.round((contractor.budget * milestone.pct) / 100);
 
-      if (milestone.milestoneId) {
-        await ctx.db.patch(milestone.milestoneId, {
+      let realMilestoneId: Id<'contractorPaymentMilestones'> | undefined = undefined;
+      if (milestone.milestoneId && !milestone.milestoneId.includes('-')) {
+        realMilestoneId = ctx.db.normalizeId('contractorPaymentMilestones', milestone.milestoneId) ?? undefined;
+      }
+
+      if (realMilestoneId) {
+        await ctx.db.patch(realMilestoneId, {
           sortOrder: i,
           name: milestone.name,
           triggerText: milestone.triggerText,
@@ -492,12 +540,13 @@ export const saveContractorPaymentSchedule = mutation({
 
 export const setContractorPaymentMilestonePaid = mutation({
   args: {
-    milestoneId: v.id('contractorPaymentMilestones'),
+    milestoneId: v.string(),
     paid: v.boolean(),
     vatAdded: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    const milestone = await ctx.db.get(args.milestoneId);
+    const milestoneId = await resolveMilestoneId(ctx as any, args.milestoneId);
+    const milestone = await ctx.db.get(milestoneId);
     if (!milestone) {
       throw new Error('Payment milestone not found');
     }
@@ -510,7 +559,7 @@ export const setContractorPaymentMilestonePaid = mutation({
     const project = await ctx.db.get(contractor.projectId);
     const vatPct = project?.vatPct ?? 18;
 
-    const existingExpense = await findContractorPaymentExpense(ctx, contractor.projectId, args.milestoneId);
+    const existingExpense = await findContractorPaymentExpense(ctx, contractor.projectId, milestoneId);
     const category = await findBudgetCategoryForContractor(ctx, contractor.projectId, contractor.role);
     const today = new Date().toISOString().slice(0, 10);
 
@@ -523,7 +572,7 @@ export const setContractorPaymentMilestonePaid = mutation({
 
     const vatAmount = args.paid && args.vatAdded ? Math.round(milestone.amount * (vatPct / 100)) : undefined;
 
-    await ctx.db.patch(args.milestoneId, {
+    await ctx.db.patch(milestoneId, {
       paid: args.paid,
       paidAt: args.paid ? today : undefined,
       vatAdded: args.paid ? args.vatAdded : undefined,
@@ -541,7 +590,7 @@ export const setContractorPaymentMilestonePaid = mutation({
           status: 'שולם',
           categoryId: category?._id,
           contractorId: contractor._id,
-          milestoneId: args.milestoneId,
+          milestoneId,
         });
 
         if (category) {
@@ -568,11 +617,12 @@ export const setContractorPaymentMilestonePaid = mutation({
 
 export const lockContractorPaymentMilestone = mutation({
   args: {
-    milestoneId: v.id('contractorPaymentMilestones'),
+    milestoneId: v.string(),
     fileIds: v.optional(v.array(v.id('projectFiles'))),
   },
   handler: async (ctx, args) => {
-    const milestone = await ctx.db.get(args.milestoneId);
+    const milestoneId = await resolveMilestoneId(ctx as any, args.milestoneId);
+    const milestone = await ctx.db.get(milestoneId);
     if (!milestone) {
       throw new Error('Payment milestone not found');
     }
@@ -581,7 +631,7 @@ export const lockContractorPaymentMilestone = mutation({
       throw new Error('אפשר לנעול רק תשלום שסומן כשולם');
     }
 
-    await ctx.db.patch(args.milestoneId, {
+    await ctx.db.patch(milestoneId, {
       isLocked: true,
       ...(args.fileIds && args.fileIds.length > 0 ? { fileIds: args.fileIds } : {}),
     });
@@ -963,11 +1013,13 @@ export const deleteBoqItem = mutation({
 
 
 
+
 export const saveNote = mutation({
   args: {
     projectId: v.id('projects'),
     text: v.string(),
     thread: v.union(v.literal('internal'), v.literal('contractor')),
+    recipientContractorId: v.optional(v.id('contractors')),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -980,11 +1032,27 @@ export const saveNote = mutation({
       throw new Error('Missing user role');
     }
 
-    if (user.role !== 'owner') {
+    if (user.role !== 'owner' && user.role !== 'manager' && user.role !== 'inspector') {
       const allowedThread = user.role === 'contractor' ? 'contractor' : 'internal';
       if (args.thread !== allowedThread) {
         throw new Error('You do not have access to this chat');
       }
+    }
+
+    let finalRecipientId = args.thread === 'internal' ? undefined : args.recipientContractorId;
+
+    if (user.role === 'contractor') {
+      const contractor = await ctx.db
+        .query('contractors')
+        .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
+        .filter((q) => q.eq(q.field('userId'), userId))
+        .first();
+
+      if (!contractor) {
+        throw new Error('קבלן לא נמצא בפרויקט זה');
+      }
+
+      finalRecipientId = contractor._id;
     }
 
     await ctx.db.insert('messages', {
@@ -995,6 +1063,7 @@ export const saveNote = mutation({
       text: args.text,
       thread: args.thread,
       resolved: false,
+      recipientContractorId: finalRecipientId,
     });
   },
 });

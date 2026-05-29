@@ -26,7 +26,7 @@ export const NAV = [
   { id: "/setup",         label: "הגדרות בית",  icon: "settings",  section: "ראשי",   roles: OWNER_MANAGER },
   { id: "/team",          label: "ניהול צוות",  icon: "users",     section: "ראשי",   roles: OWNER_MANAGER_INSPECTOR },
   { id: "/stages",        label: "שלבי בנייה", icon: "layers",    section: "ניהול",   roles: ALL_ROLES },
-  { id: "/contractors",   label: "קבלנים",     icon: "users",     section: "ניהול",   roles: ALL_ROLES },
+  { id: "/contractors",   label: "קבלנים",     icon: "users",     section: "ניהול",   roles: OWNER_MANAGER },
   { id: "/orders",        label: "מעקב הזמנות",icon: "search",     section: "ניהול",   roles: OWNER_MANAGER_INSPECTOR },
   { id: "/boq",           label: "כתב כמויות", icon: "clipboard", section: "ניהול",   roles: OWNER_MANAGER_INSPECTOR },
   { id: "/boqwizard",     label: "אשף כמויות", icon: "wand",      section: "ניהול",   roles: OWNER_MANAGER },
@@ -106,6 +106,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     project?._id ? { projectId: project._id } : "skip"
   )
   const canViewBudget = accessInfo?.canViewBudget ?? false
+  const canViewSchedule = accessInfo?.canViewSchedule ?? false
   const [menuOpen, setMenuOpen] = React.useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false)
   const menuRef = React.useRef<HTMLDivElement>(null)
@@ -404,11 +405,16 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           {sections.map(sec => {
             const userRole = resolvedRole ?? 'owner'
             const BUDGET_ROUTES = ['/budget', '/analytics', '/quotes']
+            const SCHEDULE_ROUTES = ['/timeline', '/stages']
             const items = NAV.filter(n => {
               if (n.section !== sec) return false
               if (BUDGET_ROUTES.includes(n.id)) {
                 if (userRole === 'owner') return true
                 return canViewBudget
+              }
+              if (SCHEDULE_ROUTES.includes(n.id)) {
+                if (userRole === 'owner') return true
+                return canViewSchedule
               }
               return !n.roles || n.roles.includes(userRole as any)
             })
@@ -916,11 +922,16 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 {sections.map(sec => {
                   const userRole = resolvedRole ?? 'owner'
                   const BUDGET_ROUTES = ['/budget', '/analytics', '/quotes']
+                  const SCHEDULE_ROUTES = ['/timeline', '/stages']
                   const items = NAV.filter(n => {
                     if (n.section !== sec) return false
                     if (BUDGET_ROUTES.includes(n.id)) {
                       if (userRole === 'owner') return true
                       return canViewBudget
+                    }
+                    if (SCHEDULE_ROUTES.includes(n.id)) {
+                      if (userRole === 'owner') return true
+                      return canViewSchedule
                     }
                     return !n.roles || n.roles.includes(userRole as any)
                   })

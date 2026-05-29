@@ -7,6 +7,7 @@ import { Badge, Btn, Icon, Modal } from '../components/Shared';
 import { ScreenBoundary } from '../components/ScreenBoundary';
 import { useCurrentProject } from '../hooks/useCurrentProject';
 import type { Stage } from '../types';
+import { AccessDenied, AccessLoading } from '../components/AccessDenied';
 
 type TimelineStage = Stage & {
   _id?: Id<'stages'>;
@@ -189,7 +190,15 @@ export const TimelineScreen = () => {
     }
   }, [dbStages]);
 
-  const loading = Boolean(projectId) && (dbStages === undefined || project === undefined);
+  const accessInfo = useQuery(api.projects.getProjectAccessInfo, projectId ? { projectId } : "skip");
+  const canViewSchedule = accessInfo?.canViewSchedule ?? false;
+  const accessLoading = accessInfo === undefined;
+
+  const loading = Boolean(projectId) && (dbStages === undefined || project === undefined || accessLoading);
+  
+  if (accessLoading) return <AccessLoading />;
+  if (!canViewSchedule) return <AccessDenied message="אין לך הרשאה לצפות בלוח הזמנים של פרויקט זה." />;
+
   const isEmpty = !projectId || (!loading && stages.length === 0);
   const validStages = React.useMemo(() => stages.filter(hasValidRange), [stages]);
   const invalidStages = React.useMemo(() => stages.filter((s) => !hasValidRange(s)), [stages]);

@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Link } from '@tanstack/react-router';
-import { Icon, ProgressBar, Badge, Avatar, Btn } from '../components/Shared';
+import { Icon, ProgressBar, Badge, Avatar, Btn, Modal } from '../components/Shared';
 import { ROLE_COLORS, fmtMoney } from '../utils/mockData';
 import { useDataSource } from '../hooks/useDataSource';
 import { ScreenBoundary } from '../components/ScreenBoundary';
@@ -26,6 +26,13 @@ export const DashboardScreen = () => {
   const accessInfo = useQuery(api.projects.getProjectAccessInfo, projectId ? { projectId } : "skip");
   const canViewBudget = accessInfo?.canViewBudget ?? false;
 
+  const contractorDashboard = useQuery(
+    api.dashboard.getContractorDashboard,
+    role === 'contractor' && projectId ? { projectId } : 'skip'
+  );
+  
+  const [viewFile, setViewFile] = React.useState<{ url: string; name: string } | null>(null);
+
   if (!dashboard || accessInfo === undefined) {
     return <ScreenBoundary loading={loading || accessInfo === undefined} error={error} onRetry={refetch}><div/></ScreenBoundary>;
   }
@@ -44,6 +51,224 @@ export const DashboardScreen = () => {
     }
   };
 
+  if (role === 'contractor') {
+    if (contractorDashboard === undefined) {
+      return (
+        <ScreenBoundary loading={true} onRetry={refetch}>
+          <div />
+        </ScreenBoundary>
+      );
+    }
+
+    if (!contractorDashboard) {
+      return (
+        <ScreenBoundary error={new Error("לא נמצאה רשומת קבלן עבור המשתמש הנוכחי בפרויקט זה.")} onRetry={refetch}>
+          <div />
+        </ScreenBoundary>
+      );
+    }
+
+    const { contractor, milestones, stages: contractorStages } = contractorDashboard;
+    const paidPct = contractor.budget ? Math.min(100, Math.max(0, (contractor.paid / contractor.budget) * 100)) : 0;
+    const remaining = Math.max(0, contractor.budget - contractor.paid);
+
+    return (
+      <ScreenBoundary loading={false} onRetry={refetch}>
+        <div className="page-content">
+          {/* Greetings Header */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ width: 42, height: 42, borderRadius: 12, background: 'var(--accent-light)', color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Icon n="users" s={22} />
+              </div>
+              <div>
+                <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0 }}>שלום, {contractor.name} 👋</h1>
+                <div style={{ fontSize: 13, color: 'var(--text3)', marginTop: 2 }}>
+                  {contractor.role} · פורטל קבלן מורשה ב-<strong>{project.name}</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Financial Cards */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 20, marginBottom: 24 }}>
+            <div className="card" style={{ padding: 20, display: 'flex', alignItems: 'center', gap: 16 }}>
+              <div style={{ width: 48, height: 48, borderRadius: 12, background: '#EFF6FF', color: '#1D4ED8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Icon n="clipboard" s={24} />
+              </div>
+              <div>
+                <div style={{ fontSize: 12, color: 'var(--text3)', fontWeight: 600 }}>סך הכל הסכם פרויקט</div>
+                <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--text1)', marginTop: 4 }}>{fmtMoney(contractor.budget)}</div>
+              </div>
+            </div>
+
+            <div className="card" style={{ padding: 20, display: 'flex', alignItems: 'center', gap: 16 }}>
+              <div style={{ width: 48, height: 48, borderRadius: 12, background: '#ECFDF5', color: '#047857', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Icon n="check-circle" s={24} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 12, color: 'var(--text3)', fontWeight: 600 }}>שולם בפועל</div>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginTop: 4 }}>
+                  <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--success)' }}>{fmtMoney(contractor.paid)}</div>
+                  <div style={{ fontSize: 11, color: 'var(--success)', fontWeight: 700 }}>({paidPct.toFixed(1)}%)</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="card" style={{ padding: 20, display: 'flex', alignItems: 'center', gap: 16 }}>
+              <div style={{ width: 48, height: 48, borderRadius: 12, background: '#FFFBEB', color: '#B45309', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Icon n="chart" s={24} />
+              </div>
+              <div>
+                <div style={{ fontSize: 12, color: 'var(--text3)', fontWeight: 600 }}>יתרת זכות לתשלום</div>
+                <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--accent)', marginTop: 4 }}>{fmtMoney(remaining)}</div>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 24 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+              {/* Payment Milestones */}
+              <div className="card">
+                <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>לוח תשלומים ואבני דרך אישי</span>
+                  <span style={{ fontSize: 12, color: 'var(--text3)', fontWeight: 400 }}>שולם: {paidPct.toFixed(0)}% · {fmtMoney(contractor.paid)}</span>
+                </div>
+                
+                <div style={{ padding: '16px 18px 0' }}>
+                  <div style={{ height: 8, background: 'var(--border)', borderRadius: 4, overflow: 'hidden', display: 'flex' }}>
+                    {milestones.map((m) => (
+                      <div key={m.id} style={{ width: `${m.pct}%`, background: m.paid ? 'var(--success)' : 'transparent', borderLeft: '1px solid var(--bg)' }} title={`${m.name}: ${m.pct}%`} />
+                    ))}
+                  </div>
+                </div>
+
+                <div style={{ overflowX: 'auto', marginTop: 12 }}>
+                  <table className="bp-table" style={{ width: '100%' }}>
+                    <thead>
+                      <tr>
+                        <th>#</th>
+                        <th>אבן דרך לתשלום</th>
+                        <th>תנאי לשחרור</th>
+                        <th>%</th>
+                        <th>סכום</th>
+                        <th>סטטוס</th>
+                        <th>מסמכים</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {milestones.map((m, idx) => (
+                        <tr key={m.id} style={{ background: m.paid ? '#F0FDF4' : 'transparent' }}>
+                          <td style={{ fontSize: 12, color: 'var(--text3)', fontWeight: 700 }}>{idx + 1}</td>
+                          <td style={{ fontSize: 13, fontWeight: 600 }}>{m.name}</td>
+                          <td style={{ fontSize: 12, color: 'var(--text2)' }}>{m.triggerText || '—'}</td>
+                          <td style={{ fontSize: 13, fontWeight: 600, textAlign: 'center' }}>{m.pct.toFixed(1)}%</td>
+                          <td style={{ fontSize: 13, fontWeight: 700, color: m.paid ? 'var(--success)' : 'var(--text1)' }}>{fmtMoney(m.amount)}</td>
+                          <td>
+                            <span className={`badge ${m.paid ? 'badge-done' : 'badge-pending'}`}>{m.paid ? 'שולם' : 'ממתין'}</span>
+                          </td>
+                          <td>
+                            <div style={{ display: 'flex', gap: 4 }}>
+                              {m.files && m.files.length > 0 ? (
+                                m.files.map((file: any) => (
+                                  <button
+                                    key={file.id}
+                                    onClick={() => setViewFile({ url: file.url, name: file.name })}
+                                    title={`צפה ב-${file.name}`}
+                                    style={{
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      width: 24,
+                                      height: 24,
+                                      background: '#EEF2FF',
+                                      color: '#4F46E5',
+                                      borderRadius: 4,
+                                      border: 'none',
+                                      cursor: 'pointer',
+                                      transition: 'all 0.1s'
+                                    }}
+                                  >
+                                    <Icon n="file-text" s={12} />
+                                  </button>
+                                ))
+                              ) : (
+                                <span style={{ color: 'var(--text3)', fontSize: 11 }}>—</span>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                      {milestones.length === 0 && (
+                        <tr>
+                          <td colSpan={7} style={{ textAlign: 'center', padding: 24, color: 'var(--text3)', fontSize: 13 }}>
+                            טרם הוגדר לוח תשלומים עבורך בפרויקט זה.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Stages in Responsibility */}
+              <div className="card">
+                <div className="card-header">שלבי בנייה באחריותך המקצועית ({contractorStages.length})</div>
+                <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingTop: 16 }}>
+                  {contractorStages.map((s) => (
+                    <div key={s.id} style={{ display: 'flex', flexDirection: 'column', border: '1px solid var(--border)', borderRadius: 10, padding: 16, background: 'var(--surface)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--accent-light)', color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <Icon n="layers" s={16} />
+                          </div>
+                          <span style={{ fontSize: 14, fontWeight: 700 }}>{s.name}</span>
+                        </div>
+                        <Badge type={s.status} />
+                      </div>
+                      
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--text2)', marginBottom: 6 }}>
+                        <span>התקדמות השלב:</span>
+                        <span style={{ fontWeight: 700 }}>{s.progressPct}%</span>
+                      </div>
+                      <ProgressBar value={s.progressPct} color={s.status === 'done' ? 'var(--success)' : s.status === 'active' ? 'var(--accent)' : 'var(--border)'} height={6} />
+
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text3)', marginTop: 12, borderTop: '1px solid var(--border)', paddingTop: 10 }}>
+                        <span>תאריך התחלה: <strong>{fmtDate(s.startDate)}</strong></span>
+                        <span>סיום צפוי: <strong>{fmtDate(s.endDate)}</strong></span>
+                      </div>
+                    </div>
+                  ))}
+                  {contractorStages.length === 0 && (
+                    <div style={{ textAlign: 'center', padding: 24, color: 'var(--text3)', fontSize: 13, border: '1px dashed var(--border)', borderRadius: 8 }}>
+                      לא נמצאו שלבי בנייה המשויכים אליך כרגע.
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          {/* File preview Modal */}
+          {viewFile && (
+            <Modal title={viewFile.name} onClose={() => setViewFile(null)}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+                {viewFile.url.endsWith('.pdf') || viewFile.name.toLowerCase().endsWith('.pdf') ? (
+                  <iframe src={viewFile.url} style={{ width: '100%', height: '500px', border: 'none' }} title="PDF Preview" />
+                ) : (
+                  <img src={viewFile.url} alt={viewFile.name} style={{ maxWidth: '100%', maxHeight: '70vh', borderRadius: 8, objectFit: 'contain' }} />
+                )}
+                <div style={{ display: 'flex', justifyContent: 'flex-end', width: '100%' }}>
+                  <Btn onClick={() => setViewFile(null)}>סגור</Btn>
+                </div>
+              </div>
+            </Modal>
+          )}
+        </div>
+      </ScreenBoundary>
+    );
+  }
+
   return (
     <ScreenBoundary loading={loading} error={error} onRetry={refetch}>
       <div className="page-content">
@@ -57,7 +282,7 @@ export const DashboardScreen = () => {
               <div style={{fontSize:13,color:"var(--text3)",marginTop:2}}>{project.address}</div>
             </div>
           </div>
-          {import.meta.env.DEV && role !== 'contractor' && (
+          {import.meta.env.DEV && (
             <div style={{display: 'flex', gap: 8}}>
               <button onClick={() => seedAlert({ projectId: project._id })} style={{background: 'var(--accent)', color: '#fff', padding: '6px 12px', borderRadius: 8, fontSize: 12, border: 'none', cursor: 'pointer', fontWeight: 'bold'}}>
                 + הוסף התראת טסט

@@ -1,6 +1,7 @@
 import { query } from './_generated/server';
 import { v } from 'convex/values';
 import { getFinancialSummary } from './_lib/financialSummary';
+import { getAuthUserId } from '@convex-dev/auth/server';
 
 export const getOverview = query({
   args: {
@@ -249,3 +250,86 @@ export const deleteAllAlerts = mutation({
     }
   },
 });
+
+export const getContractorDashboard = query({
+  args: { projectId: v.id('projects') },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) return null;
+
+    // Find the contractor linked to this user
+    const contractor = await ctx.db
+      .query('contractors')
+      .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
+      .filter((q) => q.eq(q.field('userId'), userId))
+      .first();
+
+    if (!contractor) return null;
+
+    // Fetch the payment milestones of this contractor
+    const milestones = await ctx.db
+      .query('contractorPaymentMilestones')
+      .withIndex('by_contractor', (q) => q.eq('contractorId', contractor._id))
+      .collect();
+
+    // Fetch resolved files for each milestone
+    const resolvedMilestones = await Promise.all(
+      milestones
+        .sort((a, b) => a.sortOrder - b.sortOrder)
+        .map(async (m) => {
+          const files = m.fileIds
+            ? await Promise.all(
+                m.fileIds.map(async (fileId) => {
+                  const file = await ctx.db.get(fileId);
+                  if (!file) return null;
+                  const url = await ctx.storage.getUrl(file.storageId);
+                  return url ? { id: file._id, url, name: file.originalName } : null;
+                })
+              )
+            : [];
+          return {
+            id: m._id,
+            name: m.name,
+            triggerText: m.triggerText,
+            pct: m.pct,
+            amount: m.amount,
+            paid: m.paid,
+            paidAt: m.paidAt ?? null,
+            files: files.filter((f): f is NonNullable<typeof f> => f !== null),
+          };
+        })
+    );
+
+    // Fetch the stages this contractor is linked to
+    const stageLinks = await ctx.db
+      .query('stageContractors')
+      .withIndex('by_contractor', (q) => q.eq('contractorId', contractor._id))
+      .collect();
+
+    const stageIds = stageLinks.map((link) => link.stageId);
+    
+    // Fetch all stages linked to this contractor
+    const stages = await Promise.all(stageIds.map((id) => ctx.db.get(id)));
+    const activeStages = stages.filter((s): s is NonNullable<typeof s> => s !== null);
+
+    return {
+      contractor: {
+        id: contractor._id,
+        name: contractor.name,
+        role: contractor.role,
+        budget: contractor.budget,
+        paid: contractor.paid,
+      },
+      milestones: resolvedMilestones,
+      stages: activeStages.sort((a, b) => a.sortOrder - b.sortOrder).map(s => ({
+        id: s._id,
+        name: s.name,
+        status: s.status,
+        progressPct: s.progressPct,
+        startDate: s.startDate,
+        endDate: s.endDate,
+      })),
+    };
+  },
+});
+

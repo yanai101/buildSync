@@ -4,6 +4,7 @@ import type { MutationCtx } from './_generated/server';
 import { v } from 'convex/values';
 import { insertActivity } from './_lib/activity';
 import { patchStageDatesWithCascade } from './_lib/stageSchedule';
+import { requireProjectScheduleView } from './_lib/projectAccess';
 import {
   hasSyncedStageContractorLinks,
   syncContractorStagePayments,
@@ -13,6 +14,7 @@ import {
 export const list = query({
   args: { projectId: v.id('projects') },
   handler: async (ctx, args) => {
+    await requireProjectScheduleView(ctx, args.projectId);
     const stages = await ctx.db
       .query('stages')
       .withIndex('by_project_sort', (q) => q.eq('projectId', args.projectId))

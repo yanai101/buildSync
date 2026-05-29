@@ -2,7 +2,7 @@ import { query, mutation } from './_generated/server';
 import { getAuthUserId } from '@convex-dev/auth/server';
 import { v } from 'convex/values';
 import { performProjectDeletion } from './_lib/projectDeletion';
-import { canUserViewBudget } from './_lib/projectAccess';
+import { canUserViewBudget, canUserViewSchedule } from './_lib/projectAccess';
 
 export const listMine = query({
   args: {},
@@ -256,7 +256,10 @@ export const getOwnerSubscription = query({
 export const getProjectAccessInfo = query({
   args: { projectId: v.id('projects') },
   handler: async (ctx, args) => {
-    const canViewBudget = await canUserViewBudget(ctx, args.projectId);
-    return { canViewBudget };
+    const [canViewBudget, canViewSchedule] = await Promise.all([
+      canUserViewBudget(ctx, args.projectId),
+      canUserViewSchedule(ctx, args.projectId),
+    ]);
+    return { canViewBudget, canViewSchedule };
   },
 });

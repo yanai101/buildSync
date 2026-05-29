@@ -142,21 +142,30 @@ const ConfirmPaymentModal = ({
         {pendingPayment.paid && (
           <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: 16, background: 'var(--bg)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12, fontSize: 14 }}>
-              <span style={{ color: 'var(--text2)' }}>סכום תשלום נטו:</span>
+              <span style={{ color: 'var(--text2)' }}>
+                {pendingPayment.contractor.includesVat ? 'סכום תשלום (כולל מע"מ):' : 'סכום תשלום נטו:'}
+              </span>
               <span style={{ fontWeight: 600 }}>{fmtMoney(pendingPayment.milestone.amount)}</span>
             </div>
             
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginBottom: 12 }}>
-              <input 
-                type="checkbox" 
-                checked={vatAdded} 
-                onChange={(e) => setVatAdded(e.target.checked)} 
-                style={{ width: 16, height: 16, accentColor: 'var(--accent)' }}
-              />
-              <span style={{ fontSize: 13, fontWeight: 600 }}>הוסף מע"מ לתשלום ({vatPct}%)</span>
-            </label>
+            {pendingPayment.contractor.includesVat ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12, color: 'var(--success)', fontSize: 13, fontWeight: 600 }}>
+                <Icon n="check-circle" s={14} />
+                <span>הסכום כולל מע"מ כפי שנקבע בהסכם מול הקבלן</span>
+              </div>
+            ) : (
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginBottom: 12 }}>
+                <input 
+                  type="checkbox" 
+                  checked={vatAdded} 
+                  onChange={(e) => setVatAdded(e.target.checked)} 
+                  style={{ width: 16, height: 16, accentColor: 'var(--accent)' }}
+                />
+                <span style={{ fontSize: 13, fontWeight: 600 }}>הוסף מע"מ לתשלום ({vatPct}%)</span>
+              </label>
+            )}
 
-            {vatAdded && (
+            {vatAdded && !pendingPayment.contractor.includesVat && (
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12, fontSize: 13, color: 'var(--text2)' }}>
                 <span>סכום מע"מ:</span>
                 <span>{fmtMoney(vatAmount)}</span>
@@ -240,9 +249,10 @@ const roundPct = (value: number) => Math.round(value * 100) / 100;
 const withAmounts = (contractor: Contractor, milestones: DraftMilestone[]): DraftMilestone[] => {
   let sumAmount = 0;
   
-  // First, fix percentages for locked milestones if budget is > 0
+  // First, fix percentages for locked/paid milestones if budget is > 0
   const adjustedMilestones = milestones.map(m => {
-    if (m.isLocked && contractor.budget > 0) {
+    const isImmutable = m.isLocked || m.paid;
+    if (isImmutable && contractor.budget > 0) {
        return { ...m, pct: clampPct((m.amount / contractor.budget) * 100) };
     }
     return m;
@@ -251,7 +261,8 @@ const withAmounts = (contractor: Contractor, milestones: DraftMilestone[]): Draf
   const totalPct = roundPct(adjustedMilestones.reduce((sum, m) => sum + m.pct, 0));
 
   return adjustedMilestones.map((m, i) => {
-    if (m.isLocked) {
+    const isImmutable = m.isLocked || m.paid;
+    if (isImmutable) {
       sumAmount += m.amount;
       return m;
     }
@@ -278,7 +289,7 @@ const normalizeMilestones = (contractor: Contractor): Milestone[] => {
       paid: m.isLocked ? true : m.paid,
       status: (m.paid || m.isLocked) ? 'paid' : m.status,
       paidAt: m.paidAt ?? null,
-      amount: m.isLocked ? m.amount : 0,
+      amount: (m.isLocked || m.paid) ? m.amount : 0,
     }));
   } else {
     const base = DEFAULT_PAYMENT_SCHEDULES[contractor.role] || DEFAULT_SCHEDULE;
@@ -329,7 +340,7 @@ const balanceMilestones = (milestones: DraftMilestone[], changedIndex: number): 
     const indexes = [
       ...Array.from({ length: changedIndex }, (_, i) => changedIndex - 1 - i),
       ...next.map((_, i) => i).filter(i => i > changedIndex),
-    ].filter(i => !next[i].isLocked);
+    ].filter(i => !(next[i].isLocked || next[i].paid));
 
     for (const index of indexes) {
       if (delta <= 0) break;
@@ -344,7 +355,7 @@ const balanceMilestones = (milestones: DraftMilestone[], changedIndex: number): 
   }
 
   if (delta < 0) {
-    const unlockedIndexes = next.map((_, i) => i).filter(i => i !== changedIndex && !next[i].isLocked);
+    const unlockedIndexes = next.map((_, i) => i).filter(i => i !== changedIndex && !(next[i].isLocked || next[i].paid));
     const targetIndex = unlockedIndexes.reverse().find(i => i < changedIndex) ?? unlockedIndexes[0];
     
     if (targetIndex !== undefined) {
@@ -356,7 +367,7 @@ const balanceMilestones = (milestones: DraftMilestone[], changedIndex: number): 
 
   const balancedTotal = next.reduce((sum, m) => sum + m.pct, 0);
   if (balancedTotal !== 100) {
-    const unlockedIndexes = next.map((_, i) => i).filter(i => i !== changedIndex && !next[i].isLocked);
+    const unlockedIndexes = next.map((_, i) => i).filter(i => i !== changedIndex && !(next[i].isLocked || next[i].paid));
     const targetIndex = unlockedIndexes[0];
     if (targetIndex !== undefined) {
       next[targetIndex].pct += 100 - balancedTotal;
@@ -475,8 +486,8 @@ const PaymentSchedule = ({
     }
   };
 
-  const saveOnBlur = async () => {
-    await saveSchedule(withAmounts(contractor, balanceMilestones(milestones, Math.max(0, milestones.length - 1))));
+  const saveOnBlur = async (changedIndex: number) => {
+    await saveSchedule(withAmounts(contractor, balanceMilestones(milestones, changedIndex)));
   };
 
   const handleReorder = (next: DraftMilestone[]) => {
@@ -506,9 +517,9 @@ const PaymentSchedule = ({
         <input
           className="bp-input"
           value={m.name}
-          disabled={savingSchedule || locked || m.isLocked || m.sourceMode === 'stage_synced'}
+          disabled={savingSchedule || locked || m.isLocked || m.paid || m.sourceMode === 'stage_synced'}
           onChange={e=>updateMilestone(i, {name:e.target.value})}
-          onBlur={saveOnBlur}
+          onBlur={()=>saveOnBlur(i)}
           style={{minWidth:150,fontSize:13,fontWeight:500}}
         />
       </td>
@@ -516,9 +527,9 @@ const PaymentSchedule = ({
         <input
           className="bp-input"
           value={m.triggerText || ""}
-          disabled={savingSchedule || locked || m.isLocked || m.sourceMode === 'stage_synced'}
+          disabled={savingSchedule || locked || m.isLocked || m.paid || m.sourceMode === 'stage_synced'}
           onChange={e=>updateMilestone(i, {triggerText:e.target.value})}
-          onBlur={saveOnBlur}
+          onBlur={()=>saveOnBlur(i)}
           style={{minWidth:180,fontSize:12}}
         />
       </td>
@@ -531,12 +542,12 @@ const PaymentSchedule = ({
           step="any"
           placeholder="0"
           value={m.pct === 0 ? "" : Number(m.pct.toFixed(2))}
-          disabled={savingSchedule || locked || m.isLocked || m.sourceMode === 'stage_synced'}
+          disabled={savingSchedule || locked || m.isLocked || m.paid || m.sourceMode === 'stage_synced'}
           onChange={e=>{
             const val = e.target.value;
-            updateMilestone(i, {pct: val === "" ? 0 : Number(val)}, true);
+            updateMilestone(i, {pct: val === "" ? 0 : Number(val)}, false);
           }}
-          onBlur={saveOnBlur}
+          onBlur={()=>saveOnBlur(i)}
           style={{width:86,fontSize:13,fontWeight:600,textAlign:"center"}}
         />
       </td>
@@ -551,15 +562,15 @@ const PaymentSchedule = ({
               max={contractor.budget}
               placeholder="0"
               value={m.amount === 0 ? "" : m.amount}
-              disabled={savingSchedule || locked || m.isLocked || m.sourceMode === 'stage_synced'}
+              disabled={savingSchedule || locked || m.isLocked || m.paid || m.sourceMode === 'stage_synced'}
               onChange={e => {
                 if (contractor.budget > 0) {
                   const val = e.target.value;
                   const newPct = val === "" ? 0 : (Number(val) / contractor.budget) * 100;
-                  updateMilestone(i, { pct: newPct }, true);
+                  updateMilestone(i, { pct: newPct }, false);
                 }
               }}
-              onBlur={saveOnBlur}
+              onBlur={()=>saveOnBlur(i)}
               style={{ width: 90, fontSize: 13, fontWeight: 700, color: m.paid ? "var(--success)" : "var(--text1)" }}
             />
           </div>

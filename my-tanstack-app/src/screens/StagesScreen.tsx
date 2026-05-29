@@ -12,6 +12,7 @@ import { STAGES, fmtMoney } from '../utils/mockData';
 import { useRequireRole } from '../hooks/useRequireRole';
 import { useSubscription } from '../hooks/useSubscription';
 import { useAppNotify } from '../hooks/useAppNotify';
+import { AccessDenied, AccessLoading } from '../components/AccessDenied';
 
 import { useNavigate } from '@tanstack/react-router';
 
@@ -637,11 +638,16 @@ export const StagesScreen = () => {
   const navigate = useNavigate();
   const accessInfo = useQuery(api.projects.getProjectAccessInfo, projectId ? { projectId } : "skip");
   const canViewBudget = accessInfo?.canViewBudget ?? false;
+  const canViewSchedule = accessInfo?.canViewSchedule ?? false;
 
   const dbStages = useQuery(api.queries.listStages, projectId ? { projectId } : "skip");
   const project = useQuery(api.queries.getProject, projectId ? { projectId } : "skip");
   const initialData = (dbStages ?? null) as Stage[] | null;
-  const loading = Boolean(projectId) && (dbStages === undefined || accessInfo === undefined);
+  
+  if (accessInfo === undefined) return <AccessLoading />;
+  if (!canViewSchedule) return <AccessDenied message="אין לך הרשאה לצפות בשלבי העבודה של פרויקט זה." />;
+
+  const loading = Boolean(projectId) && (dbStages === undefined);
   const error = null as Error | null;
   const refetch = React.useCallback(() => {}, []);
   const { mutate } = useDataMutation('stages');

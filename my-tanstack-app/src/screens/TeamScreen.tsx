@@ -70,6 +70,7 @@ export const TeamScreen = () => {
   const removeMember = useMutation(api.invitations.removeMember);
   const unlinkContractor = useMutation(api.invitations.unlinkContractorLogin);
   const updateBudgetPermission = useMutation(api.invitations.updateMemberBudgetPermission);
+  const updateSchedulePermission = useMutation(api.invitations.updateMemberSchedulePermission);
 
   const handleToggleBudgetPermission = async (
     role: 'manager' | 'inspector' | 'contractor',
@@ -98,6 +99,33 @@ export const TeamScreen = () => {
     }
   };
 
+  const handleToggleSchedulePermission = async (
+    role: 'manager' | 'inspector' | 'contractor',
+    canView: boolean,
+    contractorId?: Id<'contractors'>
+  ) => {
+    if (!projectId) return;
+    try {
+      await updateSchedulePermission({
+        projectId,
+        role,
+        contractorId,
+        canViewSchedule: canView,
+      });
+      await notify({
+        title: 'הרשאה עודכנה בהצלחה',
+        body: `הרשאת צפייה בלוח זמנים עודכנה`,
+        kind: 'success',
+      });
+    } catch (err) {
+      await notify({
+        title: 'עדכון הרשאה נכשל',
+        body: err instanceof Error ? err.message : 'אירעה שגיאה',
+        kind: 'error',
+      });
+    }
+  };
+
   const [showInvite, setShowInvite] = React.useState(false);
   const [inviteForm, setInviteForm] = React.useState<{
     role: InviteRole;
@@ -105,7 +133,8 @@ export const TeamScreen = () => {
     email: string;
     contractorId: string;
     allowBudgetView: boolean;
-  }>({ role: 'manager', name: '', email: '', contractorId: '', allowBudgetView: true });
+    allowScheduleView: boolean;
+  }>({ role: 'manager', name: '', email: '', contractorId: '', allowBudgetView: true, allowScheduleView: true });
   const [createdCode, setCreatedCode] = React.useState<{ code: string; expiresAt: number } | null>(null);
   const [submitting, setSubmitting] = React.useState(false);
 
@@ -151,7 +180,7 @@ export const TeamScreen = () => {
       });
       return;
     }
-    setInviteForm({ role: 'manager', name: '', email: '', contractorId: '', allowBudgetView: true });
+    setInviteForm({ role: 'manager', name: '', email: '', contractorId: '', allowBudgetView: true, allowScheduleView: true });
     setCreatedCode(null);
     setShowInvite(true);
   };
@@ -168,6 +197,7 @@ export const TeamScreen = () => {
         projectId,
         role: inviteForm.role,
         allowBudgetView: inviteForm.allowBudgetView,
+        allowScheduleView: inviteForm.allowScheduleView,
         ...(inviteForm.name ? { invitedName: inviteForm.name } : {}),
         ...(inviteForm.email ? { invitedEmail: inviteForm.email } : {}),
         ...(inviteForm.role === 'contractor' && inviteForm.contractorId
@@ -280,6 +310,12 @@ export const TeamScreen = () => {
                 ? (val) => void handleToggleBudgetPermission('manager', val)
                 : undefined
             }
+            canViewSchedule={members?.manager?.canViewSchedule}
+            onToggleSchedule={
+              members?.manager
+                ? (val) => void handleToggleSchedulePermission('manager', val)
+                : undefined
+            }
             onRemove={
               members?.manager
                 ? () => void handleRemoveMember('manager', members.manager!.name)
@@ -294,6 +330,12 @@ export const TeamScreen = () => {
             onToggleBudget={
               members?.inspector
                 ? (val) => void handleToggleBudgetPermission('inspector', val)
+                : undefined
+            }
+            canViewSchedule={members?.inspector?.canViewSchedule}
+            onToggleSchedule={
+              members?.inspector
+                ? (val) => void handleToggleSchedulePermission('inspector', val)
                 : undefined
             }
             onRemove={
@@ -344,7 +386,7 @@ export const TeamScreen = () => {
                   <div style={{ fontSize: 13, fontWeight: 600 }}>{c.name}</div>
                   <div style={{ fontSize: 11, color: 'var(--text3)' }}>{c.role}</div>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, cursor: 'pointer', userSelect: 'none', color: 'var(--text2)' }}>
                     <input
                       type="checkbox"
@@ -353,6 +395,15 @@ export const TeamScreen = () => {
                       style={{ width: 14, height: 14, cursor: 'pointer' }}
                     />
                     צפייה בתקציב
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, cursor: 'pointer', userSelect: 'none', color: 'var(--text2)' }}>
+                    <input
+                      type="checkbox"
+                      checked={c.canViewSchedule}
+                      onChange={(e) => void handleToggleSchedulePermission('contractor', e.target.checked, c.contractorId)}
+                      style={{ width: 14, height: 14, cursor: 'pointer' }}
+                    />
+                    צפייה בלוח זמנים
                   </label>
                   <span
                     style={{
@@ -562,11 +613,12 @@ export const TeamScreen = () => {
                   value={inviteForm.role}
                   onChange={(v: string) =>
                     setInviteForm({ 
-                      ...inviteForm, 
-                      role: v as InviteRole, 
-                      contractorId: '', 
-                      allowBudgetView: v !== 'contractor' 
-                    })
+                       ...inviteForm, 
+                       role: v as InviteRole, 
+                       contractorId: '', 
+                       allowBudgetView: v !== 'contractor',
+                       allowScheduleView: true
+                     })
                   }
                   style={{ width: '100%' }}
                 >
@@ -653,6 +705,8 @@ const MemberRow = ({
   email,
   canViewBudget,
   onToggleBudget,
+  canViewSchedule,
+  onToggleSchedule,
   onRemove,
 }: {
   roleLabel: string;
@@ -660,6 +714,8 @@ const MemberRow = ({
   email?: string | null;
   canViewBudget?: boolean;
   onToggleBudget?: (val: boolean) => void;
+  canViewSchedule?: boolean;
+  onToggleSchedule?: (val: boolean) => void;
   onRemove?: () => void;
 }) => (
   <div
@@ -688,6 +744,17 @@ const MemberRow = ({
             style={{ width: 14, height: 14, cursor: 'pointer' }}
           />
           צפייה בתקציב
+        </label>
+      )}
+      {name && onToggleSchedule !== undefined && (
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, cursor: 'pointer', userSelect: 'none', color: 'var(--text2)' }}>
+          <input
+            type="checkbox"
+            checked={canViewSchedule}
+            onChange={(e) => onToggleSchedule(e.target.checked)}
+            style={{ width: 14, height: 14, cursor: 'pointer' }}
+          />
+          צפייה בלוח זמנים
         </label>
       )}
       {onRemove && (

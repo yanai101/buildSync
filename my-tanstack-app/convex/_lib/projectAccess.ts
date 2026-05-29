@@ -129,3 +129,55 @@ export const requireProjectBudgetView = async (ctx: Ctx, projectId: Id<'projects
   }
 };
 
+export const canUserViewSchedule = async (ctx: Ctx, projectId: Id<'projects'>): Promise<boolean> => {
+  const userId = await getAuthUserId(ctx);
+  if (!userId) {
+    return false;
+  }
+
+  const [user, project] = await Promise.all([
+    ctx.db.get(userId),
+    ctx.db.get(projectId),
+  ]);
+
+  if (!project) {
+    return false;
+  }
+
+  // 1. Owner and SuperAdmin always have full schedule view
+  if (project.ownerUserId === userId || user?.isSuperAdmin) {
+    return true;
+  }
+
+  // 2. Project Manager (default true, but can be set to false)
+  if (project.managerUserId === userId) {
+    return project.managerCanViewSchedule !== false;
+  }
+
+  // 3. Project Inspector (default true, but can be set to false)
+  if (project.inspectorUserId === userId) {
+    return project.inspectorCanViewSchedule !== false;
+  }
+
+  // 4. Contractor (default true if not explicitly set to false!)
+  const contractorRecord = await ctx.db
+    .query('contractors')
+    .withIndex('by_project', (q) => q.eq('projectId', projectId))
+    .filter((q) => q.eq(q.field('userId'), userId))
+    .first();
+
+  if (contractorRecord) {
+    return contractorRecord.canViewSchedule !== false;
+  }
+
+  return false;
+};
+
+export const requireProjectScheduleView = async (ctx: Ctx, projectId: Id<'projects'>) => {
+  const allowed = await canUserViewSchedule(ctx, projectId);
+  if (!allowed) {
+    throw new Error('אין לך הרשאה לצפות בלוח הזמנים של פרויקט זה');
+  }
+};
+
+

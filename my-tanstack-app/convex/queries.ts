@@ -4,6 +4,7 @@ import { paginationOptsValidator } from 'convex/server';
 import type { Id } from './_generated/dataModel';
 import { getAuthUserId } from '@convex-dev/auth/server';
 import { getSyncedPaymentReadiness } from './_lib/contractorPaymentSync';
+import { requireProjectScheduleView } from './_lib/projectAccess';
 
 const formatMessageDate = (creationTime: number) => {
   const date = new Date(creationTime);
@@ -16,6 +17,7 @@ const formatMessageDate = (creationTime: number) => {
 export const listStages = query({
   args: { projectId: v.id('projects') },
   handler: async (ctx, args) => {
+    await requireProjectScheduleView(ctx, args.projectId);
     const stages = await ctx.db
       .query('stages')
       .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
@@ -403,28 +405,51 @@ export const listNotes = query({
       return [];
     }
 
-    const thread =
-      user.role === 'owner'
-        ? null
-        : user.role === 'contractor'
-          ? 'contractor'
-          : 'internal';
+    const showAll = user.role === 'owner' || user.role === 'manager' || user.role === 'inspector';
 
-    const notes = thread
+    const notes = showAll
       ? await ctx.db
         .query('messages')
-        .withIndex('by_project_thread', (q) => q.eq('projectId', args.projectId).eq('thread', thread))
+        .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
         .take(200)
       : await ctx.db
         .query('messages')
-        .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
+        .withIndex('by_project_thread', (q) => q.eq('projectId', args.projectId).eq('thread', 'contractor'))
         .take(200);
 
-    return notes.map(n => ({
-      ...n,
-      id: n._id,
-      ...formatMessageDate(n._creationTime),
-    }));
+    let filteredNotes = notes;
+    let contractor: any = null;
+
+    if (!showAll) {
+      contractor = await ctx.db
+        .query('contractors')
+        .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
+        .filter((q) => q.eq(q.field('userId'), userId))
+        .first();
+
+      filteredNotes = notes.filter((n) => {
+        if (n.fromUserId === userId) return true;
+        if (!contractor) return false;
+        return n.recipientContractorId === undefined || n.recipientContractorId === contractor._id;
+      });
+    }
+
+    const resultNotes = [];
+    for (const n of filteredNotes) {
+      let recipientName = undefined;
+      if (n.recipientContractorId) {
+        const rc = await ctx.db.get(n.recipientContractorId);
+        recipientName = rc?.name;
+      }
+      resultNotes.push({
+        ...n,
+        id: n._id,
+        recipientName,
+        ...formatMessageDate(n._creationTime),
+      });
+    }
+
+    return resultNotes;
   },
 });
 
