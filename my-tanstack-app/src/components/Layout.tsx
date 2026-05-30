@@ -237,7 +237,17 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const unreadNotesCount = dbNotes?.filter(n => !(n as any).readAt && (n as any).fromUserId !== identity?.userId).length || 0;
 
   const [showWelcomeModal, setShowWelcomeModal] = React.useState(false);
+  const [showMobileGuidesModal, setShowMobileGuidesModal] = React.useState(false);
   const [showSupportModal, setShowSupportModal] = React.useState(false);
+  const [isMobile, setIsMobile] = React.useState(false);
+
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const checkMobile = () => setIsMobile(window.innerWidth <= 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   const supportTicketCount = useQuery(api.support.getOpenTicketCount, identity?.isSuperAdmin ? {} : 'skip') || 0;
 
@@ -353,10 +363,14 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
       const onboardingCompleted = window.localStorage.getItem('buildsync:welcome_onboarding_completed');
       if (!onboardingCompleted) {
-        setShowWelcomeModal(true);
+        if (isMobile) {
+          setShowMobileGuidesModal(true);
+        } else {
+          setShowWelcomeModal(true);
+        }
       }
     }
-  }, [isAuthenticated, isLoading, isProjectLoading, currentPath, projects.length]);
+  }, [isAuthenticated, isLoading, isProjectLoading, currentPath, projects.length, isMobile]);
 
   const handleCloseWelcomeModal = () => {
     setShowWelcomeModal(false);
@@ -364,6 +378,18 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       window.localStorage.setItem('buildsync:welcome_onboarding_completed', 'true');
       // Set old tour to true so it doesn't pop up as well
       window.localStorage.setItem('buildsync:tour_completed', 'true');
+    }
+  };
+
+  const handleCloseMobileGuidesModal = (goToGuides: boolean) => {
+    setShowMobileGuidesModal(false);
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('buildsync:welcome_onboarding_completed', 'true');
+      window.localStorage.setItem('buildsync:tour_completed', 'true');
+      window.localStorage.setItem('buildsync:mobile_guides_prompt_completed', 'true');
+    }
+    if (goToGuides) {
+      navigate({ to: '/guides' });
     }
   };
 
@@ -1069,6 +1095,14 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         }}
       />
 
+      <AnimatePresence>
+        {showMobileGuidesModal && (
+          <MobileGuidesPromptModal 
+            onClose={handleCloseMobileGuidesModal} 
+          />
+        )}
+      </AnimatePresence>
+
       {showSupportModal && (
         <SupportModal onClose={() => setShowSupportModal(false)} />
       )}
@@ -1275,5 +1309,123 @@ function PWAInstructionsModal({ isOpen, onClose }: { isOpen: boolean, onClose: (
         </div>
       </div>
     </Modal>
+  );
+}
+
+function MobileGuidesPromptModal({ onClose }: { onClose: (goToGuides: boolean) => void }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'rgba(0, 0, 0, 0.65)',
+        backdropFilter: 'blur(8px)',
+        WebkitBackdropFilter: 'blur(8px)',
+        zIndex: 9999,
+        display: 'grid',
+        placeItems: 'center',
+        padding: 20
+      }}
+    >
+      <motion.div
+        initial={{ scale: 0.92, opacity: 0, y: 20 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.92, opacity: 0, y: 20 }}
+        transition={{ type: "spring", damping: 26, stiffness: 280 }}
+        style={{
+          background: 'var(--surface)',
+          borderRadius: 24,
+          width: '100%',
+          maxWidth: 420,
+          overflow: 'hidden',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+          border: '1px solid var(--border)',
+          display: 'flex',
+          flexDirection: 'column',
+          direction: 'rtl'
+        }}
+      >
+        {/* Header Graphic */}
+        <div style={{ padding: '36px 28px 24px', textAlign: 'center', position: 'relative' }}>
+          <div
+            style={{
+              width: 72,
+              height: 72,
+              borderRadius: 20,
+              background: 'linear-gradient(135deg, rgba(224, 122, 56, 0.15) 0%, rgba(201, 107, 48, 0.15) 100%)',
+              color: 'var(--accent)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 20px auto',
+              boxShadow: '0 8px 20px rgba(224, 122, 56, 0.15)',
+              border: '1px solid rgba(224, 122, 56, 0.2)'
+            }}
+          >
+            <Icon n="video" s={34} c="var(--accent)" />
+          </div>
+          
+          <h2 style={{ margin: '0 0 12px 0', fontSize: 22, fontWeight: 800, color: 'var(--text1)', letterSpacing: '-0.5px' }}>
+            ברוכים הבאים ל-BuildSync! 👋
+          </h2>
+          <p style={{ margin: 0, fontSize: 14.5, color: 'var(--text2)', lineHeight: 1.6, fontWeight: 500 }}>
+            כדי שתוכל להתחיל לעבוד בצורה החלקה והיעילה ביותר מהנייד, הכנו עבורך סדרת סרטוני הדרכה קצרים שמראים בדיוק איך להפיק את המרב מהמערכת.
+          </p>
+          <p style={{ margin: '8px 0 0 0', fontSize: 14.5, color: 'var(--text1)', fontWeight: 600 }}>
+            האם תרצה לעבור כעת לדף המדריכים?
+          </p>
+        </div>
+
+        {/* Action Buttons */}
+        <div
+          style={{
+            padding: '16px 20px',
+            borderTop: '1px solid var(--border)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 8,
+            background: 'var(--bg)'
+          }}
+        >
+          <Btn 
+            variant="primary" 
+            onClick={() => onClose(true)} 
+            style={{ 
+              width: '100%', 
+              justifyContent: 'center',
+              padding: '12px 20px',
+              fontSize: 14.5,
+              fontWeight: 700,
+              borderRadius: 14,
+              boxShadow: '0 4px 12px rgba(224, 122, 56, 0.25)'
+            }}
+          >
+            כן, מעבר למדריכים <Icon n="arrow-left" s={16} style={{ marginRight: 6 }} />
+          </Btn>
+
+          <button
+            onClick={() => onClose(false)}
+            style={{
+              width: '100%',
+              background: 'transparent',
+              border: 'none',
+              color: 'var(--text3)',
+              fontSize: 13.5,
+              fontWeight: 600,
+              cursor: 'pointer',
+              padding: '10px',
+              textAlign: 'center',
+              borderRadius: 10,
+              transition: 'all 0.2s'
+            }}
+          >
+            לא תודה, אמשיך מאוחר יותר
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
   );
 }
