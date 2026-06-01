@@ -11,8 +11,33 @@ import { useAppNotify } from '../hooks/useAppNotify';
 
 const PREDEFINED_CHECKLISTS = [
   {
+    title: 'שלב תכנון והיתרים',
+    category: 'תכנון',
+    emoji: '🏗️',
+    items: [
+      'בדיקת תוכניות אדריכליות',
+      'בדיקת קונסטרוקציה',
+      'הכנה לעלייה לקרקע',
+      'בדיקת מפרט טכני',
+      'תיאום יועצים',
+    ],
+  },
+  {
+    title: 'עבודות עפר וביסוס',
+    category: 'ביסוס',
+    emoji: '🚜',
+    items: [
+      'סימון מגרש',
+      'בדיקת גובהי פיתוח',
+      'בדיקת כלונסאות',
+      'בדיקות סוניות',
+      'קורות קשר ורצפה',
+    ],
+  },
+  {
     title: 'הכנות ליציקת בטון',
     category: 'שלד',
+    emoji: '🧱',
     items: [
       'וידוא תוכניות קונסטרוקציה עדכניות באתר',
       'בדיקת ברזל וקשירות (אישור קונסטרוקטור)',
@@ -24,8 +49,67 @@ const PREDEFINED_CHECKLISTS = [
     ],
   },
   {
+    title: 'בדיקות שלד',
+    category: 'שלד',
+    emoji: '🧱',
+    items: [
+      'בדיקות לפני יציקות',
+      'בדיקות ברזל',
+      'בדיקות טפסנות',
+      'פתחים לחלונות ודלתות',
+      'הכנות למערכות',
+    ],
+  },
+  {
+    title: 'חשמל ותקשורת',
+    category: 'חשמל',
+    emoji: '⚡',
+    items: [
+      'מיקומי שקעים',
+      'ארון חשמל',
+      'הכנות לבית חכם',
+      'מצלמות ואבטחה',
+      'רשת ותקשורת',
+    ],
+  },
+  {
+    title: 'אינסטלציה',
+    category: 'אינסטלציה',
+    emoji: '🚿',
+    items: [
+      'בדיקות לחץ',
+      'מיקום נקודות מים',
+      'ניקוזים',
+      'הכנה למערכות סינון',
+      'הכנות לגינה',
+    ],
+  },
+  {
+    title: 'מיזוג ואוורור',
+    category: 'מיזוג',
+    emoji: '❄️',
+    items: [
+      'הכנות למזגנים',
+      'ניקוזי מזגנים',
+      'ארובות שירות',
+      'הכנות למערכת VRF / מיני מרכזי',
+    ],
+  },
+  {
+    title: 'אלומיניום ופתחים',
+    category: 'אלומיניום',
+    emoji: '🪟',
+    items: [
+      'מדידות',
+      'בדיקות התקנה',
+      'איטום פתחים',
+      'תריסים חשמליים',
+    ],
+  },
+  {
     title: 'בדיקות לפני ריצוף',
     category: 'גמרים',
+    emoji: '🎨',
     items: [
       'ביצוע בדיקת הצפה לחדרים רטובים (48 שעות)',
       'בדיקת לחץ מים בצנרת (אינסטלטור)',
@@ -36,8 +120,33 @@ const PREDEFINED_CHECKLISTS = [
     ],
   },
   {
+    title: 'גמרים',
+    category: 'גמרים',
+    emoji: '🎨',
+    items: [
+      'ריצוף',
+      'חיפויים',
+      'צבע',
+      'נגרות',
+      'מטבח',
+    ],
+  },
+  {
+    title: 'פיתוח חוץ',
+    category: 'חוץ',
+    emoji: '🌳',
+    items: [
+      'ניקוזי חצר',
+      'שבילים ומדרגות',
+      'גדרות',
+      'שערים',
+      'השקיה וגינון',
+    ],
+  },
+  {
     title: 'הכנות לטופס 4 (אכלוס)',
     category: 'מסירה',
+    emoji: '🔍',
     items: [
       'אישור תאגיד מים וביוב',
       'אישור חברת חשמל (טופס 4 לחשמל)',
@@ -46,6 +155,57 @@ const PREDEFINED_CHECKLISTS = [
       'בדיקת מכון התקנים למעקות, זכוכיות וגז',
       'פינוי פסולת לאתר מורשה וקבלת קבלה',
       'מודד מוסמך - אישור מפת עדות (As-Made)',
+    ],
+  },
+  {
+    title: 'מסירה ובדק',
+    category: 'מסירה',
+    emoji: '🔍',
+    items: [
+      'מסירה ראשונית',
+      'רשימת ליקויים',
+      'מסירה סופית',
+      'בדיקות אחריות',
+      'קליטת מסמכים ותעודות',
+    ],
+  },
+  {
+    title: 'גז',
+    category: 'גז',
+    emoji: '🔥',
+    items: [
+      'הכנת תשתית צנרת גז (נחושת/נירוסטה)',
+      'הגשת תוכנית גז לרשות המקומית ואישורה',
+      'התקנת שסתום ראשי ושסתומי בידוד',
+      'בדיקת אטימות צנרת לפני סגירת קירות',
+      'התקנת גלאי גז בכל חדר עם מכשיר גז',
+      'חיבור לספק גז (מרכזי / בלוני / ביוגז)',
+      'התקנת ברז כיבוי חירום נגיש',
+      'הכנת חיבור לכיריים ולתנור מטבח',
+      'הכנת חיבור לדוד שמש / גז גיבוי',
+      'בדיקת לחץ ואישור מהנדס גז',
+      'קבלת תעודת גמר ממכון התקנים / בודק מוסמך',
+    ],
+  },
+  {
+    title: 'קניית מטבח',
+    category: 'מטבח',
+    emoji: '🍳',
+    items: [
+      'מדידת חלל המטבח והכנת תוכנית פריסה',
+      'תיאום עם אדריכל / מעצב פנים על קונספט',
+      'בחירת ספק / חברת מטבחים וקבלת הצעות מחיר',
+      'הגדרת חומר חזיתות (אקרילי / לקה / עץ / פורמייקה)',
+      'בחירת חומר משטח עבודה (קוורץ / גרניט / קרמיקה)',
+      'בחירת כיור וברז',
+      'בחירת מנגנוני פתיחה (ידיות / PUSH TO OPEN / ריילינג)',
+      'הזמנת מכשירי חשמל מובנים (תנור, כיריים, מדיח)',
+      'תיאום הכנות חשמל עם חשמלאי (שקעים, חיבורים ייעודיים)',
+      'תיאום הכנות אינסטלציה עם אינסטלטור (ניקוז, קו מים)',
+      'הזמנת מנדף ותיאום ארובה / תעלת פליטה',
+      'אישור תוכנית סופית לפני ייצור',
+      'תיאום תאריך אספקה והתקנה עם הספק',
+      'בדיקת התקנה ואיטום בסיום',
     ],
   },
 ];
@@ -65,6 +225,8 @@ export const ChecklistsScreen = () => {
   const [customTitle, setCustomTitle] = useState('');
   const [newItemText, setNewItemText] = useState<{ [key: string]: string }>({});
   
+  const [previewTemplate, setPreviewTemplate] = useState<number | null>(null);
+
   const [editingTitleId, setEditingTitleId] = useState<string | null>(null);
   const [editingTitleText, setEditingTitleText] = useState('');
 
@@ -227,19 +389,50 @@ export const ChecklistsScreen = () => {
                     <Btn onClick={handleAddCustom} variant="primary">הוסף</Btn>
                   </div>
                 ) : (
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, maxHeight: '55vh', overflowY: 'auto', paddingBottom: 4 }}>
                     {PREDEFINED_CHECKLISTS.map((template, idx) => {
                       const isAdded = checklists?.some((c: any) => c.title === template.title);
+                      const isPreviewing = previewTemplate === idx;
                       return (
-                      <div key={idx} style={{ flex: '1 1 280px', padding: 16, border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg)', display: 'flex', flexDirection: 'column', opacity: isAdded ? 0.6 : 1 }}>
-                        <div style={{ fontSize: 12, color: 'var(--accent)', fontWeight: 600, marginBottom: 4 }}>{template.category}</div>
-                        <div style={{ fontSize: 15, fontWeight: 500, marginBottom: 12, color: 'var(--text1)' }}>{template.title}</div>
-                        <div style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 16, flex: 1 }}>
-                          {template.items.length} משימות לבדיקה
+                      <div key={idx} style={{ flex: '1 1 220px', padding: 14, border: `1px solid ${isPreviewing ? 'var(--accent)' : 'var(--border)'}`, borderRadius: 8, background: 'var(--bg)', display: 'flex', flexDirection: 'column', opacity: isAdded ? 0.55 : 1, transition: 'border-color 0.15s' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                          <span style={{ fontSize: 18 }}>{(template as any).emoji}</span>
+                          <span style={{ fontSize: 11, color: 'var(--accent)', fontWeight: 600 }}>{template.category}</span>
                         </div>
-                        <Btn onClick={() => handleAddTemplate(template)} disabled={isAdded} variant="secondary" style={{ width: '100%', justifyContent: 'center' }}>
-                          {isAdded ? 'נוסף לפרויקט' : 'הוסף לפרויקט'}
-                        </Btn>
+                        <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 8, color: 'var(--text1)', lineHeight: 1.3 }}>{template.title}</div>
+
+                        <AnimatePresence>
+                          {isPreviewing && (
+                            <motion.div
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: 'auto', opacity: 1 }}
+                              exit={{ height: 0, opacity: 0 }}
+                              style={{ overflow: 'hidden', marginBottom: 10 }}
+                            >
+                              <div style={{ borderTop: '1px solid var(--border)', paddingTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                {template.items.map((item, i) => (
+                                  <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 7, fontSize: 12, color: 'var(--text2)' }}>
+                                    <span style={{ color: 'var(--accent)', marginTop: 1, flexShrink: 0 }}>•</span>
+                                    <span>{item}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto' }}>
+                          <button
+                            onClick={() => setPreviewTemplate(isPreviewing ? null : idx)}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: 'var(--accent)', padding: 0, display: 'flex', alignItems: 'center', gap: 4 }}
+                          >
+                            <Icon n={isPreviewing ? 'chevron-up' : 'eye'} s={13} c="var(--accent)" />
+                            {isPreviewing ? 'סגור' : `${template.items.length} משימות`}
+                          </button>
+                          <Btn onClick={() => handleAddTemplate(template)} disabled={isAdded} variant="secondary" style={{ fontSize: 13 }}>
+                            {isAdded ? 'נוסף' : 'הוסף'}
+                          </Btn>
+                        </div>
                       </div>
                       );
                     })}

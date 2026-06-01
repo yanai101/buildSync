@@ -163,7 +163,7 @@ export const TimelineScreen = () => {
   const [zoom, setZoom] = React.useState(1.25);
   const [hovered, setHovered] = React.useState<number | null>(null);
   const [editingStage, setEditingStage] = React.useState<TimelineStage | null>(null);
-  const [editForm, setEditForm] = React.useState({ startDate: '', endDate: '' });
+  const [editForm, setEditForm] = React.useState({ startDate: '', endDate: '', dependsOnPrevious: false });
   const [saving, setSaving] = React.useState(false);
   const [formError, setFormError] = React.useState<string | null>(null);
   const [feedbackError, setFeedbackError] = React.useState<string | null>(null);
@@ -171,6 +171,7 @@ export const TimelineScreen = () => {
   const [dragHint, setDragHint] = React.useState<DragHint>(null);
   const [includeTodayInRange, setIncludeTodayInRange] = React.useState(false);
   const [lockedTimeline, setLockedTimeline] = React.useState<TimelineRange | null>(null);
+  const [cascadeEnabled, setCascadeEnabled] = React.useState(true);
   const dragRef = React.useRef<DragState | null>(null);
   const scrollContainerRef = React.useRef<HTMLDivElement | null>(null);
 
@@ -312,18 +313,19 @@ export const TimelineScreen = () => {
     stage: TimelineStage,
     startDate: string,
     endDate: string,
+    dependsOnPrevious?: boolean,
     rollbackStages?: TimelineStage[],
   ) => {
     const next = clampStageDates(startDate, endDate);
     const previousStart = dateOnly(stage.start);
     const previousEnd = dateOnly(stage.end);
-    if (next.startDate === previousStart && next.endDate === previousEnd) return true;
+    if (next.startDate === previousStart && next.endDate === previousEnd && dependsOnPrevious === stage.dependsOnPrevious) return true;
     if (!projectId || !stage._id) return false;
     const previousStages = rollbackStages ?? stages;
 
     setFormError(null);
     setFeedbackError(null);
-    updateLocalStageDates(stage.id, next.startDate, next.endDate, true, previousEnd);
+    updateLocalStageDates(stage.id, next.startDate, next.endDate, cascadeEnabled, previousEnd);
     setSaving(true);
     try {
       const result = await updateStageDates({
@@ -331,6 +333,8 @@ export const TimelineScreen = () => {
         stageId: stage._id,
         startDate: next.startDate,
         endDate: next.endDate,
+        dependsOnPrevious,
+        cascade: cascadeEnabled,
       });
       applyUpdatedStageDates(result.updatedStages);
       return true;
@@ -345,7 +349,7 @@ export const TimelineScreen = () => {
 
   const openEdit = (stage: TimelineStage) => {
     setEditingStage(stage);
-    setEditForm({ startDate: dateOnly(stage.start), endDate: dateOnly(stage.end) });
+    setEditForm({ startDate: dateOnly(stage.start), endDate: dateOnly(stage.end), dependsOnPrevious: !!stage.dependsOnPrevious });
     setFormError(null);
     setFeedbackError(null);
   };
@@ -356,7 +360,7 @@ export const TimelineScreen = () => {
       setFormError('תאריך הסיום חייב להיות אחרי תאריך ההתחלה');
       return;
     }
-    const ok = await commitDates(editingStage, editForm.startDate, editForm.endDate);
+    const ok = await commitDates(editingStage, editForm.startDate, editForm.endDate, editForm.dependsOnPrevious);
     if (ok) setEditingStage(null);
   };
 
@@ -426,7 +430,7 @@ export const TimelineScreen = () => {
       x: event.clientX,
       y: event.clientY,
     });
-    updateLocalStageDates(drag.stageId, nextStart, nextEnd, true, drag.originalEnd, drag.originalStages);
+    updateLocalStageDates(drag.stageId, nextStart, nextEnd, cascadeEnabled, drag.originalEnd, drag.originalStages);
   };
 
   const finishDrag = (event: React.PointerEvent<HTMLDivElement>) => {
@@ -444,6 +448,7 @@ export const TimelineScreen = () => {
       { ...stage, start: drag.originalStart, end: drag.originalEnd },
       drag.latestStart,
       drag.latestEnd,
+      stage.dependsOnPrevious,
       drag.originalStages,
     );
   };
@@ -476,6 +481,10 @@ export const TimelineScreen = () => {
               </div>
             </div>
             <div style={{display:"flex",alignItems:"center",gap:8}}>
+              <label style={{display:"flex",alignItems:"center",gap:6,fontSize:12,fontWeight:600,color:cascadeEnabled?"var(--accent)":"var(--text2)",cursor:"pointer",marginRight:16,border:"1px solid",borderColor:cascadeEnabled?"var(--accent)":"var(--border)",background:cascadeEnabled?"var(--accent-light)":"#fff",padding:"4px 10px",borderRadius:12,transition:"all .2s"}}>
+                <input type="checkbox" checked={cascadeEnabled} onChange={e=>setCascadeEnabled(e.target.checked)} style={{margin:0}}/>
+                תזוזת מפל (Gantt)
+              </label>
               <Btn variant="ghost" size="sm" onClick={scrollToToday} disabled={validStages.length === 0}>
                 <Icon n="calendar" s={13}/> היום
               </Btn>
@@ -708,6 +717,15 @@ export const TimelineScreen = () => {
             <label>
               <div style={{fontSize:12,color:"var(--text2)",marginBottom:4,fontWeight:700}}>תאריך סיום</div>
               <input className="bp-input" type="date" value={editForm.endDate} onChange={event => setEditForm(form => ({...form,endDate:event.target.value}))}/>
+            </label>
+            <label style={{display:"flex",alignItems:"center",gap:8,fontSize:13,cursor:((editingStage as any).sortOrder ?? editingStage.id - 1) <= 0?"not-allowed":"pointer",color:((editingStage as any).sortOrder ?? editingStage.id - 1) <= 0?"var(--text3)":"var(--text2)"}}>
+              <input
+                type="checkbox"
+                checked={((editingStage as any).sortOrder ?? editingStage.id - 1) > 0 && editForm.dependsOnPrevious}
+                disabled={((editingStage as any).sortOrder ?? editingStage.id - 1) <= 0}
+                onChange={e=>setEditForm(f=>({...f,dependsOnPrevious:e.target.checked}))}
+              />
+              מחובר לשלב הקודם - שינוי בשלב הקודם יזיז גם את השלב הזה
             </label>
             {formError && <div style={{fontSize:13,color:"var(--danger)",fontWeight:700}}>{formError}</div>}
             <div style={{display:"flex",justifyContent:"flex-end",gap:10,marginTop:6}}>

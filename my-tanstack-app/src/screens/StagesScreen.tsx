@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence, Reorder } from 'framer-motion';
-import { Icon, Btn, ProgressBar, Badge, Modal, ConfirmDialog, FeedbackModal } from '../components/Shared';
+import { Icon, Btn, ProgressBar, Badge, Modal, ConfirmDialog, FeedbackModal, IconPicker } from '../components/Shared';
 import { PaymentGatesPanel, PaymentBadge, computeGates, resolveStatus, aggregateStageStatus, ReleasePaymentModal } from '../components/PaymentControl';
 import { Stage, Milestone } from '../types';
 import { useDataMutation } from '../hooks/useDataMutation';
@@ -365,6 +365,11 @@ const StageCreationGuide = ({
 
   return (
     <Modal title={isSingle ? "הוספת שלב חדש" : "יצירת שלבי בנייה מתבנית"} onClose={onClose} width={isSingle ? 760 : 1040}>
+      {!isSingle && (
+        <div style={{fontSize:12,color:"#92400E",background:"#FFFBEB",border:"1px solid #FCD34D",borderRadius:8,padding:"8px 12px",marginBottom:14,lineHeight:1.5}}>
+          <strong>שים לב:</strong> יצירת שלבים מתבנית מיועדת לפרויקטים בניהול עצמי ואינה מתאימה לפרויקטים עם קבלן עד מפתח. במידה ותשמור תבנית זו, אפשרות הוספת <strong>קבלן עד מפתח</strong> תוסתר ממסך הקבלנים.
+        </div>
+      )}
       <div className={isSingle ? "stage-wizard-single" : "stage-wizard-layout"}>
         {!isSingle && (
         <div className="stage-wizard-master" style={{display:"flex",flexDirection:"column",gap:10,minHeight:0}}>
@@ -443,10 +448,10 @@ const StageCreationGuide = ({
 
             <div className="card" style={{padding:16,marginBottom:14}}>
               <div style={{display:"flex",flexWrap:"wrap",gap:10}}>
-                <label style={{flex:"1 1 80px"}}>
+                <div style={{flex:"1 1 80px"}}>
                   <div style={{fontSize:11,color:"var(--text2)",marginBottom:3}}>אייקון</div>
-                  <input className="bp-input" value={current.icon || ""} onChange={e=>updateStage({icon:e.target.value})}/>
-                </label>
+                  <IconPicker value={current.icon || ""} onChange={v=>updateStage({icon:v})}/>
+                </div>
                 <label style={{flex:"1 1 180px"}}>
                   <div style={{fontSize:11,color:"var(--text2)",marginBottom:3}}>שם שלב</div>
                   <input className="bp-input" value={current.name} onChange={e=>updateStage({name:e.target.value})}/>
@@ -481,7 +486,7 @@ const StageCreationGuide = ({
                 <div style={{display:"flex",alignItems:"center",gap:16}}>
                   <label style={{display:"block",maxWidth:180}}>
                     <div style={{fontSize:11,color:"var(--text2)",marginBottom:3}}>סכום תשלום גלובלי</div>
-                    <input className="bp-input" type="number" value={current.amount} onChange={e=>updateStage({amount:Number(e.target.value)})}/>
+                    <input className="bp-input" type="number" placeholder="0" value={current.amount || ""} onChange={e=>updateStage({amount:Number(e.target.value)})}/>
                   </label>
                   <label style={{display:"flex",alignItems:"center",gap:8,fontSize:13,cursor:"pointer",marginTop:14}}>
                     <input type="checkbox" checked={current.paymentAtEnd} onChange={e=>{
@@ -552,7 +557,7 @@ const StageCreationGuide = ({
                           type="number"
                           min={0}
                           placeholder="סכום ₪"
-                          value={task.paymentRequired ? task.paymentAmount : ''}
+                          value={task.paymentRequired ? (task.paymentAmount || '') : ''}
                           disabled={!task.paymentRequired}
                           onChange={e=>updateTask(taskIndex,{paymentAmount:Number(e.target.value) || 0})}
                           style={{flex:"1 1 80px"}}
@@ -643,10 +648,6 @@ export const StagesScreen = () => {
   const dbStages = useQuery(api.queries.listStages, projectId ? { projectId } : "skip");
   const project = useQuery(api.queries.getProject, projectId ? { projectId } : "skip");
   const initialData = (dbStages ?? null) as Stage[] | null;
-  
-  if (accessInfo === undefined) return <AccessLoading />;
-  if (!canViewSchedule) return <AccessDenied message="אין לך הרשאה לצפות בשלבי העבודה של פרויקט זה." />;
-
   const loading = Boolean(projectId) && (dbStages === undefined);
   const error = null as Error | null;
   const refetch = React.useCallback(() => {}, []);
@@ -674,7 +675,7 @@ export const StagesScreen = () => {
   const [savingGuide, setSavingGuide] = React.useState(false);
   const [editingStage, setEditingStage] = React.useState<Stage | null>(null);
   const [isAdvancedEdit, setIsAdvancedEdit] = React.useState(false);
-  const [editForm, setEditForm] = React.useState({name:"", contractorRole:"", contractorIds: [] as string[], startDate:"", endDate:"", dependsOnPrevious:false, amount:0, paymentAtEnd:false, tasks:[] as any[]});
+  const [editForm, setEditForm] = React.useState({name:"", icon:"📌", contractorRole:"", contractorIds: [] as string[], startDate:"", endDate:"", dependsOnPrevious:false, amount:0, paymentAtEnd:false, tasks:[] as any[]});
   const [savingEdit, setSavingEdit] = React.useState(false);
   const [deleteTarget, setDeleteTarget] = React.useState<Stage | null>(null);
   const [deletingStage, setDeletingStage] = React.useState(false);
@@ -682,15 +683,24 @@ export const StagesScreen = () => {
 
   const contractors = useQuery(api.queries.listContractors, projectId ? { projectId } : 'skip');
   const contractorOptions = contractors ?? [];
+  const hasTurnkeyContractor = contractors?.some(c => c.role === 'קבלן עד מפתח');
   const editContractorBudgetTotal = React.useMemo(() => {
     return editForm.contractorIds.reduce((sum, id) => {
       const contractor = contractorOptions.find((item) => contractorKey(item) === id);
+      if (contractor?.role === 'קבלן עד מפתח') return sum;
       return sum + Number(contractor?.budget || 0);
     }, 0);
   }, [contractorOptions, editForm.contractorIds]);
+
+  const relevantContractorIdsForWarning = editForm.contractorIds.filter(id => {
+    const contractor = contractorOptions.find((item) => contractorKey(item) === id);
+    return contractor && contractor.role !== 'קבלן עד מפתח';
+  });
+
   const editPaymentAmountMismatch =
-    editForm.contractorIds.length > 0 &&
+    relevantContractorIdsForWarning.length > 0 &&
     Math.round(Number(editForm.amount) || 0) !== Math.round(editContractorBudgetTotal);
+
   const editContractorPaymentWarnings = React.useMemo(() => {
     if (!editingStage) return [];
     const editingStageDbId = String((editingStage as any)._id ?? '');
@@ -698,7 +708,7 @@ export const StagesScreen = () => {
     return editForm.contractorIds
       .map((contractorId) => {
         const contractor = contractorOptions.find((item) => contractorKey(item) === contractorId);
-        if (!contractor) return null;
+        if (!contractor || contractor.role === 'קבלן עד מפתח') return null;
 
         let stagePaymentTotal = 0;
         let hasAttributableStage = false;
@@ -788,6 +798,9 @@ export const StagesScreen = () => {
     const isNearLimit = projectBudget > 0 && totalPaid >= projectBudget * 0.9;
     return { totalPaid, totalPaymentAmount, projectBudget, paidPct, remaining, isNearLimit, isOverLimit };
   }, [project?.budgetTotal, stages]);
+
+  if (accessInfo === undefined) return <AccessLoading />;
+  if (!canViewSchedule) return <AccessDenied message="אין לך הרשאה לצפות בשלבי העבודה של פרויקט זה." />;
 
   const requestReview = async (stageId: number, dbId?: string) => {
     updateStageState(stageId, s => ({...s, payment: s.payment ? {...s.payment, status: 'review_requested'} : undefined}));
@@ -927,6 +940,7 @@ export const StagesScreen = () => {
 
     setEditForm({
       name: stage.name,
+      icon: stage.icon || "📌",
       contractorRole: stage.contractor || '',
       contractorIds: stageContractorIds,
       startDate: stage.start,
@@ -982,6 +996,7 @@ export const StagesScreen = () => {
         const result = await updateStageAdvanced({
           stageId,
           name: editForm.name,
+          icon: editForm.icon,
           contractorRole,
           contractorIds: editForm.contractorIds as any[],
           startDate: editForm.startDate,
@@ -1004,6 +1019,7 @@ export const StagesScreen = () => {
         const result = await updateStageDetails({
           stageId,
           name: editForm.name,
+          icon: editForm.icon,
           contractorRole,
           contractorIds: editForm.contractorIds as any[],
           startDate: editForm.startDate,
@@ -1016,6 +1032,7 @@ export const StagesScreen = () => {
       setStages(prev => prev.map(stage => stage.id === editingStage.id ? {
         ...stage,
         name: editForm.name,
+        icon: editForm.icon,
         contractor: contractorRole,
         contractorIds: editForm.contractorIds,
         contractors: contractorOptions
@@ -1186,15 +1203,23 @@ export const StagesScreen = () => {
             </div>
           </div>
           {!isContractor && (
-            <Btn onClick={() => {
-              if (!isProOrPremium) {
-                setFeedback({ title: 'שדרוג נדרש', message: 'הוספת שלבי בנייה זמינה במסלול Pro ומעלה.', type: 'error' });
-                return;
-              }
-              setAddStageOpen(true);
-            }}>
-              <Icon n="plus" s={14}/> שלב חדש
-            </Btn>
+            <div style={{display:"flex", alignItems:"center", gap: 12}}>
+              {hasTurnkeyContractor && (
+                <div style={{display:"flex", alignItems:"center", gap: 8, background:"#EEF2FF", padding:"8px 12px", borderRadius: 8, color:"#3730A3", fontSize:12, fontWeight:600}}>
+                  <Icon n="info" s={14}/>
+                  שלבי קבלן מפתח מנוהלים דרך לוח התשלומים שלו. הוספת שלבים כאן מיועדת לקבלנים נוספים בלבד. <a href={`/contractors?projectId=${projectId}`} style={{color:"#4F46E5", textDecoration:"underline", cursor:"pointer"}}>למעבר לקבלנים</a>
+                </div>
+              )}
+              <Btn onClick={() => {
+                if (!isProOrPremium) {
+                  setFeedback({ title: 'שדרוג נדרש', message: 'הוספת שלבי בנייה זמינה במסלול Pro ומעלה.', type: 'error' });
+                  return;
+                }
+                setAddStageOpen(true);
+              }}>
+                <Icon n="plus" s={14}/> שלב חדש
+              </Btn>
+            </div>
           )}
         </div>
 
@@ -1309,7 +1334,7 @@ export const StagesScreen = () => {
                 {canViewBudget && (
                   <div style={{display:"flex",gap:8}} onClick={e=>e.stopPropagation()}>
                     <Btn size="sm" variant="ghost" onClick={()=>openEditStage(s)}><Icon n="edit" s={13}/> ערוך</Btn>
-                    <Btn size="sm" variant="ghost" onClick={()=>requestDeleteStage(s)}><Icon n="trash" s={13}/> מחק</Btn>
+                    <Btn size="sm" variant="ghost" disabled={deletingStage} onClick={()=>requestDeleteStage(s)}><Icon n="trash" s={13}/> מחק</Btn>
                   </div>
                 )}
                 <Icon n={expanded===s.id?"arrow-up":"arrow-down"} s={18} c="var(--text3)"/>
@@ -1507,10 +1532,16 @@ export const StagesScreen = () => {
     {editingStage && (
       <Modal title="עריכת שלב בנייה" onClose={()=>setEditingStage(null)} width={560}>
         <div style={{display:"flex",flexWrap:"wrap",gap:14}}>
-          <label style={{flex:"1 1 100%"}}>
-            <div style={{fontSize:12,color:"var(--text2)",marginBottom:4,fontWeight:600}}>שם שלב</div>
-            <input className="bp-input" value={editForm.name} onChange={e=>setEditForm(f=>({...f,name:e.target.value}))}/>
-          </label>
+          <div style={{display:"flex", gap: 14, flex: "1 1 100%"}}>
+            <div style={{flex:"0 0 80px"}}>
+              <div style={{fontSize:12,color:"var(--text2)",marginBottom:4,fontWeight:600}}>אייקון</div>
+              <IconPicker value={editForm.icon} onChange={v=>setEditForm(f=>({...f,icon:v}))}/>
+            </div>
+            <label style={{flex:1}}>
+              <div style={{fontSize:12,color:"var(--text2)",marginBottom:4,fontWeight:600}}>שם שלב</div>
+              <input className="bp-input" value={editForm.name} onChange={e=>setEditForm(f=>({...f,name:e.target.value}))}/>
+            </label>
+          </div>
           <div style={{flex:"1 1 100%",border:"1px solid var(--border)",borderRadius:8,padding:12,background:"#fff"}}>
             <div style={{fontSize:12,color:"var(--text2)",marginBottom:8,fontWeight:600}}>קבלנים משתתפים בשלב</div>
             <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
@@ -1530,7 +1561,7 @@ export const StagesScreen = () => {
           </div>
           <label style={{flex:"1 1 100%"}}>
             <div style={{fontSize:12,color:"var(--text2)",marginBottom:4,fontWeight:600}}>סכום תשלום</div>
-            <input className="bp-input" type="number" value={editForm.amount} onChange={e=>setEditForm(f=>({...f,amount:Number(e.target.value)}))}/>
+            <input className="bp-input" type="number" placeholder="0" value={editForm.amount || ""} onChange={e=>setEditForm(f=>({...f,amount:Number(e.target.value)}))}/>
           </label>
           {editForm.contractorIds.length > 0 && (
             <div style={{
@@ -1613,7 +1644,7 @@ export const StagesScreen = () => {
                             <input type="checkbox" checked={task.paymentRequired} onChange={e=>updateEditTask(taskIndex,{paymentRequired:e.target.checked, paymentAmount:e.target.checked?task.paymentAmount:0})}/>
                             תשלום בסיום
                           </label>
-                          <input className="bp-input" type="number" min={0} placeholder="סכום ₪" value={task.paymentRequired?task.paymentAmount:''} disabled={!task.paymentRequired} onChange={e=>updateEditTask(taskIndex,{paymentAmount:Number(e.target.value)||0})} style={{flex:"1 1 80px"}}/>
+                          <input className="bp-input" type="number" min={0} placeholder="סכום ₪" value={task.paymentRequired ? (task.paymentAmount || '') : ''} disabled={!task.paymentRequired} onChange={e=>updateEditTask(taskIndex,{paymentAmount:Number(e.target.value)||0})} style={{flex:"1 1 80px"}}/>
                         </div>
                       )}
                       <Btn size="sm" variant="ghost" onClick={()=>removeEditTask(taskIndex)} style={{flex:"0 0 auto",color:"var(--danger)"}}>מחק</Btn>

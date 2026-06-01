@@ -64,23 +64,26 @@ const getStagePaymentItems = async (ctx: DbCtx, stageId: Id<'stages'>): Promise<
     if (requiredTasks.length > 0) {
       const stagePot = Math.max(0, stage.payment.amount || 0);
       const perTaskWeight = stagePot / requiredTasks.length;
-      return requiredTasks.map((task, index) => ({
-        key: `task:${task._id}`,
-        sourceStageId: stage._id,
-        sourceTaskId: task._id,
-        stageSortOrder: stage.sortOrder,
-        milestoneSortOrder: index,
-        name: `${stage.name} - ${task.name}`,
-        triggerText: `סיום משימה: ${task.name}`,
-        weight: perTaskWeight,
-      }));
+      return requiredTasks.map((task, index) => {
+        const isSingle = requiredTasks.length === 1;
+        return {
+          key: `task:${task._id}`,
+          sourceStageId: stage._id,
+          sourceTaskId: task._id,
+          stageSortOrder: stage.sortOrder,
+          milestoneSortOrder: index,
+          name: isSingle ? stage.name : `${stage.name} - ${task.name}`,
+          triggerText: task.name,
+          weight: perTaskWeight,
+        };
+      });
     }
     return [{
       key: `stage:${stage._id}`,
       sourceStageId: stage._id,
       stageSortOrder: stage.sortOrder,
       milestoneSortOrder: 0,
-      name: `סיום ${stage.name}`,
+      name: stage.name,
       triggerText: `סיום ואישור שלב ${stage.name}`,
       weight: Math.max(0, stage.payment.amount || 0),
     }];
@@ -236,10 +239,17 @@ export const syncContractorStagePayments = async (
   });
 
   const pctTotal = balancedItems.reduce((sum, item) => sum + item.pct, 0);
-  if (balancedItems.length > 0 && pctTotal !== 100) {
+  if (balancedItems.length > 0) {
     const last = balancedItems[balancedItems.length - 1];
-    last.pct = roundPct(last.pct + (100 - pctTotal));
-    last.amount = Math.round((contractor.budget * last.pct) / 100);
+    if (pctTotal !== 100) {
+      last.pct = roundPct(last.pct + (100 - pctTotal));
+      last.amount = Math.round((contractor.budget * last.pct) / 100);
+    }
+    // Fix rounding errors in amounts so they sum exactly to the budget
+    const sumAmounts = balancedItems.reduce((sum, item) => sum + item.amount, 0);
+    if (sumAmounts !== Math.round(contractor.budget)) {
+      last.amount += Math.round(contractor.budget) - sumAmounts;
+    }
   }
 
   const targetKeys = new Set(balancedItems.map(itemKey));
