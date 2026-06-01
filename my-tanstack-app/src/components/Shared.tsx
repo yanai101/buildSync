@@ -145,6 +145,65 @@ export const Input = ({value, onChange, placeholder, type="text", style:sx}: any
     placeholder={placeholder} style={sx}/>
 );
 
+export const STAGE_ICONS = [
+  // Construction & Tools
+  "📌","🏗️","🧱","🛠️","🚜","📏","🪚","🔨","🪛","🔧","🪜","🧰","🚧","👷","👷‍♂️","👷‍♀️",
+  // Electrical, Water, HVAC
+  "⚡","🔌","💡","🔦","💧","🚿","🛁","🚽","❄️","🌬️","🔥","🌡️",
+  // Rooms & Materials
+  "🚪","🪟","🪵","🪨","🎨","🖌️","🛋️","🛏️","🪑","🏡","🏠","🏢","🏰",
+  // Nature & Outdoors
+  "🌳","🌲","🪴","🍃","🌻","☀️","⛈️","🚗","🛣️",
+  // General & Documents
+  "📋","📄","📑","📝","📅","📆","✅","✔️","💰","💵","💳","🔐","🔑","📦"
+];
+
+export const IconPicker = ({ value, onChange }: { value?: string, onChange: (v: string) => void }) => {
+  const [open, setOpen] = React.useState(false);
+  const ref = React.useRef<HTMLDivElement>(null);
+  
+  React.useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    if (open) document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [open]);
+
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+       <div 
+         onClick={() => setOpen(!open)}
+         style={{ width: '100%', height: 42, display: 'flex', alignItems: 'center', padding: '0 12px', border: '1px solid var(--border)', borderRadius: 8, background: '#fff', cursor: 'pointer', fontSize: 20 }}
+       >
+         {value || "📌"}
+       </div>
+       {open && (
+         <div style={{ 
+           position: 'absolute', top: 50, right: 0, width: 220, 
+           maxHeight: 280, overflowY: 'auto',
+           background: '#fff', border: '1px solid var(--border)', 
+           borderRadius: 8, padding: 8, display: 'grid', 
+           gridTemplateColumns: 'repeat(5, 1fr)', gap: 4, 
+           zIndex: 100, boxShadow: 'var(--shadow-md)' 
+         }}>
+           {STAGE_ICONS.map(ic => (
+             <div 
+               key={ic} 
+               onClick={(e) => { e.stopPropagation(); onChange(ic); setOpen(false); }}
+               style={{ width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', borderRadius: 4, background: value === ic ? 'var(--accent-light)' : 'transparent', fontSize: 20 }}
+             >
+               {ic}
+             </div>
+           ))}
+         </div>
+       )}
+    </div>
+  );
+};
+
 export const Select = ({value, onChange, children, style:sx, ...rest}: any) => (
   <select className="bp-input" value={value} onChange={e=>onChange(e.target.value)} style={sx} {...rest}>
     {children}

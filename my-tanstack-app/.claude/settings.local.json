@@ -35,7 +35,8 @@
       "Bash(env)",
       "Bash(echo \"remotion folder removed: $?\")",
       "Bash(grep -E \"\\\\.\\(ts|tsx\\)$\")",
-      "Bash(npx --yes create-video@latest --yes --blank --no-tailwind buildsync-ad)"
+      "Bash(npx --yes create-video@latest --yes --blank --no-tailwind buildsync-ad)",
+      "mcp__plugin_chrome-devtools-mcp_chrome-devtools__list_pages"
     ]
   }
 }

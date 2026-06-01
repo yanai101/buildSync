@@ -12,6 +12,7 @@ const contractorRoleValidator = v.union(
   v.literal('קבלן טיח'),
   v.literal('חשמלאי ראשי'),
   v.literal('אינסטלטור'),
+  v.literal('קבלן מיזוג'),
   v.literal('קבלן ריצוף'),
   v.literal('קבלן גג'),
   v.literal('קבלן גבס'),
@@ -27,6 +28,20 @@ const DEFAULT_CONTRACTOR_PAYMENT_SCHEDULE = [
   { name: "תשלום ביניים ב'", pct: 25, triggerText: 'אחרי 70% מהעבודה' },
   { name: 'תשלום סופי', pct: 20, triggerText: 'סיום ואישור מפקח' },
 ];
+
+const DEFAULT_PAYMENT_SCHEDULES: Record<string, typeof DEFAULT_CONTRACTOR_PAYMENT_SCHEDULE> = {
+  "קבלן עד מפתח": [
+    {name:"מקדמה וחתימת חוזה", pct:10, triggerText:"חתימת חוזה ותחילת עבודה"},
+    {name:"סיום עבודות עפר", pct:10, triggerText:"אישור מפקח לסיום חפירה ויסודות"},
+    {name:"סיום שלד", pct:20, triggerText:"אישור קונסטרוקטור ומפקח"},
+    {name:"מערכות גולמיות", pct:15, triggerText:"חשמל, אינסטלציה ומיזוג לפני טיח"},
+    {name:"סיום טיח", pct:10, triggerText:"אישור מפקח לטיח פנים וחוץ"},
+    {name:"ריצוף וחיפויים", pct:15, triggerText:"סיום ריצוף וחיפוי רטובים"},
+    {name:"גמרים", pct:10, triggerText:"צבע, נגרות, אביזרים וחשמל עדין"},
+    {name:"פיתוח חוץ", pct:5, triggerText:"סיום עבודות חוץ וגינה"},
+    {name:"מסירה סופית", pct:5, triggerText:"פרוטוקול מסירה ותיקון ליקויים"},
+  ],
+};
 
 const contractorRoleBudgetCategory: Record<string, string> = {
   'קבלן עד מפתח': 'שונות',
@@ -61,9 +76,11 @@ const createDefaultContractorPaymentSchedule = async (
   ctx: MutationCtx,
   contractorId: Id<'contractors'>,
   budget: number,
+  role: string = 'אחר'
 ) => {
-  for (let i = 0; i < DEFAULT_CONTRACTOR_PAYMENT_SCHEDULE.length; i++) {
-    const milestone = DEFAULT_CONTRACTOR_PAYMENT_SCHEDULE[i];
+  const schedule = DEFAULT_PAYMENT_SCHEDULES[role] || DEFAULT_CONTRACTOR_PAYMENT_SCHEDULE;
+  for (let i = 0; i < schedule.length; i++) {
+    const milestone = schedule[i];
     await ctx.db.insert('contractorPaymentMilestones', {
       contractorId,
       sortOrder: i,
@@ -75,6 +92,79 @@ const createDefaultContractorPaymentSchedule = async (
       sourceMode: 'custom',
     });
   }
+};
+
+const autoGenerateStagesFromSchedule = async (
+  ctx: MutationCtx,
+  contractorId: Id<'contractors'>,
+  projectId: Id<'projects'>,
+  contractorName: string,
+  contractorRole: string,
+  budget: number,
+  schedule: { name: string; triggerText: string; pct: number }[]
+) => {
+  const project = await ctx.db.get(projectId);
+  const projStartStr = project?.startDate || new Date().toISOString().split('T')[0];
+  const projEndStr = project?.expectedEnd || projStartStr;
+  
+  const DAY_MS = 24 * 60 * 60 * 1000;
+  let totalDays = Math.round((new Date(projEndStr).getTime() - new Date(projStartStr).getTime()) / DAY_MS);
+  if (totalDays <= 0) totalDays = 300; // Default to ~10 months if no end date was set
+  
+  let currentStartDateStr = projStartStr;
+
+  for (let i = 0; i < schedule.length; i++) {
+    const milestone = schedule[i];
+    const amount = Math.round((budget * milestone.pct) / 100);
+    
+    // Allocate days proportionally to the stage's percentage
+    let stageDays = Math.round(totalDays * (milestone.pct / 100));
+    if (stageDays < 1) stageDays = 1; // at least 1 day
+
+    const stageStartDate = currentStartDateStr;
+    const stageEndDateObj = new Date(new Date(stageStartDate).getTime() + stageDays * DAY_MS);
+    const stageEndDate = stageEndDateObj.toISOString().split('T')[0];
+
+    const dependsOnPrevious = i > 0;
+
+    const stageId = await ctx.db.insert('stages', {
+      projectId,
+      name: milestone.name,
+      contractorId,
+      contractorRole,
+      progressPct: 0,
+      status: 'pending',
+      startDate: stageStartDate,
+      endDate: stageEndDate,
+      dependsOnPrevious,
+      sortOrder: i + 1,
+      payment: { status: 'draft', amount },
+      icon: '📌',
+    });
+    
+    currentStartDateStr = stageEndDate;
+
+    await ctx.db.insert('stageTasks', {
+      stageId,
+      name: milestone.triggerText || `ביצוע ${milestone.name}`,
+      done: false,
+      required: true,
+      assignee: contractorRole,
+      sortOrder: 0,
+    });
+
+    await ctx.db.insert('stageContractors', {
+      projectId,
+      stageId,
+      contractorId,
+      roleLabel: contractorName,
+      paymentMode: 'stage_synced',
+      sortOrder: 0,
+    });
+  }
+
+  await syncContractorStagePayments(ctx, contractorId);
+  await recomputeContractorPaid(ctx, contractorId);
 };
 
 const resolveMilestoneId = async (
@@ -95,7 +185,7 @@ const resolveMilestoneId = async (
       .collect();
 
     if (milestones.length === 0) {
-      await createDefaultContractorPaymentSchedule(ctx, contractorId, contractor.budget);
+      await createDefaultContractorPaymentSchedule(ctx, contractorId, contractor.budget, contractor.role);
       milestones = await ctx.db
         .query('contractorPaymentMilestones')
         .withIndex('by_contractor', (q) => q.eq('contractorId', contractorId))
@@ -274,6 +364,27 @@ export const toggleTask = mutation({
   },
 });
 
+export async function deleteStageSafely(ctx: MutationCtx, stageId: Id<'stages'>, projectId: Id<'projects'>) {
+  const milestones = await ctx.db.query('stageMilestones').withIndex('by_stage', q => q.eq('stageId', stageId)).collect();
+  for (const m of milestones) {
+    const links = await ctx.db.query('stageMilestoneTasks').withIndex('by_milestone', q => q.eq('milestoneId', m._id)).collect();
+    for (const l of links) await ctx.db.delete(l._id);
+    await ctx.db.delete(m._id);
+  }
+  const tasks = await ctx.db.query('stageTasks').withIndex('by_stage', q => q.eq('stageId', stageId)).collect();
+  for (const t of tasks) await ctx.db.delete(t._id);
+  const stageContractorsLinks = await ctx.db.query('stageContractors').withIndex('by_stage', q => q.eq('stageId', stageId)).collect();
+  for (const sc of stageContractorsLinks) await ctx.db.delete(sc._id);
+  
+  // Ensure no pending expenses are left dangling
+  const expenses = await ctx.db.query('expenses').withIndex('by_project', q => q.eq('projectId', projectId)).filter(q => q.eq(q.field('stageId'), stageId)).collect();
+  for (const exp of expenses) {
+    if (exp.status !== 'שולם') await ctx.db.delete(exp._id);
+  }
+
+  await ctx.db.delete(stageId);
+}
+
 export const createContractor = mutation({
   args: {
     projectId: v.id('projects'),
@@ -304,37 +415,10 @@ export const createContractor = mutation({
     });
 
     if (args.role === 'קבלן עד מפתח') {
-      const executionStages = await ctx.db
-        .query('stages')
-        .withIndex('by_project_sort', (q) => q.eq('projectId', args.projectId))
-        .filter((q) => q.neq(q.field('sortOrder'), 0))
-        .collect();
-
-      for (const stage of executionStages) {
-        const existingLinks = await ctx.db
-          .query('stageContractors')
-          .withIndex('by_stage', (q) => q.eq('stageId', stage._id))
-          .collect();
-
-        if (existingLinks.some((link) => link.contractorId === contractorId)) continue;
-
-        await ctx.db.insert('stageContractors', {
-          projectId: args.projectId,
-          stageId: stage._id,
-          contractorId,
-          roleLabel: args.name,
-          paymentMode: 'stage_synced',
-          sortOrder: existingLinks.length,
-        });
-      }
-
-      if (executionStages.length > 0) {
-        await syncContractorStagePayments(ctx, contractorId);
-      } else {
-        await createDefaultContractorPaymentSchedule(ctx, contractorId, args.budget);
-      }
+      const schedule = DEFAULT_PAYMENT_SCHEDULES[args.role] || DEFAULT_CONTRACTOR_PAYMENT_SCHEDULE;
+      await autoGenerateStagesFromSchedule(ctx, contractorId, args.projectId, args.name, args.role, args.budget, schedule);
     } else {
-      await createDefaultContractorPaymentSchedule(ctx, contractorId, args.budget);
+      await createDefaultContractorPaymentSchedule(ctx, contractorId, args.budget, args.role);
     }
 
     return contractorId;
@@ -465,6 +549,168 @@ export const saveContractorPaymentSchedule = mutation({
     const totalPct = args.milestones.reduce((sum, milestone) => sum + milestone.pct, 0);
     if (totalPct > 100.01) {
       throw new Error('Contractor payment schedule cannot exceed the agreed budget');
+    }
+
+    const executionStages = await ctx.db
+      .query('stages')
+      .withIndex('by_project_sort', (q) => q.eq('projectId', contractor.projectId))
+      .filter((q) => q.neq(q.field('sortOrder'), 0))
+      .collect();
+
+    // SMART SYNC: If project has no stages, automatically generate stages matching this payment schedule.
+    if (executionStages.length === 0) {
+      const existingMilestones = await ctx.db
+        .query('contractorPaymentMilestones')
+        .withIndex('by_contractor', (q) => q.eq('contractorId', args.contractorId))
+        .take(200);
+
+      // Clean up existing milestones so sync can create them fresh
+      for (const milestone of existingMilestones) {
+        if (!milestone.paid) {
+          await ctx.db.delete(milestone._id);
+        }
+      }
+
+      // Generate stages
+      const project = await ctx.db.get(contractor.projectId);
+      const startDate = project?.startDate || new Date().toISOString().split('T')[0];
+      const endDate = project?.expectedEnd || startDate;
+
+      for (let i = 0; i < args.milestones.length; i++) {
+        const milestone = args.milestones[i];
+        const amount = Math.round((contractor.budget * milestone.pct) / 100);
+
+        const stageId = await ctx.db.insert('stages', {
+          projectId: contractor.projectId,
+          name: milestone.name,
+          contractorId: contractor._id,
+          contractorRole: contractor.role,
+          progressPct: 0,
+          status: 'pending',
+          startDate,
+          endDate,
+          sortOrder: i + 1,
+          payment: { status: 'draft', amount },
+          icon: '📌',
+        });
+
+        await ctx.db.insert('stageTasks', {
+          stageId,
+          name: milestone.triggerText || `ביצוע ${milestone.name}`,
+          done: false,
+          required: true,
+          assignee: contractor.role,
+          sortOrder: 0,
+        });
+
+        await ctx.db.insert('stageContractors', {
+          projectId: contractor.projectId,
+          stageId,
+          contractorId: contractor._id,
+          roleLabel: contractor.name,
+          paymentMode: 'stage_synced',
+          sortOrder: 0,
+        });
+      }
+
+      // Sync the payments to create the stage_synced milestones
+      await syncContractorStagePayments(ctx, args.contractorId);
+      await recomputeContractorPaid(ctx, args.contractorId);
+      return;
+    }
+
+    if (contractor.role === 'קבלן עד מפתח') {
+      const existingStages = await ctx.db
+        .query('stages')
+        .withIndex('by_project_sort', (q) => q.eq('projectId', contractor.projectId))
+        .collect();
+      
+      const incomingStageIdsToKeep = new Set<string>();
+
+      for (let i = 0; i < args.milestones.length; i++) {
+        const milestone = args.milestones[i];
+        const amount = Math.round((contractor.budget * milestone.pct) / 100);
+
+        let stageId: Id<'stages'> | undefined = undefined;
+
+        if (milestone.milestoneId && !milestone.milestoneId.includes('-')) {
+          const parsedId = ctx.db.normalizeId('contractorPaymentMilestones', milestone.milestoneId);
+          if (parsedId) {
+            const existingMilestone = await ctx.db.get(parsedId);
+            if (existingMilestone?.sourceStageId) {
+              stageId = existingMilestone.sourceStageId;
+            }
+          }
+        }
+
+        if (stageId) {
+          const stage = await ctx.db.get(stageId);
+          await ctx.db.patch(stageId, {
+            name: milestone.name,
+            sortOrder: i + 1,
+            payment: {
+               amount,
+               status: stage?.payment.status || 'draft',
+            }
+          });
+          const firstTask = await ctx.db.query('stageTasks').withIndex('by_stage', q => q.eq('stageId', stageId)).first();
+          if (firstTask) {
+             await ctx.db.patch(firstTask._id, { name: milestone.triggerText || `ביצוע ${milestone.name}` });
+          }
+          incomingStageIdsToKeep.add(stageId);
+        } else {
+          const project = await ctx.db.get(contractor.projectId);
+          const startDate = project?.startDate || new Date().toISOString().split('T')[0];
+          const endDate = project?.expectedEnd || startDate;
+
+          const newStageId = await ctx.db.insert('stages', {
+            projectId: contractor.projectId,
+            name: milestone.name,
+            contractorId: contractor._id,
+            contractorRole: contractor.role,
+            progressPct: 0,
+            status: 'pending',
+            startDate,
+            endDate,
+            sortOrder: i + 1,
+            payment: { status: 'draft', amount },
+            icon: '📌',
+          });
+          
+          await ctx.db.insert('stageTasks', {
+            stageId: newStageId,
+            name: milestone.triggerText || `ביצוע ${milestone.name}`,
+            done: false,
+            required: true,
+            assignee: contractor.role,
+            sortOrder: 0,
+          });
+
+          await ctx.db.insert('stageContractors', {
+            projectId: contractor.projectId,
+            stageId: newStageId,
+            contractorId: contractor._id,
+            roleLabel: contractor.name,
+            paymentMode: 'stage_synced',
+            sortOrder: 0,
+          });
+          
+          incomingStageIdsToKeep.add(newStageId);
+        }
+      }
+
+      for (const stage of existingStages) {
+        if (!incomingStageIdsToKeep.has(stage._id) && stage.contractorId === contractor._id) {
+           if (stage.progressPct > 0 || stage.payment.status === 'paid') {
+              throw new Error(`לא ניתן למחוק את השלב '${stage.name}' כי הוא כבר התחיל או שולם. יש לאפס את ההתקדמות והתשלומים שלו לפני המחיקה.`);
+           }
+           await deleteStageSafely(ctx, stage._id, contractor.projectId);
+        }
+      }
+
+      await syncContractorStagePayments(ctx, args.contractorId);
+      await recomputeContractorPaid(ctx, args.contractorId);
+      return;
     }
 
     const stageLinks = await ctx.db
@@ -689,26 +935,30 @@ export const deleteContractor = mutation({
     }
 
     for (const stageId of affectedStageIds) {
-      const remainingLinks = await ctx.db
-        .query('stageContractors')
-        .withIndex('by_stage', (q) => q.eq('stageId', stageId))
-        .collect();
-      const orderedLinks = remainingLinks.sort((a, b) => a.sortOrder - b.sortOrder);
-      const remainingContractors = [];
+      if (contractor.role === 'קבלן עד מפתח') {
+        await deleteStageSafely(ctx, stageId, contractor.projectId);
+      } else {
+        const remainingLinks = await ctx.db
+          .query('stageContractors')
+          .withIndex('by_stage', (q) => q.eq('stageId', stageId))
+          .collect();
+        const orderedLinks = remainingLinks.sort((a, b) => a.sortOrder - b.sortOrder);
+        const remainingContractors = [];
 
-      for (let i = 0; i < orderedLinks.length; i++) {
-        const link = orderedLinks[i];
-        if (link.sortOrder !== i) {
-          await ctx.db.patch(link._id, { sortOrder: i });
+        for (let i = 0; i < orderedLinks.length; i++) {
+          const link = orderedLinks[i];
+          if (link.sortOrder !== i) {
+            await ctx.db.patch(link._id, { sortOrder: i });
+          }
+          const linkedContractor = await ctx.db.get(link.contractorId);
+          if (linkedContractor) remainingContractors.push(linkedContractor);
         }
-        const linkedContractor = await ctx.db.get(link.contractorId);
-        if (linkedContractor) remainingContractors.push(linkedContractor);
-      }
 
-      await ctx.db.patch(stageId, {
-        contractorId: remainingContractors[0]?._id,
-        contractorRole: remainingContractors.map((item) => item.name).join(', ') || undefined,
-      });
+        await ctx.db.patch(stageId, {
+          contractorId: remainingContractors[0]?._id,
+          contractorRole: remainingContractors.map((item) => item.name).join(', ') || undefined,
+        });
+      }
     }
 
     // Delete ALL milestones (the paid value is now preserved in the detached expenses)

@@ -213,7 +213,7 @@ const DEFAULT_PAYMENT_SCHEDULES: Record<string, typeof DEFAULT_SCHEDULE> = {
 
 const ContractorRoles = [
   "קבלן עד מפתח","קבלן שלד","קבלן עפר","קבלן טיח","חשמלאי ראשי",
-  "אינסטלטור","קבלן ריצוף","קבלן גג","קבלן גבס","קבלן נגרות","צבעי","קבלן גינה","אחר"
+  "אינסטלטור","קבלן מיזוג","קבלן ריצוף","קבלן גג","קבלן גבס","קבלן נגרות","צבעי","קבלן גינה","אחר"
 ];
 
 const COLORS = ["#7B9B8A","#8B7B5A","#7B8FA1","#E07A38","#6B8B6B","#8B5A5A","#5A5A8B"];
@@ -406,6 +406,7 @@ const PaymentSchedule = ({
   onSaveSchedule,
   onLock,
   onViewFile,
+  onSyncBudget,
   locked,
 }: {
   contractor: Contractor;
@@ -413,6 +414,7 @@ const PaymentSchedule = ({
   onSaveSchedule: (contractor: Contractor, milestones: DraftMilestone[]) => Promise<void>;
   onLock?: (milestoneId: string) => Promise<void>;
   onViewFile?: (file: { url: string; name: string }) => void;
+  onSyncBudget?: (budget: number) => Promise<void>;
   locked?: boolean;
 }) => {
   const sourceMilestones = React.useMemo(() => normalizeMilestones(contractor), [contractor]);
@@ -691,9 +693,62 @@ const PaymentSchedule = ({
         </div>
       </div>
 
-      {scheduleOverBudget && (
+      {scheduleOverBudget && !locked && (
         <div style={{margin:"10px 18px 0",border:"1px solid #FCA5A5",background:"#FEF2F2",color:"#991B1B",borderRadius:8,padding:"8px 10px",fontSize:12,fontWeight:700}}>
           סכום שלבי התשלום ({fmtMoney(totalAmount)}) גבוה מהסכום המוסכם עם הקבלן ({fmtMoney(contractor.budget)}). צריך להקטין אחוזים לפני שמירה.
+        </div>
+      )}
+
+      {locked && totalAmount !== Math.round(contractor.budget) && (
+        <div style={{margin:"10px 18px 0",border:"1px solid #FCD34D",background:"#FFFBEB",color:"#92400E",borderRadius:8,padding:"10px 12px",fontSize:12,display:"flex",flexDirection:"column",gap:8}}>
+          <div>
+            <div style={{fontWeight:700,marginBottom:2}}>חוסר התאמה בתקציב</div>
+            סכום השלבים המשויכים לקבלן ({fmtMoney(totalAmount)}) שונה מסכום החוזה המוגדר ({fmtMoney(contractor.budget)}).
+          </div>
+          {onSyncBudget && (
+            <Btn size="sm" onClick={() => onSyncBudget(totalAmount)} style={{alignSelf:"flex-start"}}><Icon n="refresh-cw" s={13}/> סנכרן את חוזה הקבלן לסכום השלבים ({fmtMoney(totalAmount)})</Btn>
+          )}
+        </div>
+      )}
+
+
+
+      {adding && (
+        <div style={{margin:"12px 18px",padding:14,background:"var(--bg)",borderRadius:8,border:"1px solid var(--border)"}}>
+          <div style={{fontSize:13,fontWeight:600,marginBottom:10}}>שלב תשלום חדש</div>
+          <div style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"flex-end"}}>
+            <div style={{flex:2,minWidth:140}}>
+              <div style={{fontSize:11,color:"var(--text2)",marginBottom:3}}>שם השלב</div>
+              <input className="bp-input" value={newM.name} onChange={e=>setNewM(n=>({...n,name:e.target.value}))} placeholder="לדוגמה: אחרי ריצוף קומה ב'"/>
+            </div>
+            <div style={{flex:2,minWidth:140}}>
+              <div style={{fontSize:11,color:"var(--text2)",marginBottom:3}}>תנאי לתשלום</div>
+              <input className="bp-input" value={newM.triggerText} onChange={e=>setNewM(n=>({...n,triggerText:e.target.value}))} placeholder="מה צריך להיות מוכן?"/>
+            </div>
+            <div style={{flex:"0 0 80px"}}>
+              <div style={{fontSize:11,color:"var(--text2)",marginBottom:3}}>אחוז %</div>
+              <input className="bp-input" type="number" placeholder="0" value={newM.pct === 0 ? "" : Number(newM.pct.toFixed(2))} onChange={e=>{
+                const val = e.target.value;
+                setNewM(n=>({...n,pct:val === "" ? 0 : Number(val)}));
+              }} min={0} max={100} step="any"/>
+            </div>
+            <div style={{flex:"0 0 100px"}}>
+              <div style={{fontSize:11,color:"var(--text2)",marginBottom:3}}>סכום ₪</div>
+              <input className="bp-input" type="number" placeholder="0" value={Math.round(contractor.budget * newM.pct / 100) === 0 ? "" : Math.round(contractor.budget * newM.pct / 100)} onChange={e=>{
+                if (contractor.budget > 0) {
+                  const val = e.target.value;
+                  setNewM(n=>({...n,pct:val === "" ? 0 : (Number(val) / contractor.budget) * 100}));
+                }
+              }} min={0} max={contractor.budget}/>
+            </div>
+            <div style={{display:"flex",gap:6}}>
+              <Btn onClick={addMilestone} disabled={savingNew || scheduleOverBudget}><Icon n="plus" s={13}/> הוסף</Btn>
+              <Btn variant="ghost" onClick={()=>setAdding(false)} disabled={savingNew}>ביטול</Btn>
+            </div>
+          </div>
+          <div style={{fontSize:11,color:"var(--text3)",marginTop:8}}>
+            ההוספה מאזנת אוטומטית את האחוזים כך שכל השלבים יחד נשארים 100%.
+          </div>
         </div>
       )}
 
@@ -739,44 +794,6 @@ const PaymentSchedule = ({
         </table>
       </div>
 
-      {adding && (
-        <div style={{margin:"12px 18px",padding:14,background:"var(--bg)",borderRadius:8,border:"1px solid var(--border)"}}>
-          <div style={{fontSize:13,fontWeight:600,marginBottom:10}}>שלב תשלום חדש</div>
-          <div style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"flex-end"}}>
-            <div style={{flex:2,minWidth:140}}>
-              <div style={{fontSize:11,color:"var(--text2)",marginBottom:3}}>שם השלב</div>
-              <input className="bp-input" value={newM.name} onChange={e=>setNewM(n=>({...n,name:e.target.value}))} placeholder="לדוגמה: אחרי ריצוף קומה ב'"/>
-            </div>
-            <div style={{flex:2,minWidth:140}}>
-              <div style={{fontSize:11,color:"var(--text2)",marginBottom:3}}>תנאי לתשלום</div>
-              <input className="bp-input" value={newM.triggerText} onChange={e=>setNewM(n=>({...n,triggerText:e.target.value}))} placeholder="מה צריך להיות מוכן?"/>
-            </div>
-            <div style={{flex:"0 0 80px"}}>
-              <div style={{fontSize:11,color:"var(--text2)",marginBottom:3}}>אחוז %</div>
-              <input className="bp-input" type="number" placeholder="0" value={newM.pct === 0 ? "" : Number(newM.pct.toFixed(2))} onChange={e=>{
-                const val = e.target.value;
-                setNewM(n=>({...n,pct:val === "" ? 0 : Number(val)}));
-              }} min={0} max={100} step="any"/>
-            </div>
-            <div style={{flex:"0 0 100px"}}>
-              <div style={{fontSize:11,color:"var(--text2)",marginBottom:3}}>סכום ₪</div>
-              <input className="bp-input" type="number" placeholder="0" value={Math.round(contractor.budget * newM.pct / 100) === 0 ? "" : Math.round(contractor.budget * newM.pct / 100)} onChange={e=>{
-                if (contractor.budget > 0) {
-                  const val = e.target.value;
-                  setNewM(n=>({...n,pct:val === "" ? 0 : (Number(val) / contractor.budget) * 100}));
-                }
-              }} min={0} max={contractor.budget}/>
-            </div>
-            <div style={{display:"flex",gap:6}}>
-              <Btn onClick={addMilestone} disabled={savingNew || scheduleOverBudget}><Icon n="plus" s={13}/> הוסף</Btn>
-              <Btn variant="ghost" onClick={()=>setAdding(false)} disabled={savingNew}>ביטול</Btn>
-            </div>
-          </div>
-          <div style={{fontSize:11,color:"var(--text3)",marginTop:8}}>
-            ההוספה מאזנת אוטומטית את האחוזים כך שכל השלבים יחד נשארים 100%.
-          </div>
-        </div>
-      )}
     </div>
   );
 };
@@ -1052,21 +1069,37 @@ export const ContractorsScreen = () => {
     ? c.paid > 0 || normalizeMilestones(c).some(milestone => Boolean(milestone.paid))
     : false;
 
+  const hasTurnkeyContractor = (contractors ?? []).some(item => item.role === 'קבלן עד מפתח');
+  
+  const visibleStages = React.useMemo(() => {
+    if (!c) return stages;
+    return stages.filter(stage => {
+      const isTurnkeyStage = stage.contractorRole === 'קבלן עד מפתח' || stage.contractors?.some((sc: any) => sc.role === 'קבלן עד מפתח');
+      if (c.role === 'קבלן עד מפתח') {
+        return isTurnkeyStage;
+      }
+      return !isTurnkeyStage;
+    });
+  }, [stages, c]);
+
+  const hasCustomStages = stages.some(stage => stage.contractorRole !== 'קבלן עד מפתח' && !stage.contractors?.some((sc: any) => sc.role === 'קבלן עד מפתח'));
+  const availableRoles = hasCustomStages ? ContractorRoles.filter(r => r !== 'קבלן עד מפתח') : ContractorRoles;
+
   const contractorModal = (adding || editingContractor) ? (
     <Modal onClose={()=>{setAdding(false); setEditingContractor(null); setForm(emptyForm);}} title={editingContractor ? "עריכת קבלן" : "הוספת קבלן חדש"} width={520}>
       <div style={{display:"flex",flexDirection:"column",gap:14}}>
         <div>
           <div style={{fontSize:12,color:"var(--text2)",marginBottom:4,fontWeight:600}}>סוג קבלן</div>
           <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:4}}>
-            {ContractorRoles.map(r=>(
+            {availableRoles.map(r=>(
               <button key={r} onClick={()=>setForm(f=>({...f,role:r}))} style={{padding:"5px 10px",borderRadius:20,border:"1px solid",borderColor:form.role===r?"var(--accent)":"var(--border)",background:form.role===r?"var(--accent-light)":"var(--surface)",color:form.role===r?"var(--accent)":"var(--text2)",fontSize:12,cursor:"pointer",fontFamily:"'Heebo',sans-serif",fontWeight:form.role===r?700:400,transition:"all .12s"}}>
                 {r}
               </button>
             ))}
           </div>
           {form.role==="קבלן עד מפתח" && (
-            <div style={{fontSize:11,color:"#3730A3",background:"#EEF2FF",borderRadius:6,padding:"6px 10px",marginTop:4}}>
-              לוח תשלומים של 9 שלבים לפי התקדמות הבנייה יוגדר אוטומטית
+            <div style={{fontSize:11,color:"#3730A3",background:"#EEF2FF",borderRadius:6,padding:"8px 12px",marginTop:4,lineHeight:1.5}}>
+              <strong>שים לב:</strong> לוח תשלומים של 9 שלבים יוגדר אוטומטית ויפרוס את ימי הפרויקט באופן יחסי כמפל. ניתן לערוך ולהזיז את השלבים בקלות תחת מסך <strong>"שלבי בנייה"</strong> מתי שתרצה!
             </div>
           )}
         </div>
@@ -1084,7 +1117,7 @@ export const ContractorsScreen = () => {
           ))}
           <div>
             <div style={{fontSize:12,color:"var(--text2)",marginBottom:3,fontWeight:500}}>תקציב מוסכם (₪)</div>
-            <input className="bp-input" type="number" placeholder="0" value={form.budget} onChange={e=>setForm(f=>({...f,budget:e.target.value === "" ? "" : Number(e.target.value)}))}/>
+            <input className="bp-input" type="number" placeholder="0" value={form.budget === 0 ? "" : form.budget} onChange={e=>setForm(f=>({...f,budget:e.target.value === "" ? 0 : Number(e.target.value)}))}/>
           </div>
           <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", paddingTop: 18 }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
@@ -1219,13 +1252,18 @@ export const ContractorsScreen = () => {
                   <ProgressBar value={c.stageProgressPct ?? 0} color="var(--accent)" height={6}/>
                   <div style={{fontSize:11,color:"var(--text3)",marginTop:5,textAlign:"left"}}>התקדמות ממוצעת לפי השלבים המשויכים</div>
                 </div>
+                {c.role === 'קבלן עד מפתח' && (
+                  <div style={{fontSize:12,color:"#475569",background:"#F1F5F9",padding:"8px 12px",borderRadius:8}}>
+                    💡 השלבים פרסו את ימי הפרויקט באופן יחסי כמפל (Gantt). ניתן לערוך את תאריכי השלבים דרך מסך <strong>"שלבי בנייה"</strong> - עדכון תאריך סיום ישפיע אוטומטית על השלבים הבאים!
+                  </div>
+                )}
                 {c.stagePaymentMismatch && (
                   <div style={{border:"1px solid #FCD34D",background:"#FFFBEB",color:"#92400E",borderRadius:8,padding:"8px 10px",fontSize:12,fontWeight:700,lineHeight:1.45}}>
                     {c.stagePaymentMismatchReason || `סכום השלבים המשויכים לקבלן (${fmtMoney(c.stagePaymentTotal || 0)}) לא תואם לסכום החוזה (${fmtMoney(c.budget)}).`}
                   </div>
                 )}
                 <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(210px,1fr))",gap:8}}>
-                  {stages.length ? stages.map(stage => {
+                  {visibleStages.length ? visibleStages.map(stage => {
                     const id = stageDbId(stage);
                     const checked = (c.stages ?? []).some(linkedStage => stageDbId(linkedStage) === id);
                     return (
@@ -1261,34 +1299,48 @@ export const ContractorsScreen = () => {
                 )}
                 {(c.stages?.length ?? 0) > 0 && (
                   <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,borderTop:"1px solid var(--border)",paddingTop:12}}>
-                    <div>
-                      <div style={{fontSize:13,fontWeight:800}}>מקור לוח התשלומים</div>
-                      <div style={{fontSize:11,color:"var(--text3)"}}>
-                        {c.paymentMode === 'stage_synced'
-                          ? "התשלומים נבנים אוטומטית ממשימות ואבני הדרך של השלבים המקושרים."
-                          : "התשלומים נקבעים ומנוהלים באופן חופשי ועצמאי מהשלבים."}
+                    {c.role === 'קבלן עד מפתח' ? (
+                      <div style={{display:"flex", alignItems:"center", gap: 10, background:"#EEF2FF", padding:"10px 14px", borderRadius: 8, width:"100%"}}>
+                        <Icon n="info" color="#3730A3" s={16}/>
+                        <div>
+                          <div style={{fontSize:13,fontWeight:800, color:"#3730A3"}}>לוח תשלומים מסונכרן למסך שלבי עבודה</div>
+                          <div style={{fontSize:11,color:"#4F46E5", marginTop:2}}>
+                            בקבלן מפתח לוח התשלומים מנהל את השלבים. כל הוספה, עריכה או שינוי של שלבים מתבצעים ישירות כאן.
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                    <div style={{display:"flex",gap:6,background:"#F4F4F5",borderRadius:8,padding:3}}>
-                      {[
-                        {mode:'stage_synced' as const,label:'לפי משימות השלבים'},
-                        {mode:'custom' as const,label:'לפי חוזה קבלן'},
-                      ].map(option => {
-                        const active = (c.paymentMode ?? 'custom') === option.mode;
-                        const isDisabled = savingPaymentMode || active || (selectedPaymentStarted && option.mode === 'stage_synced');
-                        return (
-                          <button
-                            key={option.mode}
-                            type="button"
-                            disabled={isDisabled}
-                            onClick={()=>handlePaymentModeChange(c, option.mode)}
-                            style={{border:"none",borderRadius:6,padding:"6px 10px",fontFamily:"'Heebo',sans-serif",fontSize:12,fontWeight:700,cursor:savingPaymentMode?"wait":isDisabled?"default":"pointer",background:active?"#fff":"transparent",color:active?"var(--accent)":isDisabled&&!active?"var(--text3)":"var(--text2)",boxShadow:active?"var(--shadow-sm)":"none",opacity:isDisabled&&!active?0.6:1}}
-                          >
-                            {option.label}
-                          </button>
-                        );
-                      })}
-                    </div>
+                    ) : (
+                      <>
+                        <div>
+                          <div style={{fontSize:13,fontWeight:800}}>מקור לוח התשלומים</div>
+                          <div style={{fontSize:11,color:"var(--text3)"}}>
+                            {c.paymentMode === 'stage_synced'
+                              ? "התשלומים נבנים אוטומטית ממשימות ואבני הדרך של השלבים המקושרים."
+                              : "התשלומים נקבעים ומנוהלים באופן חופשי ועצמאי מהשלבים."}
+                          </div>
+                        </div>
+                        <div style={{display:"flex",gap:6,background:"#F4F4F5",borderRadius:8,padding:3}}>
+                          {[
+                            {mode:'stage_synced' as const,label:'לפי משימות השלבים'},
+                            {mode:'custom' as const,label:'לפי חוזה קבלן'},
+                          ].map(option => {
+                            const active = (c.paymentMode ?? 'custom') === option.mode;
+                            const isDisabled = savingPaymentMode || active || (selectedPaymentStarted && option.mode === 'stage_synced');
+                            return (
+                              <button
+                                key={option.mode}
+                                type="button"
+                                disabled={isDisabled}
+                                onClick={()=>handlePaymentModeChange(c, option.mode)}
+                                style={{border:"none",borderRadius:6,padding:"6px 10px",fontFamily:"'Heebo',sans-serif",fontSize:12,fontWeight:700,cursor:savingPaymentMode?"wait":isDisabled?"default":"pointer",background:active?"#fff":"transparent",color:active?"var(--accent)":isDisabled&&!active?"var(--text3)":"var(--text2)",boxShadow:active?"var(--shadow-sm)":"none",opacity:isDisabled&&!active?0.6:1}}
+                              >
+                                {option.label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </>
+                    )}
                   </div>
                 )}
               </div>
@@ -1296,7 +1348,7 @@ export const ContractorsScreen = () => {
             <PaymentSchedule
               key={paymentScheduleKey(c)}
               contractor={c}
-              locked={c.paymentMode === 'stage_synced'}
+              locked={c.paymentMode === 'stage_synced' && c.role !== 'קבלן עד מפתח'}
               onTogglePaid={handleTogglePaid}
               onSaveSchedule={handleSaveSchedule}
               onLock={handleLockPayment}

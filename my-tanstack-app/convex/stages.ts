@@ -390,6 +390,9 @@ const insertStageFromTemplate = async (
   stage: StageTemplateInput,
   sortOrder: number,
 ) => {
+  let contractorRole = stage.contractorRole;
+  let contractorIds = stage.contractorIds || [];
+
   const stageId = await ctx.db.insert('stages', {
     projectId,
     legacyId: stage.legacyId,
@@ -401,15 +404,15 @@ const insertStageFromTemplate = async (
     startDate: stage.startDate,
     endDate: stage.endDate,
     dependsOnPrevious: sortOrder > 0 && Boolean(stage.dependsOnPrevious),
-    ...(stage.contractorRole ? { contractorRole: stage.contractorRole } : {}),
+    ...(contractorRole ? { contractorRole } : {}),
     payment: {
       amount: stage.amount,
       status: 'draft',
     },
   });
 
-  if (stage.contractorIds?.length) {
-    await syncStageContractors(ctx, projectId, stageId, stage.contractorIds);
+  if (contractorIds.length) {
+    await syncStageContractors(ctx, projectId, stageId, contractorIds);
   }
 
   const taskIdByLegacyId = new Map<number, Id<'stageTasks'>>();
@@ -553,6 +556,7 @@ export const updateStageDetails = mutation({
   args: {
     stageId: v.id('stages'),
     name: v.string(),
+    icon: v.optional(v.string()),
     contractorRole: v.optional(v.string()),
     contractorIds: v.optional(v.array(v.id('contractors'))),
     startDate: v.string(),
@@ -573,6 +577,7 @@ export const updateStageDetails = mutation({
       endDate: args.endDate,
       patch: {
         name: args.name.trim(),
+        icon: args.icon,
         contractorRole: args.contractorRole,
         dependsOnPrevious: stage.sortOrder > 0 && Boolean(args.dependsOnPrevious),
         payment: {
@@ -595,6 +600,7 @@ export const updateStageAdvanced = mutation({
   args: {
     stageId: v.id('stages'),
     name: v.string(),
+    icon: v.optional(v.string()),
     contractorRole: v.optional(v.string()),
     contractorIds: v.optional(v.array(v.id('contractors'))),
     startDate: v.string(),
@@ -623,6 +629,7 @@ export const updateStageAdvanced = mutation({
       endDate: args.endDate,
       patch: {
         name: args.name.trim(),
+        icon: args.icon,
         contractorRole: args.contractorRole,
         dependsOnPrevious: stage.sortOrder > 0 && Boolean(args.dependsOnPrevious),
         payment: {
@@ -861,15 +868,31 @@ export const setContractorPaymentMode = mutation({
       }
       await syncContractorStagePayments(ctx, args.contractorId);
     } else {
-      for (const milestone of existingMilestones) {
-        if (!milestone.paid) {
-          await ctx.db.patch(milestone._id, {
-            sourceMode: 'custom',
-            sourceStageId: undefined,
-            sourceStageMilestoneId: undefined,
-            sourceTaskId: undefined,
-          });
+      const unmutatedMilestones = existingMilestones.filter((m) => !m.paid);
+      const paidPct = existingMilestones.filter((m) => m.paid).reduce((s, m) => s + m.pct, 0);
+      const remainingPct = 100 - paidPct;
+      const sumAmounts = unmutatedMilestones.reduce((s, m) => s + (m.amount || 0), 0);
+      let currentPctSum = 0;
+
+      for (let i = 0; i < unmutatedMilestones.length; i++) {
+        const milestone = unmutatedMilestones[i];
+        let newPct = 0;
+        if (i === unmutatedMilestones.length - 1) {
+          newPct = Math.round((remainingPct - currentPctSum) * 100) / 100;
+        } else {
+          newPct = sumAmounts > 0
+            ? Math.round(((milestone.amount || 0) / sumAmounts) * remainingPct * 100) / 100
+            : Math.round((remainingPct / unmutatedMilestones.length) * 100) / 100;
+          currentPctSum += newPct;
         }
+
+        await ctx.db.patch(milestone._id, {
+          pct: newPct,
+          sourceMode: 'custom',
+          sourceStageId: undefined,
+          sourceStageMilestoneId: undefined,
+          sourceTaskId: undefined,
+        });
       }
     }
 
@@ -1064,7 +1087,7 @@ export const deleteStage = mutation({
   handler: async (ctx, args) => {
     const stage = await ctx.db.get(args.stageId);
     if (!stage) {
-      throw new Error('Stage not found');
+      return;
     }
 
     const milestones = await ctx.db
