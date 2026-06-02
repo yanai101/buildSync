@@ -880,21 +880,19 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           </div>
         </div>
         <div style={{ flex: 1, position: 'relative' }}>
-          <AnimatePresence mode="wait">
-            <motion.div 
+          <AnimatePresence mode="sync">
+            <motion.div
               key={currentPath}
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -15 }}
-              transition={{ duration: 0.25, ease: "easeOut" }}
-              style={{ 
-                position: 'absolute', 
-                inset: 0, 
-                overflowY: 'auto', 
-                display: 'flex', 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.18, ease: "easeOut" }}
+              style={{
+                position: 'absolute',
+                inset: 0,
+                overflowY: 'auto',
+                display: 'flex',
                 flexDirection: 'column',
-                WebkitTransform: 'translate3d(0,0,0)',
-                transform: 'translate3d(0,0,0)'
               }}
             >
               {children}
