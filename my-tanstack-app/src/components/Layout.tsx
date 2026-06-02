@@ -236,6 +236,28 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const dbNotes = useQuery(api.queries.listNotes, project?._id ? { projectId: project._id } : "skip")
   const unreadNotesCount = dbNotes?.filter(n => !(n as any).readAt && (n as any).fromUserId !== identity?.userId).length || 0;
 
+  const dbDailyLogs = useQuery(api.dailyLogs.getLogs, project?._id ? { projectId: project._id } : "skip")
+  const todayStr = new Date().toISOString().split('T')[0];
+  const hasDailyLogToday = dbDailyLogs?.some(l => l.date === todayStr) ?? false;
+  
+  const [lastViewedDailyLogs, setLastViewedDailyLogs] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setLastViewedDailyLogs(window.localStorage.getItem('buildsync:last_viewed_daily_logs'));
+    }
+  }, []);
+
+  React.useEffect(() => {
+    if (currentPath === '/daily-logs' && typeof window !== 'undefined') {
+      const today = new Date().toISOString().split('T')[0];
+      window.localStorage.setItem('buildsync:last_viewed_daily_logs', today);
+      setLastViewedDailyLogs(today);
+    }
+  }, [currentPath]);
+
+  const showDailyLogBadge = hasDailyLogToday && lastViewedDailyLogs !== todayStr && currentPath !== '/daily-logs';
+
   const [showWelcomeModal, setShowWelcomeModal] = React.useState(false);
   const [showMobileGuidesModal, setShowMobileGuidesModal] = React.useState(false);
   const [showSupportModal, setShowSupportModal] = React.useState(false);
@@ -477,7 +499,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                       {items.map(n => {
                         const isDisabled = projects.length === 0 && n.id !== '/projects';
                         const isPremiumLocked = PREMIUM_ROUTES.includes(n.id) && !isProOrPremium;
-                        const badgeVal = n.id === '/notes' && unreadNotesCount > 0 ? unreadNotesCount : n.badge;
+                        const badgeVal = n.id === '/notes' && unreadNotesCount > 0 ? unreadNotesCount : 
+                                         n.id === '/daily-logs' && showDailyLogBadge ? 'חדש' : n.badge;
                         return (
                           <Link
                             id={`tour-nav-${n.id.replace('/', '') || 'dashboard'}`}
@@ -969,7 +992,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                         {items.map(n => {
                           const isDisabled = projects.length === 0 && n.id !== '/projects';
-                          const badgeVal = n.id === '/notes' && unreadNotesCount > 0 ? unreadNotesCount : n.badge;
+                          const badgeVal = n.id === '/notes' && unreadNotesCount > 0 ? unreadNotesCount : 
+                                           n.id === '/daily-logs' && showDailyLogBadge ? 'חדש' : n.badge;
                           
                           return (
                             <Link

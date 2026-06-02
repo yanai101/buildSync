@@ -1,6 +1,7 @@
 import { mutation, query } from './_generated/server';
 import { v } from 'convex/values';
 import { getAuthUserId } from '@convex-dev/auth/server';
+import { insertActivity } from './_lib/activity';
 
 export const getLogByDate = query({
   args: { projectId: v.id('projects'), date: v.string() },
@@ -108,7 +109,7 @@ export const saveLog = mutation({
       });
       return args.logId;
     } else {
-      return await ctx.db.insert('dailyLogs', {
+      const newId = await ctx.db.insert('dailyLogs', {
         projectId: args.projectId,
         date: args.date,
         weather: args.weather,
@@ -123,6 +124,13 @@ export const saveLog = mutation({
         instructions: args.instructions,
         images: args.images,
       });
+
+      await insertActivity(ctx, {
+        projectId: args.projectId,
+        text: `הוסיף/ה יומן עבודה חדש לתאריך ${args.date}`,
+      });
+
+      return newId;
     }
   },
 });

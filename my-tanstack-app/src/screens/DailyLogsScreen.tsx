@@ -3,7 +3,7 @@ import { useCurrentProject } from '../hooks/useCurrentProject';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { ScreenBoundary } from '../components/ScreenBoundary';
-import { PageBackground, EmptyState, Btn, Icon, ConfirmDialog, FeedbackModal, PremiumLock } from '../components/Shared';
+import { PageBackground, EmptyState, Btn, Icon, ConfirmDialog, FeedbackModal, PremiumLock, Modal } from '../components/Shared';
 import { useRequireRole } from '../hooks/useRequireRole';
 import { AccessDenied, AccessLoading } from '../components/AccessDenied';
 import { useSubscription } from '../hooks/useSubscription';
@@ -33,6 +33,7 @@ export const DailyLogsScreen = () => {
   const [uploadingImagesCount, setUploadingImagesCount] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [deletingImages, setDeletingImages] = useState<Set<string>>(new Set());
+  const [viewFile, setViewFile] = useState<{ url: string } | null>(null);
 
   // Local state for the form so we can edit before saving
   const [form, setForm] = useState({
@@ -477,7 +478,7 @@ export const DailyLogsScreen = () => {
                     const isDeleting = deletingImages.has(img.storageId);
                     return (
                     <div key={i} style={{ position: "relative", width: 100, height: 100, borderRadius: 8, overflow: "hidden", border: "1px solid var(--border)" }}>
-                      <img src={img.url} style={{ width: "100%", height: "100%", objectFit: "cover", opacity: isDeleting ? 0.5 : 1, transition: "opacity 0.2s" }} />
+                      <img src={img.url} onClick={() => setViewFile({ url: img.url || '' })} style={{ width: "100%", height: "100%", objectFit: "cover", opacity: isDeleting ? 0.5 : 1, transition: "opacity 0.2s", cursor: "pointer" }} />
                       
                       {isDeleting && (
                         <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.3)" }}>
@@ -587,6 +588,16 @@ export const DailyLogsScreen = () => {
         </div>
 
         {feedback && <FeedbackModal {...feedback} onClose={() => setFeedback(null)} />}
+        {viewFile && (
+          <Modal title="תצוגת תמונה" onClose={() => setViewFile(null)}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+              <img src={viewFile.url} alt="Preview" style={{ maxWidth: '100%', maxHeight: '70vh', borderRadius: 8, objectFit: 'contain' }} />
+              <div style={{ display: 'flex', justifyContent: 'flex-end', width: '100%' }}>
+                <Btn onClick={() => setViewFile(null)}>סגור</Btn>
+              </div>
+            </div>
+          </Modal>
+        )}
       </PremiumLock>
     </ScreenBoundary>
   );
