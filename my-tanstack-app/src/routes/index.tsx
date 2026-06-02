@@ -494,7 +494,7 @@ function LandingPage() {
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: 16 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <Icon n="folder" s={24} c="#EAB308" />
-                  <span style={{ fontSize: 18, fontWeight: 'bold' }}>רישוי וביורוקרטיה</span>
+                  <span style={{ fontSize: 18, fontWeight: 'bold' }}>רישוי והיתרים</span>
                 </div>
                 <div style={{ background: 'rgba(234, 179, 8, 0.1)', color: '#EAB308', padding: '4px 12px', borderRadius: 12, fontSize: 12, fontWeight: 'bold' }}>
                   מסמכים מאומתים
