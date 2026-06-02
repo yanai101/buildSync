@@ -887,7 +887,15 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -15 }}
               transition={{ duration: 0.25, ease: "easeOut" }}
-              style={{ position: 'absolute', inset: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}
+              style={{ 
+                position: 'absolute', 
+                inset: 0, 
+                overflowY: 'auto', 
+                display: 'flex', 
+                flexDirection: 'column',
+                WebkitTransform: 'translate3d(0,0,0)',
+                transform: 'translate3d(0,0,0)'
+              }}
             >
               {children}
             </motion.div>
