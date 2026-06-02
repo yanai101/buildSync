@@ -381,12 +381,6 @@ export const GuidesScreen = () => {
                       >
                         <Icon n={tab.icon} s={16} c={isCurrent ? 'var(--accent)' : 'var(--text3)'} />
                         {tab.label}
-                        {isCurrent && (
-                          <motion.div 
-                            layoutId="activeTabIndicator" 
-                            style={{ position: 'absolute', bottom: -1, left: 0, right: 0, height: 2, background: 'var(--accent)' }} 
-                          />
-                        )}
                       </button>
                     );
                   })}
