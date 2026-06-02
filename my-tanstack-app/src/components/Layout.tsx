@@ -75,6 +75,7 @@ export const PAGE_TITLES: Record<string, string> = {
   "/timeline": "לוח זמנים",
   "/account": "פרטי חשבון",
   "/guides": "סרטוני הדרכה",
+  "/terms": "תנאי שימוש והגבלת אחריות",
 }
 
 export const PAGE_SUBTITLES: Record<string, string> = {
@@ -331,7 +332,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   // group nav sections
   const sections = Array.from(new Set(NAV.map(n => n.section)))
 
-  const publicRoutes = ['/', '/register', '/login']
+  const publicRoutes = ['/', '/register', '/login', '/terms']
   const isPublicRoute = (path: string) =>
     publicRoutes.includes(path) || path.startsWith('/join/')
 
