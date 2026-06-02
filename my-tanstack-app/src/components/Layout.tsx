@@ -973,17 +973,16 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               onClick={e => e.stopPropagation()}
               style={{
                 position: 'absolute',
-                bottom: 0,
+                bottom: 'calc(80px + env(safe-area-inset-bottom))',
                 left: 0,
                 right: 0,
                 background: 'var(--surface)',
                 borderTopLeftRadius: 24,
                 borderTopRightRadius: 24,
-                padding: '24px 20px 0',
-                maxHeight: '85vh',
+                padding: '24px 20px 24px',
+                maxHeight: 'calc(100vh - 80px - env(safe-area-inset-bottom) - 40px)',
                 overflowY: 'auto',
-                boxShadow: '0 -10px 40px rgba(0,0,0,0.1)',
-                paddingBottom: '24px' // fallback
+                boxShadow: '0 -10px 40px rgba(0,0,0,0.1)'
               }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
@@ -1175,9 +1174,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                   </Link>
                 </div>
               </div>
-
-              {/* Spacer for bottom navigation bar so content isn't hidden behind it */}
-              <div style={{ height: 'calc(80px + env(safe-area-inset-bottom))' }} />
             </motion.div>
           </motion.div>
         )}

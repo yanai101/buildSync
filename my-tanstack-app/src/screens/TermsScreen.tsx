@@ -12,7 +12,16 @@ export const TermsScreen = () => {
           <Icon n="arrow-right" s={18} /> חזרה לדף הבית
         </Link>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginRight: 'auto' }}>
-          <Icon n="shield" s={24} c="var(--accent)" />
+          <img 
+            src="/logo.png" 
+            alt="BuildSync Logo" 
+            style={{ 
+              width: 28, 
+              height: 28, 
+              borderRadius: 6,
+              objectFit: 'cover'
+            }} 
+          />
           <span style={{ fontSize: 20, fontWeight: 800 }}>BuildSync</span>
         </div>
       </header>
