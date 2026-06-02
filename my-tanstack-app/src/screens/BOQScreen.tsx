@@ -325,7 +325,7 @@ export const BOQScreen = () => {
 
   const handleExportPDF = async () => {
     if (!isProOrPremium) {
-      notify({ title: 'תכונת Pro', body: 'ייצוא כתב כמויות ל-PDF זמין במסלול Pro ומעלה.', kind: 'info' });
+      notify({ title: 'תכונת Pro', body: 'ייצוא רשימת עלויות רכש ל-PDF זמין במסלול Pro ומעלה.', kind: 'info' });
       return;
     }
     if (!printRef.current) return;
@@ -590,14 +590,14 @@ export const BOQScreen = () => {
   const cats = [...new Set(roomItems.map((i)=>i.cat))];
 
   if (roleLoading) return <AccessLoading />;
-  if (!allowed) return <AccessDenied message="כתב כמויות וניהול BoQ מורשים לצוות הניהול והפיקוח בלבד." />;
+  if (!allowed) return <AccessDenied message="ניהול עלויות רכש מורשה לצוות הניהול והפיקוח בלבד." />;
 
   return (
     <ScreenBoundary loading={loading} error={null} onRetry={() => window.location.reload()}>
       <PremiumLock
         isLocked={!isProOrPremium}
-        title="ניהול חכם של כתב כמויות"
-        description="קבל גישה מלאה לניהול כתב הכמויות, ייצוא ל-PDF ומעקב מדויק אחר הזמנות מספקים."
+        title="ניהול חכם של עלויות רכש"
+        description="קבל גישה מלאה לניהול רשימת העלויות, ייצוא ל-PDF ומעקב מדויק אחר הזמנות מספקים."
       >
         <div className="page-content">
           <div style={{display:"flex",gap:12,alignItems:"center",marginBottom:20,flexWrap:"wrap"}}>

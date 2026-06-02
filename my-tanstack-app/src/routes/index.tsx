@@ -282,10 +282,10 @@ function LandingPage() {
             <span className="feature-badge" style={{color: 'var(--warning)'}}>שליטה פיננסית עליונה</span>
             <h2 className="feature-title">סוף לחריגות התקציב ולאקסלים הישנים.</h2>
             <p className="feature-desc">
-              המערכת מספקת לך מעטפת מלאה לבקרה על הכסף, תוך שימוש באשף כתבי כמויות (BOQ) שמונע רכש מיותר ואובדן שליטה.
+              המערכת מספקת לך מעטפת מלאה לבקרה על הכסף, תוך שימוש באשף כמויות שמונע רכש מיותר ואובדן שליטה.
             </p>
             <ul className="bullet-list">
-              <li className="bullet-item"><Icon n="clipboard" s={28} c="var(--warning)" style={{marginTop:4}} /> <div><strong>אשף כתבי כמויות (BOQ):</strong> בניית מפרטי רכש רוחביים לפי כל חדר בבית (אינסטלציה, ריצוף, חשמל). המערכת מסכמת אוטומטית שטח כולל ועלויות צפויות.</div></li>
+              <li className="bullet-item"><Icon n="clipboard" s={28} c="var(--warning)" style={{marginTop:4}} /> <div><strong>אשף כמויות:</strong> בניית מפרטי רכש רוחביים לפי כל חדר בבית (אינסטלציה, ריצוף, חשמל). המערכת מסכמת אוטומטית שטח כולל ועלויות צפויות.</div></li>
               <li className="bullet-item"><Icon n="search" s={28} c="var(--warning)" style={{marginTop:4}} /> <div><strong>מעקב הזמנות חכם:</strong> שליטה מלאה באספקת חומרים לאתר - הזמנות חסרות, קבלות חלקיות ותעודות משלוח מצורפות הכל במקום אחד.</div></li>
               <li className="bullet-item"><Icon n="chart" s={28} c="var(--warning)" style={{marginTop:4}} /> <div><strong>מנגנון תשלום לקבלנים:</strong> אל תשלם מקדמות אקסטרה. BuildSync בונה אוטומטית לוחות סילוקין לתשלום לפי "אבני דרך" (לדוג: 20% בגמר שלד חוץ). התשלום נפתח רק כשהמפקח סימן שהשלב הסתיים.</div></li>
               <li className="bullet-item"><Icon n="calendar" s={28} c="var(--warning)" style={{marginTop:4}} /> <div><strong>מעקב תקציב דינמי:</strong> בכל רגע נתון תוכל לראות כמה הוצאת, כמה מהתקציב כבר 'משוריין' לקבלנים קיימים, והיכן יש לך עודפים פיננסיים.</div></li>
@@ -732,7 +732,7 @@ function LandingPage() {
               <ul className="bullet-list" style={{ gap: 16 }}>
                 <li className="bullet-item" style={{ fontSize: '1rem' }}><Icon n="check" s={20} c="var(--success)" /> <div>פרויקט אחד בלבד</div></li>
                 <li className="bullet-item" style={{ fontSize: '1rem' }}><Icon n="check" s={20} c="var(--success)" /> <div>ניהול תקציב, משימות וצ'אט בסיסי</div></li>
-                <li className="bullet-item" style={{ fontSize: '1rem', opacity: 0.5 }}><Icon n="x" s={20} c="#888" /> <div>ללא כתבי כמויות (BOQ)</div></li>
+                <li className="bullet-item" style={{ fontSize: '1rem', opacity: 0.5 }}><Icon n="x" s={20} c="#888" /> <div>ללא ניהול עלויות רכש</div></li>
                 <li className="bullet-item" style={{ fontSize: '1rem', opacity: 0.5 }}><Icon n="x" s={20} c="#888" /> <div>ללא יומני עבודה (Daily Logs)</div></li>
                 <li className="bullet-item" style={{ fontSize: '1rem', opacity: 0.5 }}><Icon n="x" s={20} c="#888" /> <div>ללא מעקב הזמנות מול ספקים</div></li>
               </ul>
@@ -746,7 +746,7 @@ function LandingPage() {
               <div style={{ color: '#aaa', marginBottom: 24, fontSize: '1.1rem' }}>למפקחים, קבלנים ויזמים שמנהלים שטח</div>
               <ul className="bullet-list" style={{ gap: 16 }}>
                 <li className="bullet-item" style={{ fontSize: '1rem' }}><Icon n="check" s={20} c="var(--accent)" /> <div>עד 5 פרויקטים במקביל</div></li>
-                <li className="bullet-item" style={{ fontSize: '1rem' }}><Icon n="check" s={20} c="var(--accent)" /> <div>כתבי כמויות אינטראקטיביים והצעות מחיר</div></li>
+                <li className="bullet-item" style={{ fontSize: '1rem' }}><Icon n="check" s={20} c="var(--accent)" /> <div>ניהול עלויות רכש אינטראקטיבי והצעות מחיר</div></li>
                 <li className="bullet-item" style={{ fontSize: '1rem' }}><Icon n="check" s={20} c="var(--accent)" /> <div>מעקב קבלת סחורות ושטרי מטען מהשטח</div></li>
                 <li className="bullet-item" style={{ fontSize: '1rem' }}><Icon n="check" s={20} c="var(--accent)" /> <div>הפקת יומני עבודה ל-PDF</div></li>
               </ul>

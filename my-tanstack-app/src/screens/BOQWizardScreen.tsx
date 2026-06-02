@@ -825,7 +825,7 @@ export const BOQWizardScreen = () => {
           <div className="page-content" style={{maxWidth:1200,margin:"0 auto"}}>
           <div style={{display:"flex",flexWrap:"wrap",justifyContent:"space-between",alignItems:"flex-end",gap:16,marginBottom:32}}>
             <div>
-              <h1 style={{fontSize:28,fontWeight:900,margin:0,color:"#1A1A1A"}}>אשף כתב כמויות</h1>
+              <h1 style={{fontSize:28,fontWeight:900,margin:0,color:"#1A1A1A"}}>אשף כמויות</h1>
               <div style={{color:"var(--text3)",fontSize:15,marginTop:4}}>עבור חדר-חדר ובנה רשימת כמויות לרכישה / ייבוא</div>
             </div>
             <div style={{display:"flex",alignItems:"center",gap:16,fontSize:14,color:"var(--text3)"}}>
@@ -943,7 +943,7 @@ export const BOQWizardScreen = () => {
         <PremiumLock 
           isLocked={!isProOrPremium} 
           title="אשף הכמויות זמין במסלול Pro ומעלה"
-          description="שדרג את החשבון שלך כדי לקבל גישה לאשף שיעזור לך להכין כתב כמויות מדויק בקליק, כולל הצעות חכמות וייצוא ממותג ל-PDF."
+          description="שדרג את החשבון שלך כדי לקבל גישה לאשף שיעזור לך להכין רשימת עלויות רכש מדויקת בקליק, כולל הצעות חכמות וייצוא ממותג ל-PDF."
         >
           <div style={{ position: 'relative', zIndex: 1, minHeight: 400, display: 'flex', flexDirection: 'column' }}>
             <PageBackground image="/empty_states/boq.png" />
@@ -986,7 +986,7 @@ export const BOQWizardScreen = () => {
           {/* Header Section */}
         <div style={{display:"flex",flexWrap:"wrap",justifyContent:"space-between",alignItems:"flex-end",gap:16,marginBottom:32}}>
           <div>
-            <h1 style={{fontSize:28,fontWeight:900,margin:0,color:"#1A1A1A"}}>אשף כתב כמויות</h1>
+            <h1 style={{fontSize:28,fontWeight:900,margin:0,color:"#1A1A1A"}}>אשף כמויות</h1>
             <div style={{color:"var(--text3)",fontSize:15,marginTop:4}}>עבור חדר-חדר ובנה רשימת כמויות לרכישה / ייבוא</div>
           </div>
           <div style={{display:"flex",alignItems:"center",gap:16,fontSize:14,color:"var(--text3)"}}>
