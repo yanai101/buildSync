@@ -230,38 +230,55 @@ export const GuidesScreen = () => {
                   background: '#0B0B0C', 
                   border: '1px solid rgba(255,255,255,0.06)',
                   boxShadow: '0 20px 40px rgba(0,0,0,0.15)',
-                  position: 'relative'
+                  position: 'relative',
+                  transform: 'translateZ(0)'
                 }}
               >
-                <div style={{ position: 'relative', width: '100%', paddingBottom: '56.25%', background: '#000' }}>
-                  {isYouTube && youtubeId ? (
-                    <iframe
-                      width="100%"
-                      height="100%"
-                      src={`https://www.youtube.com/embed/${youtubeId}?autoplay=${isPlaying ? 1 : 0}`}
-                      title="YouTube video player"
-                      frameBorder="0"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      allowFullScreen
-                      style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
-                    ></iframe>
-                  ) : (
-                    <video 
-                      ref={videoRef}
-                      src={selectedGuide.videoUrl} 
-                      controls
-                      onPlay={() => setIsPlaying(true)}
-                      onPause={() => setIsPlaying(false)}
-                      style={{ 
-                        position: 'absolute', 
-                        top: 0, 
-                        left: 0, 
-                        width: '100%', 
-                        height: '100%', 
-                        objectFit: 'contain' 
-                      }} 
-                    />
-                  )}
+                <div 
+                  className="guide-video-container"
+                  style={{
+                    borderRadius: 16,
+                    overflow: 'hidden',
+                    boxShadow: '0 8px 32px rgba(0,0,0,0.1)',
+                    background: '#000',
+                    position: 'relative',
+                    width: '100%',
+                    paddingBottom: '56.25%',
+                    transform: 'translateZ(0)',
+                    WebkitTransform: 'translateZ(0)'
+                  }}
+                >
+                  <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 1, backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden' }}>
+                    {isYouTube && youtubeId ? (
+                      <iframe
+                        width="100%"
+                        height="100%"
+                        src={`https://www.youtube.com/embed/${youtubeId}?autoplay=${isPlaying ? 1 : 0}`}
+                        title="YouTube video player"
+                        frameBorder="0"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                        style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', borderRadius: 16 }}
+                      ></iframe>
+                    ) : (
+                      <video 
+                        ref={videoRef}
+                        src={selectedGuide.videoUrl} 
+                        controls
+                        onPlay={() => setIsPlaying(true)}
+                        onPause={() => setIsPlaying(false)}
+                        style={{ 
+                          position: 'absolute', 
+                          top: 0, 
+                          left: 0, 
+                          width: '100%', 
+                          height: '100%', 
+                          objectFit: 'contain',
+                          borderRadius: 16
+                        }} 
+                      />
+                    )}
+                  </div>
 
                   {/* Play Overlay if not playing */}
                   <AnimatePresence>
