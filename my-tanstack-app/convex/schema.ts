@@ -172,4 +172,7 @@ export default defineSchema({
   supportTickets: defineTable(zodToConvexFields(s.zSupportTicket))
     .index('by_user', ['userId'])
     .index('by_status', ['status']),
+
+  guides: defineTable(zodToConvexFields(s.zGuide))
+    .index('by_sort', ['sortOrder']),
 });

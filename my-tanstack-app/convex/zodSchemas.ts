@@ -607,3 +607,14 @@ export const zSupportTicket = {
   urlContext: z.string().optional(),
   resolvedAt: z.number().optional(),
 };
+
+export const zGuide = {
+  title: z.string(),
+  videoUrl: z.string(),
+  duration: z.string().optional(),
+  description: z.string(),
+  topics: z.array(z.string()).optional(),
+  tips: z.array(z.string()).optional(),
+  faqs: z.array(z.object({ q: z.string(), a: z.string() })).optional(),
+  sortOrder: z.number().optional(),
+};

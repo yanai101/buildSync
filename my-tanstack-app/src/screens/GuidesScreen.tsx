@@ -2,77 +2,25 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Icon, ProgressBar, Btn, PageBackground } from '../components/Shared';
 import { ScreenBoundary } from '../components/ScreenBoundary';
+import { useQuery } from 'convex/react';
+import { api } from '../../convex/_generated/api';
 
-interface Guide {
-  id: string;
+export interface Guide {
+  _id?: string;
+  id?: string;
   title: string;
   videoUrl: string;
-  duration: string;
+  duration?: string;
   description: string;
-  topics: string[];
-  tips: string[];
-  faqs: { q: string; a: string }[];
+  topics?: string[];
+  tips?: string[];
+  faqs?: { q: string; a: string }[];
 }
-
-const GUIDES: Guide[] = [
-  {
-    id: 'intro',
-    title: 'מדריך 1: היכרות עם BuildSync וניהול פרויקט',
-    videoUrl: '/videos/step1.mp4',
-    duration: '10 שניות',
-    description: 'בסרטון זה נלמד כיצד לנווט במערכת, להגדיר את פרויקט הבנייה הראשון שלכם, ולנהל את שלבי העבודה בצורה חכמה ומדויקת.',
-    topics: [
-      'התמצאות בלוח הבקרה (Dashboard)',
-      'הגדרת בית חדש ופרטי הפרויקט',
-      'ניהול שלבי הבנייה השונים ועדכון התקדמות',
-      'שימוש בתפריט הניווט ומעבר בין המסכים',
-    ],
-    tips: [
-      'מומלץ להגדיר את תאריכי היעד לכל שלב כבר בהתחלה כדי לקבל תמונת מצב אמינה בלוח הזמנים.',
-      'שתפו את מפקח הבנייה שלכם בפרויקט – הוא יוכל לעדכן את התקדמות השלבים ישירות מהשטח!',
-    ],
-    faqs: [
-      {
-        q: 'איך אני מוסיף שותפים או בעלי מקצוע לפרויקט שלי?',
-        a: 'כנסו למסך "ניהול צוות" בתפריט הצד, לחצו על "הוסף חבר צוות", בחרו את תפקידו (מפקח, קבלן וכו׳) ושלחו לו הזמנה במייל או באמצעות קישור וואטסאפ ייחודי.',
-      },
-      {
-        q: 'האם המערכת עובדת גם ללא חיבור לאינטרנט?',
-        a: 'BuildSync היא אפליקציית ענן מתקדמת הדורשת חיבור אינטרנט פעיל כדי לסנכרן נתונים בזמן אמת בין כלל הגורמים בשטח.',
-      },
-    ],
-  },
-  {
-    id: 'finance',
-    title: 'מדריך 2: ניהול תקציב, קבלנים וכתב כמויות',
-    videoUrl: '/videos/step2.mp4',
-    duration: '10 שניות',
-    description: 'במדריך זה נצלול לעולם הפיננסי של הפרויקט. נלמד כיצד לעשות שימוש באשף כתבי הכמויות, לנהל חוזים עם קבלנים, לעקוב אחר תשלומים ולמנוע חריגות בתקציב.',
-    topics: [
-      'בניית כתב כמויות מאפס בעזרת אשף החדרים',
-      'הזנת הצעות מחיר מקבלנים והשוואה ביניהן',
-      'מעקב תשלומים בפועל וניהול יתרות',
-      'הבנת דוחות החריגה וניתוח אנליטי של התקציב',
-    ],
-    tips: [
-      'השתמשו ב"אשף הכמויות" כדי לא לפספס אף פריט – הוא ינחה אתכם חדר-חדר כולל נקודות חשמל, אינסטלציה וריצוף.',
-      'לפני אישור תשלום לקבלן, ודאו ששלב העבודה סומן כהושלם ב-100% והעלו תמונה מהשטח להוכחה.',
-    ],
-    faqs: [
-      {
-        q: 'איך עובדת השוואת הצעות המחיר של הקבלנים?',
-        a: 'במסך "הצעות מחיר" תוכלו להעלות הצעות שונות לאותו סעיף עבודה. המערכת תציג לכם השוואה ויזואלית נוחה המדגישה את ההצעה הזולה ביותר ואת אחוזי הסטייה מראש התקציב.',
-      },
-      {
-        q: 'מה ההבדל בין תקציב מאושר, מחויב והוצא בפועל?',
-        a: 'תקציב מאושר הוא הגג שהגדרתם. מחויב הוא סכום שסגרתם מול קבלן בחוזה אך טרם שולם. הוצא בפועל הוא כסף שכבר שילמתם והועבר לקבלנים או לספקים.',
-      },
-    ],
-  },
-];
-
 export const GuidesScreen = () => {
-  const [selectedGuide, setSelectedGuide] = useState<Guide>(GUIDES[0]);
+  const dbGuides = useQuery(api.guides.get);
+  const guidesToUse = dbGuides || [];
+  
+  const [selectedGuide, setSelectedGuide] = useState<Guide | null>(null);
   const [watchedVideos, setWatchedVideos] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<'topics' | 'tips' | 'faq'>('topics');
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
@@ -91,6 +39,13 @@ export const GuidesScreen = () => {
       console.error('Failed to load watched status', e);
     }
   }, []);
+
+  // Set initial guide when data loads
+  useEffect(() => {
+    if (guidesToUse.length > 0 && !selectedGuide) {
+      setSelectedGuide(guidesToUse[0]);
+    }
+  }, [guidesToUse, selectedGuide]);
 
   // Save watched status to localStorage
   const toggleWatched = (id: string, e: React.MouseEvent) => {
@@ -118,6 +73,10 @@ export const GuidesScreen = () => {
   };
 
   const handlePlayToggle = () => {
+    if (selectedGuide?.videoUrl.includes('youtube.com') || selectedGuide?.videoUrl.includes('youtu.be')) {
+      setIsPlaying(true);
+      return;
+    }
     if (videoRef.current) {
       if (isPlaying) {
         videoRef.current.pause();
@@ -128,7 +87,19 @@ export const GuidesScreen = () => {
     }
   };
 
-  const completionPct = Math.round((watchedVideos.length / GUIDES.length) * 100);
+  if (!dbGuides || dbGuides.length === 0 || !selectedGuide) {
+    return <ScreenBoundary loading={true} error={null}><div style={{ padding: 40, textAlign: 'center' }}>{dbGuides?.length === 0 ? 'אין הדרכות כרגע.' : 'טוען הדרכות...'}</div></ScreenBoundary>;
+  }
+
+  const completionPct = Math.round((watchedVideos.length / guidesToUse.length) * 100);
+
+  const getYouTubeId = (url: string) => {
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+    const match = url.match(regExp);
+    return (match && match[2].length === 11) ? match[2] : null;
+  };
+  const isYouTube = selectedGuide.videoUrl.includes('youtube.com') || selectedGuide.videoUrl.includes('youtu.be');
+  const youtubeId = isYouTube ? getYouTubeId(selectedGuide.videoUrl) : null;
 
   return (
     <ScreenBoundary loading={false} error={null}>
@@ -214,7 +185,7 @@ export const GuidesScreen = () => {
             <div>
               <div style={{ fontSize: 11, color: 'var(--text3)', fontWeight: 600 }}>השלמת הדרכות</div>
               <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--text1)', marginTop: 2 }}>
-                {watchedVideos.length} מתוך {GUIDES.length} מדריכים ({completionPct}%)
+                {watchedVideos.length} מתוך {guidesToUse.length} מדריכים ({completionPct || 0}%)
               </div>
             </div>
             <div style={{ width: 80 }}>
@@ -244,21 +215,34 @@ export const GuidesScreen = () => {
                 }}
               >
                 <div style={{ position: 'relative', width: '100%', paddingBottom: '56.25%', background: '#000' }}>
-                  <video 
-                    ref={videoRef}
-                    src={selectedGuide.videoUrl} 
-                    controls
-                    onPlay={() => setIsPlaying(true)}
-                    onPause={() => setIsPlaying(false)}
-                    style={{ 
-                      position: 'absolute', 
-                      top: 0, 
-                      left: 0, 
-                      width: '100%', 
-                      height: '100%', 
-                      objectFit: 'contain' 
-                    }} 
-                  />
+                  {isYouTube && youtubeId ? (
+                    <iframe
+                      width="100%"
+                      height="100%"
+                      src={`https://www.youtube.com/embed/${youtubeId}?autoplay=${isPlaying ? 1 : 0}`}
+                      title="YouTube video player"
+                      frameBorder="0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                      style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
+                    ></iframe>
+                  ) : (
+                    <video 
+                      ref={videoRef}
+                      src={selectedGuide.videoUrl} 
+                      controls
+                      onPlay={() => setIsPlaying(true)}
+                      onPause={() => setIsPlaying(false)}
+                      style={{ 
+                        position: 'absolute', 
+                        top: 0, 
+                        left: 0, 
+                        width: '100%', 
+                        height: '100%', 
+                        objectFit: 'contain' 
+                      }} 
+                    />
+                  )}
 
                   {/* Play Overlay if not playing */}
                   <AnimatePresence>
@@ -324,16 +308,16 @@ export const GuidesScreen = () => {
                   </div>
                   
                   <Btn 
-                    variant={watchedVideos.includes(selectedGuide.id) ? 'ghost' : 'primary'}
-                    onClick={(e: React.MouseEvent) => toggleWatched(selectedGuide.id, e)}
+                    variant={watchedVideos.includes(selectedGuide._id || selectedGuide.id || '') ? 'ghost' : 'primary'}
+                    onClick={(e: React.MouseEvent) => toggleWatched(selectedGuide._id || selectedGuide.id || '', e)}
                     style={{ borderRadius: 10, padding: '8px 16px' }}
                   >
-                    <Icon n={watchedVideos.includes(selectedGuide.id) ? 'x' : 'check'} s={14} />
-                    <span>{watchedVideos.includes(selectedGuide.id) ? 'בטל סימון כנצפה' : 'סמן כנצפה'}</span>
+                    <Icon n={watchedVideos.includes(selectedGuide._id || selectedGuide.id || '') ? 'x' : 'check'} s={14} />
+                    <span>{watchedVideos.includes(selectedGuide._id || selectedGuide.id || '') ? 'בטל סימון כנצפה' : 'סמן כנצפה'}</span>
                   </Btn>
                 </div>
 
-                <p style={{ fontSize: 14, color: 'var(--text2)', lineHeight: 1.6, marginTop: 16 }}>
+                <p style={{ fontSize: 14, color: 'var(--text2)', lineHeight: 1.6, marginTop: 16, whiteSpace: 'pre-wrap' }}>
                   {selectedGuide.description}
                 </p>
               </div>
@@ -384,7 +368,7 @@ export const GuidesScreen = () => {
                         style={{ display: 'flex', flexDirection: 'column', gap: 12 }}
                       >
                         <div style={{ fontSize: 13, color: 'var(--text3)', fontWeight: 600, marginBottom: 4 }}>בסרטון זה נעבור על הנושאים הבאים:</div>
-                        {selectedGuide.topics.map((topic, i) => (
+                        {(selectedGuide.topics || []).map((topic, i) => (
                           <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'var(--bg)', padding: '12px 16px', borderRadius: 12, border: '1px solid var(--border)' }}>
                             <Icon n="check-circle" s={16} c="var(--success)" />
                             <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text1)' }}>{topic}</span>
@@ -402,7 +386,7 @@ export const GuidesScreen = () => {
                         transition={{ duration: 0.2 }}
                         style={{ display: 'flex', flexDirection: 'column', gap: 16 }}
                       >
-                        {selectedGuide.tips.map((tip, i) => (
+                        {(selectedGuide.tips || []).map((tip, i) => (
                           <div 
                             key={i} 
                             style={{ 
@@ -432,7 +416,7 @@ export const GuidesScreen = () => {
                         transition={{ duration: 0.2 }}
                         style={{ display: 'flex', flexDirection: 'column', gap: 12 }}
                       >
-                        {selectedGuide.faqs.map((faq, i) => {
+                        {(selectedGuide.faqs || []).map((faq, i) => {
                           const isExpanded = expandedFaq === i;
                           return (
                             <div 
@@ -478,7 +462,7 @@ export const GuidesScreen = () => {
                                     transition={{ duration: 0.2 }}
                                     style={{ overflow: 'hidden' }}
                                   >
-                                    <div style={{ padding: '0 20px 20px', fontSize: 13, color: 'var(--text2)', lineHeight: 1.6, borderTop: '1px solid var(--border)', paddingTop: 16 }}>
+                                    <div style={{ padding: '0 20px 20px', fontSize: 13, color: 'var(--text2)', lineHeight: 1.6, borderTop: '1px solid var(--border)', paddingTop: 16, whiteSpace: 'pre-wrap' }}>
                                       {faq.a}
                                     </div>
                                   </motion.div>
@@ -506,12 +490,13 @@ export const GuidesScreen = () => {
                 </div>
 
                 <div className="guides-playlist">
-                  {GUIDES.map((guide, idx) => {
-                    const isActive = selectedGuide.id === guide.id;
-                    const isWatched = watchedVideos.includes(guide.id);
+                  {guidesToUse.map((guide, idx) => {
+                    const guideId = guide._id || guide.id || String(idx);
+                    const isActive = selectedGuide._id === guide._id && selectedGuide.id === guide.id;
+                    const isWatched = watchedVideos.includes(guideId);
                     return (
                       <motion.div
-                        key={guide.id}
+                        key={guideId}
                         whileHover={{ y: -2, boxShadow: 'var(--shadow)' }}
                         onClick={() => selectGuide(guide)}
                         style={{
@@ -531,7 +516,7 @@ export const GuidesScreen = () => {
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                             <span 
-                              onClick={(e) => toggleWatched(guide.id, e)}
+                              onClick={(e) => toggleWatched(guideId, e)}
                               style={{ 
                                 width: 22, 
                                 height: 22, 
@@ -554,7 +539,7 @@ export const GuidesScreen = () => {
                           </div>
 
                           <span className="badge badge-pending" style={{ fontSize: 10, padding: '2px 8px' }}>
-                            {guide.duration}
+                            {guide.duration || 'לא צוין'}
                           </span>
                         </div>
 

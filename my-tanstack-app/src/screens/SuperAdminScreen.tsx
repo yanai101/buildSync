@@ -17,7 +17,7 @@ export function SuperAdminScreen() {
   const promoCodes = useQuery(api.superAdmin.getPromoCodes, isSuperAdmin ? {} : 'skip');
   const generatePromoCode = useMutation(api.superAdmin.generatePromoCode);
   const deletePromoCode = useMutation(api.superAdmin.deletePromoCode);
-  const [activeTab, setActiveTab] = useState<'users' | 'promo' | 'cleanup' | 'support'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'promo' | 'cleanup' | 'support' | 'guides'>('users');
 
   const cleanupCandidates = useQuery(api.cleanup.getCleanupCandidates, isSuperAdmin && activeTab === 'cleanup' ? {} : 'skip');
   const deleteProject = useMutation(api.cleanup.manualDeleteProject);
@@ -35,6 +35,22 @@ export function SuperAdminScreen() {
   const [promoValidity, setPromoValidity] = useState<number>(1);
   const [promoMaxUses, setPromoMaxUses] = useState<number>(1);
   const [promoDuration, setPromoDuration] = useState<number>(12); // months
+
+  const guides = useQuery(api.guides.get, isSuperAdmin && activeTab === 'guides' ? {} : 'skip');
+  const createGuide = useMutation(api.guides.create);
+  const updateGuide = useMutation(api.guides.update);
+  const deleteGuide = useMutation(api.guides.remove);
+  const [editingGuide, setEditingGuide] = useState<any | null>(null);
+  const [isAddingGuide, setIsAddingGuide] = useState(false);
+  const [guideForm, setGuideForm] = useState({
+    title: '',
+    videoUrl: '',
+    duration: '',
+    description: '',
+    topics: '',
+    tips: '',
+    faqs: [] as { q: string, a: string }[]
+  });
 
   // Filters state
   const [searchQuery, setSearchQuery] = useState('');
@@ -192,6 +208,25 @@ export function SuperAdminScreen() {
               {supportTicketCount}
             </span>
           )}
+        </button>
+        <button 
+          onClick={() => setActiveTab('guides')}
+          style={{ 
+            background: activeTab === 'guides' ? 'var(--surface)' : 'transparent',
+            border: 'none',
+            borderBottom: activeTab === 'guides' ? '2px solid var(--accent)' : '2px solid transparent',
+            padding: '12px 24px',
+            fontSize: 16,
+            fontWeight: activeTab === 'guides' ? 600 : 400,
+            color: activeTab === 'guides' ? 'var(--text1)' : 'var(--text2)',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8
+          }}
+        >
+          <Icon n="play-circle" s={20} />
+          ניהול הדרכות וידאו
         </button>
       </div>
 
@@ -686,58 +721,154 @@ export function SuperAdminScreen() {
         </Modal>
       )}
 
-      {activeTab === 'support' && (
+      {activeTab === 'guides' && (
         <div className="card" style={{ padding: 24, marginBottom: 24 }}>
-          <h2 style={{ fontSize: 24, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
-            <Icon n="help-circle" s={28} c="var(--accent)" />
-            פניות תמיכה למערכת
-          </h2>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <h2 style={{ fontSize: 24, display: 'flex', alignItems: 'center', gap: 12, margin: 0 }}>
+              <Icon n="play-circle" s={28} c="var(--accent)" />
+              ניהול הדרכות וידאו (Guides)
+            </h2>
+            <Btn variant="primary" onClick={() => {
+              setGuideForm({ title: '', videoUrl: '', duration: '', description: '', topics: '', tips: '', faqs: [] });
+              setIsAddingGuide(true);
+            }}>
+              <Icon n="plus" s={18} /> הוסף מדריך חדש
+            </Btn>
+          </div>
           
-          {!supportTickets ? (
-            <div>טוען פניות...</div>
-          ) : supportTickets.length === 0 ? (
-            <div style={{ color: 'var(--text3)' }}>אין פניות פתוחות כרגע. עבודה יפה! 🎉</div>
+          {!guides ? (
+            <div>טוען הדרכות...</div>
+          ) : guides.length === 0 ? (
+            <div style={{ color: 'var(--text3)' }}>אין הדרכות כרגע.</div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              {supportTickets.map((ticket: any) => (
-                <div key={ticket._id} style={{ border: '1px solid var(--border)', borderRadius: 12, padding: 16, background: 'var(--bg)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <div>
-                      <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
-                        {ticket.topic === 'bug' && <span style={{ background: '#FEE2E2', color: '#EF4444', padding: '2px 8px', borderRadius: 12, fontSize: 12 }}>באג</span>}
-                        {ticket.topic === 'feature' && <span style={{ background: '#DBEAFE', color: '#3B82F6', padding: '2px 8px', borderRadius: 12, fontSize: 12 }}>הצעה לשיפור</span>}
-                        {ticket.topic === 'billing' && <span style={{ background: '#FEF3C7', color: '#F59E0B', padding: '2px 8px', borderRadius: 12, fontSize: 12 }}>חיוב</span>}
-                        {ticket.topic === 'general' && <span style={{ background: '#E0E7FF', color: '#6366F1', padding: '2px 8px', borderRadius: 12, fontSize: 12 }}>כללי</span>}
-                        {ticket.topic === 'other' && <span style={{ background: '#F3F4F6', color: '#4B5563', padding: '2px 8px', borderRadius: 12, fontSize: 12 }}>אחר</span>}
-                        <span style={{ fontSize: 12, color: 'var(--text3)' }}>
-                          נשלח בתאריך: {new Date(ticket._creationTime).toLocaleDateString('he-IL')} {new Date(ticket._creationTime).toLocaleTimeString('he-IL')}
-                        </span>
-                      </div>
-                      <div style={{ fontSize: 14, color: 'var(--text1)', marginTop: 12, whiteSpace: 'pre-wrap', background: 'var(--surface)', padding: 12, borderRadius: 8 }}>
-                        {ticket.message}
-                      </div>
-                      <div style={{ fontSize: 13, color: 'var(--text2)', marginTop: 12 }}>
-                        <strong>מאת:</strong> {ticket.user.name} ({ticket.user.email} {ticket.user.phone ? `| ${ticket.user.phone}` : ''})
-                      </div>
-                      {ticket.urlContext && (
-                        <div style={{ fontSize: 13, color: 'var(--text3)', marginTop: 4 }}>
-                          <strong>נשלח מכתובת:</strong> <a href={ticket.urlContext} target="_blank" rel="noreferrer">{ticket.urlContext}</a>
-                        </div>
-                      )}
+              {guides.map((guide: any) => (
+                <div key={guide._id} style={{ border: '1px solid var(--border)', borderRadius: 12, padding: 16, background: 'var(--bg)', display: 'flex', justifyContent: 'space-between' }}>
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>{guide.title}</div>
+                    <div style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 8 }}>{guide.description}</div>
+                    <div style={{ fontSize: 12, color: 'var(--text3)', display: 'flex', gap: 12 }}>
+                      <span><strong>לינק:</strong> {guide.videoUrl}</span>
+                      <span><strong>משך:</strong> {guide.duration || 'לא צוין'}</span>
+                      <span><strong>נושאים:</strong> {guide.topics?.length || 0}</span>
+                      <span><strong>טיפים:</strong> {guide.tips?.length || 0}</span>
+                      <span><strong>שאלות:</strong> {guide.faqs?.length || 0}</span>
                     </div>
-                    <div>
-                      <Btn onClick={async () => {
-                        await resolveTicket({ ticketId: ticket._id });
-                      }} variant="primary" style={{ padding: '6px 12px', fontSize: 13 }}>
-                        <Icon n="check" s={14} /> סמן כטופל
-                      </Btn>
-                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <Btn variant="outline" onClick={() => {
+                      setGuideForm({
+                        title: guide.title,
+                        videoUrl: guide.videoUrl,
+                        duration: guide.duration || '',
+                        description: guide.description,
+                        topics: (guide.topics || []).join('\n'),
+                        tips: (guide.tips || []).join('\n'),
+                        faqs: guide.faqs || []
+                      });
+                      setEditingGuide(guide);
+                    }}>
+                      <Icon n="edit" s={16} /> ערוך
+                    </Btn>
+                    <Btn variant="outline" onClick={async () => {
+                      if (confirm('האם למחוק מדריך זה?')) {
+                        await deleteGuide({ id: guide._id });
+                      }
+                    }} style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }}>
+                      <Icon n="trash" s={16} />
+                    </Btn>
                   </div>
                 </div>
               ))}
             </div>
           )}
         </div>
+      )}
+
+      {(isAddingGuide || editingGuide) && (
+        <Modal onClose={() => { setIsAddingGuide(false); setEditingGuide(null); }} title={isAddingGuide ? 'הוספת מדריך חדש' : 'עריכת מדריך'}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div>
+              <label style={{ display: 'block', fontSize: 13, marginBottom: 6 }}>כותרת המדריך</label>
+              <input className="input" style={{ width: '100%', padding: '10px', borderRadius: 8, border: '1px solid var(--border)' }} value={guideForm.title} onChange={e => setGuideForm({...guideForm, title: e.target.value})} />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: 13, marginBottom: 6 }}>לינק לסרטון (יוטיוב או MP4 מקומי)</label>
+              <input className="input" style={{ width: '100%', padding: '10px', borderRadius: 8, border: '1px solid var(--border)' }} placeholder="https://www.youtube.com/watch?v=... או /videos/step1.mp4" value={guideForm.videoUrl} onChange={e => setGuideForm({...guideForm, videoUrl: e.target.value})} />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: 13, marginBottom: 6 }}>משך (טקסט, למשל: "10 דקות")</label>
+              <input className="input" style={{ width: '100%', padding: '10px', borderRadius: 8, border: '1px solid var(--border)' }} value={guideForm.duration} onChange={e => setGuideForm({...guideForm, duration: e.target.value})} />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: 13, marginBottom: 6 }}>תיאור</label>
+              <textarea className="input" style={{ width: '100%', minHeight: 80, padding: '10px', borderRadius: 8, border: '1px solid var(--border)' }} value={guideForm.description} onChange={e => setGuideForm({...guideForm, description: e.target.value})} />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: 13, marginBottom: 6 }}>נושאים (כל נושא בשורה חדשה)</label>
+              <textarea className="input" style={{ width: '100%', minHeight: 80, padding: '10px', borderRadius: 8, border: '1px solid var(--border)' }} value={guideForm.topics} onChange={e => setGuideForm({...guideForm, topics: e.target.value})} />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: 13, marginBottom: 6 }}>טיפים (כל טיפ בשורה חדשה)</label>
+              <textarea className="input" style={{ width: '100%', minHeight: 80, padding: '10px', borderRadius: 8, border: '1px solid var(--border)' }} value={guideForm.tips} onChange={e => setGuideForm({...guideForm, tips: e.target.value})} />
+            </div>
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                <label style={{ fontSize: 13 }}>שאלות ותשובות</label>
+                <button type="button" onClick={() => setGuideForm({...guideForm, faqs: [...guideForm.faqs, { q: '', a: '' }]})} style={{ background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', fontSize: 13 }}>+ הוסף שאלה</button>
+              </div>
+              {guideForm.faqs.map((faq, idx) => (
+                <div key={idx} style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'flex-start' }}>
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <input className="input" style={{ padding: '10px', borderRadius: 8, border: '1px solid var(--border)' }} placeholder="שאלה" value={faq.q} onChange={e => {
+                      const nf = [...guideForm.faqs];
+                      nf[idx].q = e.target.value;
+                      setGuideForm({...guideForm, faqs: nf});
+                    }} />
+                    <input className="input" style={{ padding: '10px', borderRadius: 8, border: '1px solid var(--border)' }} placeholder="תשובה" value={faq.a} onChange={e => {
+                      const nf = [...guideForm.faqs];
+                      nf[idx].a = e.target.value;
+                      setGuideForm({...guideForm, faqs: nf});
+                    }} />
+                  </div>
+                  <button type="button" onClick={() => {
+                    const nf = guideForm.faqs.filter((_, i) => i !== idx);
+                    setGuideForm({...guideForm, faqs: nf});
+                  }} style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', padding: 8 }}>
+                    <Icon n="x" s={16} />
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
+              <Btn variant="primary" style={{ flex: 1, justifyContent: 'center' }} onClick={async () => {
+                const payload = {
+                  title: guideForm.title,
+                  videoUrl: guideForm.videoUrl,
+                  duration: guideForm.duration,
+                  description: guideForm.description,
+                  topics: guideForm.topics.split('\n').map(s => s.trim()).filter(Boolean),
+                  tips: guideForm.tips.split('\n').map(s => s.trim()).filter(Boolean),
+                  faqs: guideForm.faqs.filter(f => f.q.trim() && f.a.trim())
+                };
+
+                if (isAddingGuide) {
+                  await createGuide(payload);
+                } else if (editingGuide) {
+                  await updateGuide({ id: editingGuide._id, ...payload });
+                }
+                setIsAddingGuide(false);
+                setEditingGuide(null);
+              }}>
+                שמור מדריך
+              </Btn>
+              <Btn variant="outline" style={{ flex: 1, justifyContent: 'center' }} onClick={() => { setIsAddingGuide(false); setEditingGuide(null); }}>
+                ביטול
+              </Btn>
+            </div>
+          </div>
+        </Modal>
       )}
 
       {!!showConfirmDelete && (

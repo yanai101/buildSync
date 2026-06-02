@@ -24,6 +24,7 @@ import type * as dailyLogs from "../dailyLogs.js";
 import type * as dashboard from "../dashboard.js";
 import type * as debugQuery from "../debugQuery.js";
 import type * as fix from "../fix.js";
+import type * as guides from "../guides.js";
 import type * as http from "../http.js";
 import type * as invitations from "../invitations.js";
 import type * as mutations from "../mutations.js";
@@ -67,6 +68,7 @@ declare const fullApi: ApiFromModules<{
   dashboard: typeof dashboard;
   debugQuery: typeof debugQuery;
   fix: typeof fix;
+  guides: typeof guides;
   http: typeof http;
   invitations: typeof invitations;
   mutations: typeof mutations;
