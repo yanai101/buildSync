@@ -748,7 +748,7 @@ export const BOQWizardScreen = () => {
       if (itemsToSave.length > 0) {
         await saveBoqMutation({ projectId: (project as any)._id, items: itemsToSave });
       }
-      setFeedback({ title: "נשמר בהצלחה", message: "הכמויות נשמרו בהצלחה!", type: "success", redirect: "/boq" });
+      setFeedback({ title: "העברה הושלמה", message: "הכמויות הועברו בהצלחה לניהול רכש!", type: "success", redirect: "/boq" });
     } catch (err) {
       setFeedback({ title: "שגיאה", message: "שגיאה בשמירת הנתונים", type: "error" });
     } finally {
@@ -849,7 +849,7 @@ export const BOQWizardScreen = () => {
                 <Icon n="arrow-right" s={16} style={{marginLeft:8}}/> חזרה לאשף
               </Btn>
               <Btn onClick={onFinish} disabled={saving} style={{borderRadius:12,padding:"10px 20px",fontWeight:700,background:"var(--success)",borderColor:"var(--success)"}}>
-                <Icon n={saving ? "refresh" : "check"} s={16} style={{marginLeft:8}}/> {saving ? "שומר..." : "סיום ושמירה"}
+                <Icon n={saving ? "refresh" : "check"} s={16} style={{marginLeft:8}}/> {saving ? "מעביר..." : "העבר לניהול עלויות רכש"}
               </Btn>
             </div>
           </div>
