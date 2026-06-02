@@ -87,8 +87,27 @@ export const GuidesScreen = () => {
     }
   };
 
-  if (!dbGuides || dbGuides.length === 0 || !selectedGuide) {
-    return <ScreenBoundary loading={true} error={null}><div style={{ padding: 40, textAlign: 'center' }}>{dbGuides?.length === 0 ? 'אין הדרכות כרגע.' : 'טוען הדרכות...'}</div></ScreenBoundary>;
+  if (dbGuides === undefined) {
+    return <ScreenBoundary loading={true} error={null}><div style={{ padding: 40, textAlign: 'center' }}>טוען הדרכות...</div></ScreenBoundary>;
+  }
+
+  if (dbGuides.length === 0) {
+    return (
+      <ScreenBoundary 
+        loading={false} 
+        error={null} 
+        isEmpty={true} 
+        emptyTitle="אין מדריכים זמינים" 
+        emptyDesc="כרגע לא קיימים סרטוני הדרכה במערכת." 
+        emptyIcon="video"
+      >
+        <div/>
+      </ScreenBoundary>
+    );
+  }
+
+  if (!selectedGuide) {
+    return <ScreenBoundary loading={true} error={null}><div style={{ padding: 40, textAlign: 'center' }}>טוען הדרכות...</div></ScreenBoundary>;
   }
 
   const completionPct = Math.round((watchedVideos.length / guidesToUse.length) * 100);
