@@ -198,7 +198,7 @@ export const NotesScreen = () => {
       });
       refetch();
     } catch (err) {
-      setFeedback({ title: "שגיאה", message: "שגיאה בשליחת הערה", type: "error" });
+      setFeedback({ title: "שגיאה", message: "שגיאה בשליחת הודעה", type: "error" });
     }
   };
 
@@ -310,11 +310,11 @@ export const NotesScreen = () => {
               <div style={{width:"100%"}}>
                 <EmptyState
                   icon="message"
-                  title="אין הערות"
-                  description="נראה שעדיין לא נוספו הערות או עדכונים לפרויקט."
+                  title="אין הודעות"
+                  description="נראה שעדיין לא נוספו הודעות או עדכונים לפרויקט."
                   action={
                     <Btn size="lg" onClick={() => composeRef.current?.focus()} style={{padding: "12px 28px", fontSize: 16}}>
-                      <Icon n="plus" s={16}/> הערה חדשה
+                      <Icon n="plus" s={16}/> הודעה חדשה
                     </Btn>
                   }
                 />
@@ -379,7 +379,7 @@ export const NotesScreen = () => {
 
         {/* Compose */}
         <div style={{background:"var(--surface)",border:"1px solid var(--border)",borderRadius:10,padding:12}}>
-          <textarea ref={composeRef} value={text} onChange={e=>setText(e.target.value)} onKeyDown={e=>e.key==="Enter"&&!e.shiftKey&&(e.preventDefault(),send())} placeholder="כתוב הערה... (Enter לשליחה)" rows={2}
+          <textarea ref={composeRef} value={text} onChange={e=>setText(e.target.value)} onKeyDown={e=>e.key==="Enter"&&!e.shiftKey&&(e.preventDefault(),send())} placeholder="כתוב הודעה... (Enter לשליחה)" rows={2}
             style={{width:"100%",border:"none",outline:"none",fontSize:13,fontFamily:"'Heebo',sans-serif",resize:"none",color:"var(--text1)",background:"transparent"}}/>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:8}}>
             <div style={{display:"flex",gap:8,alignItems:"center"}}>
