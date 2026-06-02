@@ -18,7 +18,7 @@ export interface Guide {
 }
 export const GuidesScreen = () => {
   const dbGuides = useQuery(api.guides.get);
-  const guidesToUse = dbGuides || [];
+  const guidesToUse: Guide[] = (dbGuides as unknown as Guide[]) || [];
   
   const [selectedGuide, setSelectedGuide] = useState<Guide | null>(null);
   const [watchedVideos, setWatchedVideos] = useState<string[]>([]);
@@ -298,7 +298,7 @@ export const GuidesScreen = () => {
                         <Icon n="clock" s={12} c="#92400E" />
                         <span style={{ marginRight: 4 }}>{selectedGuide.duration}</span>
                       </span>
-                      {watchedVideos.includes(selectedGuide.id) && (
+                      {watchedVideos.includes(selectedGuide._id || selectedGuide.id || '') && (
                         <span className="badge badge-done" style={{ fontSize: 11 }}>
                           <Icon n="check-circle" s={12} c="#065F46" />
                           <span style={{ marginRight: 4 }}>נצפה בהצלחה</span>
@@ -492,7 +492,7 @@ export const GuidesScreen = () => {
                 <div className="guides-playlist">
                   {guidesToUse.map((guide, idx) => {
                     const guideId = guide._id || guide.id || String(idx);
-                    const isActive = selectedGuide._id === guide._id && selectedGuide.id === guide.id;
+                    const isActive = (selectedGuide._id && guide._id) ? selectedGuide._id === guide._id : selectedGuide.id === guide.id;
                     const isWatched = watchedVideos.includes(guideId);
                     return (
                       <motion.div
