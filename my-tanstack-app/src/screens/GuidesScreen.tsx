@@ -73,7 +73,7 @@ export const GuidesScreen = () => {
   };
 
   const handlePlayToggle = () => {
-    if (selectedGuide?.videoUrl.includes('youtube.com') || selectedGuide?.videoUrl.includes('youtu.be')) {
+    if (selectedGuide?.videoUrl?.includes('youtube.com') || selectedGuide?.videoUrl?.includes('youtu.be')) {
       setIsPlaying(true);
       return;
     }
@@ -117,8 +117,8 @@ export const GuidesScreen = () => {
     const match = url.match(regExp);
     return (match && match[2].length === 11) ? match[2] : null;
   };
-  const isYouTube = selectedGuide.videoUrl.includes('youtube.com') || selectedGuide.videoUrl.includes('youtu.be');
-  const youtubeId = isYouTube ? getYouTubeId(selectedGuide.videoUrl) : null;
+  const isYouTube = selectedGuide?.videoUrl?.includes('youtube.com') || selectedGuide?.videoUrl?.includes('youtu.be');
+  const youtubeId = isYouTube && selectedGuide?.videoUrl ? getYouTubeId(selectedGuide.videoUrl) : null;
 
   return (
     <ScreenBoundary loading={false} error={null}>
@@ -564,7 +564,7 @@ export const GuidesScreen = () => {
 
                         {/* Title */}
                         <div style={{ fontSize: 13.5, fontWeight: 700, color: isActive ? 'var(--accent)' : 'var(--text1)', lineHeight: 1.4 }}>
-                          {guide.title.replace('מדריך ' + (idx + 1) + ': ', '')}
+                          {guide.title ? guide.title.replace('מדריך ' + (idx + 1) + ': ', '') : 'ללא כותרת'}
                         </div>
 
                         {/* Hover Overlay Visual indicator */}
