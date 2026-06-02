@@ -703,6 +703,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                     סרטוני הדרכה
                   </Link>
 
+
                   {!isStandalone && (
                     <button
                       onClick={() => {
@@ -826,6 +827,26 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                     <Icon n="help-circle" s={14} />
                     מדריך מערכת
                   </button>
+
+                  <Link
+                    to="/terms"
+                    onClick={() => setMenuOpen(false)}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      padding: "8px 10px",
+                      borderRadius: 8,
+                      color: "var(--text3)",
+                      fontSize: 13,
+                      fontWeight: 600,
+                      textDecoration: "none",
+                    }}
+                  >
+                    <Icon n="shield" s={14} />
+                    תנאי שימוש
+                  </Link>
+
                   <div style={{ height: 1, background: "var(--border)", margin: "6px 0" }} />
                   {/* Dev-only Data Source Toggle */}
                   {import.meta.env.DEV && (
@@ -1106,6 +1127,49 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                   >
                     <Icon n="settings" s={18} />
                     <span style={{ fontSize: 13 }}>פרטי חשבון</span>
+                  </Link>
+
+                  <button
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      setShowSupportModal(true);
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 10,
+                      padding: '12px',
+                      background: 'var(--bg)',
+                      color: 'var(--text1)',
+                      borderRadius: 12,
+                      border: '1px solid var(--border)',
+                      cursor: 'pointer',
+                      textAlign: 'right',
+                      fontFamily: 'inherit'
+                    }}
+                  >
+                    <Icon n="help-circle" s={18} />
+                    <span style={{ fontSize: 13, fontWeight: 500 }}>פנייה לתמיכה</span>
+                  </button>
+
+                  <Link
+                    to="/terms"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 10,
+                      padding: '12px',
+                      background: currentPath === '/terms' ? 'var(--accent-light)' : 'var(--bg)',
+                      color: currentPath === '/terms' ? 'var(--accent)' : 'var(--text1)',
+                      borderRadius: 12,
+                      textDecoration: 'none',
+                      fontWeight: currentPath === '/terms' ? 700 : 500,
+                      border: currentPath === '/terms' ? '1px solid var(--accent)' : '1px solid var(--border)'
+                    }}
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    <Icon n="shield" s={18} />
+                    <span style={{ fontSize: 13 }}>תנאי שימוש</span>
                   </Link>
                 </div>
               </div>
