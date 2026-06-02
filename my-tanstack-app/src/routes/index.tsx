@@ -812,9 +812,13 @@ function LandingPage() {
           </p>
         </motion.div>
       </section>
-      
       <footer style={{ padding: '60px 5%', textAlign: 'center', color: '#666', background: '#08080a', fontSize: '1rem', borderTop: '1px solid rgba(255,255,255,0.03)' }}>
         © {new Date().getFullYear()} BuildSync. פותח במטרה לייעל את הבנייה בעולם היזמות, הקבלנות והשיפוצים. כל הזכויות שמורות.
+        <div style={{ marginTop: '16px' }}>
+          <Link to="/terms" style={{ color: '#888', textDecoration: 'none', fontSize: '0.9rem' }}>
+            תנאי שימוש והגבלת אחריות
+          </Link>
+        </div>
       </footer>
     </div>
   )

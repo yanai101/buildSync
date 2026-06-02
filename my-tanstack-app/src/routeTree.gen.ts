@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TimelineRouteImport } from './routes/timeline'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as TeamRouteImport } from './routes/team'
 import { Route as SuperAdminRouteImport } from './routes/super-admin'
 import { Route as StagesRouteImport } from './routes/stages'
@@ -42,6 +43,11 @@ import { Route as ApiWebhookPolarRouteImport } from './routes/api/webhook/polar'
 const TimelineRoute = TimelineRouteImport.update({
   id: '/timeline',
   path: '/timeline',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TeamRoute = TeamRouteImport.update({
@@ -210,6 +216,7 @@ export interface FileRoutesByFullPath {
   '/stages': typeof StagesRoute
   '/super-admin': typeof SuperAdminRoute
   '/team': typeof TeamRoute
+  '/terms': typeof TermsRoute
   '/timeline': typeof TimelineRoute
   '/api/checkout': typeof ApiCheckoutRoute
   '/api/portal': typeof ApiPortalRoute
@@ -241,6 +248,7 @@ export interface FileRoutesByTo {
   '/stages': typeof StagesRoute
   '/super-admin': typeof SuperAdminRoute
   '/team': typeof TeamRoute
+  '/terms': typeof TermsRoute
   '/timeline': typeof TimelineRoute
   '/api/checkout': typeof ApiCheckoutRoute
   '/api/portal': typeof ApiPortalRoute
@@ -273,6 +281,7 @@ export interface FileRoutesById {
   '/stages': typeof StagesRoute
   '/super-admin': typeof SuperAdminRoute
   '/team': typeof TeamRoute
+  '/terms': typeof TermsRoute
   '/timeline': typeof TimelineRoute
   '/api/checkout': typeof ApiCheckoutRoute
   '/api/portal': typeof ApiPortalRoute
@@ -306,6 +315,7 @@ export interface FileRouteTypes {
     | '/stages'
     | '/super-admin'
     | '/team'
+    | '/terms'
     | '/timeline'
     | '/api/checkout'
     | '/api/portal'
@@ -337,6 +347,7 @@ export interface FileRouteTypes {
     | '/stages'
     | '/super-admin'
     | '/team'
+    | '/terms'
     | '/timeline'
     | '/api/checkout'
     | '/api/portal'
@@ -368,6 +379,7 @@ export interface FileRouteTypes {
     | '/stages'
     | '/super-admin'
     | '/team'
+    | '/terms'
     | '/timeline'
     | '/api/checkout'
     | '/api/portal'
@@ -400,6 +412,7 @@ export interface RootRouteChildren {
   StagesRoute: typeof StagesRoute
   SuperAdminRoute: typeof SuperAdminRoute
   TeamRoute: typeof TeamRoute
+  TermsRoute: typeof TermsRoute
   TimelineRoute: typeof TimelineRoute
   ApiCheckoutRoute: typeof ApiCheckoutRoute
   ApiPortalRoute: typeof ApiPortalRoute
@@ -414,6 +427,13 @@ declare module '@tanstack/react-router' {
       path: '/timeline'
       fullPath: '/timeline'
       preLoaderRoute: typeof TimelineRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/team': {
@@ -640,6 +660,7 @@ const rootRouteChildren: RootRouteChildren = {
   StagesRoute: StagesRoute,
   SuperAdminRoute: SuperAdminRoute,
   TeamRoute: TeamRoute,
+  TermsRoute: TermsRoute,
   TimelineRoute: TimelineRoute,
   ApiCheckoutRoute: ApiCheckoutRoute,
   ApiPortalRoute: ApiPortalRoute,
