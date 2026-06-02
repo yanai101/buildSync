@@ -47,6 +47,8 @@ export const PATHS: Record<string, string[]> = {
   "maximize-2":["M15 3h6v6","M9 21H3v-6","M21 3l-7 7","M3 21l7-7"],
   video:["M23 7l-7 5 7 5V7z","M1 5h14a2 2 0 012 2v10a2 2 0 01-2 2H1a2 2 0 01-2-2V7a2 2 0 012-2z"],
   play:["M5 3l14 9-14 9V3z"],
+  shield:["M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"],
+  "help-circle":["M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z", "M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3", "M12 17h.01"],
 };
 
 export const Icon = ({n, s=18, c="currentColor"}: any) => (
