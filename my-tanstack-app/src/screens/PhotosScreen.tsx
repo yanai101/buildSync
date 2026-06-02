@@ -625,13 +625,23 @@ export const PhotosScreen = () => {
 
         const msg = `הערה חדשה בתמונה "${selected?.label || ''}" עבור ${roleName}: "${currentNoteText}" — נדרשת התייחסות.`;
         
+        const isSpecificContractor = currentAssignee !== 'manager' && currentAssignee !== 'inspector' && currentAssignee !== 'contractor';
+
         await notesMutate('saveNote', {
           projectId: projectId || 'dummy',
           text: msg,
-          thread: currentAssignee === 'manager' || currentAssignee === 'inspector' ? 'internal' : 'contractor'
+          thread: currentAssignee === 'manager' || currentAssignee === 'inspector' ? 'internal' : 'contractor',
+          ...(isSpecificContractor ? { recipientContractorId: currentAssignee } : {})
         });
+
+        if (isSpecificContractor) {
+          setFeedback({ title: "הודעה נשלחה", message: `ההערה נשלחה כהודעה אישית ל${roleName}.`, type: "success" });
+        } else {
+          setFeedback({ title: "הודעה נשלחה", message: `ההערה נשלחה בהצלחה ל${roleName}.`, type: "success" });
+        }
       } catch (err) {
         console.error("Failed to add chat note", err);
+        setFeedback({ title: "שגיאה", message: "שגיאה בשליחת ההודעה", type: "error" });
       }
     }
   };
