@@ -13,7 +13,7 @@ export const getOverview = query({
       return null;
     }
 
-    const [stages, budgetCategories, recentActivity, projectAlerts, orders] = await Promise.all([
+    const [stages, budgetCategories, recentActivity, projectAlerts, orders, criticalDefects] = await Promise.all([
       ctx.db
         .query('stages')
         .withIndex('by_project_sort', (q) => q.eq('projectId', args.projectId))
@@ -35,6 +35,15 @@ export const getOverview = query({
       ctx.db
         .query('orders')
         .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
+        .collect(),
+      ctx.db
+        .query('photos')
+        .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
+        .filter(q => q.and(
+          q.eq(q.field('priority'), 'קריטית'),
+          q.neq(q.field('defectStatus'), 'תוקן'),
+          q.neq(q.field('defectStatus'), 'אושר')
+        ))
         .collect(),
     ]);
 
@@ -167,6 +176,19 @@ export const getOverview = query({
           });
         }
       }
+    });
+
+    criticalDefects.forEach(defect => {
+      dynamicAlerts.push({
+        id: `defect-critical-${defect._id}`,
+        type: 'danger',
+        text: `ליקוי קריטי פתוח: ${defect.label}`,
+        dateLabel: defect.takenOn || 'היום',
+        createdAt: Date.now(),
+        isDynamic: true,
+        link: `/photos`,
+        actionText: 'לטפל בליקוי',
+      });
     });
 
     return {
