@@ -417,7 +417,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   };
 
   if (isPublicRoute(currentPath)) {
-    return <>{children}</>
+    return (
+      <div style={{ background: 'var(--bg)', flex: 1, height: '100%', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+        {children}
+      </div>
+    )
   }
 
   if (isLoading) {
