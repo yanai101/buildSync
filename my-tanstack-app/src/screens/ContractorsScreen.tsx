@@ -743,7 +743,7 @@ const PaymentSchedule = ({
               }} min={0} max={contractor.budget}/>
             </div>
             <div style={{display:"flex",gap:6}}>
-              <Btn onClick={addMilestone} disabled={savingNew || scheduleOverBudget}><Icon n="plus" s={13}/> הוסף</Btn>
+              <Btn onClick={addMilestone} disabled={savingNew}><Icon n="plus" s={13}/> הוסף</Btn>
               <Btn variant="ghost" onClick={()=>setAdding(false)} disabled={savingNew}>ביטול</Btn>
             </div>
           </div>
