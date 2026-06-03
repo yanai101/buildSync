@@ -501,6 +501,7 @@ const PaymentSchedule = ({
   const renderMilestoneCells = (m: DraftMilestone, i: number, gripStarter?: (e: React.PointerEvent) => void) => (
     (() => {
       const syncedLocked = m.sourceMode === 'stage_synced' && !m.paid && m.readyToPay === false;
+      const isSyncedLocked = m.sourceMode === 'stage_synced' && contractor.role !== 'קבלן עד מפתח';
       return (
     <>
       <td style={{fontSize:12,color:"var(--text3)",fontWeight:700,whiteSpace:"nowrap"}}>
@@ -519,7 +520,7 @@ const PaymentSchedule = ({
         <input
           className="bp-input"
           value={m.name}
-          disabled={savingSchedule || locked || m.isLocked || m.paid || m.sourceMode === 'stage_synced'}
+          disabled={savingSchedule || locked || m.isLocked || m.paid || isSyncedLocked}
           onChange={e=>updateMilestone(i, {name:e.target.value})}
           onBlur={()=>saveOnBlur(i)}
           style={{minWidth:150,fontSize:13,fontWeight:500}}
@@ -529,7 +530,7 @@ const PaymentSchedule = ({
         <input
           className="bp-input"
           value={m.triggerText || ""}
-          disabled={savingSchedule || locked || m.isLocked || m.paid || m.sourceMode === 'stage_synced'}
+          disabled={savingSchedule || locked || m.isLocked || m.paid || isSyncedLocked}
           onChange={e=>updateMilestone(i, {triggerText:e.target.value})}
           onBlur={()=>saveOnBlur(i)}
           style={{minWidth:180,fontSize:12}}
@@ -544,7 +545,7 @@ const PaymentSchedule = ({
           step="any"
           placeholder="0"
           value={m.pct === 0 ? "" : Number(m.pct.toFixed(2))}
-          disabled={savingSchedule || locked || m.isLocked || m.paid || m.sourceMode === 'stage_synced'}
+          disabled={savingSchedule || locked || m.isLocked || m.paid || isSyncedLocked}
           onChange={e=>{
             const val = e.target.value;
             updateMilestone(i, {pct: val === "" ? 0 : Number(val)}, false);
@@ -564,7 +565,7 @@ const PaymentSchedule = ({
               max={contractor.budget}
               placeholder="0"
               value={m.amount === 0 ? "" : m.amount}
-              disabled={savingSchedule || locked || m.isLocked || m.paid || m.sourceMode === 'stage_synced'}
+              disabled={savingSchedule || locked || m.isLocked || m.paid || isSyncedLocked}
               onChange={e => {
                 if (contractor.budget > 0) {
                   const val = e.target.value;
@@ -589,7 +590,7 @@ const PaymentSchedule = ({
       </td>
       <td style={{fontSize:12,color:"var(--text3)"}}>
         {m.paidAt || "—"}
-        {m.sourceMode === 'stage_synced' && (
+        {isSyncedLocked && (
           <div style={{fontSize:10,color:"#3730A3",fontWeight:700,marginTop:2}}>ממשימות השלב</div>
         )}
       </td>
@@ -649,7 +650,7 @@ const PaymentSchedule = ({
               <Btn
                 size="sm"
                 variant="ghost"
-                disabled={savingSchedule || locked || Boolean(m.paid) || m.sourceMode === 'stage_synced'}
+                disabled={savingSchedule || locked || Boolean(m.paid) || isSyncedLocked}
                 onClick={()=>removeMilestone(i)}
                 style={{color:"var(--danger)"}}
               >
@@ -668,7 +669,7 @@ const PaymentSchedule = ({
   const removeMilestone = async (index: number) => {
     if (locked) return;
     const milestone = milestones[index];
-    if (!milestone || milestone.paid || milestone.sourceMode === 'stage_synced') return;
+    if (!milestone || milestone.paid || (milestone.sourceMode === 'stage_synced' && contractor.role !== 'קבלן עד מפתח')) return;
     const next = withAmounts(contractor, balanceMilestones(
       milestones.filter((_, i) => i !== index),
       Math.max(0, index - 1),
