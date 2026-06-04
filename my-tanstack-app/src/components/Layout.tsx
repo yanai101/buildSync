@@ -105,7 +105,7 @@ const LOADING_PHRASES = [
 ];
 
 const GearSVG = ({ size, teeth, duration, direction, color, style, isMain }: any) => {
-  const baseR = 23 * (teeth / 16);
+  const baseR = 30 * (teeth / 16);
   const toothWidth = 6;
   const animationName = direction === 1 ? 'spin-main' : 'spin-small';
   
@@ -124,7 +124,7 @@ const GearSVG = ({ size, teeth, duration, direction, color, style, isMain }: any
         <defs>
           <mask id={`gear-hole-${teeth}`}>
             <rect width="100" height="100" fill="white" />
-            <circle cx="50" cy="50" r={isMain ? 16.5 : baseR * 0.4} fill="black" />
+            <circle cx="50" cy="50" r={isMain ? 23 : baseR * 0.4} fill="black" />
           </mask>
         </defs>
         <g mask={`url(#gear-hole-${teeth})`}>
@@ -183,17 +183,17 @@ function AppLoadingScreen() {
         {/* Small Gear 1 (Top Left) */}
         <GearSVG 
           size={140} teeth={8} duration={6} direction={-1} 
-          color="var(--accent)" style={{ left: 61.6, top: 21.6, opacity: 0.1 }} 
+          color="var(--accent)" style={{ left: 51.1, top: 1.1, opacity: 0.1 }} 
         />
         {/* Small Gear 2 (Bottom Left) */}
         <GearSVG 
           size={140} teeth={8} duration={6} direction={-1} 
-          color="var(--accent)" style={{ left: 61.6, top: 198.4, opacity: 0.1 }} 
+          color="var(--accent)" style={{ left: 51.1, top: 218.9, opacity: 0.1 }} 
         />
         {/* Main Gear */}
         <GearSVG 
           size={280} teeth={16} duration={12} direction={1} isMain
-          color="var(--accent)" style={{ left: 80, top: 40, opacity: 0.15 }} 
+          color="var(--accent)" style={{ left: 90, top: 40, opacity: 0.15 }} 
         />
         
         <img 
@@ -201,10 +201,10 @@ function AppLoadingScreen() {
           alt="BuildSync Icon" 
           style={{ 
             position: 'absolute',
-            left: 178,
-            top: 138,
-            width: 84, 
-            height: 84, 
+            left: 170,
+            top: 120,
+            width: 120, 
+            height: 120, 
             display: 'block', 
             borderRadius: '50%',
             objectFit: 'cover',
