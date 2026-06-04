@@ -104,17 +104,49 @@ const LOADING_PHRASES = [
   "מסדרים את הבלטות..."
 ];
 
+const GearSVG = ({ size, teeth, duration, direction, color, style, isMain }: any) => {
+  const baseR = 23 * (teeth / 16);
+  const toothWidth = 6;
+  const animationName = direction === 1 ? 'spin-main' : 'spin-small';
+  
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        width: size,
+        height: size,
+        color,
+        animation: `${animationName} ${duration}s linear infinite`,
+        ...style
+      }}
+    >
+      <svg width="100%" height="100%" viewBox="0 0 100 100" fill="currentColor">
+        <defs>
+          <mask id={`gear-hole-${teeth}`}>
+            <rect width="100" height="100" fill="white" />
+            <circle cx="50" cy="50" r={isMain ? 16.5 : baseR * 0.4} fill="black" />
+          </mask>
+        </defs>
+        <g mask={`url(#gear-hole-${teeth})`}>
+          <circle cx="50" cy="50" r={baseR} />
+          {Array.from({ length: teeth }).map((_, i) => (
+            <rect
+              key={i}
+              x={50 - toothWidth / 2}
+              y={50 - baseR - 10}
+              width={toothWidth}
+              height={baseR * 2 + 20}
+              rx="1.5"
+              transform={`rotate(${i * (360 / teeth)} 50 50)`}
+            />
+          ))}
+        </g>
+      </svg>
+    </div>
+  );
+};
+
 function AppLoadingScreen() {
-  const [phraseIndex, setPhraseIndex] = React.useState(0);
-
-  React.useEffect(() => {
-    setPhraseIndex(Math.floor(Math.random() * LOADING_PHRASES.length));
-    const interval = setInterval(() => {
-      setPhraseIndex(prev => (prev + 1) % LOADING_PHRASES.length);
-    }, 2500);
-    return () => clearInterval(interval);
-  }, []);
-
   return (
     <div style={{ 
       position: 'fixed',
@@ -128,52 +160,81 @@ function AppLoadingScreen() {
       justifyContent: 'center',
       background: 'var(--bg)',
       zIndex: 9999,
-      gap: 32
+      gap: 16
     }}>
-      <div style={{ position: 'relative', width: 100, height: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ repeat: Infinity, duration: 8, ease: "linear" }}
-          style={{
-            position: 'absolute',
-            color: 'var(--accent)',
-            opacity: 0.15,
-            zIndex: 1
-          }}
-        >
-          <Icon n="settings" s={140} />
-        </motion.div>
+      <style>{`
+        @keyframes spin-main {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        @keyframes spin-small {
+          from { transform: rotate(22.5deg); }
+          to { transform: rotate(-337.5deg); }
+        }
+        @keyframes fadePhrase {
+          0% { opacity: 0; transform: translateY(10px); }
+          2% { opacity: 1; transform: translateY(0); }
+          8% { opacity: 1; transform: translateY(0); }
+          10% { opacity: 0; transform: translateY(-10px); }
+          100% { opacity: 0; transform: translateY(-10px); }
+        }
+      `}</style>
+      <div style={{ position: 'relative', width: 420, height: 360, transform: 'scale(0.85)' }}>
+        {/* Small Gear 1 (Top Left) */}
+        <GearSVG 
+          size={140} teeth={8} duration={6} direction={-1} 
+          color="var(--accent)" style={{ left: 61.6, top: 21.6, opacity: 0.1 }} 
+        />
+        {/* Small Gear 2 (Bottom Left) */}
+        <GearSVG 
+          size={140} teeth={8} duration={6} direction={-1} 
+          color="var(--accent)" style={{ left: 61.6, top: 198.4, opacity: 0.1 }} 
+        />
+        {/* Main Gear */}
+        <GearSVG 
+          size={280} teeth={16} duration={12} direction={1} isMain
+          color="var(--accent)" style={{ left: 80, top: 40, opacity: 0.15 }} 
+        />
         
         <img 
           src="/logo.png" 
           alt="BuildSync Icon" 
           style={{ 
-            width: 80, 
-            height: 80, 
+            position: 'absolute',
+            left: 178,
+            top: 138,
+            width: 84, 
+            height: 84, 
             display: 'block', 
-            borderRadius: '16px',
+            borderRadius: '50%',
             objectFit: 'cover',
             boxShadow: '0 8px 32px rgba(0,0,0,0.1)',
-            zIndex: 2,
-            position: 'relative'
+            zIndex: 2
           }} 
         />
       </div>
       
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, marginTop: -20 }}>
         <div className="sidebar-logo-text" style={{ margin: 0, fontSize: 24, color: 'var(--text1)' }}>Build<span>Sync</span></div>
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={phraseIndex}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.3 }}
-            style={{ fontSize: 15, color: 'var(--text2)', fontWeight: 500 }}
-          >
-            {LOADING_PHRASES[phraseIndex]}
-          </motion.div>
-        </AnimatePresence>
+        <div style={{ position: 'relative', height: 20, width: '100%', display: 'flex', justifyContent: 'center' }}>
+          {LOADING_PHRASES.map((phrase, i) => (
+            <div 
+              key={i}
+              style={{
+                position: 'absolute',
+                opacity: 0,
+                animation: `fadePhrase 25s linear infinite`,
+                animationDelay: `${i * 2.5}s`,
+                fontSize: 15, 
+                color: 'var(--text2)', 
+                fontWeight: 500,
+                whiteSpace: 'nowrap'
+              }}
+            >
+              {phrase}
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
