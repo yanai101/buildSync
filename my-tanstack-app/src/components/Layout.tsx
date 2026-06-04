@@ -91,6 +91,94 @@ export const PAGE_SUBTITLES: Record<string, string> = {
 
 const BOTTOM_NAV = ["/dashboard", "/boqwizard", "/photos", "/notes"].map(id => NAV.find(n => n.id === id)!)
 
+const LOADING_PHRASES = [
+  "מערבבים את המלט...",
+  "מכינים קפה לפועלים...",
+  "בודקים שהקירות ישרים...",
+  "מרכיבים את הפיגומים...",
+  "מחשבים כמויות מחדש...",
+  "מזמינים אינסטלטור...",
+  "פורקים ציוד בשטח...",
+  "מחברים את הצנרת...",
+  "מזמינים בטון...",
+  "מסדרים את הבלטות..."
+];
+
+function AppLoadingScreen() {
+  const [phraseIndex, setPhraseIndex] = React.useState(0);
+
+  React.useEffect(() => {
+    setPhraseIndex(Math.floor(Math.random() * LOADING_PHRASES.length));
+    const interval = setInterval(() => {
+      setPhraseIndex(prev => (prev + 1) % LOADING_PHRASES.length);
+    }, 2500);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div style={{ 
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      display: 'flex', 
+      flexDirection: 'column',
+      alignItems: 'center', 
+      justifyContent: 'center',
+      background: 'var(--bg)',
+      zIndex: 9999,
+      gap: 32
+    }}>
+      <div style={{ position: 'relative', width: 100, height: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ repeat: Infinity, duration: 8, ease: "linear" }}
+          style={{
+            position: 'absolute',
+            color: 'var(--accent)',
+            opacity: 0.15,
+            zIndex: 1
+          }}
+        >
+          <Icon n="settings" s={140} />
+        </motion.div>
+        
+        <img 
+          src="/logo.png" 
+          alt="BuildSync Icon" 
+          style={{ 
+            width: 80, 
+            height: 80, 
+            display: 'block', 
+            borderRadius: '16px',
+            objectFit: 'cover',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.1)',
+            zIndex: 2,
+            position: 'relative'
+          }} 
+        />
+      </div>
+      
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+        <div className="sidebar-logo-text" style={{ margin: 0, fontSize: 24, color: 'var(--text1)' }}>Build<span>Sync</span></div>
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={phraseIndex}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.3 }}
+            style={{ fontSize: 15, color: 'var(--text2)', fontWeight: 500 }}
+          >
+            {LOADING_PHRASES[phraseIndex]}
+          </motion.div>
+        </AnimatePresence>
+      </div>
+    </div>
+  );
+}
+
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const routerState = useRouterState()
   const currentPath = routerState.location.pathname
@@ -425,11 +513,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   }
 
   if (isLoading) {
-    return (
-      <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', background: 'var(--bg)' }}>
-        <div className="card" style={{ padding: 24 }}>טוען סשן משתמש...</div>
-      </div>
-    )
+    return <AppLoadingScreen />
   }
 
   if (!isAuthenticated) {
