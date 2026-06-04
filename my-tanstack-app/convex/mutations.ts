@@ -643,6 +643,18 @@ export const saveContractorPaymentSchedule = mutation({
           }
         }
 
+        if (!stageId) {
+          const matchByName = existingStages.find(s => !incomingStageIdsToKeep.has(s._id) && s.name === milestone.name);
+          if (matchByName) {
+            stageId = matchByName._id;
+          } else {
+            const matchByIndex = existingStages.find(s => !incomingStageIdsToKeep.has(s._id) && s.sortOrder === i + 1);
+            if (matchByIndex) {
+              stageId = matchByIndex._id;
+            }
+          }
+        }
+
         if (stageId) {
           const stage = await ctx.db.get(stageId);
           await ctx.db.patch(stageId, {
