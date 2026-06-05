@@ -721,6 +721,70 @@ export function SuperAdminScreen() {
         </Modal>
       )}
 
+      {activeTab === 'support' && (
+        <div className="card" style={{ padding: 24, marginBottom: 24 }}>
+          <h2 style={{ fontSize: 24, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
+            <Icon n="help-circle" s={28} c="var(--accent)" />
+            פניות תמיכה פתוחות
+          </h2>
+          
+          {!supportTickets ? (
+            <div style={{ padding: 40, textAlign: 'center' }}>טוען פניות...</div>
+          ) : supportTickets.length === 0 ? (
+            <div style={{ padding: 40, textAlign: 'center', color: 'var(--success)', fontWeight: 600 }}>
+              <Icon n="check-circle" s={40} style={{ display: 'block', margin: '0 auto 12px' }} />
+              אין פניות תמיכה פתוחות.
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {supportTickets.map((ticket: any) => (
+                <div key={ticket._id} style={{ border: '1px solid var(--border)', borderRadius: 12, padding: 16, background: 'var(--bg)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                        <span style={{ fontWeight: 600, fontSize: 16 }}>נושא: {ticket.topic}</span>
+                        <span style={{ fontSize: 12, color: 'var(--text3)' }}>
+                          ({new Date(ticket._creationTime).toLocaleString('he-IL')})
+                        </span>
+                      </div>
+                      <div style={{ fontSize: 14, color: 'var(--text2)' }}>
+                        <strong>מאת:</strong> {ticket.user.name} ({ticket.user.email}) | <strong>טלפון:</strong> {ticket.user.phone}
+                      </div>
+                    </div>
+                    <Btn 
+                      variant="primary" 
+                      onClick={async () => {
+                        if (confirm('האם לסמן את הפנייה כטופלה?')) {
+                          try {
+                            await resolveTicket({ ticketId: ticket._id });
+                            alert('הפנייה סומנה כטופלה.');
+                          } catch (e: any) {
+                            alert('שגיאה: ' + e.message);
+                          }
+                        }
+                      }}
+                      style={{ background: '#22C55E', borderColor: '#22C55E' }}
+                    >
+                      <Icon n="check" s={16} /> סמן כטופל
+                    </Btn>
+                  </div>
+                  
+                  <div style={{ background: 'var(--surface)', padding: 12, borderRadius: 8, fontSize: 14, whiteSpace: 'pre-wrap', marginBottom: ticket.urlContext ? 12 : 0 }}>
+                    {ticket.message}
+                  </div>
+                  
+                  {ticket.urlContext && (
+                    <div style={{ fontSize: 12, color: 'var(--text3)' }}>
+                      <strong>הקשר (URL):</strong> <a href={ticket.urlContext} target="_blank" rel="noreferrer" style={{ color: 'var(--accent)' }}>{ticket.urlContext}</a>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {activeTab === 'guides' && (
         <div className="card" style={{ padding: 24, marginBottom: 24 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
