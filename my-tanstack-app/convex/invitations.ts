@@ -1,6 +1,6 @@
 import { action, internalMutation, internalQuery, mutation, query } from './_generated/server';
 import { v } from 'convex/values';
-import { createAccount } from '@convex-dev/auth/server';
+import { createAccount, getAuthUserId } from '@convex-dev/auth/server';
 import { internal } from './_generated/api';
 import { requireProjectOwner } from './_lib/projectAccess';
 import type { Doc, Id } from './_generated/dataModel';
@@ -299,7 +299,6 @@ export const redeemInvitationExistingUser = mutation({
     code: v.string(),
   },
   handler: async (ctx, args) => {
-    const { getAuthUserId } = await import('@convex-dev/auth/server');
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error('Unauthenticated');
     
@@ -317,22 +316,26 @@ export const redeemInvitationExistingUser = mutation({
     if (inv.expiresAt <= Date.now()) throw new Error('ההזמנה פגה');
 
     const allowBudgetView = inv.allowBudgetView ?? (inv.role !== 'contractor');
+    const allowScheduleView = inv.allowScheduleView !== false;
 
     if (inv.role === 'manager') {
       await ctx.db.patch(inv.projectId, { 
         managerUserId: userId,
         managerCanViewBudget: allowBudgetView,
+        managerCanViewSchedule: allowScheduleView,
       });
     } else if (inv.role === 'inspector') {
       await ctx.db.patch(inv.projectId, { 
         inspectorUserId: userId,
         inspectorCanViewBudget: allowBudgetView,
+        inspectorCanViewSchedule: allowScheduleView,
       });
     } else if (inv.role === 'contractor') {
       if (inv.contractorId) {
         await ctx.db.patch(inv.contractorId, { 
           userId: userId,
           canViewBudget: allowBudgetView,
+          canViewSchedule: allowScheduleView,
         });
       } else {
         await ctx.db.insert('contractors', {
@@ -345,8 +348,18 @@ export const redeemInvitationExistingUser = mutation({
           paid: 0,
           userId: userId,
           canViewBudget: allowBudgetView,
+          canViewSchedule: allowScheduleView,
         });
       }
+    }
+
+    // Update user's role if they are accepting an invite with a role
+    // This allows them to switch from e.g. owner of one project to inspector of another
+    // Only set if not already set, or overwrite if needed?
+    // Actually, role in users table is somewhat global but mostly used for profile display
+    // It's probably better to ensure they have the role set.
+    if (!user.role || user.role !== inv.role) {
+      await ctx.db.patch(userId, { role: inv.role });
     }
 
     await ctx.db.patch(inv._id, {
