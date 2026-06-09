@@ -318,54 +318,70 @@ export const redeemInvitationExistingUser = mutation({
     const allowBudgetView = inv.allowBudgetView ?? (inv.role !== 'contractor');
     const allowScheduleView = inv.allowScheduleView !== false;
 
-    if (inv.role === 'manager') {
-      await ctx.db.patch(inv.projectId, { 
-        managerUserId: userId,
-        managerCanViewBudget: allowBudgetView,
-        managerCanViewSchedule: allowScheduleView,
-      });
-    } else if (inv.role === 'inspector') {
-      await ctx.db.patch(inv.projectId, { 
-        inspectorUserId: userId,
-        inspectorCanViewBudget: allowBudgetView,
-        inspectorCanViewSchedule: allowScheduleView,
-      });
-    } else if (inv.role === 'contractor') {
-      if (inv.contractorId) {
-        await ctx.db.patch(inv.contractorId, { 
-          userId: userId,
-          canViewBudget: allowBudgetView,
-          canViewSchedule: allowScheduleView,
+    try {
+      if (inv.role === 'manager') {
+        await ctx.db.patch(inv.projectId, { 
+          managerUserId: userId,
+          managerCanViewBudget: allowBudgetView,
+          managerCanViewSchedule: allowScheduleView,
         });
-      } else {
-        await ctx.db.insert('contractors', {
-          projectId: inv.projectId,
-          name: user.name || user.email || 'קבלן',
-          role: 'אחר',
-          status: 'pending',
-          rating: 0,
-          budget: 0,
-          paid: 0,
-          userId: userId,
-          canViewBudget: allowBudgetView,
-          canViewSchedule: allowScheduleView,
+      } else if (inv.role === 'inspector') {
+        await ctx.db.patch(inv.projectId, { 
+          inspectorUserId: userId,
+          inspectorCanViewBudget: allowBudgetView,
+          inspectorCanViewSchedule: allowScheduleView,
         });
+      } else if (inv.role === 'contractor') {
+        if (inv.contractorId) {
+          const existingContractor = await ctx.db.get(inv.contractorId);
+          if (existingContractor) {
+            await ctx.db.patch(inv.contractorId, { 
+              userId: userId,
+              canViewBudget: allowBudgetView,
+              canViewSchedule: allowScheduleView,
+            });
+          } else {
+            // Contractor was deleted, create a new one
+            await ctx.db.insert('contractors', {
+              projectId: inv.projectId,
+              name: user.name || user.email || 'קבלן',
+              role: 'אחר',
+              status: 'pending',
+              rating: 0,
+              budget: 0,
+              paid: 0,
+              userId: userId,
+              canViewBudget: allowBudgetView,
+              canViewSchedule: allowScheduleView,
+            });
+          }
+        } else {
+          await ctx.db.insert('contractors', {
+            projectId: inv.projectId,
+            name: user.name || user.email || 'קבלן',
+            role: 'אחר',
+            status: 'pending',
+            rating: 0,
+            budget: 0,
+            paid: 0,
+            userId: userId,
+            canViewBudget: allowBudgetView,
+            canViewSchedule: allowScheduleView,
+          });
+        }
       }
+    } catch (e) {
+      throw new Error(`שגיאה בעדכון הפרויקט: ${e instanceof Error ? e.message : 'שגיאה לא ידועה'}`);
     }
 
-    // Update user's role if they are accepting an invite with a role
-    // This allows them to switch from e.g. owner of one project to inspector of another
-    // Only set if not already set, or overwrite if needed?
-    // Actually, role in users table is somewhat global but mostly used for profile display
-    // It's probably better to ensure they have the role set.
-    if (!user.role || user.role !== inv.role) {
-      await ctx.db.patch(userId, { role: inv.role });
+    try {
+      await ctx.db.patch(inv._id, {
+        consumedByUserId: userId,
+        consumedAt: Date.now(),
+      });
+    } catch (e) {
+      throw new Error(`שגיאה בעדכון ההזמנה: ${e instanceof Error ? e.message : 'שגיאה לא ידועה'}`);
     }
-
-    await ctx.db.patch(inv._id, {
-      consumedByUserId: userId,
-      consumedAt: Date.now(),
-    });
 
     return { ok: true };
   },
