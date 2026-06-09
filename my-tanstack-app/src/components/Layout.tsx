@@ -89,8 +89,6 @@ export const PAGE_SUBTITLES: Record<string, string> = {
   "/guides": "למדו כיצד להפיק את המרב מ-BuildSync בעזרת מדריכי וידאו קצרים",
 }
 
-const BOTTOM_NAV = ["/dashboard", "/boqwizard", "/photos", "/notes"].map(id => NAV.find(n => n.id === id)!)
-
 const LOADING_PHRASES = [
   "מערבבים את המלט...",
   "מכינים קפה לפועלים...",
@@ -248,6 +246,13 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const { project, projects, hasMultipleProjects, isLoading: isProjectLoading } = useCurrentProject()
   const { isAuthenticated, isLoading } = useConvexAuth()
   const { role: resolvedRole } = useRequireRole(ALL_ROLES)
+  const userRole = resolvedRole ?? 'owner'
+  const currentBottomNav = React.useMemo(() => {
+    const bottomNavIds = (userRole === 'inspector' || userRole === 'contractor') 
+      ? ["/dashboard", "/daily-logs", "/photos", "/notes"] 
+      : ["/dashboard", "/boqwizard", "/photos", "/notes"];
+    return bottomNavIds.map(id => NAV.find(n => n.id === id)!);
+  }, [userRole]);
   const { isProOrPremium } = useSubscription()
   const { signOut } = useAuthActions()
   const identity = useQuery(api.users.currentIdentity, {})
@@ -1075,7 +1080,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       {/* BOTTOM NAV (mobile) */}
       <div className="bottom-nav">
         <div className="bottom-nav-items">
-          {BOTTOM_NAV.map(n => (
+          {currentBottomNav.map(n => (
             <Link 
               key={n.id} 
               to={n.id} 

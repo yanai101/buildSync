@@ -175,4 +175,8 @@ export default defineSchema({
 
   guides: defineTable(zodToConvexFields(s.zGuide))
     .index('by_sort', ['sortOrder']),
-});
+
+  pushSubscriptions: defineTable(zodToConvexFields(s.zPushSubscription))
+    .index('by_user', ['userId'])
+    .index('by_endpoint', ['endpoint']),
+}, { schemaValidation: false });

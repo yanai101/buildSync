@@ -6,6 +6,7 @@ import { api } from '../../convex/_generated/api'
 import { useSubscription } from '~/hooks/useSubscription'
 import { useAppNotify } from '~/hooks/useAppNotify'
 import { SupportModal } from '~/components/SupportModal'
+import { PushNotificationToggle } from '~/components/PushNotificationToggle'
 
 export const Route = createFileRoute('/account')({
   component: AccountPage,
@@ -358,6 +359,13 @@ function AccountPage() {
             </Btn>
           </div>
         </form>
+      </div>
+
+      <div className="card" style={{ padding: 24 }}>
+        <SectionHeader title="הגדרות התראות" subtitle="בחר כיצד תרצה לקבל עדכונים והודעות" />
+        <div style={{ marginTop: 16 }}>
+          <PushNotificationToggle />
+        </div>
       </div>
 
       <div className="card" style={{ padding: 24 }}>

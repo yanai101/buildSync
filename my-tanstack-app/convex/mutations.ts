@@ -3,6 +3,7 @@ import type { MutationCtx } from './_generated/server';
 import type { Id } from './_generated/dataModel';
 import { v } from 'convex/values';
 import { getAuthUserId } from '@convex-dev/auth/server';
+import { internal } from './_generated/api';
 import { getSyncedPaymentReadiness, syncContractorStagePayments } from './_lib/contractorPaymentSync';
 
 const contractorRoleValidator = v.union(
@@ -1327,6 +1328,54 @@ export const saveNote = mutation({
       resolved: false,
       recipientContractorId: finalRecipientId,
     });
+
+    // --- Web Push Notifications Logic ---
+    const project = await ctx.db.get(args.projectId);
+    if (project) {
+      let targetUserIds: Id<'users'>[] = [];
+      
+      if (args.thread === 'internal') {
+        if (project.ownerUserId && project.ownerUserId !== userId) targetUserIds.push(project.ownerUserId);
+        if (project.managerUserId && project.managerUserId !== userId) targetUserIds.push(project.managerUserId);
+        if (project.inspectorUserId && project.inspectorUserId !== userId) targetUserIds.push(project.inspectorUserId);
+      } else if (args.thread === 'contractor') {
+        if (user.role === 'contractor') {
+          if (project.ownerUserId && project.ownerUserId !== userId) targetUserIds.push(project.ownerUserId);
+          if (project.managerUserId && project.managerUserId !== userId) targetUserIds.push(project.managerUserId);
+          if (project.inspectorUserId && project.inspectorUserId !== userId) targetUserIds.push(project.inspectorUserId);
+        } else {
+          if (finalRecipientId) {
+            const contractor = await ctx.db.get(finalRecipientId);
+            if (contractor && contractor.userId && contractor.userId !== userId) {
+              targetUserIds.push(contractor.userId);
+            }
+          }
+        }
+      }
+      
+      targetUserIds = [...new Set(targetUserIds)]; // Deduplicate
+      
+      if (targetUserIds.length > 0) {
+        const subs: any[] = [];
+        for (const targetId of targetUserIds) {
+          const userSubs = await ctx.db.query('pushSubscriptions')
+            .withIndex('by_user', (q) => q.eq('userId', targetId))
+            .collect();
+          subs.push(...userSubs.map(s => ({ endpoint: s.endpoint, p256dh: s.p256dh, auth: s.auth })));
+        }
+        
+        if (subs.length > 0) {
+          await ctx.scheduler.runAfter(0, internal.push.sendNotification, {
+            subscriptions: subs,
+            payload: {
+              title: `הודעה חדשה מאת ${user.name ?? 'משתמש'}`,
+              body: args.text.substring(0, 100) + (args.text.length > 100 ? '...' : ''),
+              url: `/projects/${args.projectId}/messages`,
+            }
+          });
+        }
+      }
+    }
   },
 });
 

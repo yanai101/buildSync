@@ -618,3 +618,10 @@ export const zGuide = {
   faqs: z.array(z.object({ q: z.string(), a: z.string() })).optional(),
   sortOrder: z.number().optional(),
 };
+
+export const zPushSubscription = {
+  userId: zid('users'),
+  endpoint: z.string(),
+  p256dh: z.string(),
+  auth: z.string(),
+};
