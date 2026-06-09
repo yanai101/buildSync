@@ -1,4 +1,4 @@
-import { mutation } from './_generated/server';
+import { mutation, internalMutation } from './_generated/server';
 import { getAuthUserId } from '@convex-dev/auth/server';
 import { v } from 'convex/values';
 
@@ -54,7 +54,7 @@ export const removeSubscription = mutation({
   },
 });
 
-export const internalRemoveSubscription = mutation({
+export const internalRemoveSubscription = internalMutation({
   args: {
     endpoint: v.string(),
   },
