@@ -318,6 +318,41 @@ export const redeemInvitationExistingUser = mutation({
     const allowBudgetView = inv.allowBudgetView ?? (inv.role !== 'contractor');
     const allowScheduleView = inv.allowScheduleView !== false;
 
+    // --- Inspector Limit Logic ---
+    if (inv.role === 'inspector') {
+      const project = await ctx.db.get(inv.projectId);
+      if (!project) throw new Error('הפרויקט לא נמצא');
+      
+      let isProOrPremium = false;
+      if (project.ownerUserId) {
+        const owner = await ctx.db.get(project.ownerUserId);
+        if (owner) {
+          const now = Date.now();
+          const isExpired = owner.subscriptionExpiresAt ? now > owner.subscriptionExpiresAt : false;
+          const tier = owner.subscriptionTier || 'free';
+          const activeTier = owner.isSuperAdmin ? 'premium' : (isExpired ? 'free' : tier);
+          isProOrPremium = activeTier === 'pro' || activeTier === 'premium';
+        }
+      }
+
+      // If the target project is NOT paid, check if the inspector is already inspecting projects
+      if (!isProOrPremium) {
+        const inspectedProjects = await ctx.db
+          .query('projects')
+          .filter((q) => q.eq(q.field('inspectorUserId'), userId))
+          .collect();
+
+        // Exclude the current project in case they are already the inspector and just clicking the link again
+        const otherInspectedProjects = inspectedProjects.filter(p => p._id !== inv.projectId);
+
+        // If they already have 1 or more OTHER projects they are inspecting, block joining another FREE project
+        if (otherInspectedProjects.length >= 1) {
+          throw new Error('מגבלת מפקח בחשבון חינמי: לא ניתן לפקח על יותר מפרויקט אחד אם בעל הפרויקט אינו מנוי משלם. בקש מבעל הפרויקט לשדרג.');
+        }
+      }
+    }
+    // ----------------------------
+
     try {
       if (inv.role === 'manager') {
         await ctx.db.patch(inv.projectId, { 
