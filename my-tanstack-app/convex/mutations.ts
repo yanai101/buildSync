@@ -1344,12 +1344,17 @@ export const saveNote = mutation({
           if (project.managerUserId && project.managerUserId !== userId) targetUserIds.push(project.managerUserId);
           if (project.inspectorUserId && project.inspectorUserId !== userId) targetUserIds.push(project.inspectorUserId);
         } else {
+          // Internal user sending to contractor
           if (finalRecipientId) {
             const contractor = await ctx.db.get(finalRecipientId);
             if (contractor && contractor.userId && contractor.userId !== userId) {
               targetUserIds.push(contractor.userId);
             }
           }
+          // ALSO notify the rest of the internal team!
+          if (project.ownerUserId && project.ownerUserId !== userId) targetUserIds.push(project.ownerUserId);
+          if (project.managerUserId && project.managerUserId !== userId) targetUserIds.push(project.managerUserId);
+          if (project.inspectorUserId && project.inspectorUserId !== userId) targetUserIds.push(project.inspectorUserId);
         }
       }
       
