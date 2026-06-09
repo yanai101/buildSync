@@ -1365,7 +1365,7 @@ export const saveNote = mutation({
         }
         
         if (subs.length > 0) {
-          await ctx.scheduler.runAfter(0, internal.push.sendNotification, {
+          await ctx.scheduler.runAfter(0, internal.pushActions.sendNotification, {
             subscriptions: subs,
             payload: {
               title: `הודעה חדשה מאת ${user.name ?? 'משתמש'}`,

@@ -35,6 +35,8 @@ import type * as personalFiles from "../personalFiles.js";
 import type * as photos from "../photos.js";
 import type * as projectFiles from "../projectFiles.js";
 import type * as projects from "../projects.js";
+import type * as push from "../push.js";
+import type * as pushActions from "../pushActions.js";
 import type * as queries from "../queries.js";
 import type * as quotes from "../quotes.js";
 import type * as seed from "../seed.js";
@@ -79,6 +81,8 @@ declare const fullApi: ApiFromModules<{
   photos: typeof photos;
   projectFiles: typeof projectFiles;
   projects: typeof projects;
+  push: typeof push;
+  pushActions: typeof pushActions;
   queries: typeof queries;
   quotes: typeof quotes;
   seed: typeof seed;
