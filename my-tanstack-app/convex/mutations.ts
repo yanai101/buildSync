@@ -3,8 +3,8 @@ import type { MutationCtx } from './_generated/server';
 import type { Id } from './_generated/dataModel';
 import { v } from 'convex/values';
 import { getAuthUserId } from '@convex-dev/auth/server';
-import { internal } from './_generated/api';
 import { getSyncedPaymentReadiness, syncContractorStagePayments } from './_lib/contractorPaymentSync';
+import { scheduleUserNotifications } from './notifications';
 
 const contractorRoleValidator = v.union(
   v.literal('קבלן עד מפתח'),
@@ -1283,6 +1283,8 @@ export const saveNote = mutation({
     text: v.string(),
     thread: v.union(v.literal('internal'), v.literal('contractor')),
     recipientContractorId: v.optional(v.id('contractors')),
+    // Directed 1:1 message to another internal user (e.g. owner <-> inspector).
+    recipientUserId: v.optional(v.id('users')),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -1303,6 +1305,7 @@ export const saveNote = mutation({
     }
 
     let finalRecipientId = args.thread === 'internal' ? undefined : args.recipientContractorId;
+    let finalRecipientUserId: Id<'users'> | undefined;
 
     if (user.role === 'contractor') {
       const contractor = await ctx.db
@@ -1318,6 +1321,21 @@ export const saveNote = mutation({
       finalRecipientId = contractor._id;
     }
 
+    const project = await ctx.db.get(args.projectId);
+
+    if (args.thread === 'internal' && args.recipientUserId) {
+      // Directed DM between internal users — must be one of the project's
+      // owner/manager/inspector slots, and not the sender themselves.
+      if (!project) {
+        throw new Error('Project not found');
+      }
+      const internalMemberIds = [project.ownerUserId, project.managerUserId, project.inspectorUserId];
+      if (args.recipientUserId === userId || !internalMemberIds.includes(args.recipientUserId)) {
+        throw new Error('Invalid recipient');
+      }
+      finalRecipientUserId = args.recipientUserId;
+    }
+
     await ctx.db.insert('messages', {
       projectId: args.projectId,
       fromUserId: userId,
@@ -1327,58 +1345,54 @@ export const saveNote = mutation({
       thread: args.thread,
       resolved: false,
       recipientContractorId: finalRecipientId,
+      recipientUserId: finalRecipientUserId,
     });
 
     // --- Web Push Notifications Logic ---
-    const project = await ctx.db.get(args.projectId);
+    // Each "group" of recipients sees a different conversation, so the deep
+    // link's `peer` param (the OTHER party from that group's point of view)
+    // is computed per group.
     if (project) {
-      let targetUserIds: Id<'users'>[] = [];
-      
+      const senderName = user.name ?? user.email ?? 'משתמש';
+      const internalTeamIds = (excluding: Id<'users'>) =>
+        [project.ownerUserId, project.managerUserId, project.inspectorUserId]
+          .filter((id): id is Id<'users'> => !!id && id !== excluding);
+
+      const groups: { userIds: (Id<'users'> | undefined)[]; peer: string }[] = [];
+
       if (args.thread === 'internal') {
-        if (project.ownerUserId && project.ownerUserId !== userId) targetUserIds.push(project.ownerUserId);
-        if (project.managerUserId && project.managerUserId !== userId) targetUserIds.push(project.managerUserId);
-        if (project.inspectorUserId && project.inspectorUserId !== userId) targetUserIds.push(project.inspectorUserId);
+        if (finalRecipientUserId) {
+          // Directed DM — notify only the recipient; their peer is the sender.
+          groups.push({ userIds: [finalRecipientUserId], peer: String(userId) });
+        } else {
+          // Legacy "Team" broadcast — notify the rest of the internal team.
+          groups.push({ userIds: internalTeamIds(userId), peer: 'team' });
+        }
       } else if (args.thread === 'contractor') {
         if (user.role === 'contractor') {
-          if (project.ownerUserId && project.ownerUserId !== userId) targetUserIds.push(project.ownerUserId);
-          if (project.managerUserId && project.managerUserId !== userId) targetUserIds.push(project.managerUserId);
-          if (project.inspectorUserId && project.inspectorUserId !== userId) targetUserIds.push(project.inspectorUserId);
+          // Internal team's peer is this contractor.
+          groups.push({ userIds: internalTeamIds(userId), peer: String(finalRecipientId) });
         } else {
-          // Internal user sending to contractor
+          // Internal user sending to a contractor — their peer is the sender.
           if (finalRecipientId) {
             const contractor = await ctx.db.get(finalRecipientId);
-            if (contractor && contractor.userId && contractor.userId !== userId) {
-              targetUserIds.push(contractor.userId);
+            if (contractor?.userId && contractor.userId !== userId) {
+              groups.push({ userIds: [contractor.userId], peer: String(userId) });
             }
           }
-          // ALSO notify the rest of the internal team!
-          if (project.ownerUserId && project.ownerUserId !== userId) targetUserIds.push(project.ownerUserId);
-          if (project.managerUserId && project.managerUserId !== userId) targetUserIds.push(project.managerUserId);
-          if (project.inspectorUserId && project.inspectorUserId !== userId) targetUserIds.push(project.inspectorUserId);
+          // Also notify the rest of the internal team — their peer is this contractor.
+          groups.push({ userIds: internalTeamIds(userId), peer: String(finalRecipientId ?? 'team') });
         }
       }
-      
-      targetUserIds = [...new Set(targetUserIds)]; // Deduplicate
-      
-      if (targetUserIds.length > 0) {
-        const subs: any[] = [];
-        for (const targetId of targetUserIds) {
-          const userSubs = await ctx.db.query('pushSubscriptions')
-            .withIndex('by_user', (q) => q.eq('userId', targetId))
-            .collect();
-          subs.push(...userSubs.map(s => ({ endpoint: s.endpoint, p256dh: s.p256dh, auth: s.auth })));
-        }
-        
-        if (subs.length > 0) {
-          await ctx.scheduler.runAfter(0, internal.pushActions.sendNotification, {
-            subscriptions: subs,
-            payload: {
-              title: `הודעה חדשה מאת ${user.name ?? 'משתמש'}`,
-              body: args.text.substring(0, 100) + (args.text.length > 100 ? '...' : ''),
-              url: `/projects/${args.projectId}/messages`,
-            }
-          });
-        }
+
+      for (const group of groups) {
+        await scheduleUserNotifications(ctx, {
+          userIds: group.userIds,
+          title: `הודעה חדשה מאת ${senderName}`,
+          body: args.text.substring(0, 100) + (args.text.length > 100 ? '...' : ''),
+          url: `/notes?project=${args.projectId}&peer=${group.peer}`,
+          tag: `notes-${args.projectId}-${group.peer}`,
+        });
       }
     }
   },
@@ -1389,6 +1403,10 @@ export const markMessagesAsRead = mutation({
     projectId: v.id('projects'),
     thread: v.union(v.literal('internal'), v.literal('contractor')),
     filterContractorId: v.optional(v.id('contractors')),
+    // For 'internal' thread: which conversation to mark read.
+    // - omitted -> the shared "Team" broadcast conversation
+    // - set -> the 1:1 DM with this internal user
+    peerUserId: v.optional(v.id('users')),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -1431,8 +1449,18 @@ export const markMessagesAsRead = mutation({
           await ctx.db.patch(msg._id, { readAt: now });
         }
       }
+    } else if (args.thread === 'internal') {
+      // owner / manager / inspector — only mark the open conversation as read.
+      for (const msg of unread) {
+        const isAddressedToMe = args.peerUserId
+          ? msg.recipientUserId === userId && msg.fromUserId === args.peerUserId
+          : msg.recipientUserId === undefined; // shared "Team" broadcast
+        if (isAddressedToMe) {
+          await ctx.db.patch(msg._id, { readAt: now });
+        }
+      }
     } else {
-      // owner / manager / inspector
+      // owner / manager / inspector — contractor thread
       for (const msg of unread) {
         if (args.filterContractorId) {
           // Only mark messages from the currently-viewed contractor

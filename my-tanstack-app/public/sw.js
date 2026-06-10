@@ -28,6 +28,7 @@ self.addEventListener('push', function (event) {
         data: data.url || '/',
         vibrate: [200, 100, 200],
         dir: 'rtl',
+        ...(data.tag ? { tag: data.tag, renotify: true } : {}),
       };
 
       event.waitUntil(self.registration.showNotification(title, options));

@@ -2,6 +2,7 @@ import { query, mutation } from './_generated/server';
 import { getAuthUserId } from '@convex-dev/auth/server';
 import { v } from 'convex/values';
 import { performProjectDeletion } from './_lib/projectDeletion';
+import { scheduleUserNotifications } from './notifications';
 
 async function checkSuperAdmin(ctx: any) {
   const userId = await getAuthUserId(ctx);
@@ -300,5 +301,35 @@ export const deletePromoCode = mutation({
   handler: async (ctx, args) => {
     await checkSuperAdmin(ctx);
     await ctx.db.delete(args.promoCodeId);
+  },
+});
+
+// Dev-only helper (exposed in the Super Admin screen behind import.meta.env.DEV)
+// to verify the Web Push pipeline end-to-end against a real device subscription.
+export const sendTestPushNotification = mutation({
+  args: { userId: v.id('users') },
+  handler: async (ctx, args) => {
+    const admin = await checkSuperAdmin(ctx);
+
+    const subscriptions = await ctx.db
+      .query('pushSubscriptions')
+      .withIndex('by_user', (q) => q.eq('userId', args.userId))
+      .collect();
+
+    if (subscriptions.length === 0) {
+      return { subscriptionCount: 0 };
+    }
+
+    await scheduleUserNotifications(ctx, {
+      userIds: [args.userId],
+      title: '🔔 התראת בדיקה',
+      body: `נשלח על ידי ${admin.name || admin.email || 'מנהל מערכת'} בשעה ${new Date().toLocaleTimeString('he-IL')}`,
+      url: '/account',
+      // Unique per send so repeated test clicks each show as a fresh
+      // notification instead of collapsing into one (via renotify+tag).
+      tag: `test-push-${Date.now()}`,
+    });
+
+    return { subscriptionCount: subscriptions.length };
   },
 });

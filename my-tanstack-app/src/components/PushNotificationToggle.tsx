@@ -6,6 +6,26 @@ export function PushNotificationToggle() {
   const { isSupported, permission, isSubscribed, isLoading, subscribe, unsubscribe } = usePushNotifications();
 
   if (!isSupported) {
+    // On iOS, Web Push only works once the app is added to the Home Screen
+    // (iOS 16.4+) — guide the user there instead of just hiding the toggle.
+    const isIOS = typeof navigator !== 'undefined' && /iphone|ipad|ipod/i.test(navigator.userAgent);
+    const isStandalone = typeof window !== 'undefined' && window.matchMedia?.('(display-mode: standalone)').matches;
+    if (isIOS && !isStandalone) {
+      return (
+        <div className="flex items-start gap-3 p-4 bg-white rounded-xl border border-gray-100 shadow-sm">
+          <div className="p-2 rounded-full bg-gray-50 text-gray-400">
+            <BellOff size={20} />
+          </div>
+          <div>
+            <h3 className="font-medium text-gray-900">התראות פוש במכשיר</h3>
+            <p className="text-sm text-gray-500">
+              באייפון, כדי לקבל התראות יש להוסיף את האפליקציה למסך הבית
+              (שתף ⬆️ ← &quot;הוסף למסך הבית&quot;), ואז להפעיל התראות מתוך האפליקציה שנוספה.
+            </p>
+          </div>
+        </div>
+      );
+    }
     return null; // Don't show if not supported by the browser
   }
 

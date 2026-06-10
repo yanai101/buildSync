@@ -13,6 +13,7 @@ export function SuperAdminScreen() {
   const cancelUserSubscription = useAction(api.superAdmin.cancelUserSubscription);
   const deleteUserCascade = useMutation(api.superAdmin.deleteUserCascade);
   const forceResetPassword = useAction(api.superAdmin.forceResetPassword);
+  const sendTestPushNotification = useMutation(api.superAdmin.sendTestPushNotification);
   
   const promoCodes = useQuery(api.superAdmin.getPromoCodes, isSuperAdmin ? {} : 'skip');
   const generatePromoCode = useMutation(api.superAdmin.generatePromoCode);
@@ -100,6 +101,19 @@ export function SuperAdminScreen() {
       await deleteUserCascade({ userId: showConfirmDelete });
     }
     setShowConfirmDelete(null);
+  };
+
+  const handleSendTestPush = async (userId: Id<'users'>) => {
+    try {
+      const result = await sendTestPushNotification({ userId });
+      if (result.subscriptionCount === 0) {
+        alert('למשתמש זה אין מנויי Push פעילים (לא הפעיל התראות במכשיר כלשהו).');
+      } else {
+        alert(`נשלחה התראת בדיקה ל-${result.subscriptionCount} מכשיר/ים.`);
+      }
+    } catch (e: any) {
+      alert('שגיאה בשליחת התראת בדיקה: ' + e.message);
+    }
   };
 
   const handleGeneratePromo = async () => {
@@ -344,22 +358,42 @@ export function SuperAdminScreen() {
                         </div>
                         <div>
                           {isCurrentAdmin ? (
-                            <span style={{ fontSize: 13, color: 'var(--text3)', fontWeight: 600 }}>מנהל מערכת (מוגן)</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <span style={{ fontSize: 13, color: 'var(--text3)', fontWeight: 600 }}>מנהל מערכת (מוגן)</span>
+                              {import.meta.env.DEV && (
+                                <button
+                                  onClick={() => handleSendTestPush(u._id)}
+                                  title="שלח התראת Push לבדיקה למכשירים הרשומים שלך"
+                                  style={{ border: 'none', background: 'var(--surface-hover)', padding: '6px 12px', borderRadius: 6, cursor: 'pointer', color: 'var(--accent)' }}
+                                >
+                                  🔔 בדיקת Push
+                                </button>
+                              )}
+                            </div>
                           ) : (
                             <div style={{ display: 'flex', gap: 8 }}>
-                              <button 
+                              <button
                                 onClick={() => setEditingUser(u)}
                                 style={{ border: 'none', background: 'var(--surface-hover)', padding: '6px 12px', borderRadius: 6, cursor: 'pointer', color: 'var(--text1)' }}
                               >
                                 עריכה
                               </button>
-                              <button 
+                              <button
                                 onClick={() => setResetPasswordUser(u)}
                                 style={{ border: 'none', background: 'var(--surface-hover)', padding: '6px 12px', borderRadius: 6, cursor: 'pointer', color: '#F59E0B' }}
                               >
                                 איפוס סיסמה
                               </button>
-                              <button 
+                              {import.meta.env.DEV && (
+                                <button
+                                  onClick={() => handleSendTestPush(u._id)}
+                                  title="שלח התראת Push לבדיקה למכשירים הרשומים של המשתמש"
+                                  style={{ border: 'none', background: 'var(--surface-hover)', padding: '6px 12px', borderRadius: 6, cursor: 'pointer', color: 'var(--accent)' }}
+                                >
+                                  🔔 בדיקת Push
+                                </button>
+                              )}
+                              <button
                                 onClick={() => setShowConfirmDelete(u._id)}
                                 style={{ border: 'none', background: '#FEF2F2', padding: '6px 12px', borderRadius: 6, cursor: 'pointer', color: '#EF4444' }}
                               >

@@ -29,6 +29,7 @@ import type * as http from "../http.js";
 import type * as invitations from "../invitations.js";
 import type * as mutations from "../mutations.js";
 import type * as notes from "../notes.js";
+import type * as notifications from "../notifications.js";
 import type * as orders from "../orders.js";
 import type * as permits from "../permits.js";
 import type * as personalFiles from "../personalFiles.js";
@@ -75,6 +76,7 @@ declare const fullApi: ApiFromModules<{
   invitations: typeof invitations;
   mutations: typeof mutations;
   notes: typeof notes;
+  notifications: typeof notifications;
   orders: typeof orders;
   permits: typeof permits;
   personalFiles: typeof personalFiles;

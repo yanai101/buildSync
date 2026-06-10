@@ -17,6 +17,7 @@ export const sendNotification = internalAction({
       title: v.string(),
       body: v.string(),
       url: v.optional(v.string()),
+      tag: v.optional(v.string()),
     }),
   },
   handler: async (ctx, args) => {

@@ -32,7 +32,13 @@ export const listMine = query({
       p.managerUserId === userId || 
       p.inspectorUserId === userId || 
       contractorProjectIds.has(p._id)
-    ).sort((a, b) => b._creationTime - a._creationTime);
+    ).map(p => {
+      let myRole = 'contractor';
+      if (p.ownerUserId === userId) myRole = 'owner';
+      else if (p.managerUserId === userId) myRole = 'manager';
+      else if (p.inspectorUserId === userId) myRole = 'inspector';
+      return { ...p, myRole };
+    }).sort((a, b) => b._creationTime - a._creationTime);
   },
 });
 

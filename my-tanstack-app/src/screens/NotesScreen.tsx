@@ -1,7 +1,8 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useSearch } from '@tanstack/react-router';
 import { Icon, Avatar, Select, Btn, FeedbackModal, EmptyState, PageBackground } from '../components/Shared';
-import { ROLE_COLORS, ROLE_LABELS, PROJECT } from '../utils/mockData';
+import { ROLE_COLORS, ROLE_LABELS } from '../utils/mockData';
 import { useDataSource } from '../hooks/useDataSource';
 import { useDataMutation } from '../hooks/useDataMutation';
 import { useCurrentProject } from '../hooks/useCurrentProject';
@@ -50,8 +51,20 @@ const ReadTick = ({ readAt }: { readAt?: number }) => {
   );
 };
 
+// A single conversation in the contacts list — either the shared "Team"
+// broadcast, a 1:1 DM with another internal user, or a (per-contractor or
+// broadcast) contractor conversation.
+type Conversation = {
+  key: string;
+  label: string;
+  thread: 'internal' | 'contractor';
+  peerUserId?: string;
+  contractorId?: string;
+};
+
 export const NotesScreen = () => {
-  const { projectId } = useCurrentProject();
+  const { project, projectId, projects, setCurrentProject } = useCurrentProject();
+  const search = useSearch({ from: '/notes', shouldThrow: false }) as { project?: string; peer?: string } | undefined;
   const dbNotes = useQuery(api.queries.listNotes, projectId ? { projectId } : "skip");
   const dbContractors = useQuery(api.queries.listContractors, projectId ? { projectId } : "skip");
   const currentIdentity = useQuery(api.users.currentIdentity, {});
@@ -59,12 +72,9 @@ export const NotesScreen = () => {
   const { mutate } = useDataMutation('notes');
 
   const [notes, setNotes] = React.useState<Note[]>([]);
-  const [thread, setThread] = React.useState<string>("all");
   const [text, setText] = React.useState("");
   const [myRole, setMyRole] = React.useState<string>("manager");
-  const [targetThread, setTargetThread] = React.useState<string>("internal");
-  const [recipientContractorId, setRecipientContractorId] = React.useState<string>("all");
-  const [filterContractorId, setFilterContractorId] = React.useState<string>("all");
+  const [activeKey, setActiveKey] = React.useState<string>("internal-team");
   const [feedback, setFeedback] = React.useState<{ title: string; message: string; type: 'error' | 'info' | 'success' } | null>(null);
   const endRef = React.useRef<HTMLDivElement>(null);
   const composeRef = React.useRef<HTMLTextAreaElement>(null);
@@ -75,115 +85,217 @@ export const NotesScreen = () => {
     if (initialNotes) setNotes(initialNotes);
   }, [initialNotes]);
 
+  // If a notification deep-link points at another project, switch to it.
+  React.useEffect(() => {
+    if (mode !== 'db' || !search?.project) return;
+    if (search.project !== projectId && projects.some((p: any) => p._id === search.project)) {
+      setCurrentProject(search.project);
+    }
+  }, [search?.project, projectId, projects, mode, setCurrentProject]);
+
+  const myUserId = currentIdentity?.userId;
   const activeRole = mode === 'db'
     ? currentIdentity?.role ?? 'manager'
     : myRole;
   const canSeeAllChats = activeRole !== 'contractor';
-  const allowedThreads = React.useMemo(() => {
-    if (canSeeAllChats) {
-      return [{id:"all",label:"הכל"},{id:"internal",label:"פנימי"},{id:"contractor",label:"לקבלן"}];
-    }
-    return [{id:"contractor",label:"לקבלן"}];
-  }, [canSeeAllChats]);
-  const targetThreadOptions = allowedThreads.filter(t => t.id !== 'all');
-  const threads = allowedThreads;
 
+  // The list of conversations shown as contact chips.
+  const conversations: Conversation[] = React.useMemo(() => {
+    if (mode !== 'db') {
+      // Mock mode keeps the simple legacy two-thread view.
+      return [
+        { key: 'internal-team', label: 'פנימי', thread: 'internal' },
+        { key: 'contractor-broadcast', label: 'לקבלן', thread: 'contractor' },
+      ];
+    }
+
+    if (!canSeeAllChats) {
+      return [{ key: 'contractor-team', label: 'צוות הפרויקט', thread: 'contractor' }];
+    }
+
+    const list: Conversation[] = [
+      { key: 'internal-team', label: '👥 צוות (כולם)', thread: 'internal' },
+    ];
+
+    // Order: inspector, then manager, then owner — matches the requested
+    // navigation order ("מפקח" then "מנהל עבודה"). A role only gets a chip
+    // once someone has actually been assigned to it.
+    const internalMembers: { role: 'owner' | 'manager' | 'inspector'; userId?: any; name?: string }[] = [
+      { role: 'inspector', userId: project?.inspectorUserId, name: project?.inspectorName },
+      { role: 'manager', userId: project?.managerUserId, name: project?.managerName },
+      { role: 'owner', userId: project?.ownerUserId, name: project?.ownerName },
+    ];
+    for (const m of internalMembers) {
+      if (!m.userId || String(m.userId) === String(myUserId)) continue;
+      // Never show the "טרם הוגדר" placeholder name — fall back to the role label.
+      const label = m.name && m.name !== 'טרם הוגדר' ? m.name : (ROLE_LABELS as any)[m.role];
+      list.push({
+        key: `dm-${String(m.userId)}`,
+        label,
+        thread: 'internal',
+        peerUserId: String(m.userId),
+      });
+    }
+
+    for (const c of contractors as any[]) {
+      const cId = getContractorIdStr(c._id ?? c.id);
+      list.push({ key: `contractor-${cId}`, label: c.name || (ROLE_LABELS as any).contractor, thread: 'contractor', contractorId: cId });
+    }
+
+    list.push({ key: 'contractor-broadcast', label: '📣 לכל הקבלנים', thread: 'contractor' });
+
+    return list;
+  }, [mode, canSeeAllChats, project, contractors, myUserId]);
+
+  // Unread message count per conversation.
+  const unreadByConvKey = React.useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const n of notes as any[]) {
+      if (n.readAt) continue;
+      if (n.fromUserId === myUserId) continue;
+      if (n.thread === 'internal') {
+        if (n.recipientUserId === undefined) {
+          counts['internal-team'] = (counts['internal-team'] ?? 0) + 1;
+        } else if (String(n.recipientUserId) === String(myUserId)) {
+          const key = `dm-${String(n.fromUserId)}`;
+          counts[key] = (counts[key] ?? 0) + 1;
+        }
+      } else if (n.thread === 'contractor') {
+        if (canSeeAllChats) {
+          if (n.role === 'contractor') {
+            const cId = getContractorIdStr(n.recipientContractorId);
+            if (cId) counts[`contractor-${cId}`] = (counts[`contractor-${cId}`] ?? 0) + 1;
+          }
+        } else {
+          counts['contractor-team'] = (counts['contractor-team'] ?? 0) + 1;
+        }
+      }
+    }
+    return counts;
+  }, [notes, myUserId, canSeeAllChats]);
+
+  const totalUnread = Object.values(unreadByConvKey).reduce((s, v) => s + v, 0);
+
+  // Make sure the active conversation always points at something real.
   React.useEffect(() => {
-    if (!threads.some(t => t.id === thread)) {
-      setThread(threads[0]?.id ?? 'internal');
+    if (conversations.length === 0) return;
+    if (!conversations.some(c => c.key === activeKey)) {
+      setActiveKey(conversations[0].key);
     }
-    if (!targetThreadOptions.some(t => t.id === targetThread)) {
-      setTargetThread(targetThreadOptions[0]?.id ?? 'internal');
-    }
-  }, [targetThread, targetThreadOptions, thread, threads]);
+  }, [conversations, activeKey]);
 
-  // When viewing a specific thread tab, messages must go to that same thread —
-  // each thread is independent. Only the "all" view lets the user pick a target.
+  // Notification deep-link: open the conversation with the given peer.
+  // Apply the deep-link's `peer` exactly once (so a manual chip click afterwards isn't
+  // overridden by this effect re-running when `conversations` is recomputed).
+  const appliedPeerRef = React.useRef<string | undefined>(undefined);
   React.useEffect(() => {
-    if (thread !== 'all' && targetThread !== thread) {
-      setTargetThread(thread);
+    if (mode !== 'db' || !search?.peer || conversations.length === 0) return;
+    if (appliedPeerRef.current === search.peer) return;
+    const target = conversations.find(c =>
+      c.key === `dm-${search.peer}` ||
+      c.key === `contractor-${search.peer}` ||
+      (search.peer === 'team' && c.key === (canSeeAllChats ? 'internal-team' : 'contractor-team'))
+    );
+    if (target) {
+      setActiveKey(target.key);
+      appliedPeerRef.current = search.peer;
     }
-  }, [thread, targetThread]);
+  }, [search?.peer, conversations, mode, canSeeAllChats]);
 
-  // Sync the composer recipient with the filter selection when filtering contractor chat
-  React.useEffect(() => {
-    if (thread === 'contractor') {
-      setRecipientContractorId(filterContractorId);
-    }
-  }, [filterContractorId, thread]);
+  const activeConv = conversations.find(c => c.key === activeKey) ?? conversations[0];
 
-  // Auto-mark incoming messages as read when the user views a thread.
+  // When there's more than one contractor, replace their individual chips
+  // with a single dropdown so the chip row doesn't get crowded.
+  const showContractorDropdown = canSeeAllChats && contractors.length > 1;
+  const chipConvs = showContractorDropdown ? conversations.filter(c => !c.contractorId) : conversations;
+  const contractorConvs = conversations.filter(c => !!c.contractorId);
+
+  // Auto-mark incoming messages as read when the user opens a conversation.
   // Optimistic local update fires immediately so counts reset without waiting for DB roundtrip.
   React.useEffect(() => {
-    if (mode !== 'db' || !projectId || thread === 'all') return;
-    const activeThread = thread as 'internal' | 'contractor';
-    const fcId = thread === 'contractor' && filterContractorId !== 'all' ? filterContractorId : undefined;
-    const myUserId = currentIdentity?.userId;
+    if (mode !== 'db' || !projectId || !activeConv) return;
+    // The "broadcast to all contractors" tab has no incoming messages to mark read.
+    if (canSeeAllChats && activeConv.thread === 'contractor' && !activeConv.contractorId) return;
+
     const now = Date.now();
 
     setNotes(prev => prev.map(n => {
       if ((n as any).readAt) return n;
-      if (n.thread !== activeThread) return n;
       if ((n as any).fromUserId === myUserId) return n;
-      if (fcId && getContractorIdStr((n as any).recipientContractorId) !== fcId) return n;
+      if (n.thread !== activeConv.thread) return n;
+      if (activeConv.thread === 'internal') {
+        if (activeConv.peerUserId) {
+          if (String((n as any).recipientUserId) !== String(myUserId) || String((n as any).fromUserId) !== activeConv.peerUserId) return n;
+        } else if ((n as any).recipientUserId !== undefined) {
+          return n;
+        }
+      } else if (canSeeAllChats && activeConv.contractorId) {
+        if (getContractorIdStr((n as any).recipientContractorId) !== activeConv.contractorId) return n;
+      }
       return { ...n, readAt: now } as any;
     }));
 
     mutate('markMessagesAsRead', {
       projectId,
-      thread: activeThread,
-      filterContractorId: fcId,
+      thread: activeConv.thread,
+      ...(activeConv.thread === 'internal' && activeConv.peerUserId ? { peerUserId: activeConv.peerUserId } : {}),
+      ...(activeConv.thread === 'contractor' && canSeeAllChats ? { filterContractorId: activeConv.contractorId } : {}),
     }).catch(() => { /* best-effort */ });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [thread, filterContractorId, notes.length]);
+  }, [activeKey, notes.length, mode, projectId, canSeeAllChats]);
 
   const filtered = React.useMemo(() => {
-    let list = thread === "all" ? notes : notes.filter(n => n.thread === thread);
-    if (thread === "contractor" && filterContractorId !== "all") {
-      const filterStr = getContractorIdStr(filterContractorId);
-      list = list.filter(n => {
-        const rcId = (n as any).recipientContractorId;
-        return rcId && getContractorIdStr(rcId) === filterStr;
-      });
-    }
-    return list;
-  }, [notes, thread, filterContractorId]);
+    if (!activeConv) return [];
 
-  // Compute unread counts per contractor (messages they sent that we haven't read)
-  const unreadByContractor = React.useMemo(() => {
-    const counts: Record<string, number> = {};
-    for (const n of notes) {
-      if (n.thread !== 'contractor') continue;
-      if (n.role !== 'contractor') continue;
-      if ((n as any).readAt) continue;
-      // Contractor messages carry their own contractor id as recipientContractorId
-      const cId = getContractorIdStr((n as any).recipientContractorId);
-      if (!cId) continue;
-      counts[cId] = (counts[cId] ?? 0) + 1;
+    if (mode !== 'db') {
+      return notes.filter(n => n.thread === activeConv.thread);
     }
-    return counts;
-  }, [notes]);
 
-  const totalUnread = Object.values(unreadByContractor).reduce((s, v) => s + v, 0);
+    if (activeConv.thread === 'internal') {
+      if (activeConv.peerUserId) {
+        return notes.filter((n: any) => n.thread === 'internal' && (
+          (String(n.fromUserId) === String(myUserId) && String(n.recipientUserId) === activeConv.peerUserId) ||
+          (String(n.fromUserId) === activeConv.peerUserId && String(n.recipientUserId) === String(myUserId))
+        ));
+      }
+      return notes.filter((n: any) => n.thread === 'internal' && n.recipientUserId === undefined);
+    }
+
+    // contractor thread
+    if (!canSeeAllChats) {
+      return notes.filter(n => n.thread === 'contractor');
+    }
+    if (activeConv.contractorId) {
+      return notes.filter((n: any) => n.thread === 'contractor' && getContractorIdStr(n.recipientContractorId) === activeConv.contractorId);
+    }
+    // broadcast — messages addressed to all contractors
+    return notes.filter((n: any) => n.thread === 'contractor' && !n.recipientContractorId);
+  }, [notes, activeConv, mode, myUserId, canSeeAllChats]);
 
   const send = async () => {
-    if(!text.trim()) return;
+    if (!text.trim() || !activeConv) return;
     const roleForMessage = activeRole || myRole;
     const name = mode === 'db'
       ? currentIdentity?.name || currentIdentity?.email || (ROLE_LABELS as any)[roleForMessage] || 'משתמש'
       : ["בעל הבית","אבי כהן","רון לוי","יעקב פרץ"][["owner","manager","inspector","contractor"].indexOf(myRole)];
 
+    const recipientUserId = mode === 'db' && activeConv.thread === 'internal' ? activeConv.peerUserId : undefined;
+    const recipientContractorId = mode === 'db' && activeConv.thread === 'contractor' ? activeConv.contractorId : undefined;
+
     // Optimistic
     const newNote = {
       id: Date.now() as any,
+      fromUserId: myUserId,
       fromName: name,
       role: roleForMessage,
       text: text.trim(),
       date: "היום",
       time: new Date().toTimeString().slice(0,5),
-      thread: targetThread,
-      recipientContractorId: targetThread === 'contractor' && recipientContractorId !== 'all' ? recipientContractorId : undefined,
-      recipientName: targetThread === 'contractor' && recipientContractorId !== 'all' ? contractors.find((c: any) => getContractorIdStr(c._id ?? c.id) === getContractorIdStr(recipientContractorId))?.name : undefined,
+      thread: activeConv.thread,
+      recipientUserId,
+      recipientUserName: recipientUserId ? activeConv.label : undefined,
+      recipientContractorId,
+      recipientName: recipientContractorId ? activeConv.label : undefined,
     };
     setNotes(prev=>[...prev, newNote as any]);
     setText("");
@@ -193,8 +305,9 @@ export const NotesScreen = () => {
       await mutate('saveNote', {
         projectId: projectId || 'dummy',
         text: text.trim(),
-        thread: targetThread,
-        ...(targetThread === 'contractor' && recipientContractorId !== 'all' ? { recipientContractorId: recipientContractorId as any } : {})
+        thread: activeConv.thread,
+        ...(recipientContractorId ? { recipientContractorId: recipientContractorId as any } : {}),
+        ...(recipientUserId ? { recipientUserId: recipientUserId as any } : {}),
       });
       refetch();
     } catch (err) {
@@ -205,102 +318,66 @@ export const NotesScreen = () => {
   return (
     <ScreenBoundary loading={loading} error={error} onRetry={refetch}>
       <div className="page-content" style={{display:"flex",flexDirection:"column",height:"calc(100vh - 130px)"}}>
-        {/* Thread tabs & Contractor Filter */}
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', marginBottom: 16 }}>
-          {notes.length > 0 && (
-            <div style={{display:"flex",gap:0,background:"var(--surface)",borderRadius:8,border:"1px solid var(--border)",padding:3}}>
-              {threads.map(t=>(
-                <button key={t.id} onClick={()=>setThread(t.id)} style={{padding:"6px 14px",border:"none",borderRadius:6,cursor:"pointer",fontFamily:"'Heebo',sans-serif",fontSize:13,fontWeight:thread===t.id?600:400,background:thread===t.id?"var(--accent)":"transparent",color:thread===t.id?"#fff":"var(--text2)",transition:"background .15s, color .15s"}}>
-                  {t.label}
-                  <span style={{marginRight:5,fontSize:11,opacity:.7}}>{t.id==="all"?notes.length:notes.filter(n=>n.thread===t.id).length}</span>
-                  {t.id === 'contractor' && totalUnread > 0 && thread !== 'contractor' && (
-                    <span style={{marginRight:4,background:'#DC2626',color:'#fff',borderRadius:10,fontSize:10,padding:'1px 6px',fontWeight:700}}>
-                      {totalUnread}
+        {/* Conversation list */}
+        {conversations.length > 1 && (
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', marginBottom: 16, overflowX: 'auto' }}>
+            {chipConvs.map(c => {
+              const unread = unreadByConvKey[c.key] ?? 0;
+              const isActive = activeKey === c.key;
+              return (
+                <button
+                  key={c.key}
+                  onClick={() => setActiveKey(c.key)}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: '6px 14px',
+                    border: `1px solid ${isActive ? 'transparent' : 'var(--border)'}`,
+                    borderRadius: 20,
+                    cursor: 'pointer',
+                    fontFamily: "'Heebo',sans-serif",
+                    fontSize: 13,
+                    fontWeight: isActive ? 600 : 400,
+                    background: isActive ? 'var(--accent)' : 'var(--surface)',
+                    color: isActive ? '#fff' : 'var(--text2)',
+                    whiteSpace: 'nowrap',
+                    transition: 'background .15s, color .15s',
+                  }}
+                >
+                  {c.label}
+                  {unread > 0 && (
+                    <span style={{background:'#DC2626',color:'#fff',borderRadius:10,fontSize:10,padding:'1px 6px',fontWeight:700,minWidth:16,textAlign:'center'}}>
+                      {unread}
                     </span>
                   )}
                 </button>
-              ))}
-            </div>
-          )}
-
-          {thread === 'contractor' && canSeeAllChats && contractors.length > 0 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {/* Unread chips above the select */}
-              {Object.keys(unreadByContractor).length > 0 && (
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                  {contractors
-                    .filter((c: any) => {
-                      const cId = getContractorIdStr(c._id ?? c.id);
-                      return (unreadByContractor[cId] ?? 0) > 0;
-                    })
-                    .map((c: any) => {
-                      const cId = getContractorIdStr(c._id ?? c.id);
-                      const count = unreadByContractor[cId] ?? 0;
-                      const isActive = filterContractorId === cId;
-                      return (
-                        <button
-                          key={cId}
-                          onClick={() => setFilterContractorId(isActive ? 'all' : cId)}
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: 5,
-                            padding: '4px 10px',
-                            borderRadius: 20,
-                            border: `2px solid ${isActive ? '#DC2626' : 'transparent'}`,
-                            background: isActive ? '#FEF2F2' : '#FEE2E2',
-                            color: '#DC2626',
-                            fontSize: 12,
-                            fontWeight: 700,
-                            cursor: 'pointer',
-                            fontFamily: "'Heebo',sans-serif",
-                            transition: 'all .15s',
-                          }}
-                        >
-                          🔴 {c.name}
-                          <span style={{
-                            background: '#DC2626',
-                            color: '#fff',
-                            borderRadius: '50%',
-                            width: 18,
-                            height: 18,
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontSize: 10,
-                          }}>
-                            {count}
-                          </span>
-                        </button>
-                      );
-                    })}
-                </div>
-              )}
-              {/* Contractor filter select */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontSize: 13, color: 'var(--text2)', fontWeight: 600 }}>סינון לפי קבלן:</span>
-                <Select
-                  value={filterContractorId}
-                  onChange={setFilterContractorId}
-                  style={{ fontSize: 12, width: 'auto', padding: '6px 12px', background: 'var(--surface)' }}
-                >
-                  <option value="all">
-                    כל השיחות{totalUnread > 0 ? ` (${totalUnread} חדשות)` : ''}
-                  </option>
-                  {contractors.map((c: any) => {
-                    const cId = getContractorIdStr(c._id ?? c.id);
-                    const unread = unreadByContractor[cId] ?? 0;
-                    return (
-                      <option key={cId} value={cId}>
-                        {c.name} ({c.role}){unread > 0 ? ` — ${unread} חדשות` : ''}
-                      </option>
-                    );
-                  })}
-                </Select>
-              </div>
-            </div>
-          )}
-        </div>
+              );
+            })}
+            {showContractorDropdown && (
+              <Select
+                value={activeConv?.contractorId ? activeKey : ''}
+                onChange={(val: string) => val && setActiveKey(val)}
+                style={{
+                  fontSize: 13,
+                  width: 'auto',
+                  borderRadius: 20,
+                  fontWeight: activeConv?.contractorId ? 600 : 400,
+                }}
+              >
+                <option value="" disabled>קבלן...</option>
+                {contractorConvs.map(c => {
+                  const unread = unreadByConvKey[c.key] ?? 0;
+                  return (
+                    <option key={c.key} value={c.key}>
+                      {c.label}{unread > 0 ? ` (${unread})` : ''}
+                    </option>
+                  );
+                })}
+              </Select>
+            )}
+          </div>
+        )}
 
         {/* Messages */}
         <div style={{flex:1,overflowY:"auto",display:"flex",flexDirection:"column",gap:0,paddingBottom:16,position:"relative"}}>
@@ -319,6 +396,10 @@ export const NotesScreen = () => {
                   }
                 />
               </div>
+            </div>
+          ) : filtered.length === 0 ? (
+            <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",color:"var(--text3)",fontSize:13}}>
+              אין עדיין הודעות בשיחה זו
             </div>
           ) : (
             <AnimatePresence initial={false}>
@@ -345,23 +426,6 @@ export const NotesScreen = () => {
                         {n.text}
                       </div>
                       <div style={{marginTop:4,display:"flex",gap:6,justifyContent:isMe?"flex-end":"flex-start",flexWrap:"wrap",alignItems:"center"}}>
-                        {n.thread === "contractor" && (
-                          <span
-                            style={{
-                              fontSize: 10,
-                              color: (n as any).recipientContractorId ? "#1E40AF" : "var(--text3)",
-                              background: (n as any).recipientContractorId ? "#EFF6FF" : "var(--bg)",
-                              padding: "2px 8px",
-                              borderRadius: 10,
-                              border: (n as any).recipientContractorId ? "1px solid #BFDBFE" : "1px solid var(--border)",
-                              fontWeight: (n as any).recipientContractorId ? 700 : 400
-                            }}
-                          >
-                            {(n as any).recipientContractorId
-                              ? (canSeeAllChats ? `💬 שיחה אישית עם ${(n as any).recipientName || 'קבלן'}` : "🔒 אישי")
-                              : "📣 ציבורי לקבלנים"}
-                          </span>
-                        )}
                         {/* Read receipt tick — only for messages I sent, in db mode */}
                         {isMe && mode === 'db' && (
                           <ReadTick readAt={readAt} />
@@ -379,6 +443,11 @@ export const NotesScreen = () => {
 
         {/* Compose */}
         <div style={{background:"var(--surface)",border:"1px solid var(--border)",borderRadius:10,padding:12}}>
+          {activeConv && (
+            <div style={{fontSize:11,color:"var(--text3)",marginBottom:6}}>
+              שולח אל: <strong style={{color:"var(--text2)"}}>{activeConv.label}</strong>
+            </div>
+          )}
           <textarea ref={composeRef} value={text} onChange={e=>setText(e.target.value)} onKeyDown={e=>e.key==="Enter"&&!e.shiftKey&&(e.preventDefault(),send())} placeholder="כתוב הודעה... (Enter לשליחה)" rows={2}
             style={{width:"100%",border:"none",outline:"none",fontSize:13,fontFamily:"'Heebo',sans-serif",resize:"none",color:"var(--text1)",background:"transparent"}}/>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:8}}>
@@ -394,27 +463,6 @@ export const NotesScreen = () => {
                 <div style={{fontSize:12,color:"var(--text2)",border:"1px solid var(--border)",borderRadius:8,padding:"7px 10px",background:"var(--bg)"}}>
                   {(ROLE_LABELS as any)[activeRole] || "משתמש"}
                 </div>
-              )}
-              {thread === 'all' && targetThreadOptions.length > 1 && (
-                <Select value={targetThread} onChange={setTargetThread} style={{fontSize:12,width:"auto"}}>
-                  {targetThreadOptions.map(t => (
-                    <option key={t.id} value={t.id}>{t.label}</option>
-                  ))}
-                </Select>
-              )}
-              {targetThread === 'contractor' && canSeeAllChats && contractors.length > 0 && (
-                <Select
-                  value={recipientContractorId}
-                  onChange={setRecipientContractorId}
-                  style={{ fontSize: 12, width: 'auto', background: 'var(--bg)' }}
-                >
-                  <option value="all">📣 לכל הקבלנים (ציבורי)</option>
-                  {contractors.map((c: any) => (
-                    <option key={getContractorIdStr(c._id ?? c.id)} value={getContractorIdStr(c._id ?? c.id)}>
-                      👤 שיחה אישית: {c.name} ({c.role})
-                    </option>
-                  ))}
-                </Select>
               )}
             </div>
             <Btn onClick={send}><Icon n="send" s={14}/> שלח</Btn>

@@ -420,7 +420,16 @@ export const listNotes = query({
     let filteredNotes = notes;
     let contractor: any = null;
 
-    if (!showAll) {
+    if (showAll) {
+      // Internal users see: the shared "Team" broadcast, their own 1:1 DMs
+      // (sent or received), and all contractor-thread messages.
+      filteredNotes = notes.filter((n) => {
+        if (n.thread === 'contractor') return true;
+        // thread === 'internal'
+        if (n.recipientUserId === undefined) return true; // Team broadcast
+        return n.fromUserId === userId || n.recipientUserId === userId;
+      });
+    } else {
       contractor = await ctx.db
         .query('contractors')
         .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
@@ -434,6 +443,16 @@ export const listNotes = query({
       });
     }
 
+    // Build a userId -> name lookup from the project's internal slots so we
+    // can label directed DMs without a query per message.
+    const project = await ctx.db.get(args.projectId);
+    const userNameById = new Map<string, string>();
+    if (project) {
+      if (project.ownerUserId) userNameById.set(String(project.ownerUserId), project.ownerName ?? 'בעל הבית');
+      if (project.managerUserId) userNameById.set(String(project.managerUserId), project.managerName ?? 'בעל בנייה');
+      if (project.inspectorUserId) userNameById.set(String(project.inspectorUserId), project.inspectorName ?? 'מפקח');
+    }
+
     const resultNotes = [];
     for (const n of filteredNotes) {
       let recipientName = undefined;
@@ -441,10 +460,19 @@ export const listNotes = query({
         const rc = await ctx.db.get(n.recipientContractorId);
         recipientName = rc?.name;
       }
+      let recipientUserName = undefined;
+      if (n.recipientUserId) {
+        recipientUserName = userNameById.get(String(n.recipientUserId));
+        if (!recipientUserName) {
+          const ru = await ctx.db.get(n.recipientUserId);
+          recipientUserName = ru?.name ?? ru?.email;
+        }
+      }
       resultNotes.push({
         ...n,
         id: n._id,
         recipientName,
+        recipientUserName,
         ...formatMessageDate(n._creationTime),
       });
     }

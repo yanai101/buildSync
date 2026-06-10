@@ -82,9 +82,9 @@ export const useDataMutation = (resource: MutationResource) => {
         case 'addQuoteTopic':
           return await addQuoteTopicMutation({ ...payload });
         case 'saveNote':
-          return await saveNoteMutation({ projectId: payload.projectId, text: payload.text, thread: payload.thread, recipientContractorId: payload.recipientContractorId });
+          return await saveNoteMutation({ projectId: payload.projectId, text: payload.text, thread: payload.thread, recipientContractorId: payload.recipientContractorId, recipientUserId: payload.recipientUserId });
         case 'markMessagesAsRead':
-          return await markMessagesAsReadMutation({ projectId: payload.projectId, thread: payload.thread, ...(payload.filterContractorId ? { filterContractorId: payload.filterContractorId } : {}) });
+          return await markMessagesAsReadMutation({ projectId: payload.projectId, thread: payload.thread, ...(payload.filterContractorId ? { filterContractorId: payload.filterContractorId } : {}), ...(payload.peerUserId ? { peerUserId: payload.peerUserId } : {}) });
         case 'savePhotoAnnotation':
           return await savePhotoAnnotationMutation({ photoId: payload.photoId, noteText: payload.noteText, role: payload.role });
         case 'deletePhoto':

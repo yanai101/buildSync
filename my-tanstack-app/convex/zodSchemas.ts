@@ -401,6 +401,9 @@ export const zMessage = {
   date: z.string().optional(),
   time: z.string().optional(),
   recipientContractorId: zid('contractors').optional(),
+  // Directed 1:1 message between two internal users (e.g. owner <-> inspector).
+  // When set, the message is a private DM and only visible to fromUserId/recipientUserId.
+  recipientUserId: zid('users').optional(),
 };
 
 export const zBudgetCategory = {

@@ -1,13 +1,22 @@
 import { useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 
+import { useCurrentProject } from './useCurrentProject';
+
 type Role = 'owner' | 'manager' | 'inspector' | 'contractor';
 
 export function useRequireRole(allowed: ReadonlyArray<Role>) {
-  const identity = useQuery(api.users.currentIdentity, {});
-  const loading = identity === undefined;
+  const { project, isLoading: projectLoading } = useCurrentProject();
   
-  let role = identity?.role as Role | undefined;
+  let role = project?.myRole as Role | undefined;
+
+  // Fallback to global identity role if no project is loaded
+  const identity = useQuery(api.users.currentIdentity, {});
+  if (!role && identity?.role) {
+    role = identity.role as Role;
+  }
+
+  const loading = projectLoading || (identity === undefined && !project);
 
   // DEV OVERRIDE
   if (typeof window !== 'undefined' && import.meta.env.DEV) {
