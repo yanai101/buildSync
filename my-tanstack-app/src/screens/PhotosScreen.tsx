@@ -1033,6 +1033,9 @@ export const PhotosScreen = () => {
                   <Icon n="trash" s={13}/> {deletingPhoto ? "מוחק..." : "מחק תמונה"}
                 </Btn>
               )}
+              <Btn size="sm" variant="ghost" onClick={() => setSelected(null)}>
+                <Icon n="x" s={13}/> סגור
+              </Btn>
             </div>
           </div>
         </Modal>
