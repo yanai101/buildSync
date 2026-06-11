@@ -3,23 +3,27 @@ import { v } from 'convex/values';
 import { getAuthUserId } from '@convex-dev/auth/server';
 import { insertActivity } from './_lib/activity';
 
-export const getLogByDate = query({
+export const getLogsByDate = query({
   args: { projectId: v.id('projects'), date: v.string() },
   handler: async (ctx, args) => {
-    const log = await ctx.db
+    const logs = await ctx.db
       .query('dailyLogs')
       .withIndex('by_project_date', (q) => q.eq('projectId', args.projectId).eq('date', args.date))
-      .first();
+      .collect();
       
-    if (log && log.images) {
-      log.images = await Promise.all(
-        log.images.map(async (img) => ({
-          ...img,
-          url: (await ctx.storage.getUrl(img.storageId)) ?? undefined,
-        }))
-      );
-    }
-    return log;
+    return await Promise.all(
+      logs.map(async (log) => {
+        if (log.images) {
+          log.images = await Promise.all(
+            log.images.map(async (img) => ({
+              ...img,
+              url: (await ctx.storage.getUrl(img.storageId)) ?? undefined,
+            }))
+          );
+        }
+        return log;
+      })
+    );
   },
 });
 

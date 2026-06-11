@@ -181,7 +181,7 @@ const DefectsTable = ({ photos, onSelect, contractors, setFeedback }: { photos: 
 };
 
 export const PhotosScreen = () => {
-  const { projectId } = useCurrentProject();
+  const { projectId, project, user } = useCurrentProject();
 
   // Paginated photos — 50 per page
   const {
@@ -629,14 +629,27 @@ export const PhotosScreen = () => {
         }
 
         const msg = `הערה חדשה בתמונה "${selected?.label || ''}" עבור ${roleName}: "${currentNoteText}" — נדרשת התייחסות.`;
-        
+
         const isSpecificContractor = currentAssignee !== 'manager' && currentAssignee !== 'inspector' && currentAssignee !== 'contractor';
+        const isInternal = currentAssignee === 'manager' || currentAssignee === 'inspector';
+
+        // Send internal photo notes as a directed 1:1 message so only the chosen
+        // person is notified. Falls back to the team thread when that role isn't
+        // assigned yet (or the sender picked themselves).
+        let recipientUserId: string | undefined;
+        if (isInternal) {
+          const resolved = currentAssignee === 'inspector' ? project?.inspectorUserId : project?.ownerUserId;
+          if (resolved && String(resolved) !== String(user?._id)) {
+            recipientUserId = String(resolved);
+          }
+        }
 
         await notesMutate('saveNote', {
           projectId: projectId || 'dummy',
           text: msg,
-          thread: currentAssignee === 'manager' || currentAssignee === 'inspector' ? 'internal' : 'contractor',
-          ...(isSpecificContractor ? { recipientContractorId: currentAssignee } : {})
+          thread: isInternal ? 'internal' : 'contractor',
+          ...(isSpecificContractor ? { recipientContractorId: currentAssignee } : {}),
+          ...(recipientUserId ? { recipientUserId } : {})
         });
 
         if (isSpecificContractor) {
@@ -1020,9 +1033,6 @@ export const PhotosScreen = () => {
                   <Icon n="trash" s={13}/> {deletingPhoto ? "מוחק..." : "מחק תמונה"}
                 </Btn>
               )}
-              <Btn size="sm" variant="ghost" onClick={saveAnnotatedVersion} disabled={savingVersion || !canEditSelectedPhoto}>
-                <Icon n="save" s={13}/> {savingVersion ? "שומר..." : "שמור גרסה"}
-              </Btn>
             </div>
           </div>
         </Modal>

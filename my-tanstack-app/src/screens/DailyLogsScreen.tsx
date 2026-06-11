@@ -16,9 +16,20 @@ export const DailyLogsScreen = () => {
   const { isProOrPremium } = useSubscription();
   const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [activeTab, setActiveTab] = useState<'log' | 'history'>('log');
+  const [selectedLogId, setSelectedLogId] = useState<string | null>(null);
   
-  const log = useQuery(api.dailyLogs.getLogByDate, projectId ? { projectId, date: selectedDate } : 'skip');
+  const logsForDate = useQuery(api.dailyLogs.getLogsByDate, projectId ? { projectId, date: selectedDate } : 'skip');
   const allLogs = useQuery(api.dailyLogs.getLogs, projectId && activeTab === 'history' ? { projectId } : 'skip') || [];
+  
+  const log = React.useMemo(() => {
+    if (!logsForDate) return undefined;
+    if (selectedLogId === 'new') return undefined;
+    if (selectedLogId) {
+      const found = logsForDate.find(l => l._id === selectedLogId);
+      if (found) return found;
+    }
+    return logsForDate.length > 0 ? logsForDate[0] : undefined;
+  }, [logsForDate, selectedLogId]);
   const contractors = useQuery(api.queries.listContractors, projectId ? { projectId } : 'skip') || [];
   
   const saveLog = useMutation(api.dailyLogs.saveLog);
@@ -47,8 +58,8 @@ export const DailyLogsScreen = () => {
     images: [] as { storageId: string, url?: string }[],
   });
 
-  // Sync db log to local form when log changes or date changes
   React.useEffect(() => {
+    if (logsForDate === undefined) return;
     if (log) {
       setForm({
         weather: log.weather || '',
@@ -63,7 +74,7 @@ export const DailyLogsScreen = () => {
     } else {
       setForm({ weather: '', temperature: '', workforce: [], activities: [], deliveries: [], issues: [], instructions: [], images: [] });
     }
-  }, [log, selectedDate]);
+  }, [log, logsForDate]);
 
   if (roleLoading) return <AccessLoading />;
   if (!allowed) return <AccessDenied message="אין לך הרשאה לצפות ביומן עבודה יומי" />;
@@ -80,13 +91,16 @@ export const DailyLogsScreen = () => {
     if (!projectId) return;
     setSaving(true);
     try {
-      await saveLog({
+      const savedId = await saveLog({
         logId: log?._id,
         projectId,
         date: selectedDate,
         ...form,
         images: form.images.map(img => ({ storageId: img.storageId as Id<'_storage'>, url: img.url })),
       });
+      if (savedId) {
+        setSelectedLogId(savedId);
+      }
       setFeedback({ title: "נשמר בהצלחה", message: "הדוח היומי נשמר כטיוטה.", type: 'success' });
     } catch (err: any) {
       setFeedback({ title: "שגיאה בשמירה", message: err.message, type: 'error' });
@@ -166,13 +180,17 @@ export const DailyLogsScreen = () => {
     }
   };
 
-  const exportPDF = async (targetLog: any) => {
+  const exportPDF = async (targetLogs: any[]) => {
     if (!isProOrPremium) {
       setFeedback({ title: "תכונת Pro", message: "יצוא ל-PDF זמין במסלול Pro ומעלה.", type: "info" });
       return;
     }
-    if (exporting || !targetLog) return;
+    if (exporting || !targetLogs || targetLogs.length === 0) return;
     setExporting(true);
+    
+    // Sort logs by creation time so "Log 1" is always the oldest one, matching the UI tabs
+    const sortedLogs = [...targetLogs].sort((a, b) => a._creationTime - b._creationTime);
+    
     try {
       // @ts-ignore
       const html2pdf = (await import('html2pdf.js')).default;
@@ -185,14 +203,13 @@ export const DailyLogsScreen = () => {
       container.style.color = "#000";
       container.style.background = "#fff";
 
-      const formattedDate = new Date(targetLog.date).toLocaleDateString('he-IL');
-      const logIsLocked = targetLog.status === 'locked';
+      const formattedDate = new Date(sortedLogs[0].date).toLocaleDateString('he-IL');
 
       let html = `
         <div style="border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: flex-end;">
           <div>
             <h1 style="margin: 0; font-size: 28px; color: #111;">יומן עבודה יומי</h1>
-            <p style="margin: 4px 0 0 0; color: #555; font-size: 14px;">תאריך: ${formattedDate} | סטטוס: ${logIsLocked ? 'נעול (מסמך חתום)' : 'טיוטה'}</p>
+            <p style="margin: 4px 0 0 0; color: #555; font-size: 14px;">תאריך: ${formattedDate} | סך הכל יומנים: ${sortedLogs.length}</p>
           </div>
           <div style="display: flex; align-items: center; gap: 12px;">
             <div style="font-size: 26px; font-weight: 800; letter-spacing: -0.5px;">Build<span style="color: #FF9500;">Sync</span></div>
@@ -201,62 +218,74 @@ export const DailyLogsScreen = () => {
         </div>
       `;
 
-      html += `<div style="margin-bottom: 20px; font-size: 14px;">
-        <strong>תנאי שטח:</strong> מזג אוויר: ${targetLog.weather || '-'} | טמפרטורה: ${targetLog.temperature || '-'}
-      </div>`;
-
-      if (targetLog.workforce?.length > 0) {
-        html += `<h2 style="font-size: 18px; margin-bottom: 10px; border-bottom: 1px solid #ccc; padding-bottom: 4px; margin-top: 20px;">כוח אדם נוכח באתר</h2>
-        <ul style="font-size: 14px; line-height: 1.6;">`;
-        for (const w of targetLog.workforce) {
-          html += `<li><strong>${w.contractorName || 'כללי'}:</strong> ${w.workersCount} פועלים ${w.notes ? `(${w.notes})` : ''}</li>`;
+      sortedLogs.forEach((targetLog, index) => {
+        const logIsLocked = targetLog.status === 'locked';
+        
+        if (index > 0) {
+          html += `<div style="page-break-before: always; margin-top: 40px;"></div>`;
         }
-        html += `</ul>`;
-      }
-
-      if (targetLog.activities?.length > 0) {
-        html += `<h2 style="font-size: 18px; margin-bottom: 10px; border-bottom: 1px solid #ccc; padding-bottom: 4px;">עבודות שבוצעו</h2>
-        <ul style="font-size: 14px; line-height: 1.6;">`;
-        for (const act of targetLog.activities) {
-          const statusText = act.status === 'completed' ? 'הושלם' : act.status === 'delayed' ? 'באיחור' : 'בביצוע';
-          html += `<li>${act.description} <strong style="color: #555;">[${statusText}]</strong></li>`;
+        
+        if (sortedLogs.length > 1) {
+          html += `<h2 style="font-size: 22px; margin-bottom: 20px; border-bottom: 2px solid #333; padding-bottom: 8px;">יומן עבודה מס' ${index + 1} ${logIsLocked ? '(נעול)' : ''}</h2>`;
         }
-        html += `</ul>`;
-      }
 
-      if (targetLog.issues?.length > 0) {
-        html += `<h2 style="font-size: 18px; margin-bottom: 10px; border-bottom: 1px solid #ccc; padding-bottom: 4px; margin-top: 20px; color: #D32F2F;">חריגות ועיכובים</h2>
-        <ul style="font-size: 14px; line-height: 1.6;">`;
-        for (const iss of targetLog.issues) {
-          html += `<li>${iss.description} ${iss.financialImpact ? '<strong style="color: #D32F2F;">(השפעה כספית)</strong>' : ''}</li>`;
-        }
-        html += `</ul>`;
-      }
+        html += `<div style="margin-bottom: 20px; font-size: 14px;">
+          <strong>תנאי שטח:</strong> מזג אוויר: ${targetLog.weather || '-'} | טמפרטורה: ${targetLog.temperature || '-'}
+        </div>`;
 
-      if (targetLog.images?.length > 0) {
-        html += `<h2 style="font-size: 18px; margin-bottom: 10px; border-bottom: 1px solid #ccc; padding-bottom: 4px; margin-top: 20px;">תמונות מהשטח</h2>
-        <div style="display: flex; gap: 10px; flex-wrap: wrap;">`;
-        for (const img of targetLog.images) {
-          if (img.url) {
-            html += `<img src="${img.url}" style="width: 200px; height: 200px; object-fit: cover; border-radius: 8px; border: 1px solid #ccc;" />`;
+        if (targetLog.workforce?.length > 0) {
+          html += `<h2 style="font-size: 18px; margin-bottom: 10px; border-bottom: 1px solid #ccc; padding-bottom: 4px; margin-top: 20px;">כוח אדם נוכח באתר</h2>
+          <ul style="font-size: 14px; line-height: 1.6;">`;
+          for (const w of targetLog.workforce) {
+            html += `<li><strong>${w.contractorName || 'כללי'}:</strong> ${w.workersCount} פועלים ${w.notes ? `(${w.notes})` : ''}</li>`;
           }
+          html += `</ul>`;
         }
-        html += `</div>`;
-      }
 
-      if (logIsLocked) {
-        html += `
-          <div style="margin-top: 40px; padding-top: 20px; border-top: 1px dashed #ccc; text-align: left; font-size: 12px; color: #666;">
-            מסמך זה ננעל ואושר במערכת BuildSync. הדוח נחתם ואינו ניתן לעריכה.
-          </div>
-        `;
-      }
+        if (targetLog.activities?.length > 0) {
+          html += `<h2 style="font-size: 18px; margin-bottom: 10px; border-bottom: 1px solid #ccc; padding-bottom: 4px;">עבודות שבוצעו</h2>
+          <ul style="font-size: 14px; line-height: 1.6;">`;
+          for (const act of targetLog.activities) {
+            const statusText = act.status === 'completed' ? 'הושלם' : act.status === 'delayed' ? 'באיחור' : 'בביצוע';
+            html += `<li>${act.description} <strong style="color: #555;">[${statusText}]</strong></li>`;
+          }
+          html += `</ul>`;
+        }
+
+        if (targetLog.issues?.length > 0) {
+          html += `<h2 style="font-size: 18px; margin-bottom: 10px; border-bottom: 1px solid #ccc; padding-bottom: 4px; margin-top: 20px; color: #D32F2F;">חריגות ועיכובים</h2>
+          <ul style="font-size: 14px; line-height: 1.6;">`;
+          for (const iss of targetLog.issues) {
+            html += `<li>${iss.description} ${iss.financialImpact ? '<strong style="color: #D32F2F;">(השפעה כספית)</strong>' : ''}</li>`;
+          }
+          html += `</ul>`;
+        }
+
+        if (targetLog.images?.length > 0) {
+          html += `<h2 style="font-size: 18px; margin-bottom: 10px; border-bottom: 1px solid #ccc; padding-bottom: 4px; margin-top: 20px;">תמונות מהשטח</h2>
+          <div style="display: flex; gap: 10px; flex-wrap: wrap;">`;
+          for (const img of targetLog.images) {
+            if (img.url) {
+              html += `<img src="${img.url}" style="width: 200px; height: 200px; object-fit: cover; border-radius: 8px; border: 1px solid #ccc;" />`;
+            }
+          }
+          html += `</div>`;
+        }
+
+        if (logIsLocked) {
+          html += `
+            <div style="margin-top: 40px; padding-top: 20px; border-top: 1px dashed #ccc; text-align: left; font-size: 12px; color: #666;">
+              מסמך זה ננעל ואושר במערכת BuildSync. הדוח נחתם ואינו ניתן לעריכה.
+            </div>
+          `;
+        }
+      });
 
       container.innerHTML = html;
 
       const opt = {
         margin: 10,
-        filename: `daily-log-${targetLog.date}.pdf`,
+        filename: `daily-logs-${sortedLogs[0].date}.pdf`,
         image: { type: 'jpeg' as const, quality: 0.98 },
         html2canvas: { scale: 2, useCORS: true },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' as const }
@@ -279,7 +308,7 @@ export const DailyLogsScreen = () => {
   );
 
   return (
-    <ScreenBoundary loading={Boolean(roleLoading || (isProOrPremium && projectId && log === undefined && activeTab === 'log'))} error={null} onRetry={() => window.location.reload()}>
+    <ScreenBoundary loading={Boolean(roleLoading || (isProOrPremium && projectId && logsForDate === undefined && activeTab === 'log'))} error={null} onRetry={() => window.location.reload()}>
       <PremiumLock isLocked={!isProOrPremium} title="יומן עבודה יומי" description="יומן עבודה מאפשר מעקב מדויק אחרי העבודה בשטח, כולל מזג אוויר ונוכחות פועלים. שדרג ל-Pro כדי לקבל גישה.">
         <div className="page-content" style={{ paddingBottom: 100, maxWidth: 900, margin: "0 auto" }}>
           
@@ -317,7 +346,10 @@ export const DailyLogsScreen = () => {
                 <input 
                   type="date" 
                   value={selectedDate} 
-                  onChange={e => setSelectedDate(e.target.value)}
+                  onChange={e => {
+                    setSelectedDate(e.target.value);
+                    setSelectedLogId(null);
+                  }}
                   style={{ padding: "8px 16px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg)", fontSize: 14, fontWeight: 600, color: "var(--text1)", outline: "none" }}
                 />
                 {isLocked && <div style={{ background: "rgba(255, 59, 48, 0.1)", color: "#FF3B30", padding: "8px 12px", borderRadius: 8, fontSize: 13, fontWeight: 700, display: "flex", alignItems: "center", gap: 6 }}><Icon n="lock" s={14}/> דוח נעול</div>}
@@ -327,8 +359,8 @@ export const DailyLogsScreen = () => {
               <div style={{ display: "flex", gap: 12 }}>
                 <Btn 
                   variant="outline" 
-                  onClick={() => exportPDF(log)}
-                  disabled={exporting || !log || log.activities.length === 0}
+                  onClick={() => exportPDF(logsForDate || [])}
+                  disabled={exporting || !logsForDate || logsForDate.length === 0}
                 >
                   <Icon n="download" s={16}/> {exporting ? 'מפיק PDF...' : 'הפק PDF'}
                 </Btn>
@@ -341,6 +373,54 @@ export const DailyLogsScreen = () => {
                 </Btn>}
               </div>
             </div>
+            
+            {/* Multiple Logs Tabs */}
+            {logsForDate && logsForDate.length > 0 && (
+              <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }}>
+                {logsForDate.map((l, idx) => {
+                  const isActive = log?._id === l._id;
+                  return (
+                    <button 
+                      key={l._id}
+                      onClick={() => setSelectedLogId(l._id)}
+                      style={{ 
+                        padding: '8px 16px', 
+                        borderRadius: 8, 
+                        border: isActive ? '1px solid var(--accent)' : '1px solid var(--border)', 
+                        background: isActive ? 'rgba(255, 149, 0, 0.1)' : 'var(--surface)',
+                        color: isActive ? 'var(--accent)' : 'var(--text2)',
+                        fontWeight: isActive ? 700 : 500,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        fontSize: 13
+                      }}
+                    >
+                      יומן מס׳ {idx + 1} {l.status === 'locked' && <Icon n="lock" s={12}/>}
+                    </button>
+                  );
+                })}
+                <button 
+                  onClick={() => setSelectedLogId('new')}
+                  style={{ 
+                    padding: '8px 16px', 
+                    borderRadius: 8, 
+                    border: selectedLogId === 'new' ? '1px solid var(--accent)' : '1px dashed var(--border)', 
+                    background: selectedLogId === 'new' ? 'rgba(255, 149, 0, 0.1)' : 'transparent',
+                    color: selectedLogId === 'new' ? 'var(--accent)' : 'var(--text2)',
+                    fontWeight: selectedLogId === 'new' ? 700 : 500,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    fontSize: 13
+                  }}
+                >
+                  <Icon n="plus" s={12}/> הוסף יומן עבודה
+                </button>
+              </div>
+            )}
             
             {/* General */}
             <div style={{ background: "var(--surface)", borderRadius: 12, border: "1px solid var(--border)", overflow: "hidden" }}>
@@ -573,7 +653,12 @@ export const DailyLogsScreen = () => {
                   <div key={l._id} style={{ background: 'var(--surface)', padding: 16, borderRadius: 12, border: '1px solid var(--border)', display: 'flex', flexWrap: 'wrap', gap: 16, justifyContent: 'space-between', alignItems: 'center' }}>
                     <div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-                        <span style={{ fontSize: 16, fontWeight: 700 }}>{new Date(l.date).toLocaleDateString('he-IL')}</span>
+                        <span style={{ fontSize: 16, fontWeight: 700 }}>
+                          {new Date(l.date).toLocaleDateString('he-IL')} 
+                          <span style={{ fontSize: 13, color: 'var(--text2)', fontWeight: 400, marginRight: 8 }}>
+                            ({new Date(l._creationTime).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })})
+                          </span>
+                        </span>
                         {l.status === 'locked' ? (
                           <span className="badge" style={{ background: 'rgba(255,59,48,0.1)', color: '#FF3B30' }}><Icon n="lock" s={12}/> נעול (מסמך)</span>
                         ) : (
@@ -589,12 +674,13 @@ export const DailyLogsScreen = () => {
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
                       <Btn variant="outline" size="sm" onClick={() => {
                         setSelectedDate(l.date);
+                        setSelectedLogId(l._id);
                         setActiveTab('log');
                       }}>
                         <Icon n="eye" s={14} /> צפה ביומן
                       </Btn>
-                      <Btn variant="outline" size="sm" onClick={() => exportPDF(l)} disabled={exporting}>
-                        <Icon n="download" s={14}/> {exporting ? 'מפיק...' : 'PDF'}
+                      <Btn variant="outline" size="sm" onClick={() => exportPDF(allLogs.filter(x => x.date === l.date))} disabled={exporting}>
+                        <Icon n="download" s={14}/> {exporting ? 'מפיק...' : 'PDF (כל יומני התאריך)'}
                       </Btn>
                     </div>
                   </div>
