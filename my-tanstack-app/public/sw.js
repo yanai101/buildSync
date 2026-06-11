@@ -49,12 +49,21 @@ self.addEventListener('notificationclick', function (event) {
   const urlToOpen = new URL(event.notification.data || '/', self.location.origin).href;
 
   event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
-      for (let i = 0; i < windowClients.length; i++) {
-        const client = windowClients[i];
-        if (client.url === urlToOpen && 'focus' in client) {
-          return client.focus();
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(async (windowClients) => {
+      // Reuse an already-open app tab: focus it and navigate it to the
+      // notification's URL instead of piling up new tabs.
+      for (const client of windowClients) {
+        if (new URL(client.url).origin !== self.location.origin) continue;
+        if ('focus' in client) await client.focus();
+        if (client.url !== urlToOpen && 'navigate' in client) {
+          try {
+            await client.navigate(urlToOpen);
+          } catch (e) {
+            // Some browsers disallow navigating uncontrolled clients.
+            if (clients.openWindow) return clients.openWindow(urlToOpen);
+          }
         }
+        return;
       }
       if (clients.openWindow) {
         return clients.openWindow(urlToOpen);

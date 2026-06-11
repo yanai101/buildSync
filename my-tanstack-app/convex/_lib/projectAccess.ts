@@ -4,6 +4,46 @@ import type { MutationCtx, QueryCtx } from '../_generated/server';
 
 type Ctx = QueryCtx | MutationCtx;
 
+/**
+ * Asserts the caller is authenticated and a member of the given project —
+ * its owner, manager, inspector, a contractor linked to it, or a super admin.
+ * Use this to gate any mutation that reads/writes a project's data.
+ */
+export const requireProjectMember = async (ctx: Ctx, projectId: Id<'projects'>) => {
+  const userId = await getAuthUserId(ctx);
+  if (!userId) {
+    throw new Error('Not authenticated');
+  }
+
+  const [user, project] = await Promise.all([
+    ctx.db.get(userId),
+    ctx.db.get(projectId),
+  ]);
+
+  if (!project) {
+    throw new Error('Project not found');
+  }
+
+  const contractorRecord = await ctx.db
+    .query('contractors')
+    .withIndex('by_project', (q) => q.eq('projectId', projectId))
+    .filter((q) => q.eq(q.field('userId'), userId))
+    .first();
+
+  const isMember =
+    project.ownerUserId === userId ||
+    project.managerUserId === userId ||
+    project.inspectorUserId === userId ||
+    contractorRecord !== null ||
+    user?.isSuperAdmin === true;
+
+  if (!isMember) {
+    throw new Error('אין לך הרשאה לבצע פעולה זו בפרויקט');
+  }
+
+  return { userId, user, project, isContractor: contractorRecord !== null };
+};
+
 export const requireProjectFileUser = async (ctx: Ctx, projectId: Id<'projects'>) => {
   const userId = await getAuthUserId(ctx);
   if (!userId) {

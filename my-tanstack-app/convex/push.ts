@@ -19,9 +19,10 @@ export const saveSubscription = mutation({
       .unique();
 
     if (existing) {
-      if (existing.userId !== userId) {
-        // If it belongs to someone else, update it
-        await ctx.db.patch(existing._id, { userId });
+      // Re-claim the device for the current user (shared-device login) and
+      // refresh the encryption keys in case the browser rotated them.
+      if (existing.userId !== userId || existing.p256dh !== args.p256dh || existing.auth !== args.auth) {
+        await ctx.db.patch(existing._id, { userId, p256dh: args.p256dh, auth: args.auth });
       }
       return existing._id;
     }

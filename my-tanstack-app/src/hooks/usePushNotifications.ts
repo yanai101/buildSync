@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useMutation } from 'convex/react';
+import { useConvexAuth, useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 
 const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY;
@@ -17,6 +17,45 @@ function urlBase64ToUint8Array(base64String: string) {
     outputArray[i] = rawData.charCodeAt(i);
   }
   return outputArray;
+}
+
+function subscriptionToSaveArgs(subscription: PushSubscription) {
+  const p256dh = subscription.getKey('p256dh');
+  const auth = subscription.getKey('auth');
+  if (!p256dh || !auth) return null;
+  return {
+    endpoint: subscription.endpoint,
+    p256dh: btoa(String.fromCharCode.apply(null, Array.from(new Uint8Array(p256dh)))),
+    auth: btoa(String.fromCharCode.apply(null, Array.from(new Uint8Array(auth)))),
+  };
+}
+
+/**
+ * Re-claims this browser's push subscription for the currently logged-in user.
+ * Without this, on a shared device the subscription stays tied to whoever
+ * enabled it first, and their notifications keep arriving after they log out.
+ * Mount once at the app root, inside ConvexAuthProvider.
+ */
+export function usePushSubscriptionSync() {
+  const { isAuthenticated } = useConvexAuth();
+  const saveSubscription = useMutation(api.push.saveSubscription);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+
+    navigator.serviceWorker
+      .getRegistration('/sw.js')
+      .then((registration) => registration?.pushManager.getSubscription())
+      .then((subscription) => {
+        if (!subscription) return;
+        const args = subscriptionToSaveArgs(subscription);
+        if (args) return saveSubscription(args);
+      })
+      .catch((err) => {
+        console.error('Failed to sync push subscription to current user', err);
+      });
+  }, [isAuthenticated, saveSubscription]);
 }
 
 export function usePushNotifications() {
@@ -60,18 +99,12 @@ export function usePushNotifications() {
         applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
       });
 
-      const p256dh = subscription.getKey('p256dh');
-      const auth = subscription.getKey('auth');
-
-      if (!p256dh || !auth) {
+      const args = subscriptionToSaveArgs(subscription);
+      if (!args) {
         throw new Error('Push keys missing');
       }
 
-      await saveSubscription({
-        endpoint: subscription.endpoint,
-        p256dh: btoa(String.fromCharCode.apply(null, Array.from(new Uint8Array(p256dh)))),
-        auth: btoa(String.fromCharCode.apply(null, Array.from(new Uint8Array(auth)))),
-      });
+      await saveSubscription(args);
 
       setIsSubscribed(true);
     } catch (err) {

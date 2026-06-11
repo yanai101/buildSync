@@ -6,9 +6,6 @@ export type MutationResource = 'stages' | 'tasks' | 'boq' | 'photos' | 'project'
 
 export const useDataMutation = (resource: MutationResource) => {
   // Convex Mutations
-  const genericUpdate = useMutation(api.mutations.update);
-  const genericAdd = useMutation(api.mutations.add);
-  const genericRemove = useMutation(api.mutations.remove);
   const toggleTaskMutation = useMutation(api.mutations.toggleTask);
   const saveBoqMutation = useMutation(api.mutations.saveBoq);
   const saveProjectSetupMutation = useMutation(api.projects.saveProjectSetup);
@@ -37,7 +34,7 @@ export const useDataMutation = (resource: MutationResource) => {
   const savedMode = localStorage.getItem(`buildsync:ds:${resource}`);
   const isMock = savedMode ? savedMode !== 'db' : !defaultDbResources.includes(resource);
 
-  const mutate = useCallback(async (action: 'add' | 'update' | 'delete' | 'toggleTask' | 'saveBoq' | 'saveProjectSetup' | 'addExpense' | 'saveNote' | 'markMessagesAsRead' | 'savePhotoAnnotation' | 'deletePhoto' | 'updatePhotoTag' | 'createProject' | 'deleteProject' | 'addBudgetCategory' | 'saveQuote' | 'deleteQuote' | 'addQuoteTopic' | 'addChecklist' | 'deleteChecklist' | 'addChecklistItem' | 'toggleChecklistItem' | 'deleteChecklistItem' | 'updateChecklistItem' | 'updateChecklistTitle', payload: any) => {
+  const mutate = useCallback(async (action: 'toggleTask' | 'saveBoq' | 'saveProjectSetup' | 'addExpense' | 'saveNote' | 'markMessagesAsRead' | 'savePhotoAnnotation' | 'deletePhoto' | 'updatePhotoTag' | 'createProject' | 'deleteProject' | 'addBudgetCategory' | 'saveQuote' | 'deleteQuote' | 'addQuoteTopic' | 'addChecklist' | 'deleteChecklist' | 'addChecklistItem' | 'toggleChecklistItem' | 'deleteChecklistItem' | 'updateChecklistItem' | 'updateChecklistTitle', payload: any) => {
     if (isMock) {
       console.log(`[MOCK MUTATION] ${resource}:${action}`, payload);
       return { success: true, mock: true };
@@ -45,12 +42,6 @@ export const useDataMutation = (resource: MutationResource) => {
 
     try {
       switch (action) {
-        case 'update':
-          return await genericUpdate({ table: resource, id: payload.id, patch: payload.patch });
-        case 'add':
-          return await genericAdd({ table: resource, document: payload.document });
-        case 'delete':
-          return await genericRemove({ table: resource, id: payload.id });
         case 'toggleTask':
           return await toggleTaskMutation({ taskId: payload.id, done: payload.done });
         case 'saveBoq':
@@ -131,7 +122,7 @@ export const useDataMutation = (resource: MutationResource) => {
       console.error(`[DB MUTATION ERROR] ${resource}:${action}`, err);
       throw err;
     }
-  }, [isMock, resource, genericUpdate, genericAdd, genericRemove, toggleTaskMutation, saveBoqMutation, saveProjectSetupMutation, addExpenseMutation, saveNoteMutation, markMessagesAsReadMutation, savePhotoAnnotationMutation, deletePhotoMutation, updatePhotoTagMutation, createProjectMutation, deleteProjectMutation, addChecklistMutation, deleteChecklistMutation, addChecklistItemMutation, toggleChecklistItemMutation, deleteChecklistItemMutation, updateChecklistItemMutation, updateChecklistTitleMutation]);
+  }, [isMock, resource, toggleTaskMutation, saveBoqMutation, saveProjectSetupMutation, addExpenseMutation, saveNoteMutation, markMessagesAsReadMutation, savePhotoAnnotationMutation, deletePhotoMutation, updatePhotoTagMutation, createProjectMutation, deleteProjectMutation, addChecklistMutation, deleteChecklistMutation, addChecklistItemMutation, toggleChecklistItemMutation, deleteChecklistItemMutation, updateChecklistItemMutation, updateChecklistTitleMutation]);
 
   return { mutate };
 };

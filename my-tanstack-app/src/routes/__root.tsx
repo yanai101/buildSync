@@ -43,6 +43,12 @@ export const Route = createRootRoute({
 })
 
 import { ProjectProvider } from '~/hooks/useCurrentProject'
+import { usePushSubscriptionSync } from '~/hooks/usePushNotifications'
+
+function PushSubscriptionSync() {
+  usePushSubscriptionSync()
+  return null
+}
 
 function RootDocument({ children }: { children: React.ReactNode }) {
   const storage = typeof window === 'undefined' ? undefined : window.localStorage
@@ -65,6 +71,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       <body>
         <div id="root">
           <ConvexAuthProvider client={convex} storage={storage} storageNamespace="buildsync-auth">
+            <PushSubscriptionSync />
             <ProjectProvider>
               <AppLayout>
                 {children}

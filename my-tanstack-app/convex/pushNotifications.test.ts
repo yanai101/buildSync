@@ -96,6 +96,49 @@ describe('push notification system', () => {
     expect(subs).toHaveLength(0);
   });
 
+  test('broadcast to all contractors pushes to every linked contractor and the internal team', async () => {
+    const t = convexTest(schema, modules);
+    const ownerId = await t.run((ctx) => ctx.db.insert('users', { name: 'Owner', role: 'owner' }));
+    const inspectorId = await t.run((ctx) => ctx.db.insert('users', { name: 'Inspector', role: 'inspector' }));
+    const contractorUserId = await t.run((ctx) => ctx.db.insert('users', { name: 'Contractor', role: 'contractor' }));
+    const projectId = await t.run((ctx) => ctx.db.insert('projects', {
+      name: 'פרויקט בדיקה',
+      ownerUserId: ownerId,
+      inspectorUserId: inspectorId,
+    }));
+    await t.run((ctx) => ctx.db.insert('contractors', { projectId, name: 'קבלן מקושר', userId: contractorUserId }));
+    // A contractor without a linked user account — should simply be skipped.
+    await t.run((ctx) => ctx.db.insert('contractors', { projectId, name: 'קבלן ללא חשבון' }));
+    await t.run((ctx) => ctx.db.insert('pushSubscriptions', { userId: contractorUserId, endpoint: 'https://push.example/contractor-device', p256dh: 'p', auth: 'a' }));
+    await t.run((ctx) => ctx.db.insert('pushSubscriptions', { userId: inspectorId, endpoint: 'https://push.example/inspector-device', p256dh: 'p', auth: 'a' }));
+
+    const asOwner = t.withIdentity({ subject: ownerId });
+    await asOwner.mutation(api.mutations.saveNote, {
+      projectId,
+      text: 'האתר סגור מחר',
+      thread: 'contractor',
+    });
+
+    const scheduled = await t.run((ctx) => ctx.db.system.query('_scheduled_functions').collect());
+    const calls = scheduled.map((s) => s.args[0] as any);
+    const endpointsOf = (call: any) => call.subscriptions.map((s: any) => s.endpoint);
+
+    // The linked contractor is notified, deep-linked to their team conversation.
+    const contractorCall = calls.find((c) => endpointsOf(c).includes('https://push.example/contractor-device'));
+    expect(contractorCall).toBeDefined();
+    expect(contractorCall.payload.url).toBe(`/notes?project=${projectId}&peer=team`);
+
+    // The rest of the internal team is notified, deep-linked to the broadcast conversation.
+    const inspectorCall = calls.find((c) => endpointsOf(c).includes('https://push.example/inspector-device'));
+    expect(inspectorCall).toBeDefined();
+    expect(inspectorCall.payload.url).toBe(`/notes?project=${projectId}&peer=broadcast`);
+
+    // The sender (owner) is never notified about their own message.
+    for (const call of calls) {
+      expect(endpointsOf(call)).not.toContain('https://push.example/owner-device');
+    }
+  });
+
   test('sendNotification removes an expired subscription on a 410 Gone response', async () => {
     const t = convexTest(schema, modules);
     const userId = await t.run((ctx) => ctx.db.insert('users', { name: 'Owner' }));

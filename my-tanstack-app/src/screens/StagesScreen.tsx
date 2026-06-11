@@ -7,6 +7,7 @@ import { useDataMutation } from '../hooks/useDataMutation';
 import { useCurrentProject } from '../hooks/useCurrentProject';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
+import type { Id } from '../../convex/_generated/dataModel';
 import { ScreenBoundary } from '../components/ScreenBoundary';
 import { STAGES, fmtMoney } from '../utils/mockData';
 import { useRequireRole } from '../hooks/useRequireRole';
@@ -660,7 +661,10 @@ export const StagesScreen = () => {
   const setStagePaymentPaid = useMutation(api.stages.setStagePaymentPaid);
   const setStageMilestonePaid = useMutation(api.stages.setStageMilestonePaid);
   const lockStageMilestone = useMutation(api.stages.lockStageMilestone);
-  
+  const requestStagePaymentReview = useMutation(api.stages.requestStagePaymentReview);
+  const setStageSupervisorApproval = useMutation(api.stages.setStageSupervisorApproval);
+  const currentUser = useQuery(api.users.me, {});
+
   const [stages, setStages] = React.useState<Stage[]>([]);
   const [expanded, setExpanded] = React.useState<number | null>(null);
   const [releaseFor, setReleaseFor] = React.useState<{stage: Stage; milestoneId: string | null; amount: number; milestoneName: string | null} | null>(null);
@@ -804,16 +808,17 @@ export const StagesScreen = () => {
 
   const requestReview = async (stageId: number, dbId?: string) => {
     updateStageState(stageId, s => ({...s, payment: s.payment ? {...s.payment, status: 'review_requested'} : undefined}));
-    if (dbId) await mutate('update', { id: dbId, patch: { 'payment.status': 'review_requested' } });
+    if (dbId) await requestStagePaymentReview({ stageId: dbId as Id<'stages'> });
   };
 
   const supervisorApprove = async (stageId: number, dbId?: string) => {
     const today = new Date().toLocaleDateString('he-IL');
+    const approverName = currentUser?.name ?? currentUser?.email ?? 'מאשר';
     updateStageState(stageId, s => ({
       ...s,
-      supervisorApproval: { by: 'רון לוי', at: today },
+      supervisorApproval: { by: approverName, at: today },
     }));
-    if (dbId) await mutate('update', { id: dbId, patch: { supervisorApprovalBy: 'רון לוי', supervisorApprovalAt: today } });
+    if (dbId) await setStageSupervisorApproval({ stageId: dbId as Id<'stages'> });
   };
 
   const confirmRelease = async (receipts?: string[]) => {

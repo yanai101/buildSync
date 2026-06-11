@@ -244,39 +244,6 @@ const requirePhotoManager = async (ctx: MutationCtx) => {
 };
 
 
-// ── GENERIC MUTATIONS ────────────────────────────────────────────────────────
-
-export const update = mutation({
-  args: {
-    table: v.string(),
-    id: v.any(), 
-    patch: v.any(),
-  },
-  handler: async (ctx, args) => {
-    await ctx.db.patch(args.id, args.patch);
-  },
-});
-
-export const add = mutation({
-  args: {
-    table: v.string(),
-    document: v.any(),
-  },
-  handler: async (ctx, args) => {
-    return await ctx.db.insert(args.table as any, args.document);
-  },
-});
-
-export const remove = mutation({
-  args: {
-    table: v.string(),
-    id: v.any(),
-  },
-  handler: async (ctx, args) => {
-    await ctx.db.delete(args.id);
-  },
-});
-
 // ── DOMAIN SPECIFIC MUTATIONS ────────────────────────────────────────────────
 
 import { insertActivity } from './_lib/activity';
@@ -1379,9 +1346,21 @@ export const saveNote = mutation({
             if (contractor?.userId && contractor.userId !== userId) {
               groups.push({ userIds: [contractor.userId], peer: String(userId) });
             }
+          } else {
+            // Broadcast to all contractors — notify every contractor with a
+            // linked user account. Their single conversation is keyed 'team'.
+            const projectContractors = await ctx.db
+              .query('contractors')
+              .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
+              .collect();
+            groups.push({
+              userIds: projectContractors.map((c) => c.userId).filter((id) => id !== userId),
+              peer: 'team',
+            });
           }
-          // Also notify the rest of the internal team — their peer is this contractor.
-          groups.push({ userIds: internalTeamIds(userId), peer: String(finalRecipientId ?? 'team') });
+          // Also notify the rest of the internal team — their peer is this
+          // contractor (or the broadcast conversation).
+          groups.push({ userIds: internalTeamIds(userId), peer: String(finalRecipientId ?? 'broadcast') });
         }
       }
 

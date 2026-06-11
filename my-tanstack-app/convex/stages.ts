@@ -4,7 +4,7 @@ import type { MutationCtx } from './_generated/server';
 import { v } from 'convex/values';
 import { insertActivity } from './_lib/activity';
 import { patchStageDatesWithCascade } from './_lib/stageSchedule';
-import { requireProjectScheduleView } from './_lib/projectAccess';
+import { requireProjectScheduleView, requireProjectMember } from './_lib/projectAccess';
 import {
   hasSyncedStageContractorLinks,
   syncContractorStagePayments,
@@ -1139,6 +1139,41 @@ export const deleteStage = mutation({
       progressPct: remaining.length
         ? Math.round(remaining.reduce((sum, item) => sum + item.progressPct, 0) / remaining.length)
         : 0,
+    });
+  },
+});
+
+// Mark a stage's payment as awaiting review. Replaces the old generic
+// `mutations.update` path, with proper auth + project-membership checks.
+export const requestStagePaymentReview = mutation({
+  args: { stageId: v.id('stages') },
+  handler: async (ctx, args) => {
+    const stage = await ctx.db.get(args.stageId);
+    if (!stage) {
+      throw new Error('Stage not found');
+    }
+    await requireProjectMember(ctx, stage.projectId);
+
+    await ctx.db.patch(args.stageId, {
+      payment: { ...stage.payment, status: 'review_requested' },
+    });
+  },
+});
+
+// Record a supervisor's approval of a stage. The approving name is taken from
+// the authenticated user, never trusted from the client.
+export const setStageSupervisorApproval = mutation({
+  args: { stageId: v.id('stages') },
+  handler: async (ctx, args) => {
+    const stage = await ctx.db.get(args.stageId);
+    if (!stage) {
+      throw new Error('Stage not found');
+    }
+    const { user } = await requireProjectMember(ctx, stage.projectId);
+
+    await ctx.db.patch(args.stageId, {
+      supervisorApprovalBy: user?.name ?? user?.email ?? 'מאשר',
+      supervisorApprovalAt: new Date().toLocaleDateString('he-IL'),
     });
   },
 });
