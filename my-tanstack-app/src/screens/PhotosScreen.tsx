@@ -270,6 +270,7 @@ export const PhotosScreen = () => {
   const [previewDrawing, setPreviewDrawing] = React.useState<PhotoDrawing | null>(null);
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const cameraInputRef = React.useRef<HTMLInputElement>(null);
   const drawing = React.useRef(false);
   const currentPath = React.useRef<Point[]>([]);
   const dragStart = React.useRef<Point | null>(null);
@@ -392,6 +393,10 @@ export const PhotosScreen = () => {
   const openUpload = () => {
     if (uploadingPhoto) return;
     fileInputRef.current?.click();
+  };
+  const openCamera = () => {
+    if (uploadingPhoto) return;
+    cameraInputRef.current?.click();
   };
   const uploadPhoto = async (file: File | null) => {
     if (!file) return;
@@ -737,16 +742,32 @@ export const PhotosScreen = () => {
   };
 
   const uploadInput = (
-    <input
-      ref={fileInputRef}
-      type="file"
-      accept="image/*"
-      style={{display: "none"}}
-      onChange={e => {
-        uploadPhoto(e.target.files?.[0] ?? null);
-        e.currentTarget.value = "";
-      }}
-    />
+    <>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        style={{display: "none"}}
+        onChange={e => {
+          uploadPhoto(e.target.files?.[0] ?? null);
+          e.currentTarget.value = "";
+        }}
+      />
+      {/* Camera-only input — `capture` forces the camera on mobile/PWA */}
+      <input
+        ref={cameraInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        style={{display: "none"}}
+        onChange={e => {
+          uploadPhoto(e.target.files?.[0] ?? null);
+          e.currentTarget.value = "";
+        }}
+      />
+      {/* The camera button only makes sense on touch devices (desktop ignores `capture`) */}
+      <style>{`.photos-camera-btn{display:none !important} @media (pointer: coarse){.photos-camera-btn{display:inline-flex !important}}`}</style>
+    </>
   );
 
   return (
@@ -759,9 +780,14 @@ export const PhotosScreen = () => {
             title="אין תמונות"
             description="נראה שעדיין לא הועלו תמונות תיעוד לפרויקט."
             action={
-              <Btn size="lg" onClick={openUpload} disabled={uploadingPhoto} style={{padding: "12px 28px", fontSize: 16}}>
-                <Icon n="plus" s={16}/> {uploadingPhoto ? "מעלה..." : "העלה תמונה"}
-              </Btn>
+              <div style={{display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap"}}>
+                <Btn size="lg" onClick={openUpload} disabled={uploadingPhoto} style={{padding: "12px 28px", fontSize: 16}}>
+                  <Icon n="plus" s={16}/> {uploadingPhoto ? "מעלה..." : "העלה תמונה"}
+                </Btn>
+                <Btn size="lg" variant="ghost" className="photos-camera-btn" onClick={openCamera} disabled={uploadingPhoto} style={{padding: "12px 28px", fontSize: 16}}>
+                  <Icon n="camera" s={16}/> צלם תמונה
+                </Btn>
+              </div>
             }
           />
           {uploadInput}
@@ -785,7 +811,10 @@ export const PhotosScreen = () => {
           </button>
         ))}
         <Btn size="sm" style={{marginRight:"auto"}} onClick={openUpload} disabled={uploadingPhoto}>
-          <Icon n="camera" s={13}/> {uploadingPhoto ? "מעלה..." : "העלה תמונה"}
+          <Icon n="image" s={13}/> {uploadingPhoto ? "מעלה..." : "העלה תמונה"}
+        </Btn>
+        <Btn size="sm" variant="ghost" className="photos-camera-btn" onClick={openCamera} disabled={uploadingPhoto}>
+          <Icon n="camera" s={13}/> צלם תמונה
         </Btn>
       </div>
 

@@ -524,23 +524,40 @@ export const DailyLogsScreen = () => {
                   ))}
 
                   {canEditBasic && (form.images.length + uploadingImagesCount) < 4 && (
-                    <label 
-                      style={{ 
-                        width: 100, height: 100, borderRadius: 8, border: isDragging ? "2px dashed var(--accent)" : "2px dashed var(--border)", 
-                        display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", 
-                        cursor: uploadingImage ? "not-allowed" : "pointer", background: isDragging ? "rgba(255, 149, 0, 0.1)" : "var(--bg)", 
-                        color: isDragging ? "var(--accent)" : "var(--text2)", transition: "all 0.2s" 
-                      }} 
-                      onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
-                      onDragLeave={(e) => { e.preventDefault(); setIsDragging(false); }}
-                      onDrop={handleDrop}
-                      onMouseOver={e=>!isDragging && (e.currentTarget.style.borderColor="var(--accent)")} 
-                      onMouseOut={e=>!isDragging && (e.currentTarget.style.borderColor="var(--border)")}
-                    >
-                      <input type="file" multiple accept="image/*" style={{ display: "none" }} disabled={uploadingImage} onChange={handleUploadImage} />
-                      <Icon n="image" s={20} />
-                      <span style={{ fontSize: 11, marginTop: 4, textAlign: 'center' }}>גרור או בחר תמונה</span>
-                    </label>
+                    <>
+                      {/* Camera tile — only on touch devices; capture forces the camera in the PWA */}
+                      <style>{`.dl-camera-tile{display:none} @media (pointer: coarse){.dl-camera-tile{display:flex}}`}</style>
+                      <label
+                        className="dl-camera-tile"
+                        style={{
+                          width: 100, height: 100, borderRadius: 8, border: "2px dashed var(--border)",
+                          flexDirection: "column", alignItems: "center", justifyContent: "center",
+                          cursor: uploadingImage ? "not-allowed" : "pointer", background: "var(--bg)",
+                          color: "var(--text2)", transition: "all 0.2s"
+                        }}
+                      >
+                        <input type="file" accept="image/*" capture="environment" style={{ display: "none" }} disabled={uploadingImage} onChange={handleUploadImage} />
+                        <Icon n="camera" s={20} />
+                        <span style={{ fontSize: 11, marginTop: 4, textAlign: 'center' }}>צלם תמונה</span>
+                      </label>
+                      <label
+                        style={{
+                          width: 100, height: 100, borderRadius: 8, border: isDragging ? "2px dashed var(--accent)" : "2px dashed var(--border)",
+                          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                          cursor: uploadingImage ? "not-allowed" : "pointer", background: isDragging ? "rgba(255, 149, 0, 0.1)" : "var(--bg)",
+                          color: isDragging ? "var(--accent)" : "var(--text2)", transition: "all 0.2s"
+                        }}
+                        onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                        onDragLeave={(e) => { e.preventDefault(); setIsDragging(false); }}
+                        onDrop={handleDrop}
+                        onMouseOver={e=>!isDragging && (e.currentTarget.style.borderColor="var(--accent)")}
+                        onMouseOut={e=>!isDragging && (e.currentTarget.style.borderColor="var(--border)")}
+                      >
+                        <input type="file" multiple accept="image/*" style={{ display: "none" }} disabled={uploadingImage} onChange={handleUploadImage} />
+                        <Icon n="image" s={20} />
+                        <span style={{ fontSize: 11, marginTop: 4, textAlign: 'center' }}>בחר מהגלריה</span>
+                      </label>
+                    </>
                   )}
                 </div>
                 <div style={{ fontSize: 12, color: "var(--text3)" }}>{form.images.length} מתוך 4 תמונות הועלו. (עד 4 תמונות לדוח).</div>
