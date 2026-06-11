@@ -1,15 +1,46 @@
 import { useState } from 'react'
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { Icon } from '~/components/Shared'
-import { motion, useScroll, useTransform } from 'framer-motion'
+import { motion, useScroll, useTransform, useReducedMotion } from 'framer-motion'
+
+const structuredData = JSON.stringify({
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'Organization',
+      name: 'BuildSync',
+      url: 'https://buildsync.co.il',
+      logo: 'https://buildsync.co.il/logo.png',
+    },
+    {
+      '@type': 'SoftwareApplication',
+      name: 'BuildSync',
+      applicationCategory: 'BusinessApplication',
+      operatingSystem: 'Web',
+      inLanguage: 'he',
+      description: 'פלטפורמה לניהול פרויקטי בנייה ושיפוצים: תקציב, קבלנים, יומני עבודה, תיעוד ותקשורת.',
+      offers: [
+        { '@type': 'Offer', name: 'Free', price: '0', priceCurrency: 'ILS' },
+        { '@type': 'Offer', name: 'Pro', priceCurrency: 'ILS' },
+      ],
+    },
+  ],
+});
 
 export const Route = createFileRoute('/')({
   component: LandingPage,
+  head: () => ({
+    links: [
+      // The hero is the LCP image — fetch it before the preload scanner finds it.
+      { rel: 'preload', as: 'image', href: '/hero.webp', fetchPriority: 'high' },
+    ],
+  }),
 })
 
 function LandingPage() {
+  const prefersReducedMotion = useReducedMotion();
   const { scrollYProgress } = useScroll();
-  const yBg = useTransform(scrollYProgress, [0, 1], ["0%", "50%"]);
+  const yBg = useTransform(scrollYProgress, [0, 1], ["0%", prefersReducedMotion ? "0%" : "50%"]);
 
   // Interactive Tasks State
   const [tasks, setTasks] = useState([
@@ -42,7 +73,8 @@ function LandingPage() {
 
   return (
     <div className="landing-page" style={{ flex: 1, width: '100%', height: '100vh', overflowY: 'auto', background: '#0a0a0c', color: '#fff', fontFamily: "'Heebo', sans-serif", overflowX: 'hidden' }}>
-      
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: structuredData }} />
+
       {/* GLOBAL SCOPED STYLES */}
       <style>{`
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -55,7 +87,12 @@ function LandingPage() {
         .content-width { max-width: 1300px; margin: 0 auto; width: 100%; }
 
         .hero-section { min-height: 100vh; display: flex; flex-direction: column; position: relative; overflow: hidden; }
-        .hero-title { font-size: clamp(3.5rem, 8vw, 6.5rem); max-width: 1400px; margin: 0 auto; line-height: 1.05; letter-spacing: -0.04em; }
+        .hero-title { font-size: clamp(2.5rem, 8vw, 6.5rem); max-width: 1400px; margin: 0 auto; line-height: 1.05; letter-spacing: -0.04em; }
+
+        @keyframes marquee-scroll { to { transform: translateX(-50%); } }
+        .marquee-track { animation: marquee-scroll 25s linear infinite; }
+        .marquee-track:hover, .marquee-track:focus-within { animation-play-state: paused; }
+        @media (prefers-reduced-motion: reduce) { .marquee-track { animation: none; } }
         
         .split-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 80px; align-items: center; }
         .split-layout.reversed .split-text { order: 2; }
@@ -78,9 +115,11 @@ function LandingPage() {
 
         .floating-card {
           position: absolute; background: rgba(20,20,25,0.65); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
-          padding: 24px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.15);
+          padding: 24px; border-radius: 24px; border: 1px solid rgba(255,255,255,0.15);
           box-shadow: 0 30px 60px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.1); z-index: 10;
         }
+
+        .demo-reset-btn { background: none; border: none; color: inherit; font: inherit; text-align: inherit; cursor: pointer; }
 
         .cta-btn {
           display: inline-block; background: linear-gradient(135deg, var(--accent) 0%, #B45309 100%); color: #fff; padding: 20px 48px;
@@ -116,13 +155,21 @@ function LandingPage() {
           .split-layout.reversed .split-text { order: 1; }
           .split-layout.reversed .split-media { order: 2; }
           .section-padding { padding: 80px 5%; }
+          /* Floating cards overlap the viewport when absolutely positioned on small screens —
+             stack them under the mockup instead. */
+          .floating-card { position: static !important; margin-top: 20px; min-width: 0 !important; width: 100%; }
+        }
+        @media (max-width: 768px) {
+          .card-grid { grid-template-columns: 1fr !important; }
+          .pro-tier-card { transform: none !important; }
         }
       `}</style>
       
+      <main>
       {/* 1. HERO SECTION */}
       <section className="hero-section">
         <motion.div style={{ position: 'absolute', inset: 0, zIndex: 0, y: yBg }}>
-          <img src="/hero.png" alt="Construction background" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          <img src="/hero.webp" alt="אתר בנייה בשעת שקיעה" width={1024} height={1024} fetchPriority="high" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(10,10,12,0.6) 0%, rgba(10,10,12,0.9) 60%, rgba(10,10,12,1) 100%)' }} />
         </motion.div>
 
@@ -177,7 +224,7 @@ function LandingPage() {
           style={{ flex: 1, position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyItems: 'center', justifyContent: 'center', padding: '0 5% 80px', textAlign: 'center' }}
         >
           <motion.div variants={fadeIn} style={{ display: 'inline-flex', alignItems: 'center', gap: 10, background: 'rgba(255,255,255,0.05)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.1)', padding: '12px 24px', borderRadius: 40, fontSize: 15, color: '#fff', fontWeight: 600, marginBottom: 40 }}>
-            <span style={{ width: 10, height: 10, borderRadius: '50%', background: 'var(--success)', boxShadow: '0 0 15px var(--success)' }} />
+            <span aria-hidden="true" style={{ width: 10, height: 10, borderRadius: '50%', background: 'var(--success)', boxShadow: '0 0 15px var(--success)' }} />
             הפלטפורמה המקיפה ביותר למנהלי עבודה, יזמים ומשפצים
           </motion.div>
           
@@ -197,15 +244,11 @@ function LandingPage() {
       </section>
 
       {/* 1.5 LIVE ALERTS MARQUEE */}
-      <div style={{ background: '#0a0a0c', overflow: 'hidden', padding: '16px 0', borderTop: '1px solid rgba(255,255,255,0.05)', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', position: 'relative' }}>
-         <div style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 100, background: 'linear-gradient(to right, transparent, #0a0a0c)', zIndex: 2 }} />
-         <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 100, background: 'linear-gradient(to left, transparent, #0a0a0c)', zIndex: 2 }} />
-        <motion.div 
-          animate={{ x: [0, -1500] }} 
-          transition={{ repeat: Infinity, duration: 25, ease: 'linear' }}
-          style={{ display: 'flex', whiteSpace: 'nowrap', gap: 40, fontWeight: 600, fontSize: 14 }}
-        >
-          {Array(4).fill([
+      <div aria-label="דוגמאות להתראות מהמערכת" style={{ background: '#0a0a0c', overflow: 'hidden', padding: '16px 0', borderTop: '1px solid rgba(255,255,255,0.05)', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', position: 'relative' }}>
+         <div aria-hidden="true" style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 100, background: 'linear-gradient(to right, transparent, #0a0a0c)', zIndex: 2 }} />
+         <div aria-hidden="true" style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 100, background: 'linear-gradient(to left, transparent, #0a0a0c)', zIndex: 2 }} />
+        <div className="marquee-track" style={{ display: 'flex', whiteSpace: 'nowrap', gap: 40, fontWeight: 600, fontSize: 14 }}>
+          {Array(2).fill([
             { text: "חריגה צפויה של 2% בתקציב אינסטלציה", icon: "alert", color: "var(--warning)" },
             { text: "המפקח אישר את שלב יציקת הרצפה", icon: "check-circle", color: "var(--success)" },
             { text: "יומן עבודה יומי אושר וננעל לשינויים", icon: "file-text", color: "#3B82F6" },
@@ -216,12 +259,13 @@ function LandingPage() {
               {item.text}
             </span>
           ))}
-        </motion.div>
+        </div>
       </div>
 
       {/* 2. CORE TRIAD (Quick Highlights) */}
-      <section className="section-padding" style={{ background: 'linear-gradient(180deg, rgba(10,10,12,0.95) 0%, rgba(10,10,12,0.5) 50%, rgba(10,10,12,0.95) 100%), url(/images/bg_core_triad.png) center/cover no-repeat', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingTop: 60 }}>
+      <section className="section-padding" style={{ background: 'linear-gradient(180deg, rgba(10,10,12,0.95) 0%, rgba(10,10,12,0.5) 50%, rgba(10,10,12,0.95) 100%), url(/images/bg_core_triad.webp) center/cover no-repeat', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingTop: 60 }}>
         <div className="content-width">
+          <h2 style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clipPath: 'inset(50%)' }}>היתרונות המרכזיים</h2>
           <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-100px" }} variants={staggerContainer} className="card-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))' }}>
             {[
               { icon: 'clock', color: '#007AFF', title: 'חסוך משאבים וזמן', desc: 'שליטה בכל שלבי הפרויקט מונעת הפסקות עבודה מיותרות, חיכוך מול ספקים ועיכובים.' },
@@ -241,7 +285,7 @@ function LandingPage() {
       </section>
 
       {/* 3. FEATURE DEEP DIVE: COMMUNICATION & PHOTOS */}
-      <section className="section-padding" style={{ background: 'linear-gradient(180deg, rgba(10,10,12,0.95) 0%, rgba(10,10,12,0.6) 50%, rgba(10,10,12,0.95) 100%), url(/images/bg_communication.png) center/cover no-repeat', backgroundAttachment: 'fixed' }}>
+      <section className="section-padding" style={{ background: 'linear-gradient(180deg, rgba(10,10,12,0.95) 0%, rgba(10,10,12,0.6) 50%, rgba(10,10,12,0.95) 100%), url(/images/bg_communication.webp) center/cover no-repeat', backgroundAttachment: 'fixed' }}>
         <div className="content-width split-layout">
           <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeIn} className="split-text">
             <span className="feature-badge">חווית תקשורת מתקדמת</span>
@@ -257,7 +301,7 @@ function LandingPage() {
           </motion.div>
           <motion.div initial={{ opacity: 0, x: -50 }} whileInView={{ opacity: 1, x: 0 }} transition={{ duration: 0.8 }} viewport={{ once: true }} className="split-media relative">
             <div className="mockup-container">
-              <img src="/dashboard_mockup.png" className="mockup-img" alt="Communication Dashboard" />
+              <img src="/dashboard_mockup.webp" className="mockup-img" alt="מסך התקשורת והתיעוד של BuildSync" width={1024} height={1024} loading="lazy" decoding="async" />
             </div>
             <motion.div animate={{ y: [0, -10, 0] }} transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }} className="floating-card" style={{ bottom: -40, left: -20, minWidth: 320 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
@@ -293,15 +337,15 @@ function LandingPage() {
           </motion.div>
           <motion.div initial={{ opacity: 0, x: 50 }} whileInView={{ opacity: 1, x: 0 }} transition={{ duration: 0.8 }} viewport={{ once: true }} className="split-media relative">
             <div className="mockup-container">
-              <img src="/images/budget_dashboard.png" className="mockup-img" alt="Budget and BOQ Features" style={{ objectFit: 'cover' }} />
+              <img src="/images/budget_dashboard.webp" className="mockup-img" alt="מסך ניהול התקציב וכתב הכמויות של BuildSync" width={1024} height={1024} loading="lazy" decoding="async" style={{ objectFit: 'cover' }} />
             </div>
             <motion.div className="floating-card" style={{ top: -30, right: -20, minWidth: 340, padding: 0, overflow: 'hidden' }}>
                <div style={{ padding: '16px 24px', background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                  <span style={{ fontSize: 12, fontWeight: 800, color: '#aaa', textTransform: 'uppercase', letterSpacing: 1 }}>שקיפות סלקטיבית</span>
-                 <div style={{ display: 'flex', background: 'rgba(0,0,0,0.4)', borderRadius: 20, padding: 4, cursor: 'pointer' }} onClick={() => setIsOwnerView(!isOwnerView)}>
-                   <div style={{ padding: '4px 12px', fontSize: 12, borderRadius: 16, background: isOwnerView ? 'var(--accent)' : 'transparent', color: isOwnerView ? '#fff' : '#888', fontWeight: isOwnerView ? 'bold' : 'normal', transition: 'all 0.2s' }}>יזם/מפקח</div>
-                   <div style={{ padding: '4px 12px', fontSize: 12, borderRadius: 16, background: !isOwnerView ? '#333' : 'transparent', color: !isOwnerView ? '#fff' : '#888', fontWeight: !isOwnerView ? 'bold' : 'normal', transition: 'all 0.2s' }}>קבלן שטח</div>
-                 </div>
+                 <button type="button" className="demo-reset-btn" aria-pressed={!isOwnerView} aria-label="החלף בין תצוגת יזם לתצוגת קבלן" style={{ display: 'flex', background: 'rgba(0,0,0,0.4)', borderRadius: 20, padding: 4, cursor: 'pointer' }} onClick={() => setIsOwnerView(!isOwnerView)}>
+                   <span style={{ padding: '4px 12px', fontSize: 12, borderRadius: 16, background: isOwnerView ? 'var(--accent)' : 'transparent', color: isOwnerView ? '#fff' : '#888', fontWeight: isOwnerView ? 'bold' : 'normal', transition: 'all 0.2s' }}>יזם/מפקח</span>
+                   <span style={{ padding: '4px 12px', fontSize: 12, borderRadius: 16, background: !isOwnerView ? '#333' : 'transparent', color: !isOwnerView ? '#fff' : '#888', fontWeight: !isOwnerView ? 'bold' : 'normal', transition: 'all 0.2s' }}>קבלן שטח</span>
+                 </button>
                </div>
                
                <div style={{ padding: 24 }}>
@@ -338,7 +382,7 @@ function LandingPage() {
       </section>
 
       {/* 5. FEATURE DEEP DIVE: MANAGING STAGES & CONTRACTORS */}
-      <section className="section-padding" style={{ background: 'linear-gradient(180deg, rgba(10,10,12,0.95) 0%, rgba(10,10,12,0.5) 50%, rgba(10,10,12,0.95) 100%), url(/images/bg_stages.png) center/cover no-repeat' }}>
+      <section className="section-padding" style={{ background: 'linear-gradient(180deg, rgba(10,10,12,0.95) 0%, rgba(10,10,12,0.5) 50%, rgba(10,10,12,0.95) 100%), url(/images/bg_stages.webp) center/cover no-repeat' }}>
         <div className="content-width split-layout">
           <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeIn} className="split-text">
             <span className="feature-badge" style={{color: 'var(--success)'}}>ניהול ביצוע ושקיפות יומית</span>
@@ -383,12 +427,12 @@ function LandingPage() {
                    {/* Subtasks rendering */}
                    <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 6, paddingLeft: 12 }}>
                      {tasks.map((task) => (
-                       <div key={task.id} onClick={() => toggleTask(task.id)} className="interactive-task" style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 13, color: task.done ? '#aaa' : '#fff', textDecoration: task.done ? 'line-through' : 'none' }}>
-                         <span style={{ width: 18, height: 18, background: task.done ? '#34C759' : 'rgba(0,0,0,0.3)', border: task.done ? 'none' : '1px solid rgba(255,255,255,0.2)', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}>
+                       <button type="button" key={task.id} onClick={() => toggleTask(task.id)} aria-pressed={task.done} className="interactive-task demo-reset-btn" style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 13, color: task.done ? '#aaa' : '#fff', textDecoration: task.done ? 'line-through' : 'none' }}>
+                         <span aria-hidden="true" style={{ width: 18, height: 18, background: task.done ? '#34C759' : 'rgba(0,0,0,0.3)', border: task.done ? 'none' : '1px solid rgba(255,255,255,0.2)', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}>
                            {task.done && <Icon n="check" s={12} c="#fff" />}
-                         </span> 
+                         </span>
                          {task.text}
-                       </div>
+                       </button>
                      ))}
                    </div>
                  </div>
@@ -423,7 +467,7 @@ function LandingPage() {
           </motion.div>
           
           <motion.div initial={{ opacity: 0, x: 50 }} whileInView={{ opacity: 1, x: 0 }} transition={{ duration: 0.8 }} viewport={{ once: true }} className="split-media" style={{ display: 'flex', justifyContent: 'center' }}>
-            <div style={{ width: '100%', maxWidth: 400, background: '#fff', borderRadius: 12, padding: 32, color: '#000', position: 'relative', boxShadow: '0 40px 80px rgba(0,0,0,0.5)', cursor: 'pointer', transition: 'all 0.3s' }} onClick={() => setLogSigned(true)} className="info-card">
+            <div style={{ width: '100%', maxWidth: 400, background: '#fff', borderRadius: 12, padding: 32, color: '#000', position: 'relative', boxShadow: '0 40px 80px rgba(0,0,0,0.5)', transition: 'all 0.3s' }} className="info-card">
               <div style={{ borderBottom: '2px solid #eee', paddingBottom: 16, marginBottom: 24, textAlign: 'center' }}>
                 <h3 style={{ fontSize: 24, fontWeight: 900, color: '#111' }}>יומן עבודה יומי</h3>
                 <div style={{ color: '#666', fontSize: 14 }}>12 באפריל, 2026 • אתר "וילה כהן"</div>
@@ -445,10 +489,10 @@ function LandingPage() {
               </div>
 
               {!logSigned ? (
-                <div style={{ background: '#3B82F6', color: '#fff', textAlign: 'center', padding: 16, borderRadius: 8, fontWeight: 'bold', boxShadow: '0 10px 20px rgba(59,130,246,0.3)', transition: 'all 0.2s', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8 }}>
+                <button type="button" onClick={() => setLogSigned(true)} style={{ width: '100%', border: 'none', cursor: 'pointer', font: 'inherit', background: '#3B82F6', color: '#fff', textAlign: 'center', padding: 16, borderRadius: 8, fontWeight: 'bold', boxShadow: '0 10px 20px rgba(59,130,246,0.3)', transition: 'all 0.2s', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8 }}>
                   <Icon n="lock" s={18} />
                   לחץ כדי לאשר ולנעול
-                </div>
+                </button>
               ) : (
                 <div style={{ background: '#f3f4f6', color: '#aaa', textAlign: 'center', padding: 16, borderRadius: 8, fontWeight: 'bold', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8 }}>
                   <Icon n="lock" s={18} />
@@ -457,7 +501,7 @@ function LandingPage() {
               )}
 
               {logSigned && (
-                <motion.div initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: "spring", stiffness: 200, damping: 15 }} style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%) rotate(-15deg)', border: '6px solid #DC2626', color: '#DC2626', padding: '10px 20px', borderRadius: 8, fontSize: 32, fontWeight: 900, textTransform: 'uppercase', letterSpacing: 2, pointerEvents: 'none', background: 'rgba(255,255,255,0.9)', boxShadow: '0 10px 30px rgba(0,0,0,0.2)' }}>
+                <motion.div aria-hidden="true" initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: "spring", stiffness: 200, damping: 15 }} style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%) rotate(-15deg)', border: '6px solid #DC2626', color: '#DC2626', padding: '10px 20px', borderRadius: 8, fontSize: 32, fontWeight: 900, textTransform: 'uppercase', letterSpacing: 2, pointerEvents: 'none', background: 'rgba(255,255,255,0.9)', boxShadow: '0 10px 30px rgba(0,0,0,0.2)' }}>
                   אושר וננעל
                 </motion.div>
               )}
@@ -474,7 +518,7 @@ function LandingPage() {
       </section>
 
       {/* 5.8 FEATURE DEEP DIVE: BUREAUCRACY & PERMITS */}
-      <section className="section-padding" style={{ background: 'linear-gradient(180deg, rgba(10,10,12,0.95) 0%, rgba(10,10,12,0.5) 50%, rgba(10,10,12,0.95) 100%), url(/images/bg_bureaucracy.png) center/cover no-repeat', borderTop: '1px solid rgba(255,255,255,0.02)' }}>
+      <section className="section-padding" style={{ background: 'linear-gradient(180deg, rgba(10,10,12,0.95) 0%, rgba(10,10,12,0.5) 50%, rgba(10,10,12,0.95) 100%), url(/images/bg_bureaucracy.webp) center/cover no-repeat', borderTop: '1px solid rgba(255,255,255,0.02)' }}>
         <div className="content-width split-layout">
           <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeIn} className="split-text">
             <span className="feature-badge" style={{color: '#EAB308'}}>סדר בניירת וברישוי</span>
@@ -525,7 +569,7 @@ function LandingPage() {
       </section>
 
       {/* 5.9 FEATURE DEEP DIVE: LOGISTICS & ORDERS */}
-      <section className="section-padding" style={{ background: 'linear-gradient(180deg, rgba(10,10,12,0.95) 0%, rgba(10,10,12,0.6) 50%, rgba(10,10,12,0.95) 100%), url(/images/bg_orders.png) center/cover no-repeat', borderTop: '1px solid rgba(255,255,255,0.02)' }}>
+      <section className="section-padding" style={{ background: 'linear-gradient(180deg, rgba(10,10,12,0.95) 0%, rgba(10,10,12,0.6) 50%, rgba(10,10,12,0.95) 100%), url(/images/bg_orders.webp) center/cover no-repeat', borderTop: '1px solid rgba(255,255,255,0.02)' }}>
         <div className="content-width split-layout reversed">
           <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeIn} className="split-text">
             <span className="feature-badge" style={{color: '#10B981'}}>לוגיסטיקה ורכש באתר</span>
@@ -572,10 +616,10 @@ function LandingPage() {
 
       {/* 6. THE "WHY BUILDSYNC" / VALUE PROP SECTION */}
       {/* 6.1 HERO HOOK */}
-      <section className="section-padding" style={{ background: 'linear-gradient(180deg, rgba(10,10,12,0.95) 0%, rgba(10,10,12,0.8) 100%), url(/images/bg_hero_chaos.png) center/cover no-repeat', borderTop: '1px solid rgba(255,255,255,0.02)', paddingBottom: 80 }}>
+      <section className="section-padding" style={{ background: 'linear-gradient(180deg, rgba(10,10,12,0.95) 0%, rgba(10,10,12,0.8) 100%), url(/images/bg_hero_chaos.webp) center/cover no-repeat', borderTop: '1px solid rgba(255,255,255,0.02)', paddingBottom: 80 }}>
         <div className="content-width">
            <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeIn} style={{ textAlign: 'center', maxWidth: 900, margin: '0 auto', marginBottom: 80 }}>
-            <h2 className="gradient-text" style={{ fontSize: 'clamp(2.5rem, 5vw, 4.5rem)', fontWeight: 900, marginBottom: 24, lineHeight: 1.1, letterSpacing: '-0.02em' }}>
+            <h2 className="gradient-text" style={{ fontSize: 'clamp(2.5rem, 4.5vw, 4rem)', fontWeight: 900, marginBottom: 24, lineHeight: 1.1, letterSpacing: '-0.02em' }}>
               השקעה של מיליונים<br/>לא משאירים למזל.
             </h2>
             <p style={{ color: '#a0a0a0', fontSize: '1.4rem', maxWidth: 700, margin: '0 auto', lineHeight: 1.6 }}>
@@ -625,7 +669,7 @@ function LandingPage() {
       </section>
 
       {/* 6.3 ROI SECTION */}
-      <section className="section-padding" style={{ background: 'linear-gradient(180deg, rgba(17,17,21,0.95) 0%, rgba(10,10,12,0.85) 100%), url(/images/bg_roi_section.png) center/cover no-repeat', backgroundAttachment: 'fixed', borderTop: '1px solid rgba(255,255,255,0.03)', borderBottom: '1px solid rgba(255,255,255,0.02)' }}>
+      <section className="section-padding" style={{ background: 'linear-gradient(180deg, rgba(17,17,21,0.95) 0%, rgba(10,10,12,0.85) 100%), url(/images/bg_roi_section.webp) center/cover no-repeat', backgroundAttachment: 'fixed', borderTop: '1px solid rgba(255,255,255,0.03)', borderBottom: '1px solid rgba(255,255,255,0.02)' }}>
         <div className="content-width">
            <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-50px" }} variants={staggerContainer} className="card-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))' }}>
              <motion.div variants={fadeIn} className="info-card" style={{ padding: 32, background: 'rgba(20,20,25,0.85)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.05)' }}>
@@ -668,7 +712,7 @@ function LandingPage() {
       </section>
 
       {/* 6.4 SPLIT VALUE PROP */}
-      <section className="section-padding" style={{ background: 'linear-gradient(180deg, rgba(17,17,21,0.95) 0%, rgba(17,17,21,0.7) 100%), url(/images/bg_split_value_prop.png) center/cover no-repeat', borderTop: '1px solid rgba(255,255,255,0.03)' }}>
+      <section className="section-padding" style={{ background: 'linear-gradient(180deg, rgba(17,17,21,0.95) 0%, rgba(17,17,21,0.7) 100%), url(/images/bg_split_value_prop.webp) center/cover no-repeat', borderTop: '1px solid rgba(255,255,255,0.03)' }}>
         <div className="content-width">
            <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-100px" }} variants={staggerContainer} className="card-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: 60 }}>
              
@@ -715,7 +759,7 @@ function LandingPage() {
         <div className="content-width">
           <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeIn} style={{ textAlign: 'center', marginBottom: 60 }}>
             <span className="feature-badge" style={{color: 'var(--accent)', display: 'inline-flex', alignItems: 'center', gap: 6}}><Icon n="star" s={14} c="var(--accent)" /> חדש במערכת</span>
-            <h2 className="gradient-text" style={{ fontSize: 'clamp(2.5rem, 4vw, 3.5rem)', fontWeight: 800, marginBottom: 20 }}>
+            <h2 className="gradient-text" style={{ fontSize: 'clamp(2.5rem, 4.5vw, 4rem)', fontWeight: 800, marginBottom: 20 }}>
               בחרו את המסלול שמתאים לכם
             </h2>
             <p style={{ color: '#a0a0a0', fontSize: '1.25rem', maxWidth: 800, margin: '0 auto' }}>
@@ -739,7 +783,7 @@ function LandingPage() {
             </motion.div>
             
             {/* Pro Tier */}
-            <motion.div variants={fadeIn} className="info-card" style={{ background: 'linear-gradient(180deg, rgba(224,122,56,0.15) 0%, rgba(20,20,25,0.8) 100%)', border: '1px solid rgba(224,122,56,0.3)', position: 'relative', overflow: 'hidden', transform: 'scale(1.05)', zIndex: 2 }}>
+            <motion.div variants={fadeIn} className="info-card pro-tier-card" style={{ background: 'linear-gradient(180deg, rgba(224,122,56,0.15) 0%, rgba(20,20,25,0.8) 100%)', border: '1px solid rgba(224,122,56,0.3)', position: 'relative', overflow: 'hidden', transform: 'scale(1.05)', zIndex: 2 }}>
               <div style={{ position: 'absolute', top: 16, left: -30, background: 'var(--accent)', color: '#fff', padding: '4px 40px', transform: 'rotate(-45deg)', fontSize: 12, fontWeight: 'bold', letterSpacing: 1, boxShadow: '0 5px 15px rgba(0,0,0,0.3)' }}>מומלץ</div>
               <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 4, background: 'var(--accent)' }} />
               <h3 style={{ fontSize: '1.8rem', fontWeight: 800, color: '#fff', marginBottom: 8 }}>Pro</h3>
@@ -780,10 +824,10 @@ function LandingPage() {
       </section>
 
       {/* 7. FINAL CALL TO ACTION (FULL WIDTH) */}
-      <section style={{ padding: '140px 5%', background: 'linear-gradient(135deg, rgba(224,122,56,0.85) 0%, rgba(146,64,14,0.95) 100%), url(/images/house_cta_bg.png) center/cover no-repeat', textAlign: 'center', color: '#fff', position: 'relative', overflow: 'hidden' }}>
+      <section className="section-padding" style={{ background: 'linear-gradient(135deg, rgba(224,122,56,0.85) 0%, rgba(146,64,14,0.95) 100%), url(/images/house_cta_bg.webp) center/cover no-repeat', textAlign: 'center', color: '#fff', overflow: 'hidden' }}>
         {/* Subtle decorative circles */}
-        <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 40, ease: "linear" }} style={{ position: 'absolute', top: -150, right: -150, width: 600, height: 600, borderRadius: '50%', background: 'radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%)', zIndex: 0 }} />
-        <motion.div animate={{ rotate: -360 }} transition={{ repeat: Infinity, duration: 50, ease: "linear" }} style={{ position: 'absolute', bottom: -200, left: -100, width: 700, height: 700, borderRadius: '50%', background: 'radial-gradient(circle, rgba(0,0,0,0.15) 0%, transparent 70%)', zIndex: 0 }} />
+        <motion.div aria-hidden="true" animate={prefersReducedMotion ? undefined : { rotate: 360 }} transition={{ repeat: Infinity, duration: 40, ease: "linear" }} style={{ position: 'absolute', top: -150, right: -150, width: 600, height: 600, borderRadius: '50%', background: 'radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%)', zIndex: 0 }} />
+        <motion.div aria-hidden="true" animate={prefersReducedMotion ? undefined : { rotate: -360 }} transition={{ repeat: Infinity, duration: 50, ease: "linear" }} style={{ position: 'absolute', bottom: -200, left: -100, width: 700, height: 700, borderRadius: '50%', background: 'radial-gradient(circle, rgba(0,0,0,0.15) 0%, transparent 70%)', zIndex: 0 }} />
         
         <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeIn} style={{ position: 'relative', zIndex: 1, maxWidth: 900, margin: '0 auto' }}>
           <div style={{ display: 'inline-block', padding: '6px 16px', marginBottom: '24px', fontSize: '0.875rem', fontWeight: 'bold', color: '#fff', background: 'rgba(255,255,255,0.15)', borderRadius: '999px', border: '1px solid rgba(255,255,255,0.3)', backdropFilter: 'blur(4px)', textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>
@@ -812,6 +856,7 @@ function LandingPage() {
           </p>
         </motion.div>
       </section>
+      </main>
       <footer style={{ padding: '60px 5%', textAlign: 'center', color: '#666', background: '#08080a', fontSize: '1rem', borderTop: '1px solid rgba(255,255,255,0.03)' }}>
         © {new Date().getFullYear()} BuildSync. פותח במטרה לייעל את הבנייה בעולם היזמות, הקבלנות והשיפוצים. כל הזכויות שמורות.
         <div style={{ marginTop: '16px' }}>
