@@ -1,33 +1,25 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { CustomerPortal } from "@polar-sh/tanstack-start";
-// In a real app we'd get the user from session. Here we will pass customerId via query param.
 
 const isProd = process.env.NODE_ENV === 'production';
 const baseUrl = isProd ? 'https://buildsync.co.il' : 'http://localhost:3000';
 
+// DEPRECATED & intentionally inert.
+//
+// This route previously trusted a `?customerId=` query param and opened the
+// Polar customer portal for whatever customer was named — an IDOR that let
+// anyone open another user's billing portal. Server route handlers here have no
+// access to the Convex auth session (the token lives client-side), so the
+// portal session is now created by the authenticated Convex action
+// `api.users.createPortalSession`, called from the account page. This route
+// just bounces any stale links back to /account.
 export const Route = createFileRoute("/api/portal")({
   server: {
     handlers: {
-      GET: async (event) => {
-        const url = new URL(event.request.url);
-        const customerId = url.searchParams.get("customerId");
-        
-        // If customerId is missing or literally the string "undefined", redirect back
-        if (!customerId || customerId === "undefined") {
-          return new Response(null, {
-            status: 302,
-            headers: { Location: `${baseUrl}/account?error=no_customer_id` },
-          });
-        }
-
-        const handler = CustomerPortal({
-          accessToken: process.env.POLAR_ACCESS_TOKEN!,
-          getCustomerId: async () => customerId,
-          returnUrl: `${baseUrl}/account`,
-          server: (process.env.POLAR_SERVER as "sandbox" | "production") || "sandbox", 
+      GET: async () => {
+        return new Response(null, {
+          status: 302,
+          headers: { Location: `${baseUrl}/account` },
         });
-
-        return handler(event);
       },
     },
   },

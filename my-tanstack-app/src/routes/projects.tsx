@@ -6,6 +6,13 @@ import { Btn, Icon, FeedbackModal, ConfirmDialog } from '~/components/Shared';
 import { useDataMutation } from '~/hooks/useDataMutation';
 import { CreateProjectWizard } from '~/components/CreateProjectWizard';
 import { useSubscription } from '~/hooks/useSubscription';
+import { openUpgradeModal } from '~/components/UpgradeModalHost';
+import { PROJECT_LIMIT_ERROR } from '../../convex/_lib/entitlements';
+
+const PROJECT_LIMIT_UPGRADE = {
+  title: 'שדרג ל-Pro',
+  reason: 'במסלול החינמי ניתן לנהל פרויקט אחד בלבד. שדרג ל-Pro כדי לפתוח פרויקטים ללא הגבלה.',
+};
 
 export const Route = createFileRoute('/projects')({
   component: ProjectsRoute,
@@ -26,11 +33,7 @@ function ProjectsRoute() {
   const handleOpenWizard = () => {
     const ownedProjects = projects.filter((p: any) => p.ownerUserId === user?._id);
     if (!isSelfProOrPremium && ownedProjects.length >= 1) {
-      setFeedback({
-        title: "הגבלת חשבון חינמי",
-        message: "במסלול החינמי ניתן להקים ולנהל פרויקט אחד בלבד בבעלותך. שדרג למסלול Pro כדי להוסיף ולנהל פרויקטים נוספים.",
-        type: "info"
-      });
+      openUpgradeModal(PROJECT_LIMIT_UPGRADE);
       return;
     }
     setIsWizardOpen(true);
@@ -43,21 +46,29 @@ function ProjectsRoute() {
     }
     const ownedProjects = projects.filter((p: any) => p.ownerUserId === user?._id);
     if (!isSelfProOrPremium && ownedProjects.length >= 1) {
-      setFeedback({ title: "הגבלת חשבון חינמי", message: "לא ניתן ליצור פרויקט נוסף בבעלותך במסלול החינמי.", type: "error" });
+      setIsWizardOpen(false);
+      openUpgradeModal(PROJECT_LIMIT_UPGRADE);
       return;
     }
     setIsSaving(true);
     try {
       const newId = await mutate('createProject', data);
       setIsWizardOpen(false);
-      
+
       // Auto-switch to new project
       if (typeof newId === 'string') {
         setCurrentProject(newId);
       }
       navigate({ to: '/' });
     } catch (err) {
-      setFeedback({ title: "שגיאה", message: "לא הצלחנו ליצור את הפרויקט. אנא נסו שוב.", type: "error" });
+      // The server enforces the limit too; surface the upgrade modal rather than
+      // a generic failure when that's why creation was rejected.
+      if (err instanceof Error && err.message.includes(PROJECT_LIMIT_ERROR)) {
+        setIsWizardOpen(false);
+        openUpgradeModal(PROJECT_LIMIT_UPGRADE);
+      } else {
+        setFeedback({ title: "שגיאה", message: "לא הצלחנו ליצור את הפרויקט. אנא נסו שוב.", type: "error" });
+      }
     } finally {
       setIsSaving(false);
     }

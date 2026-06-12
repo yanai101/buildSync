@@ -1,6 +1,7 @@
 import { action, mutation, query } from './_generated/server';
 import { v } from 'convex/values';
 import { api } from './_generated/api';
+import { Polar } from '@polar-sh/sdk';
 import {
   getAuthUserId,
   createAccount,
@@ -156,11 +157,21 @@ export const redeemPromoCode = mutation({
     const subscriptionExpiresAt = Date.now() + (promo.subscriptionDurationMonths * 30 * 24 * 60 * 60 * 1000);
 
     // Apply the subscription
-    await ctx.db.patch(userId, { 
+    const userBefore = await ctx.db.get(userId);
+    await ctx.db.patch(userId, {
       subscriptionTier: promo.tier,
-      subscriptionExpiresAt 
+      subscriptionExpiresAt
     });
-    
+
+    await ctx.db.insert('subscriptionEvents', {
+      userId,
+      fromTier: userBefore?.subscriptionTier,
+      toTier: promo.tier,
+      source: 'promo',
+      expiresAt: subscriptionExpiresAt,
+      at: Date.now(),
+    });
+
     // Mark code as used
     await ctx.db.patch(promo._id, {
       currentUses: promo.currentUses + 1,
@@ -174,6 +185,34 @@ export const redeemPromoCode = mutation({
     });
 
     return { success: true, tier: promo.tier };
+  },
+});
+
+// Creates a Polar customer-portal session for the *authenticated* caller only.
+// The customer is resolved from the caller's own user id (used as the Polar
+// external customer id at checkout), so a user can never open someone else's
+// billing portal — unlike trusting a client-supplied customerId.
+export const createPortalSession = action({
+  args: {},
+  handler: async (ctx): Promise<{ url: string }> => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error('Not authenticated');
+
+    const token = process.env.POLAR_ACCESS_TOKEN;
+    if (!token) throw new Error('POLAR_ACCESS_TOKEN is not configured');
+
+    const baseUrl = process.env.SITE_URL || 'https://buildsync.co.il';
+    const polar = new Polar({
+      accessToken: token,
+      server: (process.env.POLAR_SERVER as 'sandbox' | 'production') || 'sandbox',
+    });
+
+    const session = await polar.customerSessions.create({
+      externalCustomerId: userId,
+      returnUrl: `${baseUrl}/account`,
+    });
+
+    return { url: session.customerPortalUrl };
   },
 });
 
@@ -201,44 +240,99 @@ export const getPromoCodeStatus = query({
   },
 });
 
+// Dev/admin-only testing helper. Self-grant of a paid tier must never be
+// reachable by ordinary users, so this is gated behind the super-admin flag.
 export const toggleSubscription = mutation({
   args: {},
   handler: async (ctx) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error('Not authenticated');
-    
+
     const user = await ctx.db.get(userId);
     if (!user) throw new Error('User not found');
+    if (!user.isSuperAdmin) {
+      throw new Error('Unauthorized: Not Super Admin');
+    }
 
     const newTier = user.subscriptionTier === 'pro' ? 'free' : 'pro';
-    
+
     await ctx.db.patch(userId, {
       subscriptionTier: newTier,
       // Give them a 1-year subscription when toggling to pro
       subscriptionExpiresAt: newTier === 'pro' ? Date.now() + 365 * 24 * 60 * 60 * 1000 : undefined,
     });
-    
+
+    await ctx.db.insert('subscriptionEvents', {
+      userId,
+      fromTier: user.subscriptionTier,
+      toTier: newTier,
+      source: 'admin',
+      expiresAt: newTier === 'pro' ? Date.now() + 365 * 24 * 60 * 60 * 1000 : undefined,
+      at: Date.now(),
+    });
+
     return newTier;
   },
 });
 
+// Applies a subscription change coming from the Polar webhook. The webhook
+// (which already verifies Polar's HMAC signature in the TanStack edge handler)
+// proves it is the trusted caller by passing the shared SUBSCRIPTION_SYNC_SECRET.
+// Without a matching secret this mutation is inert, so it cannot be abused to
+// self-upgrade or tamper with another user's plan.
 export const updateSubscription = mutation({
   args: {
+    secret: v.string(),
     userId: v.id('users'),
-    subscriptionTier: v.string(),
+    subscriptionTier: v.union(
+      v.literal('free'),
+      v.literal('pro'),
+      v.literal('premium'),
+    ),
     subscriptionExpiresAt: v.optional(v.number()),
+    subscriptionInterval: v.optional(
+      v.union(v.literal('month'), v.literal('year')),
+    ),
+    subscriptionAutoRenew: v.optional(v.boolean()),
     polarCustomerId: v.optional(v.string()),
     polarSubscriptionId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    // Note: In a real production app, you might want to add a check here 
-    // to ensure this is called from your secure backend/webhook.
-    
+    const expected = process.env.SUBSCRIPTION_SYNC_SECRET;
+    if (!expected) {
+      throw new Error('SUBSCRIPTION_SYNC_SECRET is not configured');
+    }
+    if (args.secret !== expected) {
+      throw new Error('Unauthorized');
+    }
+
+    const user = await ctx.db.get(args.userId);
+    if (!user) {
+      throw new Error('User not found');
+    }
+
     await ctx.db.patch(args.userId, {
       subscriptionTier: args.subscriptionTier,
       subscriptionExpiresAt: args.subscriptionExpiresAt,
+      // undefined clears the field (e.g. when the subscription ended)
+      subscriptionInterval: args.subscriptionInterval,
+      subscriptionAutoRenew: args.subscriptionAutoRenew,
       polarCustomerId: args.polarCustomerId,
       polarSubscriptionId: args.polarSubscriptionId,
     });
+
+    if (user.subscriptionTier !== args.subscriptionTier) {
+      await ctx.db.insert('subscriptionEvents', {
+        userId: args.userId,
+        fromTier: user.subscriptionTier,
+        toTier: args.subscriptionTier,
+        source: 'webhook',
+        expiresAt: args.subscriptionExpiresAt,
+        polarSubscriptionId: args.polarSubscriptionId,
+        at: Date.now(),
+      });
+    }
+
+    return null;
   },
 });

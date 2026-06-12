@@ -419,7 +419,7 @@ export const PremiumLock = ({ isLocked, title = "פיצ'ר זה זמין ב-Pro"
           </div>
           <h3 style={{ fontSize: 22, fontWeight: 800, marginBottom: 12, color: 'var(--text1)' }}>{title}</h3>
           <p style={{ fontSize: 15, color: 'var(--text2)', marginBottom: 24, lineHeight: 1.5 }}>{description}</p>
-          <Btn style={{ width: '100%', justifyContent: 'center', background: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)', boxShadow: '0 4px 12px rgba(217,119,6,0.3)' }} onClick={() => window.location.href = '/account'}>
+          <Btn style={{ width: '100%', justifyContent: 'center', background: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)', boxShadow: '0 4px 12px rgba(217,119,6,0.3)' }} onClick={() => window.dispatchEvent(new CustomEvent('buildsync:open-upgrade', { detail: { title, reason: description } }))}>
             <Icon n="star" s={16} /> שדרג ל-Pro
           </Btn>
         </motion.div>
@@ -427,3 +427,27 @@ export const PremiumLock = ({ isLocked, title = "פיצ'ר זה זמין ב-Pro"
     </div>
   );
 };
+
+// Standalone subscription paywall (no content to blur). Used by route guards
+// where a strict role check would otherwise short-circuit the in-screen
+// PremiumLock teaser, so non-subscribed / unregistered users still get the
+// upgrade prompt instead of a bare "no access" message.
+export const SubscriptionLock = ({
+  title = "פיצ'ר זה זמין ב-Pro",
+  description = "שדרג את החשבון שלך כדי לקבל גישה לכלי זה ולכלים מתקדמים נוספים.",
+}: { title?: string; description?: string }) => (
+  <div className="page-content">
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', padding: 24 }}>
+      <motion.div initial={{ scale: 0.95, opacity: 0, y: 10 }} animate={{ scale: 1, opacity: 1, y: 0 }} transition={{ type: 'spring', stiffness: 300, damping: 20 }} style={{ background: '#fff', borderRadius: 24, padding: 32, maxWidth: 420, textAlign: 'center', boxShadow: '0 20px 40px rgba(0,0,0,0.1)', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'linear-gradient(135deg, #FFD700 0%, #F59E0B 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', marginBottom: 20, boxShadow: '0 10px 20px rgba(245,158,11,0.3)' }}>
+          <Icon n="lock" s={28} />
+        </div>
+        <h3 style={{ fontSize: 22, fontWeight: 800, marginBottom: 12, color: 'var(--text1)' }}>{title}</h3>
+        <p style={{ fontSize: 15, color: 'var(--text2)', marginBottom: 24, lineHeight: 1.5 }}>{description}</p>
+        <Btn style={{ width: '100%', justifyContent: 'center', background: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)', boxShadow: '0 4px 12px rgba(217,119,6,0.3)' }} onClick={() => window.dispatchEvent(new CustomEvent('buildsync:open-upgrade', { detail: { title, reason: description } }))}>
+          <Icon n="star" s={16} /> שדרג ל-Pro
+        </Btn>
+      </motion.div>
+    </div>
+  </div>
+);

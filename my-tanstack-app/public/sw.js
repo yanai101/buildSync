@@ -7,11 +7,30 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // A simple fetch handler is required by browsers to trigger the PWA installation prompt
+  // A fetch handler is required by browsers to trigger the PWA install prompt.
+  // It must stay out of the way of anything it can't serve:
+  //  - non-GET requests
+  //  - cross-origin requests
+  //  - /api/* routes — these can redirect to external services (e.g.
+  //    /api/checkout and /api/portal redirect to Polar). If the SW tries to
+  //    consume that cross-origin redirect it fails, and because we cache
+  //    nothing the fallback resolves to `undefined`, which makes respondWith
+  //    throw "network error response: the promise was rejected".
+  // For these, we DON'T call respondWith, so the browser handles them natively.
+  const { request } = event;
+  if (request.method !== 'GET') return;
+
+  let url;
+  try {
+    url = new URL(request.url);
+  } catch {
+    return;
+  }
+  if (url.origin !== self.location.origin) return;
+  if (url.pathname.startsWith('/api/')) return;
+
   event.respondWith(
-    fetch(event.request).catch(() => {
-      return caches.match(event.request);
-    })
+    fetch(request).catch(async () => (await caches.match(request)) || Response.error())
   );
 });
 

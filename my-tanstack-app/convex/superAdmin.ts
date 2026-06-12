@@ -45,7 +45,9 @@ export const updateUserStatus = mutation({
   args: {
     userId: v.id('users'),
     isSuspended: v.optional(v.boolean()),
-    subscriptionTier: v.optional(v.string()),
+    subscriptionTier: v.optional(
+      v.union(v.literal('free'), v.literal('pro'), v.literal('premium')),
+    ),
     subscriptionExpiresAt: v.optional(v.union(v.number(), v.null())),
     role: v.optional(v.union(
       v.literal('owner'),
@@ -56,19 +58,32 @@ export const updateUserStatus = mutation({
   },
   handler: async (ctx, args) => {
     await checkSuperAdmin(ctx);
-    
+
+    const target = await ctx.db.get(args.userId);
+
     const patch: any = {};
     if (args.isSuspended !== undefined) patch.isSuspended = args.isSuspended;
     if (args.subscriptionTier !== undefined) patch.subscriptionTier = args.subscriptionTier;
     if (args.subscriptionExpiresAt !== undefined) patch.subscriptionExpiresAt = args.subscriptionExpiresAt === null ? undefined : args.subscriptionExpiresAt;
     if (args.role !== undefined) patch.role = args.role;
-    
+
     if (Object.keys(patch).length > 0) {
       if (args.subscriptionExpiresAt === null) {
         // To remove the field if they are downgraded to free
         patch.subscriptionExpiresAt = undefined;
       }
       await ctx.db.patch(args.userId, patch);
+    }
+
+    if (args.subscriptionTier !== undefined && target?.subscriptionTier !== args.subscriptionTier) {
+      await ctx.db.insert('subscriptionEvents', {
+        userId: args.userId,
+        fromTier: target?.subscriptionTier,
+        toTier: args.subscriptionTier,
+        source: 'admin',
+        expiresAt: args.subscriptionExpiresAt ?? undefined,
+        at: Date.now(),
+      });
     }
   },
 });

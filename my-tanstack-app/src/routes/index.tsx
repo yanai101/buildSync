@@ -789,7 +789,7 @@ function LandingPage() {
               <h3 style={{ fontSize: '1.8rem', fontWeight: 800, color: '#fff', marginBottom: 8 }}>Pro</h3>
               <div style={{ color: '#aaa', marginBottom: 24, fontSize: '1.1rem' }}>למפקחים, קבלנים ויזמים שמנהלים שטח</div>
               <ul className="bullet-list" style={{ gap: 16 }}>
-                <li className="bullet-item" style={{ fontSize: '1rem' }}><Icon n="check" s={20} c="var(--accent)" /> <div>עד 5 פרויקטים במקביל</div></li>
+                <li className="bullet-item" style={{ fontSize: '1rem' }}><Icon n="check" s={20} c="var(--accent)" /> <div>פרויקטים ללא הגבלה</div></li>
                 <li className="bullet-item" style={{ fontSize: '1rem' }}><Icon n="check" s={20} c="var(--accent)" /> <div>ניהול עלויות רכש אינטראקטיבי והצעות מחיר</div></li>
                 <li className="bullet-item" style={{ fontSize: '1rem' }}><Icon n="check" s={20} c="var(--accent)" /> <div>מעקב קבלת סחורות ושטרי מטען מהשטח</div></li>
                 <li className="bullet-item" style={{ fontSize: '1rem' }}><Icon n="check" s={20} c="var(--accent)" /> <div>הפקת יומני עבודה ל-PDF</div></li>
@@ -811,7 +811,7 @@ function LandingPage() {
                 <li className="bullet-item" style={{ fontSize: '1rem' }}><Icon n="check" s={20} c="#3B82F6" /> <div>כל היכולות של מסלול ה-Pro</div></li>
                 <li className="bullet-item" style={{ fontSize: '1rem' }}><Icon n="cpu" s={20} c="#3B82F6" /> <div>עוזר AI אישי שמסכם יומנים ופגישות</div></li>
                 <li className="bullet-item" style={{ fontSize: '1rem' }}><Icon n="cpu" s={20} c="#3B82F6" /> <div>תובנות אוטומטיות והמלצות לחיסכון</div></li>
-                <li className="bullet-item" style={{ fontSize: '1rem' }}><Icon n="check" s={20} c="#3B82F6" /> <div>מספר פרויקטים ומשתמשים ללא הגבלה</div></li>
+                <li className="bullet-item" style={{ fontSize: '1rem' }}><Icon n="check" s={20} c="#3B82F6" /> <div>גישה מוקדמת ליכולות AI חדשות</div></li>
               </ul>
               <div style={{ marginTop: 32 }}>
                 <Link to="/login" className="cta-secondary" style={{ width: '100%', textAlign: 'center', display: 'block', padding: '16px', background: '#3B82F6', color: '#fff', border: 'none', fontSize: '1.1rem' }}>

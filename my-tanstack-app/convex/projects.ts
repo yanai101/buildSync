@@ -3,6 +3,7 @@ import { getAuthUserId } from '@convex-dev/auth/server';
 import { v } from 'convex/values';
 import { performProjectDeletion } from './_lib/projectDeletion';
 import { canUserViewBudget, canUserViewSchedule } from './_lib/projectAccess';
+import { getActiveTier, capabilitiesFor, PROJECT_LIMIT_ERROR } from './_lib/entitlements';
 
 export const listMine = query({
   args: {},
@@ -94,18 +95,18 @@ export const createProject = mutation({
     const user = await ctx.db.get(userId);
     if (!user) throw new Error("User not found");
 
-    const isExpired = user.subscriptionExpiresAt ? Date.now() > user.subscriptionExpiresAt : false;
-    const tier = user.subscriptionTier || 'free';
-    const isSelfProOrPremium = user.isSuperAdmin || (!isExpired && (tier === 'pro' || tier === 'premium'));
+    const maxOwnedProjects = capabilitiesFor(getActiveTier(user)).maxOwnedProjects;
 
-    if (!isSelfProOrPremium) {
+    if (Number.isFinite(maxOwnedProjects)) {
       const myOwnedProjects = await ctx.db
         .query('projects')
         .withIndex('by_ownerUserId', (q) => q.eq('ownerUserId', userId))
         .collect();
 
-      if (myOwnedProjects.length >= 1) {
-        throw new Error("מגבלת חשבון חינמי: לא ניתן ליצור יותר מפרויקט אחד בבעלותך. שדרג ל-Pro כדי ליצור פרויקטים נוספים.");
+      if (myOwnedProjects.length >= maxOwnedProjects) {
+        // Prefixed with a stable code so the client can detect the limit and
+        // surface the upgrade modal instead of a generic failure.
+        throw new Error(`${PROJECT_LIMIT_ERROR}: מגבלת חשבון חינמי: לא ניתן ליצור יותר מפרויקט אחד בבעלותך. שדרג ל-Pro כדי ליצור פרויקטים נוספים.`);
       }
     }
 

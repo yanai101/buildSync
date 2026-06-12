@@ -1,0 +1,147 @@
+[     550ms] [INFO] Banner not shown: beforeinstallpromptevent.preventDefault() called. The page must call beforeinstallpromptevent.prompt() to show the banner. @ http://localhost:3002/dashboard:0
+[     600ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3002/node_modules/.vite/deps/react-dom_client.js?v=5a75cf9c:14337
+[     648ms] [LOG] Service Worker registered successfully: http://localhost:3002/ @ http://localhost:3002/src/components/Layout.tsx:304
+[  694107ms] [VERBOSE] [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) %o @ http://localhost:3002/login:0
+[ 2339473ms] [LOG] WebSocket closed with code 1006 @ http://localhost:3002/node_modules/.vite/deps/browser-Cbgbrl6y.js?v=5a75cf9c:58
+[ 2339478ms] [LOG] Attempting reconnect in 908ms @ http://localhost:3002/node_modules/.vite/deps/browser-Cbgbrl6y.js?v=5a75cf9c:58
+[ 2339482ms] [LOG] [vite] server connection lost. Polling for restart... @ http://localhost:3002/@vite/client:968
+[ 2340542ms] [VERBOSE] [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) %o @ http://localhost:3002/login:0
+[ 2340646ms] [INFO] Banner not shown: beforeinstallpromptevent.preventDefault() called. The page must call beforeinstallpromptevent.prompt() to show the banner. @ http://localhost:3002/login:0
+[ 2340739ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3002/node_modules/.vite/deps/react-dom_client.js?v=5a75cf9c:14337
+[ 2340851ms] [LOG] Service Worker registered successfully: http://localhost:3002/ @ http://localhost:3002/src/components/Layout.tsx?t=1780424398850:304
+[ 2647980ms] [LOG] [vite] server connection lost. Polling for restart... @ http://localhost:3002/@vite/client:968
+[ 2647984ms] [LOG] WebSocket closed with code 1006 @ http://localhost:3002/node_modules/.vite/deps/browser-Cbgbrl6y.js?v=5a75cf9c:58
+[ 2647985ms] [LOG] Attempting reconnect in 1482ms @ http://localhost:3002/node_modules/.vite/deps/browser-Cbgbrl6y.js?v=5a75cf9c:58
+[ 2648381ms] [VERBOSE] [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) %o @ http://localhost:3002/login:0
+[ 2648423ms] [INFO] Banner not shown: beforeinstallpromptevent.preventDefault() called. The page must call beforeinstallpromptevent.prompt() to show the banner. @ http://localhost:3002/login:0
+[ 2648599ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3002/node_modules/.vite/deps/react-dom_client.js?v=5a75cf9c:14337
+[ 2648648ms] [LOG] Service Worker registered successfully: http://localhost:3002/ @ http://localhost:3002/src/components/Layout.tsx?t=1780424398850:304
+[ 3843254ms] [LOG] Attempting reconnect in 147ms @ http://localhost:3002/node_modules/.vite/deps/browser-Cbgbrl6y.js?v=5a75cf9c:58
+[ 3843413ms] [ERROR] WebSocket connection to 'wss://precise-octopus-626.eu-west-1.convex.cloud/api/1.36.0/sync' failed: Error in connection establishment: net::ERR_INTERNET_DISCONNECTED @ http://localhost:3002/node_modules/.vite/deps/browser-Cbgbrl6y.js?v=5a75cf9c:1045
+[ 3843414ms] [LOG] WebSocket closed with code 1006 @ http://localhost:3002/node_modules/.vite/deps/browser-Cbgbrl6y.js?v=5a75cf9c:58
+[ 3843414ms] [LOG] Attempting reconnect in 2911ms @ http://localhost:3002/node_modules/.vite/deps/browser-Cbgbrl6y.js?v=5a75cf9c:58
+[ 3846332ms] [ERROR] WebSocket connection to 'wss://precise-octopus-626.eu-west-1.convex.cloud/api/1.36.0/sync' failed: Error in connection establishment: net::ERR_INTERNET_DISCONNECTED @ http://localhost:3002/node_modules/.vite/deps/browser-Cbgbrl6y.js?v=5a75cf9c:1045
+[ 3846332ms] [LOG] WebSocket closed with code 1006 @ http://localhost:3002/node_modules/.vite/deps/browser-Cbgbrl6y.js?v=5a75cf9c:58
+[ 3846332ms] [LOG] Attempting reconnect in 2107ms @ http://localhost:3002/node_modules/.vite/deps/browser-Cbgbrl6y.js?v=5a75cf9c:58
+[ 3848445ms] [ERROR] WebSocket connection to 'wss://precise-octopus-626.eu-west-1.convex.cloud/api/1.36.0/sync' failed: Error in connection establishment: net::ERR_INTERNET_DISCONNECTED @ http://localhost:3002/node_modules/.vite/deps/browser-Cbgbrl6y.js?v=5a75cf9c:1045
+[ 3848446ms] [LOG] WebSocket closed with code 1006 @ http://localhost:3002/node_modules/.vite/deps/browser-Cbgbrl6y.js?v=5a75cf9c:58
+[ 3848446ms] [LOG] Attempting reconnect in 8699ms @ http://localhost:3002/node_modules/.vite/deps/browser-Cbgbrl6y.js?v=5a75cf9c:58
+[ 3857182ms] [ERROR] WebSocket connection to 'wss://precise-octopus-626.eu-west-1.convex.cloud/api/1.36.0/sync' failed: Error in connection establishment: net::ERR_INTERNET_DISCONNECTED @ http://localhost:3002/node_modules/.vite/deps/browser-Cbgbrl6y.js?v=5a75cf9c:1045
+[ 3857183ms] [LOG] WebSocket closed with code 1006 @ http://localhost:3002/node_modules/.vite/deps/browser-Cbgbrl6y.js?v=5a75cf9c:58
+[ 3857183ms] [LOG] Attempting reconnect in 16391ms @ http://localhost:3002/node_modules/.vite/deps/browser-Cbgbrl6y.js?v=5a75cf9c:58
+[ 3865038ms] [LOG] Network recovery detected, reconnecting immediately @ http://localhost:3002/node_modules/.vite/deps/browser-Cbgbrl6y.js?v=5a75cf9c:58
+[ 3865611ms] [LOG] WebSocket reconnected at t=83.3s after disconnect due to InactiveServer @ http://localhost:3002/node_modules/.vite/deps/browser-Cbgbrl6y.js?v=5a75cf9c:58
+[ 3865611ms] [LOG] Network recovery reconnect saved ~9s of waiting @ http://localhost:3002/node_modules/.vite/deps/browser-Cbgbrl6y.js?v=5a75cf9c:58
+[ 6047498ms] [VERBOSE] [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) %o @ http://localhost:3002/login:0
+[ 6047552ms] [INFO] Banner not shown: beforeinstallpromptevent.preventDefault() called. The page must call beforeinstallpromptevent.prompt() to show the banner. @ http://localhost:3002/login:0
+[ 6047621ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3002/node_modules/.vite/deps/react-dom_client.js?v=5a75cf9c:14337
+[ 6047674ms] [LOG] Service Worker registered successfully: http://localhost:3002/ @ http://localhost:3002/src/components/Layout.tsx?t=1780428867892:304
+[ 6049051ms] [VERBOSE] [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) %o @ http://localhost:3002/login:0
+[ 6049077ms] [INFO] Banner not shown: beforeinstallpromptevent.preventDefault() called. The page must call beforeinstallpromptevent.prompt() to show the banner. @ http://localhost:3002/login:0
+[ 6049100ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3002/node_modules/.vite/deps/react-dom_client.js?v=5a75cf9c:14337
+[ 6049122ms] [LOG] Service Worker registered successfully: http://localhost:3002/ @ http://localhost:3002/src/components/Layout.tsx?t=1780428867892:304
+[ 6062545ms] [VERBOSE] [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) %o @ http://localhost:3002/login:0
+[ 6062578ms] [INFO] Banner not shown: beforeinstallpromptevent.preventDefault() called. The page must call beforeinstallpromptevent.prompt() to show the banner. @ http://localhost:3002/login:0
+[ 6062598ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3002/node_modules/.vite/deps/react-dom_client.js?v=5a75cf9c:14337
+[ 6062616ms] [LOG] Service Worker registered successfully: http://localhost:3002/ @ http://localhost:3002/src/components/Layout.tsx?t=1780428867892:304
+[ 6093567ms] [VERBOSE] [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) %o @ http://localhost:3002/login:0
+[ 6093592ms] [INFO] Banner not shown: beforeinstallpromptevent.preventDefault() called. The page must call beforeinstallpromptevent.prompt() to show the banner. @ http://localhost:3002/login:0
+[ 6093617ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3002/node_modules/.vite/deps/react-dom_client.js?v=5a75cf9c:14337
+[ 6093637ms] [LOG] Service Worker registered successfully: http://localhost:3002/ @ http://localhost:3002/src/components/Layout.tsx?t=1780428867892:304
+[ 6112852ms] [VERBOSE] [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) %o @ http://localhost:3002/login:0
+[ 6112877ms] [INFO] Banner not shown: beforeinstallpromptevent.preventDefault() called. The page must call beforeinstallpromptevent.prompt() to show the banner. @ http://localhost:3002/login:0
+[ 6112905ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3002/node_modules/.vite/deps/react-dom_client.js?v=5a75cf9c:14337
+[ 6112925ms] [LOG] Service Worker registered successfully: http://localhost:3002/ @ http://localhost:3002/src/components/Layout.tsx?t=1780428867892:304
+[ 6121225ms] [VERBOSE] [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) %o @ http://localhost:3002/login:0
+[ 6121251ms] [INFO] Banner not shown: beforeinstallpromptevent.preventDefault() called. The page must call beforeinstallpromptevent.prompt() to show the banner. @ http://localhost:3002/login:0
+[ 6121269ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3002/node_modules/.vite/deps/react-dom_client.js?v=5a75cf9c:14337
+[ 6121287ms] [LOG] Service Worker registered successfully: http://localhost:3002/ @ http://localhost:3002/src/components/Layout.tsx?t=1780428867892:304
+[ 6261053ms] [VERBOSE] [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) %o @ http://localhost:3002/login:0
+[ 6261076ms] [INFO] Banner not shown: beforeinstallpromptevent.preventDefault() called. The page must call beforeinstallpromptevent.prompt() to show the banner. @ http://localhost:3002/login:0
+[ 6261112ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3002/node_modules/.vite/deps/react-dom_client.js?v=5a75cf9c:14337
+[ 6261134ms] [LOG] Service Worker registered successfully: http://localhost:3002/ @ http://localhost:3002/src/components/Layout.tsx?t=1780429102316:304
+[ 6782234ms] [VERBOSE] [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) %o @ http://localhost:3002/login:0
+[ 6782268ms] [INFO] Banner not shown: beforeinstallpromptevent.preventDefault() called. The page must call beforeinstallpromptevent.prompt() to show the banner. @ http://localhost:3002/login:0
+[ 6782296ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3002/node_modules/.vite/deps/react-dom_client.js?v=5a75cf9c:14337
+[ 6782317ms] [LOG] Service Worker registered successfully: http://localhost:3002/ @ http://localhost:3002/src/components/Layout.tsx?t=1780429283467:304
+[ 6790103ms] [VERBOSE] [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) %o @ http://localhost:3002/login:0
+[ 6790126ms] [INFO] Banner not shown: beforeinstallpromptevent.preventDefault() called. The page must call beforeinstallpromptevent.prompt() to show the banner. @ http://localhost:3002/login:0
+[ 6790143ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3002/node_modules/.vite/deps/react-dom_client.js?v=5a75cf9c:14337
+[ 6790163ms] [LOG] Service Worker registered successfully: http://localhost:3002/ @ http://localhost:3002/src/components/Layout.tsx?t=1780429283467:304
+[ 7423461ms] [VERBOSE] [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) %o @ http://localhost:3002/login:0
+[ 7423504ms] [INFO] Banner not shown: beforeinstallpromptevent.preventDefault() called. The page must call beforeinstallpromptevent.prompt() to show the banner. @ http://localhost:3002/login:0
+[ 7423520ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3002/node_modules/.vite/deps/react-dom_client.js?v=5a75cf9c:14337
+[ 7423553ms] [LOG] Service Worker registered successfully: http://localhost:3002/ @ http://localhost:3002/src/components/Layout.tsx?t=1780429283467:304
+[ 8774284ms] [VERBOSE] [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) %o @ http://localhost:3002/login:0
+[ 8774334ms] [INFO] Banner not shown: beforeinstallpromptevent.preventDefault() called. The page must call beforeinstallpromptevent.prompt() to show the banner. @ http://localhost:3002/login:0
+[ 8774358ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3002/node_modules/.vite/deps/react-dom_client.js?v=5a75cf9c:14337
+[ 8774391ms] [LOG] Service Worker registered successfully: http://localhost:3002/ @ http://localhost:3002/src/components/Layout.tsx?t=1780431607552:304
+[ 9070865ms] [VERBOSE] [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) %o @ http://localhost:3002/login:0
+[ 9070897ms] [INFO] Banner not shown: beforeinstallpromptevent.preventDefault() called. The page must call beforeinstallpromptevent.prompt() to show the banner. @ http://localhost:3002/login:0
+[ 9070940ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3002/node_modules/.vite/deps/react-dom_client.js?v=5a75cf9c:14337
+[ 9070963ms] [LOG] Service Worker registered successfully: http://localhost:3002/ @ http://localhost:3002/src/components/Layout.tsx?t=1780431607552:304
+[10283572ms] [VERBOSE] [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) %o @ http://localhost:3002/login:0
+[10283596ms] [INFO] Banner not shown: beforeinstallpromptevent.preventDefault() called. The page must call beforeinstallpromptevent.prompt() to show the banner. @ http://localhost:3002/login:0
+[10283627ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3002/node_modules/.vite/deps/react-dom_client.js?v=5a75cf9c:14337
+[10283657ms] [LOG] Service Worker registered successfully: http://localhost:3002/ @ http://localhost:3002/src/components/Layout.tsx?t=1780433115637:305
+[10450990ms] [VERBOSE] [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) %o @ http://localhost:3002/login:0
+[10558786ms] [LOG] WebSocket closed with code 1006 @ http://localhost:3002/node_modules/.vite/deps/browser-Cbgbrl6y.js?v=5a75cf9c:58
+[10558787ms] [LOG] Attempting reconnect in 914ms @ http://localhost:3002/node_modules/.vite/deps/browser-Cbgbrl6y.js?v=5a75cf9c:58
+[10558788ms] [LOG] [vite] server connection lost. Polling for restart... @ http://localhost:3002/@vite/client:968
+[10559425ms] [VERBOSE] [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) %o @ http://localhost:3002/login:0
+[10559543ms] [INFO] Banner not shown: beforeinstallpromptevent.preventDefault() called. The page must call beforeinstallpromptevent.prompt() to show the banner. @ http://localhost:3002/login:0
+[10559662ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3002/node_modules/.vite/deps/react-dom_client.js?v=5a75cf9c:14337
+[10559707ms] [LOG] Service Worker registered successfully: http://localhost:3002/ @ http://localhost:3002/src/components/Layout.tsx?t=1780433293775:305
+[10977269ms] [LOG] WebSocket closed with code 1006 @ http://localhost:3002/node_modules/.vite/deps/browser-Cbgbrl6y.js?v=5a75cf9c:58
+[10977273ms] [LOG] Attempting reconnect in 972ms @ http://localhost:3002/node_modules/.vite/deps/browser-Cbgbrl6y.js?v=5a75cf9c:58
+[10978882ms] [LOG] WebSocket reconnected at t=46.1s after disconnect due to closed with code 1006 @ http://localhost:3002/node_modules/.vite/deps/browser-Cbgbrl6y.js?v=5a75cf9c:58
+[11656445ms] [LOG] WebSocket closed with code 1006 @ http://localhost:3002/node_modules/.vite/deps/browser-Cbgbrl6y.js?v=5a75cf9c:58
+[11656446ms] [LOG] Attempting reconnect in 1125ms @ http://localhost:3002/node_modules/.vite/deps/browser-Cbgbrl6y.js?v=5a75cf9c:58
+[11658487ms] [LOG] WebSocket reconnected at t=123.6s after disconnect due to closed with code 1006 @ http://localhost:3002/node_modules/.vite/deps/browser-Cbgbrl6y.js?v=5a75cf9c:58
+[11800911ms] [LOG] WebSocket closed with code 1006 @ http://localhost:3002/node_modules/.vite/deps/browser-Cbgbrl6y.js?v=5a75cf9c:58
+[11800912ms] [LOG] Attempting reconnect in 1280ms @ http://localhost:3002/node_modules/.vite/deps/browser-Cbgbrl6y.js?v=5a75cf9c:58
+[11800912ms] [LOG] [vite] server connection lost. Polling for restart... @ http://localhost:3002/@vite/client:968
+[11801407ms] [VERBOSE] [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) %o @ http://localhost:3002/login:0
+[11801516ms] [INFO] Banner not shown: beforeinstallpromptevent.preventDefault() called. The page must call beforeinstallpromptevent.prompt() to show the banner. @ http://localhost:3002/login:0
+[11801632ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3002/node_modules/.vite/deps/react-dom_client.js?v=5a75cf9c:14337
+[11801664ms] [LOG] Service Worker registered successfully: http://localhost:3002/ @ http://localhost:3002/src/components/Layout.tsx?t=1780433293775:305
+[17727928ms] [LOG] WebSocket closed with code 1006 @ http://localhost:3002/node_modules/.vite/deps/browser-Cbgbrl6y.js?v=5a75cf9c:58
+[17727929ms] [LOG] Attempting reconnect in 1133ms @ http://localhost:3002/node_modules/.vite/deps/browser-Cbgbrl6y.js?v=5a75cf9c:58
+[18805077ms] [ERROR] WebSocket connection to 'wss://precise-octopus-626.eu-west-1.convex.cloud/api/1.36.0/sync' failed: Error during WebSocket handshake: net::ERR_CONNECTION_RESET @ http://localhost:3002/node_modules/.vite/deps/browser-Cbgbrl6y.js?v=5a75cf9c:1045
+[18805079ms] [LOG] WebSocket closed with code 1006 @ http://localhost:3002/node_modules/.vite/deps/browser-Cbgbrl6y.js?v=5a75cf9c:58
+[18805080ms] [LOG] Attempting reconnect in 1934ms @ http://localhost:3002/node_modules/.vite/deps/browser-Cbgbrl6y.js?v=5a75cf9c:58
+[18807591ms] [LOG] WebSocket reconnected at t=68.1s after disconnect due to closed with code 1006 @ http://localhost:3002/node_modules/.vite/deps/browser-Cbgbrl6y.js?v=5a75cf9c:58
+[19073579ms] [LOG] WebSocket closed with code 1006 @ http://localhost:3002/node_modules/.vite/deps/browser-Cbgbrl6y.js?v=5a75cf9c:58
+[19073581ms] [LOG] Attempting reconnect in 1304ms @ http://localhost:3002/node_modules/.vite/deps/browser-Cbgbrl6y.js?v=5a75cf9c:58
+[19075545ms] [LOG] WebSocket reconnected at t=83.5s after disconnect due to closed with code 1006 @ http://localhost:3002/node_modules/.vite/deps/browser-Cbgbrl6y.js?v=5a75cf9c:58
+[21488117ms] [LOG] WebSocket closed with code 1006 @ http://localhost:3002/node_modules/.vite/deps/browser-Cbgbrl6y.js?v=5a75cf9c:58
+[21488118ms] [LOG] Attempting reconnect in 1224ms @ http://localhost:3002/node_modules/.vite/deps/browser-Cbgbrl6y.js?v=5a75cf9c:58
+[21490160ms] [LOG] WebSocket reconnected at t=160.9s after disconnect due to closed with code 1006 @ http://localhost:3002/node_modules/.vite/deps/browser-Cbgbrl6y.js?v=5a75cf9c:58
+[29151262ms] [LOG] WebSocket closed with code 1006 @ http://localhost:3002/node_modules/.vite/deps/browser-Cbgbrl6y.js?v=5a75cf9c:58
+[29151263ms] [LOG] Attempting reconnect in 542ms @ http://localhost:3002/node_modules/.vite/deps/browser-Cbgbrl6y.js?v=5a75cf9c:58
+[29152377ms] [LOG] WebSocket reconnected at t=217.2s after disconnect due to closed with code 1006 @ http://localhost:3002/node_modules/.vite/deps/browser-Cbgbrl6y.js?v=5a75cf9c:58
+[33007135ms] [LOG] WebSocket closed with code 1006 @ http://localhost:3002/node_modules/.vite/deps/browser-Cbgbrl6y.js?v=5a75cf9c:58
+[33007150ms] [LOG] Attempting reconnect in 1154ms @ http://localhost:3002/node_modules/.vite/deps/browser-Cbgbrl6y.js?v=5a75cf9c:58
+[33009432ms] [LOG] WebSocket reconnected at t=264.6s after disconnect due to closed with code 1006 @ http://localhost:3002/node_modules/.vite/deps/browser-Cbgbrl6y.js?v=5a75cf9c:58
+[36090352ms] [LOG] WebSocket closed with code 1006 @ http://localhost:3002/node_modules/.vite/deps/browser-Cbgbrl6y.js?v=5a75cf9c:58
+[36090353ms] [LOG] Attempting reconnect in 1072ms @ http://localhost:3002/node_modules/.vite/deps/browser-Cbgbrl6y.js?v=5a75cf9c:58
+[36096232ms] [LOG] WebSocket reconnected at t=331.6s after disconnect due to closed with code 1006 @ http://localhost:3002/node_modules/.vite/deps/browser-Cbgbrl6y.js?v=5a75cf9c:58
+[38031516ms] [LOG] Attempting reconnect in 105ms @ http://localhost:3002/node_modules/.vite/deps/browser-Cbgbrl6y.js?v=5a75cf9c:58
+[38031917ms] [LOG] WebSocket reconnected at t=392.5s after disconnect due to InactiveServer @ http://localhost:3002/node_modules/.vite/deps/browser-Cbgbrl6y.js?v=5a75cf9c:58
+[38948835ms] [LOG] WebSocket closed with code 1006 @ http://localhost:3002/node_modules/.vite/deps/browser-Cbgbrl6y.js?v=5a75cf9c:58
+[38948836ms] [LOG] Attempting reconnect in 1320ms @ http://localhost:3002/node_modules/.vite/deps/browser-Cbgbrl6y.js?v=5a75cf9c:58
+[38948841ms] [LOG] [vite] server connection lost. Polling for restart... @ http://localhost:3002/@vite/client:968
+[38949423ms] [VERBOSE] [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) %o @ http://localhost:3002/login:0
+[38949547ms] [INFO] Banner not shown: beforeinstallpromptevent.preventDefault() called. The page must call beforeinstallpromptevent.prompt() to show the banner. @ http://localhost:3002/login:0
+[38949545ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3002/node_modules/.vite/deps/react-dom_client.js?v=5a75cf9c:14337
+[38949589ms] [LOG] Service Worker registered successfully: http://localhost:3002/ @ http://localhost:3002/src/components/Layout.tsx?t=1780433293775:305
+[38987370ms] [LOG] WebSocket closed with code 1006 @ http://localhost:3002/node_modules/.vite/deps/browser-Cbgbrl6y.js?v=5a75cf9c:58
+[38987371ms] [LOG] Attempting reconnect in 1426ms @ http://localhost:3002/node_modules/.vite/deps/browser-Cbgbrl6y.js?v=5a75cf9c:58
+[38987386ms] [LOG] [vite] server connection lost. Polling for restart... @ http://localhost:3002/@vite/client:968
+[38987675ms] [VERBOSE] [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) %o @ http://localhost:3002/login:0
+[38987710ms] [INFO] Banner not shown: beforeinstallpromptevent.preventDefault() called. The page must call beforeinstallpromptevent.prompt() to show the banner. @ http://localhost:3002/login:0
+[38987756ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3002/node_modules/.vite/deps/react-dom_client.js?v=5a75cf9c:14337
+[38987779ms] [LOG] Service Worker registered successfully: http://localhost:3002/ @ http://localhost:3002/src/components/Layout.tsx?t=1780433293775:305
+[39727764ms] [LOG] WebSocket closed with code 1006 @ http://localhost:3002/node_modules/.vite/deps/browser-Cbgbrl6y.js?v=5a75cf9c:58
+[39727764ms] [LOG] Attempting reconnect in 757ms @ http://localhost:3002/node_modules/.vite/deps/browser-Cbgbrl6y.js?v=5a75cf9c:58
+[39728813ms] [LOG] WebSocket reconnected at t=76.9s after disconnect due to closed with code 1006 @ http://localhost:3002/node_modules/.vite/deps/browser-Cbgbrl6y.js?v=5a75cf9c:58

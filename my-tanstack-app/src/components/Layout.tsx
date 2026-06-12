@@ -13,6 +13,8 @@ import { useOnboardingTour } from '~/hooks/useOnboardingTour'
 import { useRequireRole } from '~/hooks/useRequireRole'
 import { useSubscription } from '~/hooks/useSubscription'
 import { SupportModal } from './SupportModal'
+import { UpgradeModalHost, openUpgradeModal } from './UpgradeModalHost'
+import { SubscriptionChangePopup } from './SubscriptionChangePopup'
 
 type NavRole = 'owner' | 'manager' | 'inspector' | 'contractor'
 const ALL_ROLES: NavRole[] = ['owner', 'manager', 'inspector', 'contractor']
@@ -663,11 +665,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                             to={isDisabled ? currentPath : n.id}
                             className="nav-item"
                             activeProps={isDisabled ? {} : { className: 'active' }}
-                            style={{ 
-                              opacity: isDisabled ? 0.4 : (isPremiumLocked ? 0.75 : 1), 
-                              pointerEvents: isDisabled ? 'none' : 'auto' 
+                            style={{
+                              opacity: isDisabled ? 0.4 : (isPremiumLocked ? 0.75 : 1),
+                              pointerEvents: isDisabled ? 'none' : 'auto'
                             }}
-                            exact
+                            activeOptions={{ exact: true }}
                           >
                             {currentPath === n.id && !isDisabled && (
                               <motion.div layoutId="nav-active" className="nav-item-bg" transition={{type:"spring", stiffness:300, damping:30}} />
@@ -703,6 +705,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       </nav>
 
       <main className="main">
+        <UpgradeModalHost />
+        <SubscriptionChangePopup />
         <div className="page-header">
           <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0, flex: 1 }}>
             <div style={{ minWidth: 0, display: "flex", flexDirection: "column" }}>
@@ -767,6 +771,29 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{project.name}</span>
               </span>
             ) : null}
+            {!isProOrPremium && (
+              <button
+                type="button"
+                onClick={() => openUpgradeModal({ title: 'שדרג ל-Pro', reason: 'פתח פרויקטים ללא הגבלה, ניהול צוות, יומני עבודה ודוחות מתקדמים.' })}
+                style={{
+                  border: "none",
+                  borderRadius: 10,
+                  padding: "8px 12px",
+                  fontSize: 13,
+                  fontWeight: 700,
+                  color: "#fff",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  cursor: "pointer",
+                  background: "linear-gradient(135deg, #F59E0B 0%, #D97706 100%)",
+                  boxShadow: "0 2px 8px rgba(217,119,6,0.3)",
+                }}
+              >
+                <Icon n="star" s={14} />
+                <span className="desktop-only">שדרג ל-Pro</span>
+              </button>
+            )}
             <div className="desktop-only" style={{ fontSize: 12, color: "var(--text3)", display: "flex", alignItems: "center", gap: 4 }}>
               <Icon n="clock" s={12} c="var(--text3)" />
               <span>עודכן: היום, 09:45</span>
@@ -1086,7 +1113,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               to={n.id} 
               className="bottom-nav-item"
               activeProps={{ className: 'active' }}
-              exact
+              activeOptions={{ exact: true }}
               onClick={() => setMobileMenuOpen(false)}
             >
               <Icon n={n.icon} s={20} />

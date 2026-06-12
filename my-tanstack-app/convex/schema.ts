@@ -34,13 +34,38 @@ export default defineSchema({
     avatarColor: v.optional(v.string()),
     isSuperAdmin: v.optional(v.boolean()),
     isSuspended: v.optional(v.boolean()),
-    subscriptionTier: v.optional(v.string()),
+    subscriptionTier: v.optional(
+      v.union(v.literal('free'), v.literal('pro'), v.literal('premium')),
+    ),
     subscriptionExpiresAt: v.optional(v.number()),
+    // Billing cadence of the active Polar subscription, so the UI can tell a
+    // yearly plan from a monthly one (the tier alone can't).
+    subscriptionInterval: v.optional(
+      v.union(v.literal('month'), v.literal('year')),
+    ),
+    // false = cancellation scheduled; the plan runs until subscriptionExpiresAt
+    subscriptionAutoRenew: v.optional(v.boolean()),
     polarCustomerId: v.optional(v.string()),
     polarSubscriptionId: v.optional(v.string()),
   })
     .index('email', ['email'])
     .index('phone', ['phone']),
+
+  // Audit trail for every subscription-tier change, for billing-dispute
+  // traceability and abuse detection. Written by webhook, promo, and admin paths.
+  subscriptionEvents: defineTable({
+    userId: v.id('users'),
+    fromTier: v.optional(v.string()),
+    toTier: v.string(),
+    source: v.union(
+      v.literal('webhook'),
+      v.literal('promo'),
+      v.literal('admin'),
+    ),
+    expiresAt: v.optional(v.number()),
+    polarSubscriptionId: v.optional(v.string()),
+    at: v.number(),
+  }).index('by_user', ['userId']),
 
   projects: defineTable(zodToConvexFields(s.zProject))
     .index('by_ownerUserId', ['ownerUserId']),

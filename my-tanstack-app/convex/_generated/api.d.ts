@@ -10,6 +10,7 @@
 
 import type * as _lib_activity from "../_lib/activity.js";
 import type * as _lib_contractorPaymentSync from "../_lib/contractorPaymentSync.js";
+import type * as _lib_entitlements from "../_lib/entitlements.js";
 import type * as _lib_financialSummary from "../_lib/financialSummary.js";
 import type * as _lib_projectAccess from "../_lib/projectAccess.js";
 import type * as _lib_projectDeletion from "../_lib/projectDeletion.js";
@@ -57,6 +58,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   "_lib/activity": typeof _lib_activity;
   "_lib/contractorPaymentSync": typeof _lib_contractorPaymentSync;
+  "_lib/entitlements": typeof _lib_entitlements;
   "_lib/financialSummary": typeof _lib_financialSummary;
   "_lib/projectAccess": typeof _lib_projectAccess;
   "_lib/projectDeletion": typeof _lib_projectDeletion;

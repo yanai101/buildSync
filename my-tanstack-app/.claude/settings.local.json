@@ -39,7 +39,24 @@
       "mcp__plugin_chrome-devtools-mcp_chrome-devtools__list_pages",
       "Bash(awk -F: '{print $1}')",
       "Bash(npx vitest *)",
-      "Bash(npx -y react-doctor@latest . --verbose --diff)"
+      "Bash(npx -y react-doctor@latest . --verbose --diff)",
+      "Bash(node -e \"const p=require\\('./package.json'\\); console.log\\(JSON.stringify\\({polar: Object.fromEntries\\(Object.entries\\(p.dependencies\\).filter\\(\\([k]\\)=>k.includes\\('polar'\\)\\)\\), tanstack: Object.fromEntries\\(Object.entries\\(p.dependencies\\).filter\\(\\([k]\\)=>k.includes\\('tanstack'\\)\\)\\)}, null, 2\\)\\)\")",
+      "Bash(node -e \"console.log\\(require\\('@polar-sh/tanstack-start/package.json'\\).version\\)\")",
+      "Bash(node -e \"console.log\\('react-start:', require\\('@tanstack/react-start/package.json'\\).version\\)\")",
+      "Bash(node *)",
+      "Bash(echo \"tsc exit: $?\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code} -> %{redirect_url}\\\\n\" --max-time 25 \"http://localhost:3000/api/checkout?plan=annual&customerExternalId=test-user-123\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code} -> %{redirect_url}\\\\n\" --max-time 25 \"http://localhost:3000/api/checkout?plan=monthly&customerExternalId=test-user-123\")",
+      "Bash(curl -s -w \"\\\\n%{http_code}\\\\n\" --max-time 10 \"http://localhost:3000/api/checkout?plan=nope\")",
+      "Bash(curl -s -w \"\\\\n%{http_code}\\\\n\" --max-time 10 \"http://localhost:3000/api/checkout?products=a2eab161-dd1c-48b4-b870-bd7d7a0a3101\")",
+      "WebSearch",
+      "WebFetch(domain:polar.sh)",
+      "Bash(polar --help)",
+      "Bash(polar listen *)",
+      "Bash(sed -n '30,80p')",
+      "Bash(polar login *)",
+      "Bash(grep -iE \"sandbox|server|environment|USAGE|\\\\\\\\$\")",
+      "Bash(npm test *)"
     ]
   }
 }

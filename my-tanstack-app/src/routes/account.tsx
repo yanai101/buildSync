@@ -7,6 +7,7 @@ import { useSubscription } from '~/hooks/useSubscription'
 import { useAppNotify } from '~/hooks/useAppNotify'
 import { SupportModal } from '~/components/SupportModal'
 import { PushNotificationToggle } from '~/components/PushNotificationToggle'
+import { checkoutUrl } from '~/billing'
 
 export const Route = createFileRoute('/account')({
   component: AccountPage,
@@ -44,7 +45,24 @@ function AccountPage() {
   const updateProfile = useMutation(api.users.updateProfile)
   const updatePassword = useAction(api.users.updatePassword)
   const toggleSubscription = useMutation(api.users.toggleSubscription)
+  const createPortalSession = useAction(api.users.createPortalSession)
+  const [portalLoading, setPortalLoading] = React.useState(false)
   const { isProOrPremium, tier, isSuperAdmin } = useSubscription()
+
+  const handleOpenPortal = async () => {
+    setPortalLoading(true)
+    try {
+      const { url } = await createPortalSession({})
+      window.location.href = url
+    } catch {
+      notify({
+        title: 'שגיאה',
+        body: 'לא הצלחנו לפתוח את פורטל הניהול. נסה שוב מאוחר יותר.',
+        kind: 'error',
+      })
+      setPortalLoading(false)
+    }
+  }
 
   React.useEffect(() => {
     if (success) {
@@ -246,17 +264,31 @@ function AccountPage() {
             <ReadOnlyField label="תאריך פתיחת חשבון" value={createdAt} />
             <ReadOnlyField
               label="סוג מנוי"
-              value={isSuperAdmin ? 'מנהל מערכת (Premium)' : isProOrPremium ? 'מנוי פעיל' : 'חשבון חינמי (Free)'}
+              value={
+                isSuperAdmin ? 'מנהל מערכת (Premium)'
+                : isProOrPremium
+                  ? user.subscriptionInterval === 'year' ? 'מנוי שנתי פעיל'
+                    : user.subscriptionInterval === 'month' ? 'מנוי חודשי פעיל'
+                    : 'מנוי פעיל'
+                  : 'חשבון חינמי (Free)'
+              }
               color={isProOrPremium || isSuperAdmin ? 'var(--accent)' : 'var(--text2)'}
             />
           </div>
 
           {user.subscriptionExpiresAt && (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 16, marginTop: -4 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: -4 }}>
               <ReadOnlyField
-                label="סיום תקופת חיוב נוכחית (תאריך חידוש או סיום)"
+                label={user.subscriptionAutoRenew === false ? 'תאריך סיום המנוי' : 'תאריך חידוש המנוי'}
                 value={new Date(user.subscriptionExpiresAt).toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit', year: 'numeric' })}
               />
+              {user.subscriptionAutoRenew !== undefined && (
+                <ReadOnlyField
+                  label="חידוש אוטומטי"
+                  value={user.subscriptionAutoRenew ? 'פעיל' : 'מבוטל — המנוי יסתיים בתאריך הסיום'}
+                  color={user.subscriptionAutoRenew ? 'var(--accent)' : '#D97706'}
+                />
+              )}
             </div>
           )}
 
@@ -284,13 +316,13 @@ function AccountPage() {
             {(!isProOrPremium || isSuperAdmin) && (
               <>
                 <a
-                  href={`/api/checkout?products=30b1595a-9bda-4258-95e6-6836de2c7547&customerExternalId=${user._id}`}
+                  href={checkoutUrl('monthly', user._id)}
                   style={{ textDecoration: 'none' }}
                 >
                   <Btn variant="ghost" style={{ padding: '8px 16px', background: '#fff', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', color: 'var(--text1)' }}>שדרג למנוי חודשי</Btn>
                 </a>
                 <a
-                  href={`/api/checkout?products=a2eab161-dd1c-48b4-b870-bd7d7a0a3101&customerExternalId=${user._id}`}
+                  href={checkoutUrl('annual', user._id)}
                   style={{ textDecoration: 'none' }}
                 >
                   <Btn variant="primary" style={{ padding: '8px 16px' }}>
@@ -300,14 +332,14 @@ function AccountPage() {
               </>
             )}
             {user.polarCustomerId && (
-              <a
-                href={`/api/portal?customerId=${user.polarCustomerId}`}
-                style={{ textDecoration: 'none' }}
+              <Btn
+                variant="ghost"
+                onClick={handleOpenPortal}
+                disabled={portalLoading}
+                style={{ padding: '8px 16px', background: '#fff', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', color: 'var(--text1)' }}
               >
-                <Btn variant="ghost" style={{ padding: '8px 16px', background: '#fff', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', color: 'var(--text1)' }}>
-                  <Icon n="credit-card" s={14} /> נהל מנוי וחשבוניות
-                </Btn>
-              </a>
+                <Icon n="credit-card" s={14} /> {portalLoading ? 'פותח...' : 'נהל מנוי וחשבוניות'}
+              </Btn>
             )}
           </div>
         </div>
