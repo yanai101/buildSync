@@ -47,18 +47,19 @@ function AccountPage() {
   const toggleSubscription = useMutation(api.users.toggleSubscription)
   const createPortalSession = useAction(api.users.createPortalSession)
   const [portalLoading, setPortalLoading] = React.useState(false)
+  const [portalMsg, setPortalMsg] = React.useState<{ kind: 'ok' | 'err'; text: string } | null>(null)
   const { isProOrPremium, tier, isSuperAdmin } = useSubscription()
 
   const handleOpenPortal = async () => {
     setPortalLoading(true)
+    setPortalMsg(null)
     try {
       const { url } = await createPortalSession({})
       window.location.href = url
     } catch {
-      notify({
-        title: 'לא ניתן לנהל מנוי זה',
-        body: 'המנוי שלך התקבל כהטבה ולכן אינו מנוהל דרך מערכת החשבוניות.',
-        kind: 'error',
+      setPortalMsg({
+        kind: 'err',
+        text: 'המנוי שלך התקבל כהטבה ולכן אינו מנוהל דרך מערכת החשבוניות.',
       })
       setPortalLoading(false)
     }
@@ -342,6 +343,11 @@ function AccountPage() {
               </Btn>
             )}
           </div>
+          {portalMsg && (
+            <div style={{ marginTop: 12 }}>
+              <Banner {...portalMsg} />
+            </div>
+          )}
         </div>
       </div>
 
