@@ -224,10 +224,10 @@ export const createPortalSession = action({
       
       // If Polar says the customer doesn't exist or is invalid for this
       if (status === 404 || status === 422 || msg.includes('404') || msg.includes('not found') || msg.includes('invalid')) {
-        return { error: "CUSTOMER_NOT_FOUND" };
+        return { error: "CUSTOMER_NOT_FOUND", rawError: msg || String(status) };
       }
       
-      return { error: "POLAR_SYSTEM_ERROR" };
+      return { error: "POLAR_SYSTEM_ERROR", rawError: msg || String(status) };
     }
   },
 });
