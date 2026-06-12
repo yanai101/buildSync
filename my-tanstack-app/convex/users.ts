@@ -222,8 +222,8 @@ export const createPortalSession = action({
       const msg = err.message?.toLowerCase() || "";
       const status = err.statusCode || err.status || 0;
       
-      // If Polar says the customer doesn't exist or is invalid for this
-      if (status === 404 || status === 422 || msg.includes('404') || msg.includes('not found') || msg.includes('invalid')) {
+      // If Polar says the customer doesn't exist or is invalid for this (excluding 401 auth errors)
+      if (status !== 401 && (status === 404 || status === 422 || msg.includes('404') || msg.includes('not found') || msg.includes('invalid'))) {
         return { error: "CUSTOMER_NOT_FOUND", rawError: msg || String(status) };
       }
       
