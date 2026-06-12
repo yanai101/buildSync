@@ -54,16 +54,27 @@ function AccountPage() {
     setPortalLoading(true)
     setPortalMsg(null)
     try {
-      const { url } = await createPortalSession({})
-      window.location.href = url
-    } catch (err: any) {
-      const isBenefit = err.message?.includes('CUSTOMER_NOT_FOUND')
+      const res = await createPortalSession({})
       
+      if (res.error) {
+        const isBenefit = res.error === 'CUSTOMER_NOT_FOUND'
+        setPortalMsg({
+          kind: 'err',
+          text: isBenefit 
+            ? 'המנוי שלך התקבל כהטבה ולכן אינו מנוהל דרך מערכת החשבוניות.' 
+            : 'שגיאה במערכת החשבוניות (Polar). אנא נסה שוב מאוחר יותר.',
+        })
+        setPortalLoading(false)
+        return
+      }
+      
+      if (res.url) {
+        window.location.href = res.url
+      }
+    } catch (err: any) {
       setPortalMsg({
         kind: 'err',
-        text: isBenefit 
-          ? 'המנוי שלך התקבל כהטבה ולכן אינו מנוהל דרך מערכת החשבוניות.' 
-          : 'שגיאה במערכת החשבוניות (Polar). אנא נסה שוב מאוחר יותר.',
+        text: 'שגיאה במערכת החשבוניות (Polar). אנא נסה שוב מאוחר יותר.',
       })
       setPortalLoading(false)
     }
