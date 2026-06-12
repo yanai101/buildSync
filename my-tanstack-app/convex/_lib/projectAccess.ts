@@ -1,6 +1,7 @@
 import { getAuthUserId } from '@convex-dev/auth/server';
 import type { Id } from '../_generated/dataModel';
 import type { MutationCtx, QueryCtx } from '../_generated/server';
+import { getActiveTier, tierAllows, Capabilities } from './entitlements';
 
 type Ctx = QueryCtx | MutationCtx;
 
@@ -220,4 +221,24 @@ export const requireProjectScheduleView = async (ctx: Ctx, projectId: Id<'projec
   }
 };
 
+export const requireProjectFeature = async (
+  ctx: Ctx,
+  projectId: Id<'projects'>,
+  feature: keyof Omit<Capabilities, 'maxOwnedProjects'>
+) => {
+  const project = await ctx.db.get(projectId);
+  if (!project) {
+    throw new Error('Project not found');
+  }
 
+  if (!project.ownerUserId) {
+    throw new Error('Project has no owner');
+  }
+
+  const owner = await ctx.db.get(project.ownerUserId as Id<'users'>);
+  const activeTier = getActiveTier(owner as any);
+  
+  if (!tierAllows(activeTier, feature)) {
+    throw new Error(`לבעל הפרויקט אין מנוי המאפשר שימוש בפיצ'ר זה (${feature})`);
+  }
+};

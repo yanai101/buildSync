@@ -4,6 +4,7 @@ import type { Id } from './_generated/dataModel';
 import { v } from 'convex/values';
 import { getAuthUserId } from '@convex-dev/auth/server';
 import { getSyncedPaymentReadiness, syncContractorStagePayments } from './_lib/contractorPaymentSync';
+import { requireProjectFeature } from './_lib/projectAccess';
 import { scheduleUserNotifications } from './notifications';
 
 const contractorRoleValidator = v.union(
@@ -982,6 +983,7 @@ export const saveBoq = mutation({
     items: v.array(v.any()), 
   },
   handler: async (ctx, args) => {
+    await requireProjectFeature(ctx, args.projectId, 'boq');
     for (const item of args.items) {
       await ctx.db.insert('boqItems', {
         projectId: args.projectId,
@@ -1028,6 +1030,8 @@ export const addBoqItem = mutation({
     if (!project) {
       throw new Error('Project not found');
     }
+
+    await requireProjectFeature(ctx, args.projectId, 'boq');
 
     if (args.roomId) {
       const room = await ctx.db.get(args.roomId);

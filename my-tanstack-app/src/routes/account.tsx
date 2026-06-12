@@ -56,8 +56,8 @@ function AccountPage() {
       window.location.href = url
     } catch {
       notify({
-        title: 'שגיאה',
-        body: 'לא הצלחנו לפתוח את פורטל הניהול. נסה שוב מאוחר יותר.',
+        title: 'לא ניתן לנהל מנוי זה',
+        body: 'המנוי שלך התקבל כהטבה ולכן אינו מנוהל דרך מערכת החשבוניות.',
         kind: 'error',
       })
       setPortalLoading(false)

@@ -2,6 +2,7 @@ import { mutation, query } from './_generated/server';
 import { v } from 'convex/values';
 import { getAuthUserId } from '@convex-dev/auth/server';
 import { insertActivity } from './_lib/activity';
+import { requireProjectFeature } from './_lib/projectAccess';
 
 export const getLogsByDate = query({
   args: { projectId: v.id('projects'), date: v.string() },
@@ -95,6 +96,8 @@ export const saveLog = mutation({
     const user = await ctx.db.get(userId);
     if (!user) throw new Error("User not found");
 
+    await requireProjectFeature(ctx, args.projectId, 'dailyLogs');
+
     if (args.logId) {
       const existing = await ctx.db.get(args.logId);
       if (!existing) throw new Error("Log not found");
@@ -148,6 +151,11 @@ export const lockLog = mutation({
     if (!userId) throw new Error("Unauthenticated");
     const user = await ctx.db.get(userId);
     if (!user) throw new Error("User not found");
+
+    const log = await ctx.db.get(args.logId);
+    if (!log) throw new Error("Log not found");
+
+    await requireProjectFeature(ctx, log.projectId, 'dailyLogs');
 
     // Must be inspector or manager to lock a log. Assuming this check will be done or UI handled.
     // In a real scenario we'd query project roles here.

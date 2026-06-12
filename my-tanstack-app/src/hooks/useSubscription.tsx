@@ -28,10 +28,11 @@ export function useSubscription() {
   const selfActiveTier = getActiveTier(user);
   const selfProOrPremium = selfActiveTier !== 'free';
 
-  // The active tier of the context is the user's tier, or if they are invited, the owner's tier
-  const activeTier = selfProOrPremium ? selfActiveTier : (ownerSubscription?.tier || 'free');
+  // If we are in a project context, the active tier is strictly the project owner's tier.
+  // Otherwise (e.g. on global dashboard or account settings), it's the user's own tier.
+  const activeTier = project?._id ? (ownerSubscription?.tier || 'free') : selfActiveTier;
 
-  const isProOrPremium = selfProOrPremium || !!ownerSubscription?.isProOrPremium;
+  const isProOrPremium = project?._id ? !!ownerSubscription?.isProOrPremium : selfProOrPremium;
   const isPremium = activeTier === 'premium';
 
   return {
