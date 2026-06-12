@@ -207,11 +207,15 @@ export const createPortalSession = action({
       server: (process.env.POLAR_SERVER as 'sandbox' | 'production') || 'sandbox',
     });
 
+    const user = await ctx.runQuery(api.users.me, {});
+    const customerId = user?.polarCustomerId;
+
     try {
-      const session = await polar.customerSessions.create({
-        externalCustomerId: userId,
-        returnUrl: `${baseUrl}/account`,
-      });
+      const payload = customerId
+        ? { customerId, returnUrl: `${baseUrl}/account` }
+        : { externalCustomerId: userId, returnUrl: `${baseUrl}/account` };
+
+      const session = await polar.customerSessions.create(payload as any);
       return { url: session.customerPortalUrl };
     } catch (err: any) {
       console.error("Polar portal session error:", err);
