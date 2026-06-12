@@ -207,12 +207,24 @@ export const createPortalSession = action({
       server: (process.env.POLAR_SERVER as 'sandbox' | 'production') || 'sandbox',
     });
 
-    const session = await polar.customerSessions.create({
-      externalCustomerId: userId,
-      returnUrl: `${baseUrl}/account`,
-    });
-
-    return { url: session.customerPortalUrl };
+    try {
+      const session = await polar.customerSessions.create({
+        externalCustomerId: userId,
+        returnUrl: `${baseUrl}/account`,
+      });
+      return { url: session.customerPortalUrl };
+    } catch (err: any) {
+      console.error("Polar portal session error:", err);
+      const msg = err.message?.toLowerCase() || "";
+      const status = err.statusCode || err.status || 0;
+      
+      // If Polar says the customer doesn't exist, we assume it's a benefit/promo subscription
+      if (status === 404 || msg.includes('404') || msg.includes('not found')) {
+        throw new Error("CUSTOMER_NOT_FOUND");
+      }
+      
+      throw new Error("POLAR_SYSTEM_ERROR");
+    }
   },
 });
 
