@@ -194,7 +194,7 @@ export const redeemPromoCode = mutation({
 // billing portal — unlike trusting a client-supplied customerId.
 export const createPortalSession = action({
   args: {},
-  handler: async (ctx): Promise<{ url?: string; error?: string }> => {
+  handler: async (ctx): Promise<{ url?: string; error?: string; rawError?: string }> => {
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error('Not authenticated');
 
