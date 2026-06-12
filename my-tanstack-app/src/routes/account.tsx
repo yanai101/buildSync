@@ -61,8 +61,8 @@ function AccountPage() {
         setPortalMsg({
           kind: 'err',
           text: isBenefit 
-            ? `המנוי שלך התקבל כהטבה ולכן אינו מנוהל דרך מערכת החשבוניות. [Debug: ${res.rawError}]` 
-            : `שגיאה במערכת החשבוניות (Polar). אנא נסה שוב מאוחר יותר. [Debug: ${res.rawError}]`,
+            ? 'המנוי שלך התקבל כהטבה ולכן אינו מנוהל דרך מערכת החשבוניות.' 
+            : 'שגיאה במערכת החשבוניות (Polar). אנא נסה שוב מאוחר יותר.',
         })
         setPortalLoading(false)
         return

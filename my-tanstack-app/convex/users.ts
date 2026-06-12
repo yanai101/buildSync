@@ -194,7 +194,7 @@ export const redeemPromoCode = mutation({
 // billing portal — unlike trusting a client-supplied customerId.
 export const createPortalSession = action({
   args: {},
-  handler: async (ctx): Promise<{ url?: string; error?: string; rawError?: string }> => {
+  handler: async (ctx): Promise<{ url?: string; error?: string }> => {
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error('Not authenticated');
 
@@ -224,10 +224,10 @@ export const createPortalSession = action({
       
       // If Polar says the customer doesn't exist or is invalid for this (excluding 401 auth errors)
       if (status !== 401 && (status === 404 || status === 422 || msg.includes('404') || msg.includes('not found') || msg.includes('invalid'))) {
-        return { error: "CUSTOMER_NOT_FOUND", rawError: msg || String(status) };
+        return { error: "CUSTOMER_NOT_FOUND" };
       }
       
-      return { error: "POLAR_SYSTEM_ERROR", rawError: msg || String(status) };
+      return { error: "POLAR_SYSTEM_ERROR" };
     }
   },
 });
