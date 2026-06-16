@@ -57,11 +57,16 @@ export function SuperAdminScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterTier, setFilterTier] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [filterRole, setFilterRole] = useState<string>('all');
+  const [filterActivity, setFilterActivity] = useState<string>('all');
+  const [filterExpiration, setFilterExpiration] = useState<string>('all');
+  const [sortBy, setSortBy] = useState<string>('newest');
 
   // Filtered users array
   const filteredUsers = useMemo(() => {
     if (!users) return [];
-    return users.filter((u: any) => {
+    
+    let result = users.filter((u: any) => {
       const matchesSearch = !searchQuery || 
         (u.name?.toLowerCase().includes(searchQuery.toLowerCase()) || 
          u.email?.toLowerCase().includes(searchQuery.toLowerCase()) || 
@@ -74,9 +79,43 @@ export function SuperAdminScreen() {
       const matchesStatus = filterStatus === 'all' || 
         (filterStatus === 'suspended' ? u.isSuspended : !u.isSuspended);
         
-      return matchesSearch && matchesTier && matchesStatus;
+      const matchesRole = filterRole === 'all' ||
+        (filterRole === 'superAdmin' && u.isSuperAdmin) ||
+        (!u.isSuperAdmin && u.role === filterRole) || 
+        (filterRole === 'owner' && !u.isSuperAdmin && (!u.role || u.role === 'owner'));
+
+      const matchesActivity = filterActivity === 'all' ||
+        (filterActivity === 'active' && (u.projectCount || 0) > 0) ||
+        (filterActivity === 'inactive' && (u.projectCount || 0) === 0);
+
+      let matchesExpiration = true;
+      if (filterExpiration !== 'all') {
+        const now = Date.now();
+        const expiresAt = u.subscriptionExpiresAt;
+        if (!expiresAt) {
+          matchesExpiration = filterExpiration === 'free'; // no expiration = free usually
+        } else {
+          const daysLeft = (expiresAt - now) / (1000 * 60 * 60 * 24);
+          if (filterExpiration === 'expired') matchesExpiration = daysLeft < 0;
+          else if (filterExpiration === 'month1') matchesExpiration = daysLeft >= 0 && daysLeft <= 30;
+          else if (filterExpiration === 'month2') matchesExpiration = daysLeft > 30 && daysLeft <= 60;
+          else if (filterExpiration === 'month3') matchesExpiration = daysLeft > 60 && daysLeft <= 90;
+        }
+      }
+        
+      return matchesSearch && matchesTier && matchesStatus && matchesRole && matchesActivity && matchesExpiration;
     });
-  }, [users, searchQuery, filterTier, filterStatus]);
+
+    // Sorting
+    result.sort((a: any, b: any) => {
+      if (sortBy === 'newest') return (b._creationTime || 0) - (a._creationTime || 0);
+      if (sortBy === 'oldest') return (a._creationTime || 0) - (b._creationTime || 0);
+      if (sortBy === 'projects') return (b.projectCount || 0) - (a.projectCount || 0);
+      return 0;
+    });
+
+    return result;
+  }, [users, searchQuery, filterTier, filterStatus, filterRole, filterActivity, filterExpiration, sortBy]);
 
   // Virtualizer setup
   const parentRef = useRef<HTMLDivElement>(null);
@@ -132,7 +171,7 @@ export function SuperAdminScreen() {
 
   return (
     <div style={{ padding: '24px' }}>
-      <div style={{ display: 'flex', gap: 16, marginBottom: 24 }}>
+      <div style={{ display: 'flex', gap: 16, marginBottom: 24, overflowX: 'auto', paddingBottom: 8, WebkitOverflowScrolling: 'touch' }}>
         <button 
           onClick={() => setActiveTab('users')}
           style={{ 
@@ -146,7 +185,9 @@ export function SuperAdminScreen() {
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
-            gap: 8
+            gap: 8,
+            whiteSpace: 'nowrap',
+            flexShrink: 0
           }}
         >
           <Icon n="users" s={20} />
@@ -165,7 +206,9 @@ export function SuperAdminScreen() {
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
-            gap: 8
+            gap: 8,
+            whiteSpace: 'nowrap',
+            flexShrink: 0
           }}
         >
           <Icon n="link" s={20} />
@@ -184,7 +227,9 @@ export function SuperAdminScreen() {
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
-            gap: 8
+            gap: 8,
+            whiteSpace: 'nowrap',
+            flexShrink: 0
           }}
         >
           <Icon n="trash-2" s={20} />
@@ -204,7 +249,9 @@ export function SuperAdminScreen() {
             display: 'flex',
             alignItems: 'center',
             gap: 8,
-            position: 'relative'
+            position: 'relative',
+            whiteSpace: 'nowrap',
+            flexShrink: 0
           }}
         >
           <Icon n="help-circle" s={20} />
@@ -236,7 +283,9 @@ export function SuperAdminScreen() {
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
-            gap: 8
+            gap: 8,
+            whiteSpace: 'nowrap',
+            flexShrink: 0
           }}
         >
           <Icon n="play-circle" s={20} />
@@ -254,36 +303,95 @@ export function SuperAdminScreen() {
             כאן תוכל לראות את כל המשתמשים הרשומים, לנהל מנויים, להשעות משתמשים ולמחוק פרויקטים במידת הצורך. סה"כ משתמשים: {filteredUsers.length}
           </p>
 
-          <div style={{ display: 'flex', gap: 16, marginBottom: 16, flexWrap: 'wrap' }}>
-            <div style={{ flex: 1, minWidth: 200, position: 'relative' }}>
-              <Icon n="search" s={18} c="var(--text3)" style={{ position: 'absolute', right: 12, top: 12 }} />
-              <input 
-                type="text" 
-                placeholder="חיפוש לפי שם, אימייל או טלפון..." 
-                value={searchQuery} 
-                onChange={e => setSearchQuery(e.target.value)}
-                style={{ width: '100%', padding: '10px 36px 10px 12px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 14 }}
-              />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 24, background: 'var(--surface)', padding: 20, borderRadius: 12, border: '1px solid var(--border)', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+            
+            {/* Top row: Search, Sort, Clear */}
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ flex: '1 1 250px', position: 'relative' }}>
+                <Icon n="search" s={18} c="var(--text3)" style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)' }} />
+                <input 
+                  type="text" 
+                  placeholder="חיפוש משתמש לפי שם, אימייל או טלפון..." 
+                  value={searchQuery} 
+                  onChange={e => setSearchQuery(e.target.value)}
+                  style={{ width: '100%', padding: '12px 40px 12px 12px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 14, background: 'var(--bg)' }}
+                />
+              </div>
+              
+              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', flex: '1 1 auto', justifyContent: 'flex-end' }}>
+                <select value={sortBy} onChange={e => setSortBy(e.target.value)} className="input" style={{ width: 'auto', padding: '10px 32px 10px 12px', background: 'var(--bg)', border: '1px solid var(--border)' }}>
+                  <option value="newest">מיין לפי: חדשים קודם</option>
+                  <option value="oldest">מיין לפי: ותיקים קודם</option>
+                  <option value="projects">מיין לפי: כמות פרויקטים</option>
+                </select>
+                <button 
+                  onClick={() => {
+                    setSearchQuery(''); setFilterTier('all'); setFilterStatus('all'); 
+                    setFilterRole('all'); setFilterActivity('all'); setFilterExpiration('all'); setSortBy('newest');
+                  }}
+                  style={{ padding: '10px 16px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg)', cursor: 'pointer', fontSize: 14, color: 'var(--danger)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}
+                >
+                  <Icon n="x-circle" s={16} />
+                  נקה הכל
+                </button>
+              </div>
             </div>
-            <select 
-              value={filterTier} 
-              onChange={e => setFilterTier(e.target.value)}
-              style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 14, minWidth: 150 }}
-            >
-              <option value="all">כל המנויים</option>
-              <option value="free">ללא מנוי (Free)</option>
-              <option value="pro">Pro</option>
-              <option value="premium">Premium</option>
-            </select>
-            <select 
-              value={filterStatus} 
-              onChange={e => setFilterStatus(e.target.value)}
-              style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 14, minWidth: 150 }}
-            >
-              <option value="all">כל הסטטוסים</option>
-              <option value="active">פעיל</option>
-              <option value="suspended">מושעה</option>
-            </select>
+
+            <div style={{ width: '100%', height: 1, background: 'var(--border)', margin: '4px 0' }}></div>
+
+            {/* Bottom row: Filters Grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 16 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text2)' }}>סוג מנוי</label>
+                <select value={filterTier} onChange={e => setFilterTier(e.target.value)} className="input" style={{ padding: '10px 12px', background: 'var(--bg)' }}>
+                  <option value="all">הכל</option>
+                  <option value="free">ללא מנוי (Free)</option>
+                  <option value="pro">Pro</option>
+                  <option value="premium">Premium</option>
+                </select>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text2)' }}>סטטוס השעיה</label>
+                <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="input" style={{ padding: '10px 12px', background: 'var(--bg)' }}>
+                  <option value="all">הכל</option>
+                  <option value="active">פעיל</option>
+                  <option value="suspended">מושעה</option>
+                </select>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text2)' }}>תפקיד</label>
+                <select value={filterRole} onChange={e => setFilterRole(e.target.value)} className="input" style={{ padding: '10px 12px', background: 'var(--bg)' }}>
+                  <option value="all">הכל</option>
+                  <option value="superAdmin">מנהלי מערכת</option>
+                  <option value="owner">מנהלי פרויקט</option>
+                  <option value="manager">מנהלי עבודה</option>
+                  <option value="inspector">מפקחים</option>
+                  <option value="contractor">קבלנים</option>
+                </select>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text2)' }}>פעילות פרויקטים</label>
+                <select value={filterActivity} onChange={e => setFilterActivity(e.target.value)} className="input" style={{ padding: '10px 12px', background: 'var(--bg)' }}>
+                  <option value="all">הכל</option>
+                  <option value="active">עם פרויקטים</option>
+                  <option value="inactive">ללא פרויקטים</option>
+                </select>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text2)' }}>תוקף מנוי</label>
+                <select value={filterExpiration} onChange={e => setFilterExpiration(e.target.value)} className="input" style={{ padding: '10px 12px', background: 'var(--bg)' }}>
+                  <option value="all">הכל</option>
+                  <option value="expired">פג תוקף</option>
+                  <option value="month1">יפוג החודש</option>
+                  <option value="month2">יפוג בעוד חודשיים</option>
+                  <option value="month3">יפוג בעוד 3 חודשים</option>
+                </select>
+              </div>
+            </div>
           </div>
 
           <div style={{ border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
@@ -841,20 +949,20 @@ export function SuperAdminScreen() {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               {guides.map((guide: any) => (
-                <div key={guide._id} style={{ border: '1px solid var(--border)', borderRadius: 12, padding: 16, background: 'var(--bg)', display: 'flex', justifyContent: 'space-between' }}>
+                <div key={guide._id} style={{ border: '1px solid var(--border)', borderRadius: 12, padding: 16, background: 'var(--bg)', display: 'flex', flexDirection: 'column', gap: 16 }}>
                   <div>
                     <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>{guide.title}</div>
-                    <div style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 8 }}>{guide.description}</div>
-                    <div style={{ fontSize: 12, color: 'var(--text3)', display: 'flex', gap: 12 }}>
-                      <span><strong>לינק:</strong> {guide.videoUrl}</span>
-                      <span><strong>משך:</strong> {guide.duration || 'לא צוין'}</span>
-                      <span><strong>נושאים:</strong> {guide.topics?.length || 0}</span>
-                      <span><strong>טיפים:</strong> {guide.tips?.length || 0}</span>
-                      <span><strong>שאלות:</strong> {guide.faqs?.length || 0}</span>
+                    <div style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 12, lineHeight: 1.5 }}>{guide.description}</div>
+                    <div style={{ fontSize: 12, color: 'var(--text3)', display: 'flex', flexWrap: 'wrap', gap: '8px 16px' }}>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Icon n="link" s={14}/> <span style={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={guide.videoUrl}>{guide.videoUrl}</span></span>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Icon n="clock" s={14}/> {guide.duration || 'לא צוין'}</span>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Icon n="list" s={14}/> {guide.topics?.length || 0} נושאים</span>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Icon n="zap" s={14}/> {guide.tips?.length || 0} טיפים</span>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Icon n="help-circle" s={14}/> {guide.faqs?.length || 0} שאלות</span>
                     </div>
                   </div>
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                    <Btn variant="outline" onClick={() => {
+                  <div style={{ display: 'flex', gap: 12, alignItems: 'center', alignSelf: 'flex-start', borderTop: '1px solid var(--border)', width: '100%', paddingTop: 16 }}>
+                    <button onClick={() => {
                       setGuideForm({
                         title: guide.title,
                         videoUrl: guide.videoUrl,
@@ -865,16 +973,16 @@ export function SuperAdminScreen() {
                         faqs: guide.faqs || []
                       });
                       setEditingGuide(guide);
-                    }}>
-                      <Icon n="edit" s={16} /> ערוך
-                    </Btn>
-                    <Btn variant="outline" onClick={async () => {
+                    }} style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, justifyContent: 'center', border: '1px solid var(--border)', background: 'var(--surface)', padding: '8px 12px', borderRadius: 8, cursor: 'pointer', color: 'var(--text1)', fontWeight: 500 }}>
+                      <Icon n="edit" s={16} /> עריכה
+                    </button>
+                    <button onClick={async () => {
                       if (confirm('האם למחוק מדריך זה?')) {
                         await deleteGuide({ id: guide._id });
                       }
-                    }} style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }}>
-                      <Icon n="trash" s={16} />
-                    </Btn>
+                    }} style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, justifyContent: 'center', border: 'none', background: '#FEF2F2', padding: '8px 12px', borderRadius: 8, cursor: 'pointer', color: '#EF4444', fontWeight: 500 }}>
+                      <Icon n="trash" s={16} /> מחיקה
+                    </button>
                   </div>
                 </div>
               ))}
