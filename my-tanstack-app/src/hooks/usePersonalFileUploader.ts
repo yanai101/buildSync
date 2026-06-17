@@ -5,6 +5,8 @@ import { gzip } from 'fflate';
 import { api } from '../../convex/_generated/api';
 import type { Id } from '../../convex/_generated/dataModel';
 
+import { optimizeImageFile } from './useProjectFileUploader';
+
 const compressFile = (bytes: Uint8Array): Promise<Uint8Array> =>
   new Promise((resolve, reject) => {
     gzip(bytes, { level: 6 }, (err, data) => {
@@ -18,11 +20,18 @@ export function usePersonalFileUploader() {
   const createPersonalFile = useMutation(api.personalFiles.createPersonalFile);
 
   return React.useCallback(async (file: File) => {
+    let finalFileToUpload: File | Blob = file;
+    let finalMimeType = file.type || 'application/octet-stream';
+    let originalName = file.name;
+
     if (file.type.startsWith('image/')) {
-      throw new Error('קבצי תמונה צריכים להיות מועלים בדף התמונות');
+      const optimized = await optimizeImageFile(file);
+      finalFileToUpload = optimized.blob;
+      finalMimeType = optimized.storedMimeType;
+      originalName = optimized.storedName;
     }
 
-    const buffer = new Uint8Array(await file.arrayBuffer());
+    const buffer = new Uint8Array(await finalFileToUpload.arrayBuffer());
     const compressed = await compressFile(buffer);
     const blob = new Blob([compressed.buffer as ArrayBuffer], { type: 'application/gzip' });
 
@@ -40,9 +49,9 @@ export function usePersonalFileUploader() {
     const { storageId } = (await uploadResponse.json()) as { storageId: Id<'_storage'> };
     const fileId = await createPersonalFile({
       storageId,
-      originalName: file.name,
-      storedName: `${file.name}.gz`,
-      originalMimeType: file.type || 'application/octet-stream',
+      originalName: originalName,
+      storedName: `${originalName}.gz`,
+      originalMimeType: finalMimeType,
       originalSize: file.size,
       storedSize: blob.size,
     });

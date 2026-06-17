@@ -7,7 +7,7 @@ import type { Id } from '../../convex/_generated/dataModel';
 type ProjectFileUsage = 'photo' | 'receipt' | 'quote' | 'document' | 'daily_log';
 type ProjectFileKind = 'image' | 'pdf' | 'document' | 'other';
 
-type OptimizedFile = {
+export type OptimizedFile = {
   blob: Blob;
   storedName: string;
   storedMimeType: string;
@@ -51,7 +51,7 @@ const loadImage = async (file: File) => {
   }
 };
 
-const optimizeImageFile = async (file: File): Promise<OptimizedFile> => {
+export const optimizeImageFile = async (file: File): Promise<OptimizedFile> => {
   if (!file.type.startsWith('image/')) {
     return {
       blob: file,

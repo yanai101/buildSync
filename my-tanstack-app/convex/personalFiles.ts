@@ -37,10 +37,6 @@ export const createPersonalFile = mutation({
   handler: async (ctx, args) => {
     const { userId } = await requireOwner(ctx);
 
-    if (args.originalMimeType.startsWith('image/')) {
-      await ctx.storage.delete(args.storageId);
-      throw new Error('קבצי תמונה צריכים להיות מועלים בדף התמונות');
-    }
 
     const existing = await ctx.db
       .query('personalFiles')
