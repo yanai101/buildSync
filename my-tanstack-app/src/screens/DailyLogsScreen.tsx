@@ -4,6 +4,7 @@ import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { ScreenBoundary } from '../components/ScreenBoundary';
 import { PageBackground, EmptyState, Btn, Icon, ConfirmDialog, FeedbackModal, PremiumLock, Modal } from '../components/Shared';
+import { ImageGalleryViewer } from '../components/ImageGalleryViewer';
 import { useRequireRole } from '../hooks/useRequireRole';
 import { AccessDenied, AccessLoading } from '../components/AccessDenied';
 import { useSubscription } from '../hooks/useSubscription';
@@ -34,6 +35,7 @@ export const DailyLogsScreen = () => {
   
   const saveLog = useMutation(api.dailyLogs.saveLog);
   const lockLog = useMutation(api.dailyLogs.lockLog);
+  const deleteLog = useMutation(api.dailyLogs.deleteLog);
   const deleteFile = useMutation(api.projectFiles.deleteProjectFileByStorageId);
   const uploadProjectFile = useProjectFileUploader();
 
@@ -44,7 +46,8 @@ export const DailyLogsScreen = () => {
   const [uploadingImagesCount, setUploadingImagesCount] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [deletingImages, setDeletingImages] = useState<Set<string>>(new Set());
-  const [viewFile, setViewFile] = useState<{ url: string } | null>(null);
+  const [viewGallery, setViewGallery] = useState<{ images: { url: string }[], initialIndex: number } | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   // Local state for the form so we can edit before saving
   const [form, setForm] = useState({
@@ -175,6 +178,22 @@ export const DailyLogsScreen = () => {
       setFeedback({ title: "הדוח ננעל 🔒", message: "הדוח היומי ננעל ולא ניתן לשינוי. הוא עכשיו מסמך חתום ומאושר.", type: 'success' });
     } catch (err: any) {
       setFeedback({ title: "שגיאה בנעילה", message: err.message, type: 'error' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const executeDeleteLog = async () => {
+    if (!log?._id) return;
+    
+    setConfirmDelete(false);
+    setSaving(true);
+    try {
+      await deleteLog({ logId: log._id });
+      setFeedback({ title: "נמחק בהצלחה", message: "יומן העבודה נמחק.", type: 'success' });
+      setSelectedLogId(null);
+    } catch (err: any) {
+      setFeedback({ title: "שגיאה במחיקה", message: err.message, type: 'error' });
     } finally {
       setSaving(false);
     }
@@ -357,14 +376,26 @@ export const DailyLogsScreen = () => {
               
               {/* Action Buttons */}
               <div style={{ display: "flex", gap: 12 }}>
-                <Btn 
-                  variant="outline" 
-                  onClick={() => exportPDF(logsForDate || [])}
-                  disabled={exporting || !logsForDate || logsForDate.length === 0}
-                >
-                  <Icon n="download" s={16}/> {exporting ? 'מפיק PDF...' : 'הפק PDF'}
-                </Btn>
+                {isLocked && (
+                  <Btn 
+                    variant="outline" 
+                    onClick={() => exportPDF(logsForDate || [])}
+                    disabled={exporting || !logsForDate || logsForDate.length === 0}
+                  >
+                    <Icon n="download" s={16}/> {exporting ? 'מפיק PDF...' : 'הפק PDF'}
+                  </Btn>
+                )}
 
+                {log && !isLocked && (canEditAdvanced || canEditBasic) && (
+                  <Btn 
+                    variant="outline" 
+                    onClick={() => setConfirmDelete(true)} 
+                    disabled={saving} 
+                    style={{ color: "#FF3B30", borderColor: "#FF3B30", background: "transparent" }}
+                  >
+                    <Icon n="trash" s={16}/> מחק
+                  </Btn>
+                )}
                 {canEditBasic && <Btn variant="primary" onClick={handleSave} disabled={saving}>
                   <Icon n="save" s={16}/> {saving ? "שומר..." : "שמור טיוטה"}
                 </Btn>}
@@ -558,7 +589,7 @@ export const DailyLogsScreen = () => {
                     const isDeleting = deletingImages.has(img.storageId);
                     return (
                     <div key={i} style={{ position: "relative", width: 100, height: 100, borderRadius: 8, overflow: "hidden", border: "1px solid var(--border)" }}>
-                      <img src={img.url} onClick={() => setViewFile({ url: img.url || '' })} style={{ width: "100%", height: "100%", objectFit: "cover", opacity: isDeleting ? 0.5 : 1, transition: "opacity 0.2s", cursor: "pointer" }} />
+                      <img src={img.url} onClick={() => setViewGallery({ images: form.images.filter(img => img.url).map(img => ({ url: img.url! })), initialIndex: i })} style={{ width: "100%", height: "100%", objectFit: "cover", opacity: isDeleting ? 0.5 : 1, transition: "opacity 0.2s", cursor: "pointer" }} />
                       
                       {isDeleting && (
                         <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.3)" }}>
@@ -679,9 +710,11 @@ export const DailyLogsScreen = () => {
                       }}>
                         <Icon n="eye" s={14} /> צפה ביומן
                       </Btn>
-                      <Btn variant="outline" size="sm" onClick={() => exportPDF(allLogs.filter(x => x.date === l.date))} disabled={exporting}>
-                        <Icon n="download" s={14}/> {exporting ? 'מפיק...' : 'PDF (כל יומני התאריך)'}
-                      </Btn>
+                      {l.status === 'locked' && (
+                        <Btn variant="outline" size="sm" onClick={() => exportPDF(allLogs.filter(x => x.date === l.date))} disabled={exporting}>
+                          <Icon n="download" s={14}/> {exporting ? 'מפיק...' : 'PDF (כל יומני התאריך)'}
+                        </Btn>
+                      )}
                     </div>
                   </div>
                 ))
@@ -691,15 +724,22 @@ export const DailyLogsScreen = () => {
         </div>
 
         {feedback && <FeedbackModal {...feedback} onClose={() => setFeedback(null)} />}
-        {viewFile && (
-          <Modal title="תצוגת תמונה" onClose={() => setViewFile(null)}>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
-              <img src={viewFile.url} alt="Preview" style={{ maxWidth: '100%', maxHeight: '70vh', borderRadius: 8, objectFit: 'contain' }} />
-              <div style={{ display: 'flex', justifyContent: 'flex-end', width: '100%' }}>
-                <Btn onClick={() => setViewFile(null)}>סגור</Btn>
-              </div>
-            </div>
-          </Modal>
+        {confirmDelete && (
+          <ConfirmDialog
+            title="מחיקת יומן עבודה"
+            message="האם אתה בטוח שברצונך למחוק את יומן העבודה? כל הנתונים והתמונות יימחקו לצמיתות."
+            confirmText="מחק יומן"
+            cancelText="ביטול"
+            onConfirm={executeDeleteLog}
+            onClose={() => setConfirmDelete(false)}
+          />
+        )}
+        {viewGallery && (
+          <ImageGalleryViewer 
+            images={viewGallery.images} 
+            initialIndex={viewGallery.initialIndex} 
+            onClose={() => setViewGallery(null)} 
+          />
         )}
       </PremiumLock>
     </ScreenBoundary>

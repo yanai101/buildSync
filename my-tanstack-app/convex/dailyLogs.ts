@@ -168,3 +168,34 @@ export const lockLog = mutation({
     });
   },
 });
+
+export const deleteLog = mutation({
+  args: {
+    logId: v.id('dailyLogs'),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Unauthenticated");
+
+    const log = await ctx.db.get(args.logId);
+    if (!log) throw new Error("Log not found");
+
+    if (log.status === 'locked') {
+      throw new Error("Cannot delete a locked log");
+    }
+
+    await requireProjectFeature(ctx, log.projectId, 'dailyLogs');
+
+    // Delete associated images
+    if (log.images) {
+      for (const img of log.images) {
+        if (img.storageId) {
+          await ctx.storage.delete(img.storageId);
+        }
+      }
+    }
+
+    await ctx.db.delete(args.logId);
+  },
+});
+
