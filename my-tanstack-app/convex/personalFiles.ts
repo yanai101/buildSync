@@ -11,8 +11,16 @@ const requireOwner = async (ctx: QueryCtx | MutationCtx) => {
     throw new Error('Not authenticated');
   }
   const user = await ctx.db.get(userId);
-  if (user?.role !== 'owner' && !user?.isSuperAdmin) {
-    throw new Error('Only the project owner can access personal files');
+  if (user?.role === 'contractor' || user?.role === 'manager' || user?.role === 'inspector') {
+    // Check if they are actually the owner of ANY project before blocking them
+    const projects = await ctx.db
+      .query('projects')
+      .withIndex('by_ownerUserId', (q) => q.eq('ownerUserId', userId))
+      .first();
+      
+    if (!projects && !user?.isSuperAdmin) {
+      throw new Error(`Your global role is '${user?.role}', which cannot access personal files`);
+    }
   }
   return { userId, user };
 };
