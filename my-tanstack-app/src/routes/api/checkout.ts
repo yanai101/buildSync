@@ -42,7 +42,20 @@ export const Route = createFileRoute("/api/checkout")({
         // client-supplied product IDs.
         url.searchParams.delete('products');
         url.searchParams.set('products', productId);
-        return polarCheckout({ ...ctx, request: new Request(url, ctx.request) });
+        try {
+          return await polarCheckout({ ...ctx, request: new Request(url, ctx.request) });
+        } catch (error: any) {
+          console.error("Polar Checkout Error:", error);
+          return new Response(
+            JSON.stringify({
+              error: 'Checkout failed',
+              details: error instanceof Error ? error.message : String(error),
+              body: error?.body,
+              statusCode: error?.statusCode,
+            }),
+            { status: 500, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
       },
     },
   },
