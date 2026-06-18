@@ -54,7 +54,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
   const storage = typeof window === 'undefined' ? undefined : window.localStorage
 
   return (
-    <html lang="he" dir="rtl">
+    <html lang="he" dir="rtl" suppressHydrationWarning>
       <head>
         <HeadContent />
         <script
@@ -68,7 +68,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
           }}
         />
       </head>
-      <body>
+      <body suppressHydrationWarning>
         <div id="root">
           <ConvexAuthProvider client={convex} storage={storage} storageNamespace="buildsync-auth">
             <PushSubscriptionSync />
