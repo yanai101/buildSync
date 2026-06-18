@@ -19,14 +19,6 @@ const PRODUCT_IDS: Record<"sandbox" | "production", Record<BillingPlan, string>>
   },
 };
 
-const polarCheckout = Checkout({
-  accessToken: process.env.POLAR_ACCESS_TOKEN,
-  successUrl: `${baseUrl}/account?success=true`,
-  returnUrl: `${baseUrl}/account`,
-  server: polarServer,
-  theme: "light",
-});
-
 export const Route = createFileRoute("/api/checkout")({
   server: {
     handlers: {
@@ -42,7 +34,20 @@ export const Route = createFileRoute("/api/checkout")({
         // client-supplied product IDs.
         url.searchParams.delete('products');
         url.searchParams.set('products', productId);
+        
         try {
+          if (!process.env.POLAR_ACCESS_TOKEN) {
+            throw new Error("POLAR_ACCESS_TOKEN is not defined in environment variables");
+          }
+
+          const polarCheckout = Checkout({
+            accessToken: process.env.POLAR_ACCESS_TOKEN,
+            successUrl: `${baseUrl}/account?success=true`,
+            returnUrl: `${baseUrl}/account`,
+            server: polarServer,
+            theme: "light",
+          });
+
           return await polarCheckout({ ...ctx, request: new Request(url, ctx.request) });
         } catch (error: any) {
           console.error("Polar Checkout Error:", error);
