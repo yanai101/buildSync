@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate } from '@tanstack/react-router';
 import { Icon, Btn, ProgressBar, FeedbackModal, EmptyState, PageBackground, PremiumLock } from '../components/Shared';
 import { useDataSource } from '../hooks/useDataSource';
 import { useDataMutation } from '../hooks/useDataMutation';
@@ -276,6 +277,7 @@ const AddItemWidget = ({
 // ── BOQ WIZARD SCREEN ───────────────────────────────────────────────────────
 
 export const BOQWizardScreen = () => {
+  const navigate = useNavigate();
   const { isProOrPremium, isLoaded: subscriptionLoaded } = useSubscription();
   const { allowed, loading: roleLoading } = useRequireRole(['owner', 'manager']);
   const { projectId } = useCurrentProject();
@@ -759,7 +761,7 @@ export const BOQWizardScreen = () => {
   const closeFeedback = () => {
     const redirect = feedback?.redirect;
     setFeedback(null);
-    if (redirect) window.location.href = redirect;
+    if (redirect) navigate({ to: redirect });
   };
 
   const handleExportPDF = async () => {
@@ -953,7 +955,7 @@ export const BOQWizardScreen = () => {
                 title="לא נמצאו חדרים בפרויקט" 
                 description="אשף הכמויות מבוסס על החדרים שהוגדרו בפרויקט. כדי להתחיל, יש להגדיר קודם את מבנה הבית."
                 action={
-                  <Btn onClick={() => window.location.href = '/setup'} style={{margin: "0 auto", padding: "12px 24px"}}>
+                  <Btn onClick={() => navigate({ to: '/setup' })} style={{margin: "0 auto", padding: "12px 24px"}}>
                     <Icon n="settings" s={18} /> מעבר להגדרות הבית
                   </Btn>
                 }

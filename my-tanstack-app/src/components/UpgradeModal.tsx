@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Icon, Btn } from './Shared'
 import { useCurrentProject } from '../hooks/useCurrentProject'
 import { checkoutUrl, type BillingPlan } from '../billing'
+import { useNavigate } from '@tanstack/react-router'
 
 const PRO_BENEFITS = [
   'פרויקטים ללא הגבלה',
@@ -29,9 +30,11 @@ export function UpgradeModal({
   const { user } = useCurrentProject()
   const userId = user?._id as string | undefined
 
+  const navigate = useNavigate()
+
   const go = (plan: BillingPlan) => {
     if (!userId) {
-      window.location.href = '/account'
+      navigate({ to: '/account', search: { success: undefined } })
       return
     }
     window.location.href = checkoutUrl(plan, userId)
