@@ -4,7 +4,7 @@ import type { BillingPlan } from '~/billing';
 
 const isProd = process.env.NODE_ENV === 'production';
 const baseUrl = isProd ? 'https://buildsync.co.il' : 'http://localhost:3000';
-const polarServer = (process.env.POLAR_SERVER as "sandbox" | "production") || "sandbox";
+const polarServer = (process.env.POLAR_SERVER as "sandbox" | "production") || (isProd ? "production" : "sandbox");
 
 // The sandbox org has its own copies of the Pro products with different IDs,
 // so the plan→product mapping must follow POLAR_SERVER.
