@@ -5,6 +5,17 @@ import { api } from '../../convex/_generated/api';
 import { Id } from '../../convex/_generated/dataModel';
 import { Icon, Btn, Modal } from '../components/Shared';
 
+function formatTimeAgo(timestamp: number) {
+  const days = Math.floor((Date.now() - timestamp) / (1000 * 60 * 60 * 24));
+  if (days === 0) return 'היום';
+  if (days === 1) return 'אתמול';
+  if (days < 30) return `לפני ${days} ימים`;
+  const months = Math.floor(days / 30);
+  if (months < 12) return `לפני ${months} חודשים`;
+  const years = Math.floor(days / 365);
+  return `לפני ${years} שנים`;
+}
+
 export function SuperAdminScreen() {
   const identity = useQuery(api.users.currentIdentity);
   const isSuperAdmin = identity?.isSuperAdmin;
@@ -60,6 +71,7 @@ export function SuperAdminScreen() {
   const [filterRole, setFilterRole] = useState<string>('all');
   const [filterActivity, setFilterActivity] = useState<string>('all');
   const [filterExpiration, setFilterExpiration] = useState<string>('all');
+  const [filterJoinDate, setFilterJoinDate] = useState<string>('all');
   const [sortBy, setSortBy] = useState<string>('newest');
 
   // Filtered users array
@@ -103,7 +115,17 @@ export function SuperAdminScreen() {
         }
       }
         
-      return matchesSearch && matchesTier && matchesStatus && matchesRole && matchesActivity && matchesExpiration;
+      let matchesJoinDate = true;
+      if (filterJoinDate !== 'all') {
+        const now = Date.now();
+        const joinDays = (now - u._creationTime) / (1000 * 60 * 60 * 24);
+        if (filterJoinDate === 'today') matchesJoinDate = joinDays < 1;
+        else if (filterJoinDate === 'week') matchesJoinDate = joinDays <= 7;
+        else if (filterJoinDate === 'month') matchesJoinDate = joinDays <= 30;
+        else if (filterJoinDate === 'year') matchesJoinDate = joinDays <= 365;
+      }
+
+      return matchesSearch && matchesTier && matchesStatus && matchesRole && matchesActivity && matchesExpiration && matchesJoinDate;
     });
 
     // Sorting
@@ -115,7 +137,7 @@ export function SuperAdminScreen() {
     });
 
     return result;
-  }, [users, searchQuery, filterTier, filterStatus, filterRole, filterActivity, filterExpiration, sortBy]);
+  }, [users, searchQuery, filterTier, filterStatus, filterRole, filterActivity, filterExpiration, filterJoinDate, sortBy]);
 
   // Virtualizer setup
   const parentRef = useRef<HTMLDivElement>(null);
@@ -327,7 +349,7 @@ export function SuperAdminScreen() {
                 <button 
                   onClick={() => {
                     setSearchQuery(''); setFilterTier('all'); setFilterStatus('all'); 
-                    setFilterRole('all'); setFilterActivity('all'); setFilterExpiration('all'); setSortBy('newest');
+                    setFilterRole('all'); setFilterActivity('all'); setFilterExpiration('all'); setFilterJoinDate('all'); setSortBy('newest');
                   }}
                   style={{ padding: '10px 16px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg)', cursor: 'pointer', fontSize: 14, color: 'var(--danger)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}
                 >
@@ -391,6 +413,17 @@ export function SuperAdminScreen() {
                   <option value="month3">יפוג בעוד 3 חודשים</option>
                 </select>
               </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text2)' }}>תאריך הצטרפות</label>
+                <select value={filterJoinDate} onChange={e => setFilterJoinDate(e.target.value)} className="input" style={{ padding: '10px 12px', background: 'var(--bg)' }}>
+                  <option value="all">הכל</option>
+                  <option value="today">היום</option>
+                  <option value="week">בשבוע האחרון</option>
+                  <option value="month">בחודש האחרון</option>
+                  <option value="year">בשנה האחרונה</option>
+                </select>
+              </div>
             </div>
           </div>
 
@@ -436,11 +469,16 @@ export function SuperAdminScreen() {
                           alignItems: 'center'
                         }}
                       >
-                        <div>
-                          <div style={{ fontWeight: 600 }}>{u.name || 'ללא שם'}</div>
-                          {u.isSuperAdmin && (
-                            <span style={{ fontSize: 10, background: 'var(--accent)', color: '#fff', padding: '2px 6px', borderRadius: 10 }}>Admin</span>
-                          )}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span style={{ fontWeight: 600 }}>{u.name || 'ללא שם'}</span>
+                            {u.isSuperAdmin && (
+                              <span style={{ fontSize: 10, background: 'var(--accent)', color: '#fff', padding: '2px 6px', borderRadius: 10 }}>Admin</span>
+                            )}
+                          </div>
+                          <div style={{ fontSize: 12, color: 'var(--text3)' }}>
+                            הצטרף/ה: {new Date(u._creationTime).toLocaleDateString('he-IL')} ({formatTimeAgo(u._creationTime)})
+                          </div>
                         </div>
                         <div style={{ color: 'var(--text2)', fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           {u.email && <div>{u.email}</div>}
