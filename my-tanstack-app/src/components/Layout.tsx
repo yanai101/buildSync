@@ -215,7 +215,7 @@ function AppLoadingScreen() {
       </div>
       
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, marginTop: -20 }}>
-        <div className="sidebar-logo-text" style={{ margin: 0, fontSize: 24, color: 'var(--text1)' }}>Build<span>Sync</span></div>
+        <div className="sidebar-logo-text" dir="ltr" style={{ margin: 0, fontSize: 24, color: 'var(--text1)' }}>Build<span>Sync</span></div>
         <div style={{ position: 'relative', height: 20, width: '100%', display: 'flex', justifyContent: 'center' }}>
           {LOADING_PHRASES.map((phrase, i) => (
             <div 
@@ -603,7 +603,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               objectFit: 'cover'
             }} 
           />
-          <div className="sidebar-logo-text" style={{ margin: 0 }}>Build<span>Sync</span></div>
+          <div className="sidebar-logo-text" dir="ltr" style={{ margin: 0 }}>Build<span>Sync</span></div>
         </Link>
 
         <div className="sidebar-scroll">

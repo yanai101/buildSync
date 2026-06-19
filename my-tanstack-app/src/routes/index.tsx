@@ -186,7 +186,7 @@ function LandingPage() {
                 objectFit: 'cover'
               }} 
             />
-            <div className="sidebar-logo-text" style={{ fontSize: 28, color: '#fff', margin: 0 }}>Build<span style={{color: 'var(--accent)'}}>Sync</span></div>
+            <div className="sidebar-logo-text" dir="ltr" style={{ fontSize: 28, color: '#fff', margin: 0 }}>Build<span style={{color: 'var(--accent)'}}>Sync</span></div>
           </div>
           <div style={{ display: 'flex', gap: 24, alignItems: 'center' }}>
             <Link

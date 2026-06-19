@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from '@tanstack/react-router';
 import { Icon, Btn, Badge, EmptyState, PageBackground, PremiumLock } from '../components/Shared';
 import { BOQ_DATA, fmtMoney } from '../utils/mockData';
 import { ScreenBoundary } from '../components/ScreenBoundary';
@@ -292,6 +293,7 @@ import { useSubscription } from '../hooks/useSubscription';
 import { useAppNotify } from '../hooks/useAppNotify';
 
 export const BOQScreen = () => {
+  const navigate = useNavigate();
   const { allowed, loading: roleLoading } = useRequireRole(['owner', 'manager', 'inspector', 'contractor']);
   const { projectId } = useCurrentProject();
   const { notify } = useAppNotify();
@@ -613,7 +615,7 @@ export const BOQScreen = () => {
             </div>
           )}
           <div style={{marginRight:"auto",display:"flex",gap:8}}>
-            <Btn size="sm" variant="ghost" onClick={() => (window as any).location.href='/boqwizard'}><Icon n="settings" s={13}/> אשף כמויות</Btn>
+            <Btn size="sm" variant="ghost" onClick={() => navigate({ to: '/boqwizard' })}><Icon n="settings" s={13}/> אשף כמויות</Btn>
             <Btn size="sm" variant="ghost" onClick={handleExportPDF} disabled={exporting}>
               <Icon n={exporting ? "loader" : "download"} s={13}/> {exporting ? "מייצא..." : "ייצוא PDF"}
             </Btn>
@@ -688,7 +690,7 @@ export const BOQScreen = () => {
                   <Btn size="lg" onClick={startAdding} disabled={!projectId || !room}>
                     <Icon n="plus" s={18} /> פריט חדש
                   </Btn>
-                  <Btn size="lg" variant="ghost" onClick={() => (window as any).location.href='/boqwizard'}>
+                  <Btn size="lg" variant="ghost" onClick={() => navigate({ to: '/boqwizard' })}>
                     <Icon n="zoom-in" s={18} /> אשף כמויות
                   </Btn>
                 </div>
