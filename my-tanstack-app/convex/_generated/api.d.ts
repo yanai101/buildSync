@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as ResendOTP from "../ResendOTP.js";
 import type * as _lib_activity from "../_lib/activity.js";
 import type * as _lib_contractorPaymentSync from "../_lib/contractorPaymentSync.js";
 import type * as _lib_entitlements from "../_lib/entitlements.js";
@@ -56,6 +57,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  ResendOTP: typeof ResendOTP;
   "_lib/activity": typeof _lib_activity;
   "_lib/contractorPaymentSync": typeof _lib_contractorPaymentSync;
   "_lib/entitlements": typeof _lib_entitlements;

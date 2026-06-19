@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useAuthActions } from '@convex-dev/auth/react'
 import { useConvexAuth, useMutation, useConvex, useQuery } from 'convex/react'
 import { Icon, Input, Btn } from '~/components/Shared'
@@ -15,9 +15,12 @@ function RegisterPage() {
   const { signIn } = useAuthActions()
   const { isAuthenticated, isLoading: isAuthLoading } = useConvexAuth()
   const seedMyProject = useMutation(api.seed.seedMyProject)
+  const hasAttemptedVerify = useRef(false)
   const [form, setForm] = useState({ name: '', email: '', phone: '', password: '' })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [verificationStep, setVerificationStep] = useState(false)
+  const [code, setCode] = useState('')
   const [promoCode, setPromoCode] = useState<string | null>(null)
 
   // Use the standard hook for checking promo code status
@@ -26,16 +29,58 @@ function RegisterPage() {
   useEffect(() => {
     if (typeof window === 'undefined') return
     const params = new URLSearchParams(window.location.search)
-    const code = params.get('code')
-    if (code) {
-      navigate({ to: '/join/$code', params: { code } })
+    
+    // Check for project invitation code
+    const joinCode = params.get('code')
+    if (joinCode) {
+      navigate({ to: '/join/$code', params: { code: joinCode } })
+      return
     }
+
+    // Check for promo code
     const promo = params.get('promo')
     if (promo) {
       setPromoCode(promo)
       localStorage.setItem('promoCode', promo)
     }
   }, [navigate])
+
+  useEffect(() => {
+    if (isAuthLoading) return
+
+    if (isAuthenticated) {
+      navigate({ to: '/dashboard' })
+      return
+    }
+
+    const searchParams = new URLSearchParams(window.location.search)
+    const verifyCode = searchParams.get('verifyCode')
+    const verifyEmail = searchParams.get('email')
+
+    if (verifyCode && verifyEmail) {
+      setVerificationStep(true)
+      setCode(verifyCode)
+      setForm(prev => ({ ...prev, email: verifyEmail }))
+      
+      if (!hasAttemptedVerify.current) {
+        hasAttemptedVerify.current = true
+        // Auto-submit the verification
+        setLoading(true)
+        signIn('password', {
+          email: verifyEmail,
+          code: verifyCode,
+          flow: 'email-verification',
+        }).catch(err => {
+           let msg = err instanceof Error ? err.message : 'שגיאה באימות או שהקישור פג תוקף'
+           if (msg.includes('Could not verify code')) {
+             msg = 'הקישור פג תוקף או שכבר נוצל. אם כבר אימתת את חשבונך, תוכל פשוט להתחבר במסך ההתחברות.'
+           }
+           setError(msg)
+           setLoading(false)
+        })
+      }
+    }
+  }, [navigate, signIn, isAuthLoading, isAuthenticated])
 
   let promoMessage = null;
   if (promoStatus) {
@@ -52,7 +97,7 @@ function RegisterPage() {
 
   useEffect(() => {
     if (isAuthLoading || !isAuthenticated) return
-    navigate({ to: '/' })
+    navigate({ to: '/dashboard' })
   }, [isAuthenticated, isAuthLoading, navigate])
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -110,7 +155,7 @@ function RegisterPage() {
         name: form.name,
         phone: form.phone,
       })
-      // Navigation is handled by the useEffect above when isAuthenticated becomes true
+      setVerificationStep(true)
     } catch (err) {
       let msg = err instanceof Error ? err.message : 'ההרשמה נכשלה. נסה שוב.'
       if (msg.toLowerCase().includes('exist') || msg.toLowerCase().includes('already')) {
@@ -128,6 +173,28 @@ function RegisterPage() {
       await signIn('google')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'שגיאה בהתחברות Google')
+    }
+  }
+
+  const handleVerify = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!code || code.trim().length === 0) {
+      setError('אנא הזן קוד אימות תקין.')
+      return
+    }
+    setError(null)
+    setLoading(true)
+    try {
+      await signIn('password', {
+        email: form.email,
+        code,
+        flow: 'email-verification',
+      })
+      // Navigation is handled by the useEffect above when isAuthenticated becomes true
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'קוד שגוי או פג תוקף. נסה שוב.')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -214,55 +281,106 @@ function RegisterPage() {
                 </div>
               )}
 
+          {verificationStep ? (
+            <div style={{ animation: 'fadeIn 0.3s ease-out' }}>
+              <div style={{ textAlign: 'center', marginBottom: 24 }}>
+                <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--accent-light, rgba(0, 102, 255, 0.1))', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+                  <Icon n="mail" s={32} c="var(--accent)" />
+                </div>
+                <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: 8, color: 'var(--text1)' }}>אימות אימייל</h2>
+                <p style={{ color: 'var(--text2)', lineHeight: 1.5 }}>
+                  שלחנו קישור אימות לכתובת <strong>{form.email}</strong>.<br/>
+                  אנא לחץ על הקישור במייל, או הזן את הקוד מתוכו כאן כדי להשלים את ההרשמה.
+                </p>
+              </div>
+
+              <form onSubmit={handleVerify} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text1)', marginBottom: 6, textAlign: 'center' }}>קוד אימות</label>
+                  <Input 
+                    type="text" 
+                    value={code} 
+                    onChange={(v: string) => setCode(v)} 
+                    placeholder="הזן את הקוד..." 
+                    style={{ width: '100%', textAlign: 'center', letterSpacing: 4, fontSize: 18 }} 
+                  />
+                </div>
+
+                {error && (
+                  <div style={{ fontSize: 13, color: 'var(--danger)', background: '#FEE2E2', border: '1px solid #FCA5A5', borderRadius: 8, padding: '8px 12px', textAlign: 'center' }}>
+                    {error}
+                  </div>
+                )}
+
+                <Btn type="submit" disabled={loading} style={{ width: '100%', justifyContent: 'center', padding: '14px', marginTop: 4, fontSize: 15 }}>
+                  {loading ? (
+                    <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <Icon n="clock" s={16} /> בודק קוד...
+                    </span>
+                  ) : 'אמת והתחבר'}
+                </Btn>
+              </form>
+
+              <button 
+                onClick={() => { setVerificationStep(false); setError(null); }}
+                style={{ background: 'none', border: 'none', color: 'var(--text3)', fontSize: 13, textDecoration: 'underline', marginTop: 24, cursor: 'pointer', width: '100%', textAlign: 'center' }}
+              >
+                חזור לתיקון פרטים
+              </button>
+            </div>
+          ) : (
+            <>
               <Btn onClick={handleGoogle} variant="ghost" style={{ width: '100%', justifyContent: 'center', padding: '12px', marginBottom: 16, fontSize: 14, border: '1px solid var(--border)' }}>
                 <GoogleMark /> המשך עם Google
               </Btn>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '16px 0', color: 'var(--text3)', fontSize: 12 }}>
-            <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
-            או בדוא"ל
-            <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
-          </div>
-
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <div>
-              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text1)', marginBottom: 6 }}>שם מלא</label>
-              <Input value={form.name} onChange={(v: string) => setForm({...form, name: v})} placeholder="ישראל ישראלי" style={{ width: '100%' }} />
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-               <div>
-                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text1)', marginBottom: 6 }}>אימייל</label>
-                  <Input type="email" value={form.email} onChange={(v: string) => setForm({...form, email: v})} placeholder="name@company.com" style={{ width: '100%' }} />
-               </div>
-               <div>
-                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text1)', marginBottom: 6 }}>טלפון</label>
-                  <Input type="tel" value={form.phone} onChange={(v: string) => setForm({...form, phone: v})} placeholder="050-0000000" style={{ width: '100%' }} />
-               </div>
-            </div>
-
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
-                <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text1)' }}>סיסמה</label>
-                <span style={{ fontSize: 11, color: 'var(--text3)' }}>לפחות 8 תווים, כולל אותיות A-Z, a-z ומספר</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '16px 0', color: 'var(--text3)', fontSize: 12 }}>
+                <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+                או בדוא"ל
+                <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
               </div>
-              <Input type="password" value={form.password} onChange={(v: string) => setForm({...form, password: v})} placeholder="••••••••" style={{ width: '100%' }} />
-            </div>
 
-            {error && (
-              <div style={{ fontSize: 13, color: 'var(--danger)', background: '#FEE2E2', border: '1px solid #FCA5A5', borderRadius: 8, padding: '8px 12px' }}>
-                {error}
-              </div>
-            )}
+              <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text1)', marginBottom: 6 }}>שם מלא</label>
+                  <Input value={form.name} onChange={(v: string) => setForm({...form, name: v})} placeholder="ישראל ישראלי" style={{ width: '100%' }} />
+                </div>
 
-            <Btn type="submit" disabled={loading} style={{ width: '100%', justifyContent: 'center', padding: '14px', marginTop: 4, fontSize: 15 }}>
-              {loading ? (
-                 <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                   <Icon n="clock" s={16} /> בתהליך יצירה...
-                 </span>
-              ) : 'פתח חשבון ונהל פרויקט'}
-            </Btn>
-          </form>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                   <div>
+                      <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text1)', marginBottom: 6 }}>אימייל</label>
+                      <Input type="email" value={form.email} onChange={(v: string) => setForm({...form, email: v})} placeholder="name@company.com" style={{ width: '100%' }} />
+                   </div>
+                   <div>
+                      <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text1)', marginBottom: 6 }}>טלפון</label>
+                      <Input type="tel" value={form.phone} onChange={(v: string) => setForm({...form, phone: v})} placeholder="050-0000000" style={{ width: '100%' }} />
+                   </div>
+                </div>
+
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
+                    <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text1)' }}>סיסמה</label>
+                    <span style={{ fontSize: 11, color: 'var(--text3)' }}>לפחות 8 תווים, כולל אותיות A-Z, a-z ומספר</span>
+                  </div>
+                  <Input type="password" value={form.password} onChange={(v: string) => setForm({...form, password: v})} placeholder="••••••••" style={{ width: '100%' }} />
+                </div>
+
+                {error && (
+                  <div style={{ fontSize: 13, color: 'var(--danger)', background: '#FEE2E2', border: '1px solid #FCA5A5', borderRadius: 8, padding: '8px 12px' }}>
+                    {error}
+                  </div>
+                )}
+
+                <Btn type="submit" disabled={loading} style={{ width: '100%', justifyContent: 'center', padding: '14px', marginTop: 4, fontSize: 15 }}>
+                  {loading ? (
+                     <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                       <Icon n="clock" s={16} /> נרשם...
+                     </span>
+                  ) : 'פתח חשבון ונהל פרויקט'}
+                </Btn>
+              </form>
+            </>
+          )}
 
           <p style={{ textAlign: 'center', marginTop: 28, fontSize: 13, color: 'var(--text3)' }}>
             יש לך כבר חשבון? <Link to="/login" style={{ color: 'var(--accent)', fontWeight: 600, textDecoration: 'none' }}>התחבר כאן</Link>

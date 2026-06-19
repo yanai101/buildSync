@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Link } from '@tanstack/react-router';
+import { Link, Navigate } from '@tanstack/react-router';
 import { Icon, ProgressBar, Badge, Avatar, Btn, Modal } from '../components/Shared';
 import { ROLE_COLORS, fmtMoney } from '../utils/mockData';
 import { useDataSource } from '../hooks/useDataSource';
@@ -8,6 +8,7 @@ import { ScreenBoundary } from '../components/ScreenBoundary';
 import { useDashboardOverview } from '../hooks/useDashboardOverview';
 import { BudgetSummaryCards } from '../components/BudgetSummaryCards';
 import { useRequireRole } from '../hooks/useRequireRole';
+import { useCurrentProject } from '../hooks/useCurrentProject';
 
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
@@ -32,6 +33,12 @@ export const DashboardScreen = () => {
   );
   
   const [viewFile, setViewFile] = React.useState<{ url: string; name: string } | null>(null);
+
+  const { projects, isLoading: projectLoading } = useCurrentProject();
+
+  if (!projectLoading && projects.length === 0) {
+    return <Navigate to="/projects" />;
+  }
 
   if (!dashboard || accessInfo === undefined) {
     return <ScreenBoundary loading={loading || accessInfo === undefined} error={error} onRetry={refetch}><div/></ScreenBoundary>;
