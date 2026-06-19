@@ -5,6 +5,7 @@ import { Icon } from './Shared';
 export interface GalleryImage {
   url: string;
   title?: string;
+  description?: string;
 }
 
 interface ImageGalleryViewerProps {
@@ -171,6 +172,14 @@ export const ImageGalleryViewer: React.FC<ImageGalleryViewerProps> = ({
             </div>
           ))}
         </div>
+
+        {/* Bottom Text Overlay */}
+        {(images[currentIndex]?.title || images[currentIndex]?.description) && (
+          <div style={{ position: 'absolute', bottom: 40, left: '50%', transform: 'translateX(-50%)', background: 'rgba(0,0,0,0.7)', padding: '16px 24px', borderRadius: 16, color: 'white', textAlign: 'center', backdropFilter: 'blur(8px)', minWidth: 250, maxWidth: '90%', zIndex: 10 }} onClick={(e) => e.stopPropagation()}>
+            {images[currentIndex].title && <div style={{ fontWeight: 700, fontSize: 16, marginBottom: images[currentIndex].description ? 6 : 0 }}>{images[currentIndex].title}</div>}
+            {images[currentIndex].description && <div style={{ fontSize: 14, whiteSpace: 'pre-wrap', color: 'rgba(255,255,255,0.9)' }}>{images[currentIndex].description}</div>}
+          </div>
+        )}
       </motion.div>
     </AnimatePresence>
   );

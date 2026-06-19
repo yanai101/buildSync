@@ -11,6 +11,7 @@ import { useRequireRole } from '../hooks/useRequireRole';
 import { AccessDenied, AccessLoading } from '../components/AccessDenied';
 import { useSubscription } from '../hooks/useSubscription';
 import { PremiumLock, Modal, ConfirmDialog } from '../components/Shared';
+import { ImageGalleryViewer } from '../components/ImageGalleryViewer';
 
 const MAX_FILES = 20;
 
@@ -66,6 +67,7 @@ export const PersonalFilesScreen = () => {
   const [selectedImages, setSelectedImages] = React.useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = React.useState<'images' | 'docs'>('images');
   const [fileToDelete, setFileToDelete] = React.useState<{id: Id<'personalFiles'>, name: string} | null>(null);
+  const [viewGallery, setViewGallery] = React.useState<{ images: {url: string, title?: string, description?: string}[], initialIndex: number } | null>(null);
 
   const fileList = files ?? [];
   const imageFiles = fileList.filter(f => f.originalMimeType?.startsWith('image/'));
@@ -160,13 +162,41 @@ export const PersonalFilesScreen = () => {
     }
   };
 
+  const handleViewGallery = async (startIndex: number) => {
+    const targetFile = imageFiles[startIndex];
+    if (!targetFile) return;
+    setPendingPreview(String(targetFile.id));
+    
+    try {
+      const items = await Promise.all(imageFiles.map(async (f) => {
+         const objectUrl = await fetchAndDecompress(f);
+         const note = noteDrafts[f.id] ?? f.note ?? '';
+         return { url: objectUrl, title: f.originalName, description: note };
+      }));
+      setViewGallery({ images: items, initialIndex: startIndex });
+    } catch (err) {
+      await notify({ title: 'פתיחת הגלריה נכשלה', body: err instanceof Error ? err.message : 'אירעה שגיאה', kind: 'error' });
+    } finally {
+      setPendingPreview(null);
+    }
+  };
+
   const handlePreview = async (file: NonNullable<typeof files>[number]) => {
     if (!file.url) return;
+    const isImage = !!file.originalMimeType?.startsWith('image/');
+    
+    if (isImage) {
+      const index = imageFiles.findIndex(f => f.id === file.id);
+      if (index !== -1) {
+        await handleViewGallery(index);
+      }
+      return;
+    }
+
     setPendingPreview(String(file.id));
     try {
       const objectUrl = await fetchAndDecompress(file);
-      const isImage = !!file.originalMimeType?.startsWith('image/');
-      setPreviewFile({ url: objectUrl, name: file.originalName, isImage });
+      setPreviewFile({ url: objectUrl, name: file.originalName, isImage: false });
     } catch (err) {
       await notify({ title: 'תצוגה מקדימה נכשלה', body: err instanceof Error ? err.message : 'אירעה שגיאה', kind: 'error' });
     } finally {
@@ -550,6 +580,18 @@ export const PersonalFilesScreen = () => {
              )}
            </div>
         </Modal>
+      )}
+
+      {/* Image Gallery */}
+      {viewGallery && (
+        <ImageGalleryViewer 
+          images={viewGallery.images} 
+          initialIndex={viewGallery.initialIndex} 
+          onClose={() => {
+            viewGallery.images.forEach(img => URL.revokeObjectURL(img.url));
+            setViewGallery(null);
+          }} 
+        />
       )}
 
       {/* Delete Confirmation Dialog */}
