@@ -377,7 +377,7 @@ export const JoinScreen = ({ code }: Props) => {
               התחבר לחשבון קיים
             </Link>
             <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', textAlign: 'center' }}>
-              BuildPro · מערכת ניהול בנייה מקצועית
+              BuildSync · מערכת ניהול בנייה מקצועית
             </div>
           </div>
         </div>
@@ -503,7 +503,7 @@ export const JoinScreen = ({ code }: Props) => {
                 ? 'אתה מחובר למערכת. לחץ על הכפתור כדי להצטרף לפרויקט עכשיו.'
                 : emailExists
                   ? 'ברוך שובך! נראה שיש לך כבר חשבון. הזן סיסמה כדי להתחבר ולהצטרף.'
-                  : 'צור חשבון אישי ב-BuildPro כדי להתחיל לעבוד על הפרויקט.'}
+                  : 'צור חשבון אישי ב-BuildSync כדי להתחיל לעבוד על הפרויקט.'}
             </p>
           </div>
 
@@ -695,7 +695,7 @@ export const JoinScreen = ({ code }: Props) => {
         }}>
           <span style={{ fontSize: 18 }}>🏗</span>
           <span style={{ fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.3)', letterSpacing: 1 }}>
-            BUILDPRO · מערכת ניהול בנייה מקצועית
+            BUILDSYNC · מערכת ניהול בנייה מקצועית
           </span>
         </div>
       </div>

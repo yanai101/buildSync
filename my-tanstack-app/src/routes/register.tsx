@@ -149,7 +149,7 @@ function RegisterPage() {
                 objectFit: 'cover'
               }} 
             />
-            <div className="sidebar-logo-text" style={{ fontSize: 28, color: '#fff', margin: 0 }}>Build<span style={{color: 'var(--accent)'}}>Sync</span></div>
+            <div className="sidebar-logo-text" dir="ltr" style={{ fontSize: 28, color: '#fff', margin: 0 }}>Build<span style={{color: 'var(--accent)'}}>Sync</span></div>
           </div>
 
           <h2 style={{ fontSize: '3rem', fontWeight: 800, lineHeight: 1.1, marginBottom: 24, letterSpacing: '-0.02em', maxWidth: 400 }}>

@@ -72,7 +72,7 @@ export const BOQPrintTemplate = React.forwardRef<HTMLDivElement, BOQPrintTemplat
           <div style={{ textAlign: 'left', color: '#4B5563', fontSize: '12px', display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-end' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
               <img src="/logo.png" alt="BuildSync Icon" style={{ width: '40px', height: '40px', objectFit: 'contain' }} />
-              <div style={{ fontWeight: 800, color: '#111827', fontSize: '24px' }}>Build<span style={{color: '#EA580C'}}>Sync</span></div>
+              <div dir="ltr" style={{ fontWeight: 800, color: '#111827', fontSize: '24px' }}>Build<span style={{color: '#EA580C'}}>Sync</span></div>
             </div>
             <div>תאריך הפקה: {date}</div>
             <div>מנהל פרויקט: {project?.manager || '—'}</div>

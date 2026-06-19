@@ -231,7 +231,7 @@ export const DailyLogsScreen = () => {
             <p style="margin: 4px 0 0 0; color: #555; font-size: 14px;">תאריך: ${formattedDate} | סך הכל יומנים: ${sortedLogs.length}</p>
           </div>
           <div style="display: flex; align-items: center; gap: 12px;">
-            <div style="font-size: 26px; font-weight: 800; letter-spacing: -0.5px;">Build<span style="color: #FF9500;">Sync</span></div>
+            <div dir="ltr" style="font-size: 26px; font-weight: 800; letter-spacing: -0.5px;">Build<span style="color: #FF9500;">Sync</span></div>
             <img src="/logo.png" style="height: 48px; width: auto; object-fit: contain;" />
           </div>
         </div>
