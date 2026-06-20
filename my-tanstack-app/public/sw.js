@@ -42,8 +42,8 @@ self.addEventListener('push', function (event) {
       const title = data.title || 'התראה חדשה';
       const options = {
         body: data.body || '',
-        icon: '/logo.png',
-        badge: '/logo.png',
+        icon: '/logo.svg',
+        badge: '/logo.svg',
         data: data.url || '/',
         vibrate: [200, 100, 200],
         dir: 'rtl',
