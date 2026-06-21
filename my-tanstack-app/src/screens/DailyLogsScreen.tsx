@@ -49,6 +49,8 @@ export const DailyLogsScreen = () => {
   const [viewGallery, setViewGallery] = useState<{ images: { url: string }[], initialIndex: number } | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
+  const lastLoadedLogId = React.useRef<string | null>(null);
+
   // Local state for the form so we can edit before saving
   const [form, setForm] = useState({
     weather: '',
@@ -63,19 +65,25 @@ export const DailyLogsScreen = () => {
 
   React.useEffect(() => {
     if (logsForDate === undefined) return;
-    if (log) {
-      setForm({
-        weather: log.weather || '',
-        temperature: log.temperature || '',
-        workforce: log.workforce || [],
-        activities: log.activities || [],
-        deliveries: log.deliveries || [],
-        issues: log.issues || [],
-        instructions: log.instructions || [],
-        images: log.images || [],
-      });
-    } else {
-      setForm({ weather: '', temperature: '', workforce: [], activities: [], deliveries: [], issues: [], instructions: [], images: [] });
+    
+    const currentLogId = log ? log._id : 'new';
+    
+    if (lastLoadedLogId.current !== currentLogId) {
+      if (log) {
+        setForm({
+          weather: log.weather || '',
+          temperature: log.temperature || '',
+          workforce: log.workforce || [],
+          activities: log.activities || [],
+          deliveries: log.deliveries || [],
+          issues: log.issues || [],
+          instructions: log.instructions || [],
+          images: log.images || [],
+        });
+      } else {
+        setForm({ weather: '', temperature: '', workforce: [], activities: [], deliveries: [], issues: [], instructions: [], images: [] });
+      }
+      lastLoadedLogId.current = currentLogId;
     }
   }, [log, logsForDate]);
 
@@ -140,10 +148,25 @@ export const DailyLogsScreen = () => {
         });
         newImages.push({ storageId: uploaded.storageId, url: URL.createObjectURL(file) });
       }
+      const newImagesList = [...form.images, ...newImages];
+      
       setForm(prev => ({
         ...prev,
-        images: [...prev.images, ...newImages]
+        images: newImagesList
       }));
+
+      // Auto-save draft to prevent data loss if mobile browser reloads on next camera open
+      const savedId = await saveLog({
+        logId: log?._id,
+        projectId,
+        date: selectedDate,
+        ...form,
+        images: newImagesList.map(img => ({ storageId: img.storageId as Id<'_storage'>, url: img.url })),
+      });
+      
+      if (savedId && savedId !== log?._id) {
+        setSelectedLogId(savedId);
+      }
     } catch (err: any) {
       setFeedback({ title: "שגיאה", message: "שגיאה בהעלאת התמונות. חלק מהתמונות אולי לא עלו.", type: "error" });
     } finally {
