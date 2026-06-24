@@ -470,6 +470,17 @@ export const PersonalFilesScreen = () => {
     );
   };
 
+  const [expandedSections, setExpandedSections] = React.useState<Set<string>>(new Set());
+
+  const toggleSection = (id: string) => {
+    setExpandedSections(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
   const imageSectionsMap = new Map<string, typeof imageFiles>();
   imageFiles.forEach(f => {
     const sectionId = f.sectionId || `legacy-${f.id}`;
@@ -492,6 +503,7 @@ export const PersonalFilesScreen = () => {
     const key = section.id;
     const noteValue = noteDrafts[key] ?? section.note ?? '';
     const isFull = section.files.length >= 3;
+    const isExpanded = !expandedSections.has(key); // Default to expanded, toggle to collapse
 
     return (
       <div
@@ -501,7 +513,7 @@ export const PersonalFilesScreen = () => {
           display: 'flex', flexDirection: 'column', gap: 12,
         }}
       >
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', width: '100%' }}>
           <input 
             type="checkbox" 
             checked={section.files.length > 0 && section.files.every(f => selectedImages.has(f.id))}
@@ -519,78 +531,111 @@ export const PersonalFilesScreen = () => {
               setSelectedImages(next);
             }}
             disabled={section.files.length === 0}
-            style={{ width: 18, height: 18, cursor: section.files.length > 0 ? 'pointer' : 'default' }}
+            style={{ width: 18, height: 18, cursor: section.files.length > 0 ? 'pointer' : 'default', flexShrink: 0 }}
           />
           <input
             className="bp-input"
             value={noteValue}
-            placeholder="תיאור הסקשן (לדוגמה: סלון - צנרת חשמל)..."
+            placeholder="תיאור הקבוצה (לדוגמה: סלון - צנרת חשמל)..."
             onChange={(e) => handleSectionNoteChange(key, e.target.value, section.files)}
-            style={{ flex: 1, fontFamily: "'Heebo',sans-serif", fontSize: 14, fontWeight: 600, padding: '8px 10px' }}
+            style={{ flex: 1, minWidth: 0, fontFamily: "'Heebo',sans-serif", fontSize: 14, fontWeight: 600, padding: '8px 10px' }}
           />
-          {section.files.length === 0 && (
-            <Btn
-              size="sm"
-              variant="outline"
-              onClick={() => setEmptySections(prev => prev.filter(s => s.id !== key))}
-              style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }}
-            >
-              <Icon n="trash" s={14} /> מחק סקשן
-            </Btn>
+
+          {!isExpanded && section.files.length > 0 && (
+            <div className="desktop-only" style={{ fontSize: 12, color: 'var(--text2)', background: 'var(--bg)', padding: '2px 8px', borderRadius: 12, border: '1px solid var(--border)', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 4 }}>
+              <Icon n="camera" s={12} />
+              {section.files.length === 1 ? 'תמונה אחת' : `${section.files.length} תמונות`}
+            </div>
           )}
+          
+          {section.files.length === 0 && (
+            <button
+              onClick={() => setEmptySections(prev => prev.filter(s => s.id !== key))}
+              className="desktop-only"
+              style={{ background: 'transparent', border: '1px solid var(--danger)', color: 'var(--danger)', borderRadius: 6, padding: '6px 10px', fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}
+            >
+              <Icon n="trash" s={14} /> מחק קבוצה
+            </button>
+          )}
+
+          <button
+            onClick={() => toggleSection(key)}
+            style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, padding: '6px', cursor: 'pointer', color: 'var(--text2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+          >
+            <div style={{ transform: isExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', display: 'flex' }}>
+              <Icon n="chevron-down" s={18} />
+            </div>
+          </button>
         </div>
-        <div style={{ fontSize: 11, color: 'var(--text3)', minHeight: 14, marginTop: -8, paddingInlineStart: 30 }}>
+        
+        <div style={{ fontSize: 11, color: 'var(--text3)', minHeight: 14, marginTop: -8, paddingInlineStart: 26 }}>
           {savingNote === key ? 'שומר הערה...' : ''}
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12, paddingInlineStart: 30 }}>
-          {section.files.map(file => {
-             const saved = Math.max(0, file.originalSize - file.storedSize);
-             return (
-               <div key={file.id} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '8px', background: 'var(--surface)', display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ fontSize: 12, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }} title={file.originalName}>
-                      {file.originalName}
-                    </div>
-                    <input type="checkbox" checked={selectedImages.has(file.id)} onChange={(e) => {
-                      const next = new Set(selectedImages);
-                      if (e.target.checked) next.add(file.id);
-                      else next.delete(file.id);
-                      setSelectedImages(next);
-                    }} style={{ width: 14, height: 14, cursor: 'pointer' }} />
-                  </div>
-                  <div style={{ fontSize: 11, color: 'var(--text3)' }}>
-                    {formatBytes(file.originalSize)}
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--border)', paddingTop: 6, marginTop: 2 }}>
-                     <button onClick={() => void handlePreview(file)} disabled={pendingPreview === file.id || !file.url} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text2)' }}>
-                       {pendingPreview === file.id ? <Icon n="loader" s={14} className="spin" /> : <Icon n="eye" s={14} />}
-                     </button>
-                     <button onClick={() => void handleDownload(file)} disabled={pendingDownload === file.id || !file.url} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text2)' }}>
-                       <Icon n="download" s={14} />
-                     </button>
-                     <button onClick={() => setFileToDelete({ id: file.id, name: file.originalName })} disabled={pendingDelete === file.id} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--danger)' }}>
-                       <Icon n="trash" s={14} />
-                     </button>
-                  </div>
-               </div>
-             );
-          })}
-
-          {!isFull && (
-            <div style={{
-                display: 'flex', flexDirection: 'column', alignItems: 'stretch', justifyContent: 'center',
-                gap: 8, color: 'var(--text2)', minHeight: 90
-            }}>
-               <Btn variant="outline" size="sm" style={{ display: 'flex', justifyContent: 'center', gap: 6 }} onClick={() => handlePick(key)} disabled={uploading || atCap}>
-                 <Icon n="upload-cloud" s={14} /> העלה תמונה
-               </Btn>
-               <Btn variant="outline" size="sm" className="mobile-only" style={{ display: 'flex', justifyContent: 'center', gap: 6 }} onClick={() => handleCamera(key)} disabled={uploading || atCap}>
-                 <Icon n="camera" s={14} /> צלם תמונה
-               </Btn>
+        {!isExpanded && section.files.length > 0 && (
+          <div className="mobile-only" style={{ paddingInlineStart: 26, marginTop: -14, marginBottom: 4 }}>
+            <div style={{ fontSize: 12, color: 'var(--text2)', background: 'var(--bg)', padding: '2px 8px', borderRadius: 12, border: '1px solid var(--border)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              <Icon n="camera" s={12} />
+              {section.files.length === 1 ? 'תמונה אחת' : `${section.files.length} תמונות`}
             </div>
-          )}
-        </div>
+          </div>
+        )}
+
+        {isExpanded && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12, paddingInlineStart: 30, marginTop: 4 }}>
+            {section.files.map(file => {
+               const saved = Math.max(0, file.originalSize - file.storedSize);
+               return (
+                 <div key={file.id} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '8px', background: 'var(--surface)', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }} title={file.originalName}>
+                        {file.originalName}
+                      </div>
+                      <input type="checkbox" checked={selectedImages.has(file.id)} onChange={(e) => {
+                        const next = new Set(selectedImages);
+                        if (e.target.checked) next.add(file.id);
+                        else next.delete(file.id);
+                        setSelectedImages(next);
+                      }} style={{ width: 14, height: 14, cursor: 'pointer' }} />
+                    </div>
+                    <div style={{ fontSize: 11, color: 'var(--text3)' }}>
+                      {formatBytes(file.originalSize)}
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--border)', paddingTop: 6, marginTop: 2 }}>
+                       <button onClick={() => void handlePreview(file)} disabled={pendingPreview === file.id || !file.url} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text2)' }}>
+                         {pendingPreview === file.id ? <Icon n="loader" s={14} className="spin" /> : <Icon n="eye" s={14} />}
+                       </button>
+                       <button onClick={() => void handleDownload(file)} disabled={pendingDownload === file.id || !file.url} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text2)' }}>
+                         <Icon n="download" s={14} />
+                       </button>
+                       <button onClick={() => setFileToDelete({ id: file.id, name: file.originalName })} disabled={pendingDelete === file.id} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--danger)' }}>
+                         <Icon n="trash" s={14} />
+                       </button>
+                    </div>
+                 </div>
+               );
+            })}
+
+            {!isFull && (
+              <div style={{
+                  display: 'flex', flexDirection: 'column', alignItems: 'stretch', justifyContent: 'center',
+                  gap: 8, color: 'var(--text2)', minHeight: 90
+              }}>
+                 <Btn variant="outline" size="sm" style={{ display: 'flex', justifyContent: 'center', gap: 6 }} onClick={() => handlePick(key)} disabled={uploading || atCap}>
+                   <Icon n="upload-cloud" s={14} /> העלה תמונה
+                 </Btn>
+                 <Btn variant="outline" size="sm" className="mobile-only" style={{ display: 'flex', justifyContent: 'center', gap: 6 }} onClick={() => handleCamera(key)} disabled={uploading || atCap}>
+                   <Icon n="camera" s={14} /> צלם תמונה
+                 </Btn>
+                 {section.files.length === 0 && (
+                   <Btn variant="ghost" size="sm" className="mobile-only" style={{ color: 'var(--danger)', borderColor: 'var(--danger)', display: 'flex', justifyContent: 'center', gap: 6, marginTop: 4 }} onClick={() => setEmptySections(prev => prev.filter(s => s.id !== key))}>
+                     <Icon n="trash" s={14} /> מחק קבוצה
+                   </Btn>
+                 )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     );
   };
@@ -672,7 +717,7 @@ export const PersonalFilesScreen = () => {
                       <div style={{ fontSize: 14, color: 'var(--text2)' }}>סמן תמונות כדי להפיק דוח מרוכז</div>
                       <div style={{ display: 'flex', gap: 8 }}>
                         <Btn size="sm" variant="outline" onClick={() => setEmptySections(prev => [{ id: crypto.randomUUID(), note: '' }, ...prev])}>
-                          <Icon n="plus" s={14} /> הוסף סקשן חדש
+                          <Icon n="plus" s={14} /> הוסף קבוצה חדשה
                         </Btn>
                         <Btn size="sm" variant="primary" disabled={selectedImages.size === 0 || isGeneratingPdf} onClick={handleGeneratePDF}>
                           {isGeneratingPdf ? 'מייצר PDF...' : `הפק דוח תמונות PDF (${selectedImages.size})`}
