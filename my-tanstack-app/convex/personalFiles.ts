@@ -3,7 +3,7 @@ import { v } from 'convex/values';
 import { getAuthUserId } from '@convex-dev/auth/server';
 import type { MutationCtx, QueryCtx } from './_generated/server';
 
-const MAX_FILES_PER_OWNER = 20;
+const MAX_FILES_PER_OWNER = 30;
 
 const requireOwner = async (ctx: QueryCtx | MutationCtx) => {
   const userId = await getAuthUserId(ctx);
@@ -41,10 +41,11 @@ export const createPersonalFile = mutation({
     originalMimeType: v.string(),
     originalSize: v.number(),
     storedSize: v.number(),
+    sectionId: v.optional(v.string()),
+    note: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const { userId } = await requireOwner(ctx);
-
 
     const existing = await ctx.db
       .query('personalFiles')
@@ -69,7 +70,8 @@ export const createPersonalFile = mutation({
       originalMimeType: args.originalMimeType,
       originalSize: args.originalSize,
       storedSize: args.storedSize,
-      note: '',
+      sectionId: args.sectionId,
+      note: args.note ?? '',
       uploadedAt: Date.now(),
     });
   },
@@ -109,6 +111,25 @@ export const updatePersonalFileNote = mutation({
       throw new Error('Cannot edit a note on a file you do not own');
     }
     await ctx.db.patch(args.fileId, { note: args.note });
+  },
+});
+
+export const updatePersonalFilesNote = mutation({
+  args: {
+    fileIds: v.array(v.id('personalFiles')),
+    note: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const { userId } = await requireOwner(ctx);
+    
+    await Promise.all(
+      args.fileIds.map(async (fileId) => {
+        const file = await ctx.db.get(fileId);
+        if (file && file.ownerUserId === userId) {
+          await ctx.db.patch(fileId, { note: args.note });
+        }
+      })
+    );
   },
 });
 

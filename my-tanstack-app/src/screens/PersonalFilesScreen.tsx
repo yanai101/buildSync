@@ -13,7 +13,7 @@ import { useSubscription } from '../hooks/useSubscription';
 import { PremiumLock, Modal, ConfirmDialog } from '../components/Shared';
 import { ImageGalleryViewer } from '../components/ImageGalleryViewer';
 
-const MAX_FILES = 20;
+const MAX_FILES = 30;
 
 const formatBytes = (bytes: number): string => {
   if (bytes < 1024) return `${bytes} B`;
@@ -46,12 +46,14 @@ export const PersonalFilesScreen = () => {
     allowed ? {} : 'skip',
   );
   const updateNote = useMutation(api.personalFiles.updatePersonalFileNote);
+  const updateFilesNote = useMutation(api.personalFiles.updatePersonalFilesNote);
   const deleteFile = useMutation(api.personalFiles.deletePersonalFile);
   const uploadFile = usePersonalFileUploader();
   const { notify, permission, requestPermission, messages, dismiss } = useAppNotify();
 
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const cameraInputRef = React.useRef<HTMLInputElement>(null);
+  const targetSectionRef = React.useRef<string | null>(null);
   
   const [uploading, setUploading] = React.useState(false);
   const [pendingDelete, setPendingDelete] = React.useState<string | null>(null);
@@ -62,6 +64,8 @@ export const PersonalFilesScreen = () => {
   const [noteDrafts, setNoteDrafts] = React.useState<Record<string, string>>({});
   const [savingNote, setSavingNote] = React.useState<string | null>(null);
   const noteTimers = React.useRef<Record<string, number>>({});
+  
+  const [emptySections, setEmptySections] = React.useState<{id: string, note: string}[]>([]);
   
   const [previewFile, setPreviewFile] = React.useState<{url: string, name: string, isImage: boolean} | null>(null);
   const [selectedImages, setSelectedImages] = React.useState<Set<string>>(new Set());
@@ -75,13 +79,15 @@ export const PersonalFilesScreen = () => {
   
   const atCap = fileList.length >= MAX_FILES;
 
-  const handlePick = () => {
+  const handlePick = (sectionId?: string) => {
     if (atCap || uploading) return;
+    targetSectionRef.current = sectionId || null;
     fileInputRef.current?.click();
   };
 
-  const handleCamera = () => {
+  const handleCamera = (sectionId?: string) => {
     if (atCap || uploading) return;
+    targetSectionRef.current = sectionId || null;
     cameraInputRef.current?.click();
   };
 
@@ -90,8 +96,19 @@ export const PersonalFilesScreen = () => {
     e.target.value = '';
     if (!file) return;
     setUploading(true);
+    
+    const targetSection = targetSectionRef.current;
+    const isImage = file.type.startsWith('image/');
+    
     try {
-      const result = await uploadFile(file);
+      const draftedNote = targetSection ? (noteDrafts[targetSection] ?? emptySections.find(s => s.id === targetSection)?.note) : '';
+      
+      const result = await uploadFile(file, isImage && targetSection ? targetSection : undefined, isImage && draftedNote ? draftedNote : undefined);
+      
+      if (targetSection && emptySections.some(s => s.id === targetSection)) {
+        setEmptySections(prev => prev.filter(s => s.id !== targetSection));
+      }
+
       const saved = Math.max(0, file.size - result.storedSize);
       const pct = file.size > 0 ? Math.round((saved / file.size) * 100) : 0;
       await notify({
@@ -107,6 +124,7 @@ export const PersonalFilesScreen = () => {
       });
     } finally {
       setUploading(false);
+      targetSectionRef.current = null;
     }
   };
 
@@ -127,6 +145,29 @@ export const PersonalFilesScreen = () => {
         });
       } finally {
         setSavingNote((cur) => (cur === key ? null : cur));
+      }
+    }, 600);
+  };
+
+  const handleSectionNoteChange = (sectionId: string, value: string, sectionFiles: typeof imageFiles) => {
+    setNoteDrafts((prev) => ({ ...prev, [sectionId]: value }));
+    
+    if (sectionFiles.length === 0) {
+      setEmptySections(prev => prev.map(s => s.id === sectionId ? { ...s, note: value } : s));
+      return;
+    }
+
+    const existing = noteTimers.current[sectionId];
+    if (existing) window.clearTimeout(existing);
+    noteTimers.current[sectionId] = window.setTimeout(async () => {
+      setSavingNote(sectionId);
+      try {
+        const fileIds = sectionFiles.map(f => f.id);
+        await updateFilesNote({ fileIds, note: value });
+      } catch (err) {
+        await notify({ title: 'שמירת ההערה נכשלה', body: err instanceof Error ? err.message : 'אירעה שגיאה', kind: 'error' });
+      } finally {
+        setSavingNote((cur) => (cur === sectionId ? null : cur));
       }
     }, 600);
   };
@@ -170,7 +211,8 @@ export const PersonalFilesScreen = () => {
     try {
       const items = await Promise.all(imageFiles.map(async (f) => {
          const objectUrl = await fetchAndDecompress(f);
-         const note = noteDrafts[f.id] ?? f.note ?? '';
+         const sectionId = f.sectionId || `legacy-${f.id}`;
+         const note = noteDrafts[sectionId] ?? f.note ?? '';
          return { url: objectUrl, title: f.originalName, description: note };
       }));
       setViewGallery({ images: items, initialIndex: startIndex });
@@ -209,11 +251,20 @@ export const PersonalFilesScreen = () => {
     setIsGeneratingPdf(true);
     try {
       const filesToExport = imageFiles.filter(f => selectedImages.has(f.id));
-      const items = await Promise.all(filesToExport.map(async (f) => {
+      
+      // Group by section for the PDF
+      const pdfSections = new Map<string, { note: string, items: { url: string, name: string }[] }>();
+      
+      for (const f of filesToExport) {
          const url = await fetchAndDecompress(f);
-         const note = noteDrafts[f.id] ?? f.note ?? '';
-         return { url, note, name: f.originalName };
-      }));
+         const sectionId = f.sectionId || `legacy-${f.id}`;
+         const note = noteDrafts[sectionId] ?? f.note ?? '';
+         
+         if (!pdfSections.has(sectionId)) {
+           pdfSections.set(sectionId, { note, items: [] });
+         }
+         pdfSections.get(sectionId)!.items.push({ url, name: f.originalName });
+      }
 
       const container = document.createElement('div');
       container.style.padding = '20px';
@@ -233,7 +284,6 @@ export const PersonalFilesScreen = () => {
       logoImg.style.height = '64px';
       logoImg.style.objectFit = 'contain';
 
-      // Wait for logo to load so html2canvas captures it
       await new Promise((resolve) => {
         logoImg.onload = resolve;
         logoImg.onerror = resolve;
@@ -243,7 +293,7 @@ export const PersonalFilesScreen = () => {
       appName.innerText = 'BuildSync';
       appName.style.fontSize = '32px';
       appName.style.fontWeight = '800';
-      appName.style.color = '#F59E0B'; // Accent color
+      appName.style.color = '#F59E0B';
       appName.style.letterSpacing = '-0.5px';
 
       headerContainer.appendChild(appName);
@@ -264,36 +314,48 @@ export const PersonalFilesScreen = () => {
       title.style.color = '#333';
       container.appendChild(title);
 
-      items.forEach((item, idx) => {
-         const itemDiv = document.createElement('div');
-         itemDiv.style.marginBottom = '20px';
-         itemDiv.style.pageBreakInside = 'avoid';
+      const sectionEntries = Array.from(pdfSections.values());
+      
+      sectionEntries.forEach((section, idx) => {
+         const sectionDiv = document.createElement('div');
+         sectionDiv.style.marginBottom = '30px';
+         sectionDiv.style.pageBreakInside = 'avoid';
          
-         const img = document.createElement('img');
-         img.src = item.url;
-         img.style.maxWidth = '100%';
-         img.style.maxHeight = '700px';
-         img.style.display = 'block';
-         img.style.margin = '0 auto';
-         img.style.borderRadius = '8px';
+         if (section.note) {
+           const noteEl = document.createElement('h3');
+           noteEl.innerText = section.note;
+           noteEl.style.fontSize = '18px';
+           noteEl.style.color = '#333';
+           noteEl.style.marginBottom = '16px';
+           noteEl.style.borderBottom = '2px solid var(--accent)';
+           noteEl.style.display = 'inline-block';
+           sectionDiv.appendChild(noteEl);
+         }
          
-         const noteEl = document.createElement('p');
-         noteEl.innerText = item.note || '(ללא הערה)';
-         noteEl.style.fontSize = '16px';
-         noteEl.style.marginTop = '15px';
-         noteEl.style.color = '#333';
-         noteEl.style.textAlign = 'center';
-         noteEl.style.whiteSpace = 'pre-wrap';
+         const grid = document.createElement('div');
+         grid.style.display = 'flex';
+         grid.style.flexWrap = 'wrap';
+         grid.style.gap = '12px';
+         grid.style.justifyContent = 'flex-start'; // Align from the right (RTL)
          
-         itemDiv.appendChild(img);
-         itemDiv.appendChild(noteEl);
-         container.appendChild(itemDiv);
+         section.items.forEach(item => {
+           const img = document.createElement('img');
+           img.src = item.url;
+           img.style.width = 'calc(50% - 6px)'; // Always exactly half width minus half gap
+           img.style.height = '280px'; // Fixed height to ensure consistent layout
+           img.style.objectFit = 'contain';
+           img.style.borderRadius = '8px';
+           grid.appendChild(img);
+         });
+         
+         sectionDiv.appendChild(grid);
+         container.appendChild(sectionDiv);
 
-         if (idx < items.length - 1) {
+         if (idx < sectionEntries.length - 1) {
              const hr = document.createElement('hr');
              hr.style.border = 'none';
              hr.style.borderTop = '2px solid #ddd';
-             hr.style.margin = '40px 0';
+             hr.style.margin = '30px 0';
              container.appendChild(hr);
          }
       });
@@ -307,7 +369,9 @@ export const PersonalFilesScreen = () => {
          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
       }).save();
 
-      items.forEach(item => URL.revokeObjectURL(item.url));
+      for (const section of sectionEntries) {
+        section.items.forEach(item => URL.revokeObjectURL(item.url));
+      }
       
       await notify({ title: 'הדוח הופק בהצלחה', kind: 'success' });
     } catch (err) {
@@ -320,6 +384,20 @@ export const PersonalFilesScreen = () => {
   const handleDelete = async (fileId: Id<'personalFiles'>, name: string) => {
     setPendingDelete(String(fileId));
     try {
+      const fileToDeleteRef = imageFiles.find(f => f.id === fileId);
+      if (fileToDeleteRef) {
+        const sectionId = fileToDeleteRef.sectionId || `legacy-${fileId}`;
+        const imagesInSection = imageFiles.filter(f => (f.sectionId || `legacy-${f.id}`) === sectionId);
+        
+        if (imagesInSection.length === 1) {
+          const note = noteDrafts[sectionId] ?? fileToDeleteRef.note ?? '';
+          setEmptySections(prev => {
+             if (prev.some(s => s.id === sectionId)) return prev;
+             return [{ id: sectionId, note }, ...prev];
+          });
+        }
+      }
+
       await deleteFile({ fileId });
       setSelectedImages(prev => {
         const next = new Set(prev);
@@ -342,7 +420,7 @@ export const PersonalFilesScreen = () => {
   if (identity === undefined || roleLoading) return <AccessLoading />;
   if (!allowed) return <AccessDenied message="המסמכים האישיים זמינים ליזם הפרויקט בלבד." />;
 
-  const renderFileCard = (file: NonNullable<typeof files>[number], isImage: boolean) => {
+  const renderDocCard = (file: NonNullable<typeof files>[number]) => {
     const key = String(file.id);
     const noteValue = noteDrafts[key] ?? file.note ?? '';
     const saved = Math.max(0, file.originalSize - file.storedSize);
@@ -352,40 +430,14 @@ export const PersonalFilesScreen = () => {
       <div
         key={key}
         style={{
-          border: '1px solid var(--border)',
-          borderRadius: 10,
-          padding: '12px 14px',
-          background: '#fff',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 10,
+          border: '1px solid var(--border)', borderRadius: 10, padding: '12px 14px',
+          background: '#fff', display: 'flex', flexDirection: 'column', gap: 10,
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          {isImage && (
-            <input 
-              type="checkbox" 
-              checked={selectedImages.has(key)}
-              onChange={(e) => {
-                const next = new Set(selectedImages);
-                if (e.target.checked) next.add(key);
-                else next.delete(key);
-                setSelectedImages(next);
-              }}
-              style={{ width: 18, height: 18, cursor: 'pointer' }}
-            />
-          )}
-          <Icon n={isImage ? "image" : "file-text"} s={18} c="var(--text2)" />
+          <Icon n="file-text" s={18} c="var(--text2)" />
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div
-              style={{
-                fontSize: 14,
-                fontWeight: 600,
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-              }}
-            >
+            <div style={{ fontSize: 14, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {file.originalName}
             </div>
             <div style={{ fontSize: 11, color: 'var(--text3)' }}>
@@ -393,40 +445,13 @@ export const PersonalFilesScreen = () => {
               {pct > 0 ? ` · נחסכו ${pct}%` : ''} · הועלה {formatDate(file.uploadedAt)}
             </div>
           </div>
-          <button
-            type="button"
-            onClick={() => void handlePreview(file)}
-            disabled={pendingPreview === key || !file.url}
-            title="צפייה מקדימה"
-            style={{
-              background: 'none', border: 'none', padding: 6, cursor: 'pointer',
-              color: 'var(--text2)', display: 'flex', alignItems: 'center',
-            }}
-          >
+          <button onClick={() => void handlePreview(file)} disabled={pendingPreview === key || !file.url} style={{ background: 'none', border: 'none', padding: 6, cursor: 'pointer', color: 'var(--text2)', display: 'flex', alignItems: 'center' }}>
             {pendingPreview === key ? <Icon n="loader" s={16} className="spin" /> : <Icon n="eye" s={16} />}
           </button>
-          <button
-            type="button"
-            onClick={() => void handleDownload(file)}
-            disabled={pendingDownload === key || !file.url}
-            title="הורד"
-            style={{
-              background: 'none', border: 'none', padding: 6, cursor: 'pointer',
-              color: 'var(--text2)', display: 'flex', alignItems: 'center',
-            }}
-          >
+          <button onClick={() => void handleDownload(file)} disabled={pendingDownload === key || !file.url} style={{ background: 'none', border: 'none', padding: 6, cursor: 'pointer', color: 'var(--text2)', display: 'flex', alignItems: 'center' }}>
             <Icon n="download" s={16} />
           </button>
-          <button
-            type="button"
-            onClick={() => setFileToDelete({ id: file.id, name: file.originalName })}
-            disabled={pendingDelete === key}
-            title="מחק"
-            style={{
-              background: 'none', border: 'none', padding: 6, cursor: 'pointer',
-              color: 'var(--danger)', display: 'flex', alignItems: 'center',
-            }}
-          >
+          <button onClick={() => setFileToDelete({ id: file.id, name: file.originalName })} disabled={pendingDelete === key} style={{ background: 'none', border: 'none', padding: 6, cursor: 'pointer', color: 'var(--danger)', display: 'flex', alignItems: 'center' }}>
             <Icon n="trash" s={16} />
           </button>
         </div>
@@ -436,13 +461,135 @@ export const PersonalFilesScreen = () => {
           placeholder="הוסף הערה לקובץ..."
           onChange={(e) => handleNoteChange(file.id, e.target.value)}
           rows={2}
-          style={{
-            width: '100%', resize: 'vertical', fontFamily: "'Heebo',sans-serif",
-            fontSize: 13, padding: '8px 10px',
-          }}
+          style={{ width: '100%', resize: 'vertical', fontFamily: "'Heebo',sans-serif", fontSize: 13, padding: '8px 10px' }}
         />
         <div style={{ fontSize: 11, color: 'var(--text3)', textAlign: 'left', minHeight: 14 }}>
           {savingNote === key ? 'שומר הערה...' : ''}
+        </div>
+      </div>
+    );
+  };
+
+  const imageSectionsMap = new Map<string, typeof imageFiles>();
+  imageFiles.forEach(f => {
+    const sectionId = f.sectionId || `legacy-${f.id}`;
+    if (!imageSectionsMap.has(sectionId)) {
+      imageSectionsMap.set(sectionId, []);
+    }
+    imageSectionsMap.get(sectionId)!.push(f);
+  });
+
+  const allSections = [
+    ...emptySections.map(s => ({ id: s.id, note: s.note, files: [] as typeof imageFiles })),
+    ...Array.from(imageSectionsMap.entries()).map(([id, files]) => ({
+      id,
+      files,
+      note: files[0]?.note || '',
+    }))
+  ];
+
+  const renderSection = (section: { id: string, note: string, files: typeof imageFiles }) => {
+    const key = section.id;
+    const noteValue = noteDrafts[key] ?? section.note ?? '';
+    const isFull = section.files.length >= 3;
+
+    return (
+      <div
+        key={key}
+        style={{
+          border: '1px solid var(--border)', borderRadius: 10, padding: '16px', background: '#fff',
+          display: 'flex', flexDirection: 'column', gap: 12,
+        }}
+      >
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          <input 
+            type="checkbox" 
+            checked={section.files.length > 0 && section.files.every(f => selectedImages.has(f.id))}
+            ref={input => {
+              if (input) {
+                const some = section.files.some(f => selectedImages.has(f.id));
+                const all = section.files.length > 0 && section.files.every(f => selectedImages.has(f.id));
+                input.indeterminate = some && !all;
+              }
+            }}
+            onChange={(e) => {
+              const next = new Set(selectedImages);
+              if (e.target.checked) section.files.forEach(f => next.add(f.id));
+              else section.files.forEach(f => next.delete(f.id));
+              setSelectedImages(next);
+            }}
+            disabled={section.files.length === 0}
+            style={{ width: 18, height: 18, cursor: section.files.length > 0 ? 'pointer' : 'default' }}
+          />
+          <input
+            className="bp-input"
+            value={noteValue}
+            placeholder="תיאור הסקשן (לדוגמה: סלון - צנרת חשמל)..."
+            onChange={(e) => handleSectionNoteChange(key, e.target.value, section.files)}
+            style={{ flex: 1, fontFamily: "'Heebo',sans-serif", fontSize: 14, fontWeight: 600, padding: '8px 10px' }}
+          />
+          {section.files.length === 0 && (
+            <Btn
+              size="sm"
+              variant="outline"
+              onClick={() => setEmptySections(prev => prev.filter(s => s.id !== key))}
+              style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }}
+            >
+              <Icon n="trash" s={14} /> מחק סקשן
+            </Btn>
+          )}
+        </div>
+        <div style={{ fontSize: 11, color: 'var(--text3)', minHeight: 14, marginTop: -8, paddingInlineStart: 30 }}>
+          {savingNote === key ? 'שומר הערה...' : ''}
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12, paddingInlineStart: 30 }}>
+          {section.files.map(file => {
+             const saved = Math.max(0, file.originalSize - file.storedSize);
+             return (
+               <div key={file.id} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '8px', background: 'var(--surface)', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ fontSize: 12, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }} title={file.originalName}>
+                      {file.originalName}
+                    </div>
+                    <input type="checkbox" checked={selectedImages.has(file.id)} onChange={(e) => {
+                      const next = new Set(selectedImages);
+                      if (e.target.checked) next.add(file.id);
+                      else next.delete(file.id);
+                      setSelectedImages(next);
+                    }} style={{ width: 14, height: 14, cursor: 'pointer' }} />
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--text3)' }}>
+                    {formatBytes(file.originalSize)}
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--border)', paddingTop: 6, marginTop: 2 }}>
+                     <button onClick={() => void handlePreview(file)} disabled={pendingPreview === file.id || !file.url} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text2)' }}>
+                       {pendingPreview === file.id ? <Icon n="loader" s={14} className="spin" /> : <Icon n="eye" s={14} />}
+                     </button>
+                     <button onClick={() => void handleDownload(file)} disabled={pendingDownload === file.id || !file.url} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text2)' }}>
+                       <Icon n="download" s={14} />
+                     </button>
+                     <button onClick={() => setFileToDelete({ id: file.id, name: file.originalName })} disabled={pendingDelete === file.id} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--danger)' }}>
+                       <Icon n="trash" s={14} />
+                     </button>
+                  </div>
+               </div>
+             );
+          })}
+
+          {!isFull && (
+            <div style={{
+                display: 'flex', flexDirection: 'column', alignItems: 'stretch', justifyContent: 'center',
+                gap: 8, color: 'var(--text2)', minHeight: 90
+            }}>
+               <Btn variant="outline" size="sm" style={{ display: 'flex', justifyContent: 'center', gap: 6 }} onClick={() => handlePick(key)} disabled={uploading || atCap}>
+                 <Icon n="upload-cloud" s={14} /> העלה תמונה
+               </Btn>
+               <Btn variant="outline" size="sm" className="mobile-only" style={{ display: 'flex', justifyContent: 'center', gap: 6 }} onClick={() => handleCamera(key)} disabled={uploading || atCap}>
+                 <Icon n="camera" s={14} /> צלם תמונה
+               </Btn>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -472,12 +619,11 @@ export const PersonalFilesScreen = () => {
           <div className="card-header" style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
             <span>המסמכים והתמונות שלך ({fileList.length} / {MAX_FILES})</span>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-              <Btn className="mobile-only" onClick={handleCamera} disabled={uploading || atCap} variant="outline" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Icon n="camera" s={14} /> צלם תמונה
-              </Btn>
-              <Btn onClick={handlePick} disabled={uploading || atCap} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Icon n="upload-cloud" s={14} /> העלה קובץ
-              </Btn>
+              {activeTab === 'docs' && (
+                <Btn onClick={() => handlePick()} disabled={uploading || atCap} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Icon n="file-text" s={14} /> העלה מסמך
+                </Btn>
+              )}
             </div>
           </div>
           
@@ -487,7 +633,7 @@ export const PersonalFilesScreen = () => {
           <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
             {uploading && <div style={{ textAlign: 'center', padding: 12, color: 'var(--text2)' }}>מעלה קובץ, אנא המתן...</div>}
             
-            {fileList.length === 0 && !uploading ? (
+            {fileList.length === 0 && !uploading && emptySections.length === 0 ? (
               <div style={{ fontSize: 13, color: 'var(--text3)', border: '1px dashed var(--border)', borderRadius: 8, padding: 24, textAlign: 'center' }}>
                 עדיין לא הועלו קבצים. תוכל להעלות מסמכים או לצלם תמונות לתיעוד (כגון תשתיות לפני חיפוי).
               </div>
@@ -521,27 +667,32 @@ export const PersonalFilesScreen = () => {
                 </div>
 
                 {activeTab === 'images' && (
-                  imageFiles.length > 0 ? (
-                    <div>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, gap: 12 }}>
-                        <div style={{ fontSize: 14, color: 'var(--text2)' }}>סמן תמונות כדי להפיק דוח מרוכז</div>
+                  <div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, gap: 12 }}>
+                      <div style={{ fontSize: 14, color: 'var(--text2)' }}>סמן תמונות כדי להפיק דוח מרוכז</div>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <Btn size="sm" variant="outline" onClick={() => setEmptySections(prev => [{ id: crypto.randomUUID(), note: '' }, ...prev])}>
+                          <Icon n="plus" s={14} /> הוסף סקשן חדש
+                        </Btn>
                         <Btn size="sm" variant="primary" disabled={selectedImages.size === 0 || isGeneratingPdf} onClick={handleGeneratePDF}>
                           {isGeneratingPdf ? 'מייצר PDF...' : `הפק דוח תמונות PDF (${selectedImages.size})`}
                         </Btn>
                       </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                        {imageFiles.map(f => renderFileCard(f, true))}
-                      </div>
                     </div>
-                  ) : (
-                    <div style={{ textAlign: 'center', padding: 24, color: 'var(--text3)' }}>אין תמונות בכספת.</div>
-                  )
+                    {allSections.length > 0 ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                        {allSections.map(renderSection)}
+                      </div>
+                    ) : (
+                      <div style={{ textAlign: 'center', padding: 24, color: 'var(--text3)' }}>אין תמונות או סקשנים.</div>
+                    )}
+                  </div>
                 )}
                 
                 {activeTab === 'docs' && (
                   docFiles.length > 0 ? (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                      {docFiles.map(f => renderFileCard(f, false))}
+                      {docFiles.map(renderDocCard)}
                     </div>
                   ) : (
                     <div style={{ textAlign: 'center', padding: 24, color: 'var(--text3)' }}>אין מסמכים בכספת.</div>

@@ -19,7 +19,7 @@ export function usePersonalFileUploader() {
   const generateUploadUrl = useMutation(api.personalFiles.generateUploadUrl);
   const createPersonalFile = useMutation(api.personalFiles.createPersonalFile);
 
-  return React.useCallback(async (file: File) => {
+  return React.useCallback(async (file: File, sectionId?: string, note?: string) => {
     let finalFileToUpload: File | Blob = file;
     let finalMimeType = file.type || 'application/octet-stream';
     let originalName = file.name;
@@ -54,6 +54,8 @@ export function usePersonalFileUploader() {
       originalMimeType: finalMimeType,
       originalSize: file.size,
       storedSize: blob.size,
+      sectionId,
+      note,
     });
 
     return {
