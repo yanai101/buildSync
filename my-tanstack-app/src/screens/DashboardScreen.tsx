@@ -31,17 +31,31 @@ export const DashboardScreen = () => {
     api.dashboard.getContractorDashboard,
     role === 'contractor' && projectId ? { projectId } : 'skip'
   );
-  
+
   const [viewFile, setViewFile] = React.useState<{ url: string; name: string } | null>(null);
 
   const { projects, isLoading: projectLoading } = useCurrentProject();
 
+
   if (!projectLoading && projects.length === 0) {
-    return <Navigate to="/projects" />;
+    if (role === 'owner') {
+      return <Navigate to="/projects" />;
+    } else {
+      return (
+        <ScreenBoundary
+          isEmpty={true}
+          emptyTitle="אין גישה לפרויקטים"
+          emptyDesc="עדיין לא שויכת לאף פרויקט במערכת. אנא פנה למנהל הפרויקט כדי שיזמין אותך."
+          emptyIcon="lock"
+        >
+          <div />
+        </ScreenBoundary>
+      );
+    }
   }
 
   if (!dashboard || accessInfo === undefined) {
-    return <ScreenBoundary loading={loading || accessInfo === undefined} error={error} onRetry={refetch}><div/></ScreenBoundary>;
+    return <ScreenBoundary loading={loading || accessInfo === undefined} error={error} onRetry={refetch}><div /></ScreenBoundary>;
   }
 
   const { project, stats, stages, recentActivity, topOverruns, alerts } = dashboard;
@@ -141,7 +155,7 @@ export const DashboardScreen = () => {
                   <span>לוח תשלומים ואבני דרך אישי</span>
                   <span style={{ fontSize: 12, color: 'var(--text3)', fontWeight: 400 }}>שולם: {paidPct.toFixed(0)}% · {fmtMoney(contractor.paid)}</span>
                 </div>
-                
+
                 <div style={{ padding: '16px 18px 0' }}>
                   <div style={{ height: 8, background: 'var(--border)', borderRadius: 4, overflow: 'hidden', display: 'flex' }}>
                     {milestones.map((m) => (
@@ -233,7 +247,7 @@ export const DashboardScreen = () => {
                         </div>
                         <Badge type={s.status} />
                       </div>
-                      
+
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--text2)', marginBottom: 6 }}>
                         <span>התקדמות השלב:</span>
                         <span style={{ fontWeight: 700 }}>{s.progressPct}%</span>
@@ -255,7 +269,7 @@ export const DashboardScreen = () => {
               </div>
             </div>
           </div>
-          
+
           {/* File preview Modal */}
           {viewFile && (
             <Modal title={viewFile.name} onClose={() => setViewFile(null)}>
@@ -279,22 +293,22 @@ export const DashboardScreen = () => {
   return (
     <ScreenBoundary loading={loading} error={error} onRetry={refetch}>
       <div className="page-content">
-        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:24}}>
-          <div style={{display:"flex",alignItems:"center",gap:12}}>
-            <div style={{width:42,height:42,borderRadius:12,background:"var(--accent-light)",color:"var(--accent)",display:"flex",alignItems:"center",justifyContent:"center"}}>
-              <Icon n="home" s={22}/>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ width: 42, height: 42, borderRadius: 12, background: "var(--accent-light)", color: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Icon n="home" s={22} />
             </div>
             <div>
-              <h1 style={{fontSize:22,fontWeight:800,margin:0}}>{project.name}</h1>
-              <div style={{fontSize:13,color:"var(--text3)",marginTop:2}}>{project.address}</div>
+              <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0 }}>{project.name}</h1>
+              <div style={{ fontSize: 13, color: "var(--text3)", marginTop: 2 }}>{project.address}</div>
             </div>
           </div>
           {import.meta.env.DEV && (
-            <div style={{display: 'flex', gap: 8}}>
-              <button onClick={() => seedAlert({ projectId: project._id })} style={{background: 'var(--accent)', color: '#fff', padding: '6px 12px', borderRadius: 8, fontSize: 12, border: 'none', cursor: 'pointer', fontWeight: 'bold'}}>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={() => seedAlert({ projectId: project._id })} style={{ background: 'var(--accent)', color: '#fff', padding: '6px 12px', borderRadius: 8, fontSize: 12, border: 'none', cursor: 'pointer', fontWeight: 'bold' }}>
                 + הוסף התראת טסט
               </button>
-              <button onClick={() => deleteAllAlerts({ projectId: project._id })} style={{background: 'var(--danger)', color: '#fff', padding: '6px 12px', borderRadius: 8, fontSize: 12, border: 'none', cursor: 'pointer', fontWeight: 'bold'}}>
+              <button onClick={() => deleteAllAlerts({ projectId: project._id })} style={{ background: 'var(--danger)', color: '#fff', padding: '6px 12px', borderRadius: 8, fontSize: 12, border: 'none', cursor: 'pointer', fontWeight: 'bold' }}>
                 מחק הכל
               </button>
             </div>
@@ -303,7 +317,7 @@ export const DashboardScreen = () => {
 
         {alerts && alerts.length > 0 && (() => {
           const getAlertStyle = (type: string) => {
-            switch(type) {
+            switch (type) {
               case 'danger': return { bg: 'rgba(239, 68, 68, 0.15)', border: 'rgba(239, 68, 68, 0.4)', text: '#EF4444' };
               case 'info': return { bg: 'rgba(59, 130, 246, 0.15)', border: 'rgba(59, 130, 246, 0.4)', text: '#3B82F6' };
               case 'warning':
@@ -313,104 +327,106 @@ export const DashboardScreen = () => {
           const mainStyle = getAlertStyle(alerts[0].type);
 
           return (
-          <div style={{
-            background: mainStyle.bg,
-            border: `1px solid ${mainStyle.border}`,
-            borderRadius: 12,
-            padding: 16,
-            marginBottom: 24,
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 12
-          }}>
-            {!showAllAlerts ? (
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontWeight: 600, color: mainStyle.text }}>
-                  <Icon n="alert" s={20} />
-                  <span>{alerts[0].text}</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: 13, color: 'var(--text2)' }}>
-                  {alerts[0].isDynamic && alerts[0].link && (
-                    <Link to={alerts[0].link} style={{ color: mainStyle.text, fontWeight: 600, textDecoration: 'none', background: 'rgba(255,255,255,0.1)', padding: '4px 10px', borderRadius: 6 }}>
-                      {alerts[0].actionText || 'לטפל'}
-                    </Link>
-                  )}
-                  {!alerts[0].isDynamic && <span>{alerts[0].dateLabel}</span>}
-                  {!alerts[0].isDynamic && (
-                    <button onClick={() => deleteAlert({ alertId: alerts[0].id })} style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer' }} title="מחק התראה">
-                      <Icon n="x" s={16} />
-                    </button>
-                  )}
-                  {alerts.length > 1 && (
-                    <button onClick={() => setShowAllAlerts(true)} style={{ background: 'none', border: 'none', color: mainStyle.text, fontWeight: 700, cursor: 'pointer', textDecoration: 'underline' }}>
-                      ראה הכל ({alerts.length})
-                    </button>
-                  )}
-                </div>
-              </div>
-            ) : (
-              <>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                  <div style={{ fontWeight: 800, color: mainStyle.text, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{
+              background: mainStyle.bg,
+              border: `1px solid ${mainStyle.border}`,
+              borderRadius: 12,
+              padding: 16,
+              marginBottom: 24,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 12
+            }}>
+              {!showAllAlerts ? (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontWeight: 600, color: mainStyle.text }}>
                     <Icon n="alert" s={20} />
-                    <span>כל ההתראות ({alerts.length})</span>
+                    <span>{alerts[0].text}</span>
                   </div>
-                  <button onClick={() => setShowAllAlerts(false)} style={{ background: 'none', border: 'none', color: mainStyle.text, fontWeight: 700, cursor: 'pointer', textDecoration: 'underline', fontSize: 13 }}>
-                    הסתר
-                  </button>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: 13, color: 'var(--text2)' }}>
+                    {alerts[0].isDynamic && alerts[0].link && (
+                      <Link to={alerts[0].link} style={{ color: mainStyle.text, fontWeight: 600, textDecoration: 'none', background: 'rgba(255,255,255,0.1)', padding: '4px 10px', borderRadius: 6 }}>
+                        {alerts[0].actionText || 'לטפל'}
+                      </Link>
+                    )}
+                    {!alerts[0].isDynamic && <span>{alerts[0].dateLabel}</span>}
+                    {!alerts[0].isDynamic && (
+                      <button onClick={() => deleteAlert({ alertId: alerts[0].id })} style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer' }} title="מחק התראה">
+                        <Icon n="x" s={16} />
+                      </button>
+                    )}
+                    {alerts.length > 1 && (
+                      <button onClick={() => setShowAllAlerts(true)} style={{ background: 'none', border: 'none', color: mainStyle.text, fontWeight: 700, cursor: 'pointer', textDecoration: 'underline' }}>
+                        ראה הכל ({alerts.length})
+                      </button>
+                    )}
+                  </div>
                 </div>
-                {alerts.map((alert: any, idx: number) => {
-                  const ast = getAlertStyle(alert.type);
-                  return (
-                  <div key={alert.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderTop: idx > 0 ? `1px solid ${mainStyle.border}` : 'none' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontWeight: 500, color: ast.text }}>
-                      <span style={{width: 8, height: 8, borderRadius: '50%', background: ast.text}}></span>
-                      <span>{alert.text}</span>
+              ) : (
+                <>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                    <div style={{ fontWeight: 800, color: mainStyle.text, display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <Icon n="alert" s={20} />
+                      <span>כל ההתראות ({alerts.length})</span>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: 13, color: 'var(--text2)' }}>
-                      {alert.isDynamic && alert.link && (
-                        <Link to={alert.link} style={{ color: ast.text, fontWeight: 600, textDecoration: 'none', background: 'rgba(255,255,255,0.1)', padding: '4px 10px', borderRadius: 6 }}>
-                          {alert.actionText || 'לטפל'}
-                        </Link>
-                      )}
-                      {!alert.isDynamic && <span>{alert.dateLabel}</span>}
-                      {!alert.isDynamic && (
-                        <button onClick={() => deleteAlert({ alertId: alert.id })} style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer' }} title="מחק התראה">
-                          <Icon n="x" s={16} />
-                        </button>
-                      )}
-                    </div>
+                    <button onClick={() => setShowAllAlerts(false)} style={{ background: 'none', border: 'none', color: mainStyle.text, fontWeight: 700, cursor: 'pointer', textDecoration: 'underline', fontSize: 13 }}>
+                      הסתר
+                    </button>
                   </div>
-                )})}
-              </>
-            )}
-          </div>
-        )})()}
+                  {alerts.map((alert: any, idx: number) => {
+                    const ast = getAlertStyle(alert.type);
+                    return (
+                      <div key={alert.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderTop: idx > 0 ? `1px solid ${mainStyle.border}` : 'none' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontWeight: 500, color: ast.text }}>
+                          <span style={{ width: 8, height: 8, borderRadius: '50%', background: ast.text }}></span>
+                          <span>{alert.text}</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: 13, color: 'var(--text2)' }}>
+                          {alert.isDynamic && alert.link && (
+                            <Link to={alert.link} style={{ color: ast.text, fontWeight: 600, textDecoration: 'none', background: 'rgba(255,255,255,0.1)', padding: '4px 10px', borderRadius: 6 }}>
+                              {alert.actionText || 'לטפל'}
+                            </Link>
+                          )}
+                          {!alert.isDynamic && <span>{alert.dateLabel}</span>}
+                          {!alert.isDynamic && (
+                            <button onClick={() => deleteAlert({ alertId: alert.id })} style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer' }} title="מחק התראה">
+                              <Icon n="x" s={16} />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </>
+              )}
+            </div>
+          )
+        })()}
 
-        {canViewBudget && <BudgetSummaryCards summary={stats} style={{marginBottom:24}} />}
+        {canViewBudget && <BudgetSummaryCards summary={stats} style={{ marginBottom: 24 }} />}
 
-        <div style={{display: "flex", flexWrap: "wrap", gap: 20}}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 20 }}>
           {/* Left col */}
-          <div style={{flex: "1 1 500px", display:"flex",flexDirection:"column",gap:20}}>
+          <div style={{ flex: "1 1 500px", display: "flex", flexDirection: "column", gap: 20 }}>
             {/* Progress */}
             <div className="card">
               <div className="card-header">התקדמות פרויקט</div>
-              <div className="card-body" style={{paddingTop:16}}>
-                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
-                  <span style={{fontSize:13,fontWeight:600}}>סה"כ</span>
-                  <span style={{fontSize:18,fontWeight:800,color:"var(--accent)"}}>{project.progressPct}%</span>
+              <div className="card-body" style={{ paddingTop: 16 }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                  <span style={{ fontSize: 13, fontWeight: 600 }}>סה"כ</span>
+                  <span style={{ fontSize: 18, fontWeight: 800, color: "var(--accent)" }}>{project.progressPct}%</span>
                 </div>
-                <ProgressBar value={project.progressPct} height={10}/>
-                <div style={{marginTop:20,display:"flex",flexDirection:"column",gap:8}}>
-                  {(showAllStages ? stageRows : stageRows.slice(0,4)).map((s: any)=>(
-                    <div key={s.id} style={{display:"flex",alignItems:"center",gap:10}}>
-                      <div style={{width:120,fontSize:12,color:s.status==="active"?"var(--text1)":"var(--text2)",fontWeight:s.status==="active"?600:400,textAlign:"right",flexShrink:0}}>{s.name}</div>
-                      <div style={{flex:1}}><ProgressBar value={s.progressPct} color={s.status==="done"?"var(--success)":s.status==="active"?"var(--accent)":"var(--border)"} height={5}/></div>
-                      <Badge type={s.status}/>
+                <ProgressBar value={project.progressPct} height={10} />
+                <div style={{ marginTop: 20, display: "flex", flexDirection: "column", gap: 8 }}>
+                  {(showAllStages ? stageRows : stageRows.slice(0, 4)).map((s: any) => (
+                    <div key={s.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <div style={{ width: 120, fontSize: 12, color: s.status === "active" ? "var(--text1)" : "var(--text2)", fontWeight: s.status === "active" ? 600 : 400, textAlign: "right", flexShrink: 0 }}>{s.name}</div>
+                      <div style={{ flex: 1 }}><ProgressBar value={s.progressPct} color={s.status === "done" ? "var(--success)" : s.status === "active" ? "var(--accent)" : "var(--border)"} height={5} /></div>
+                      <Badge type={s.status} />
                     </div>
                   ))}
                   {stageRows.length > 0 ? (
-                    <button onClick={()=>setShowAllStages(v=>!v)} style={{background:"none",border:"none",cursor:"pointer",fontSize:12,color:"var(--accent)",fontFamily:"'Heebo',sans-serif",fontWeight:600,padding:"4px 0",textAlign:"center",width:"100%"}}>
+                    <button onClick={() => setShowAllStages(v => !v)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: "var(--accent)", fontFamily: "'Heebo',sans-serif", fontWeight: 600, padding: "4px 0", textAlign: "center", width: "100%" }}>
                       {showAllStages ? "הסתר שלבים ▲" : `הצג את כל השלבים ▼`}
                     </button>
                   ) : null}
@@ -421,54 +437,54 @@ export const DashboardScreen = () => {
             {/* Budget overview */}
             {canViewBudget && (
               <div className="card">
-              <div className="card-header" style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
-                <span>תקציב ותשלומים</span>
-                <span style={{fontSize:12,color:"var(--text3)",fontWeight:400}}>יתרה: {fmtMoney(stats.remainingBudget)}</span>
+                <div className="card-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+                  <span>תקציב ותשלומים</span>
+                  <span style={{ fontSize: 12, color: "var(--text3)", fontWeight: 400 }}>יתרה: {fmtMoney(stats.remainingBudget)}</span>
+                </div>
+                <div className="card-body" style={{ paddingTop: 12 }}>
+                  <div style={{ display: "flex", gap: 16, marginBottom: 16, flexWrap: "wrap" }}>
+                    {[{ label: "תקציב", v: stats.totalBudget, c: "var(--text1)" }, { label: "הוצא", v: stats.totalSpent, c: "var(--accent)" }, { label: "מחויב", v: stats.committed, c: "var(--warning)" }].map(x => (
+                      <div key={x.label} style={{ flex: "1 1 100px" }}>
+                        <div style={{ fontSize: 20, fontWeight: 800, color: x.c }}>{fmtMoney(x.v)}</div>
+                        <div style={{ fontSize: 12, color: "var(--text2)" }}>{x.label}</div>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ height: 12, background: "var(--border)", borderRadius: 6, overflow: "hidden", display: "flex" }}>
+                    <div style={{ width: `${stats.totalBudget ? (stats.totalSpent / stats.totalBudget * 100) : 0}%`, background: "var(--accent)", transition: "width .4s" }} />
+                    <div style={{ width: `${stats.totalBudget ? (stats.committed / stats.totalBudget * 100) : 0}%`, background: "#FDE68A" }} />
+                  </div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 16, marginTop: 8, fontSize: 11, color: "var(--text3)" }}>
+                    <span style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ width: 8, height: 8, borderRadius: 2, background: "var(--accent)", display: "inline-block" }} /> הוצא {stats.totalBudget ? (stats.totalSpent / stats.totalBudget * 100).toFixed(1) : '0.0'}%</span>
+                    <span style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ width: 8, height: 8, borderRadius: 2, background: "#FDE68A", display: "inline-block" }} /> מחויב {stats.totalBudget ? (stats.committed / stats.totalBudget * 100).toFixed(1) : '0.0'}%</span>
+                  </div>
+                </div>
               </div>
-              <div className="card-body" style={{paddingTop:12}}>
-                <div style={{display:"flex",gap:16,marginBottom:16,flexWrap:"wrap"}}>
-                  {[{label:"תקציב",v:stats.totalBudget,c:"var(--text1)"},{label:"הוצא",v:stats.totalSpent,c:"var(--accent)"},{label:"מחויב",v:stats.committed,c:"var(--warning)"}].map(x=>(
-                    <div key={x.label} style={{flex:"1 1 100px"}}>
-                      <div style={{fontSize:20,fontWeight:800,color:x.c}}>{fmtMoney(x.v)}</div>
-                      <div style={{fontSize:12,color:"var(--text2)"}}>{x.label}</div>
-                    </div>
-                  ))}
-                </div>
-                <div style={{height:12,background:"var(--border)",borderRadius:6,overflow:"hidden",display:"flex"}}>
-                  <div style={{width:`${stats.totalBudget ? (stats.totalSpent/stats.totalBudget*100) : 0}%`,background:"var(--accent)",transition:"width .4s"}}/>
-                  <div style={{width:`${stats.totalBudget ? (stats.committed/stats.totalBudget*100) : 0}%`,background:"#FDE68A"}}/>
-                </div>
-                <div style={{display:"flex",flexWrap:"wrap",gap:16,marginTop:8,fontSize:11,color:"var(--text3)"}}>
-                  <span style={{display:"flex",alignItems:"center",gap:4}}><span style={{width:8,height:8,borderRadius:2,background:"var(--accent)",display:"inline-block"}}/> הוצא {stats.totalBudget ? (stats.totalSpent/stats.totalBudget*100).toFixed(1) : '0.0'}%</span>
-                  <span style={{display:"flex",alignItems:"center",gap:4}}><span style={{width:8,height:8,borderRadius:2,background:"#FDE68A",display:"inline-block"}}/> מחויב {stats.totalBudget ? (stats.committed/stats.totalBudget*100).toFixed(1) : '0.0'}%</span>
-                </div>
-              </div>
-            </div>
             )}
 
             {canViewBudget && (
-            <div className="card">
-              <div className="card-header">חריגות מובילות</div>
-              <div className="card-body" style={{paddingTop:12}}>
-                {topOverruns.length > 0 ? topOverruns.map((item: any)=>(
-                  <div key={item.id} style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:"1px solid var(--border)",fontSize:13}}>
-                    <span>{item.name}</span>
-                    <span style={{fontWeight:700,color:"var(--danger)"}}>{fmtMoney(item.overrun)}</span>
-                  </div>
-                )) : (
-                  <div style={{fontSize:13,color:"var(--text3)"}}>אין חריגות תקציב כרגע.</div>
-                )}
+              <div className="card">
+                <div className="card-header">חריגות מובילות</div>
+                <div className="card-body" style={{ paddingTop: 12 }}>
+                  {topOverruns.length > 0 ? topOverruns.map((item: any) => (
+                    <div key={item.id} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid var(--border)", fontSize: 13 }}>
+                      <span>{item.name}</span>
+                      <span style={{ fontWeight: 700, color: "var(--danger)" }}>{fmtMoney(item.overrun)}</span>
+                    </div>
+                  )) : (
+                    <div style={{ fontSize: 13, color: "var(--text3)" }}>אין חריגות תקציב כרגע.</div>
+                  )}
+                </div>
               </div>
-            </div>
             )}
           </div>
 
           {/* Right col */}
-          <div style={{flex: "1 1 340px", display:"flex",flexDirection:"column",gap:20}}>
+          <div style={{ flex: "1 1 340px", display: "flex", flexDirection: "column", gap: 20 }}>
             {/* Project info */}
             <div className="card">
               <div className="card-header">פרטי פרויקט</div>
-              <div className="card-body" style={{paddingTop:12}}>
+              <div className="card-body" style={{ paddingTop: 12 }}>
                 {[
                   ["שם הפרויקט", project.name],
                   ["כתובת", project.address],
@@ -477,10 +493,10 @@ export const DashboardScreen = () => {
                   ["מפקח", project.inspectorName],
                   ["תחילת עבודה", fmtDate(project.startDate)],
                   ["סיום צפוי", fmtDate(project.expectedEnd)]
-                ].map(([k,v])=>(
-                  <div key={k} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:"1px solid var(--border)",fontSize:13}}>
-                    <span style={{color:"var(--text2)"}}>{k}</span>
-                    <span style={{fontWeight:500}}>{v}</span>
+                ].map(([k, v]) => (
+                  <div key={k} style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid var(--border)", fontSize: 13 }}>
+                    <span style={{ color: "var(--text2)" }}>{k}</span>
+                    <span style={{ fontWeight: 500 }}>{v}</span>
                   </div>
                 ))}
               </div>
@@ -490,28 +506,28 @@ export const DashboardScreen = () => {
             <div className="card">
               <div className="card-header">פעילות אחרונה</div>
               <motion.div
-                style={{padding:"0 0 4px"}}
+                style={{ padding: "0 0 4px" }}
                 variants={{ show: { transition: { staggerChildren: 0.08 } } }}
                 initial="hidden"
                 animate="show"
               >
-                {recentActivity.map((a: any,i: number)=>(
+                {recentActivity.map((a: any, i: number) => (
                   <motion.div
                     key={a.id}
-                    variants={{ hidden:{opacity:0,x:16}, show:{opacity:1,x:0,transition:{type:"spring",stiffness:280,damping:24}} }}
-                    style={{display:"flex",gap:12,padding:"12px 20px",borderBottom:i<recentActivity.length-1?"1px solid var(--border)":"none",cursor:"pointer"}}
-                    whileHover={{background:"#FAFAF9"}}
+                    variants={{ hidden: { opacity: 0, x: 16 }, show: { opacity: 1, x: 0, transition: { type: "spring", stiffness: 280, damping: 24 } } }}
+                    style={{ display: "flex", gap: 12, padding: "12px 20px", borderBottom: i < recentActivity.length - 1 ? "1px solid var(--border)" : "none", cursor: "pointer" }}
+                    whileHover={{ background: "#FAFAF9" }}
                   >
-                    <Avatar letter={a.actorName[0]} color={rc[a.role as keyof typeof rc]} size={32}/>
-                    <div style={{flex:1,minWidth:0}}>
-                      <div style={{fontSize:13,fontWeight:700,color:"var(--text1)"}}>{a.actorName}</div>
-                      <div style={{fontSize:13,color:"var(--text2)",marginTop:3,lineHeight:1.4}}>{a.text}</div>
-                      <div style={{fontSize:11,color:"var(--text3)",marginTop:4}}>{new Date(a.createdAt).toLocaleString('he-IL')}</div>
+                    <Avatar letter={a.actorName[0]} color={rc[a.role as keyof typeof rc]} size={32} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text1)" }}>{a.actorName}</div>
+                      <div style={{ fontSize: 13, color: "var(--text2)", marginTop: 3, lineHeight: 1.4 }}>{a.text}</div>
+                      <div style={{ fontSize: 11, color: "var(--text3)", marginTop: 4 }}>{new Date(a.createdAt).toLocaleString('he-IL')}</div>
                     </div>
                   </motion.div>
                 ))}
                 {recentActivity.length === 0 ? (
-                  <div style={{padding:"16px 20px",fontSize:13,color:"var(--text3)"}}>אין פעילות אחרונה להצגה.</div>
+                  <div style={{ padding: "16px 20px", fontSize: 13, color: "var(--text3)" }}>אין פעילות אחרונה להצגה.</div>
                 ) : null}
               </motion.div>
             </div>

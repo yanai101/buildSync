@@ -46,6 +46,8 @@ import type * as seed from "../seed.js";
 import type * as stages from "../stages.js";
 import type * as superAdmin from "../superAdmin.js";
 import type * as support from "../support.js";
+import type * as testUser from "../testUser.js";
+import type * as testUsers from "../testUsers.js";
 import type * as timeline from "../timeline.js";
 import type * as users from "../users.js";
 import type * as zodSchemas from "../zodSchemas.js";
@@ -95,6 +97,8 @@ declare const fullApi: ApiFromModules<{
   stages: typeof stages;
   superAdmin: typeof superAdmin;
   support: typeof support;
+  testUser: typeof testUser;
+  testUsers: typeof testUsers;
   timeline: typeof timeline;
   users: typeof users;
   zodSchemas: typeof zodSchemas;

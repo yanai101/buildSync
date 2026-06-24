@@ -44,9 +44,15 @@ export const Route = createRootRoute({
 
 import { ProjectProvider } from '~/hooks/useCurrentProject'
 import { usePushSubscriptionSync } from '~/hooks/usePushNotifications'
+import { usePendingInviteRedeem } from '~/hooks/usePendingInviteRedeem'
 
 function PushSubscriptionSync() {
   usePushSubscriptionSync()
+  return null
+}
+
+function PendingInviteRedeem() {
+  usePendingInviteRedeem()
   return null
 }
 
@@ -72,6 +78,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <div id="root">
           <ConvexAuthProvider client={convex} storage={storage} storageNamespace="buildsync-auth">
             <PushSubscriptionSync />
+            <PendingInviteRedeem />
             <ProjectProvider>
               <AppLayout>
                 {children}

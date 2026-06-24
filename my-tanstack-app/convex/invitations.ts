@@ -3,7 +3,8 @@ import { v } from 'convex/values';
 import { createAccount, getAuthUserId } from '@convex-dev/auth/server';
 import { internal } from './_generated/api';
 import { requireProjectOwner } from './_lib/projectAccess';
-import type { Doc, Id } from './_generated/dataModel';
+import { scheduleUserNotifications } from './notifications';
+import type { Doc } from './_generated/dataModel';
 
 const INVITE_TTL_MS = 14 * 24 * 60 * 60 * 1000;
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no 0/O/1/I to avoid confusion
@@ -271,7 +272,10 @@ export const redeemInvitation = action({
     if (inv.revokedAt) throw new Error('ההזמנה בוטלה');
     if (inv.expiresAt <= Date.now()) throw new Error('ההזמנה פגה');
 
-    const created = await createAccount(ctx, {
+    // Create the account but do NOT consume the invite yet.
+    // Consumption + membership happen via redeemInvitationExistingUser once
+    // the user is authenticated (after email verification if required).
+    await createAccount(ctx, {
       provider: 'password',
       account: { id: args.email, secret: args.password },
       profile: {
@@ -280,14 +284,6 @@ export const redeemInvitation = action({
         role: inv.role,
         ...(args.phone ? { phone: args.phone } : {}),
       },
-    });
-
-    const newUserId = created.user._id as Id<'users'>;
-
-    await ctx.runMutation(internal.invitations._completeRedemption, {
-      invitationId: inv._id,
-      newUserId,
-      name: args.name,
     });
 
     return { ok: true as const };
@@ -416,6 +412,24 @@ export const redeemInvitationExistingUser = mutation({
       });
     } catch (e) {
       throw new Error(`שגיאה בעדכון ההזמנה: ${e instanceof Error ? e.message : 'שגיאה לא ידועה'}`);
+    }
+
+    // Notify the project owner that someone joined
+    const project = await ctx.db.get(inv.projectId);
+    if (project?.ownerUserId && project.ownerUserId !== userId) {
+      const roleLabel: Record<string, string> = {
+        manager: 'מנהל עבודה',
+        inspector: 'מפקח',
+        contractor: 'קבלן',
+      };
+      const joinerName = user.name || user.email || 'משתמש חדש';
+      await scheduleUserNotifications(ctx, {
+        userIds: [project.ownerUserId],
+        title: `${joinerName} הצטרף לפרויקט`,
+        body: `${joinerName} קיבל את ההזמנה והצטרף כ${roleLabel[inv.role] ?? inv.role} לפרויקט "${project.name ?? ''}"`,
+        url: '/dashboard',
+        tag: `join-${inv.projectId}`,
+      });
     }
 
     return { ok: true };

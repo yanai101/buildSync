@@ -32,6 +32,9 @@ const BlueprintBg = () => {
   // deterministic lit-window helper
   const lit = (col: number, row: number) => (col * 7 + row * 13) % 19 > 9;
 
+  // Round SVG coordinates to avoid SSR/client floating-point divergence
+  const n = (v: number) => Math.round(v * 1e4) / 1e4;
+
   // gear tooth path (star polygon) centered at 0,0
   const gearPath = (teeth: number, outer: number, inner: number) => {
     const pts: string[] = [];
@@ -208,8 +211,8 @@ const BlueprintBg = () => {
           <circle cx="0" cy="0" r="26" fill="none" stroke="#4A9EDB" strokeWidth="2.5" opacity="0.35"/>
           {[0,60,120,180,240,300].map(deg=>(
             <line key={deg}
-              x1={Math.cos(deg*Math.PI/180)*28} y1={Math.sin(deg*Math.PI/180)*28}
-              x2={Math.cos(deg*Math.PI/180)*56} y2={Math.sin(deg*Math.PI/180)*56}
+              x1={n(Math.cos(deg*Math.PI/180)*28)} y1={n(Math.sin(deg*Math.PI/180)*28)}
+              x2={n(Math.cos(deg*Math.PI/180)*56)} y2={n(Math.sin(deg*Math.PI/180)*56)}
               stroke="#4A9EDB" strokeWidth="9" strokeLinecap="round" opacity="0.3"/>
           ))}
         </g>
@@ -220,8 +223,8 @@ const BlueprintBg = () => {
           <circle cx="0" cy="0" r="16" fill="none" stroke="#E07A38" strokeWidth="2" opacity="0.25"/>
           {[0,72,144,216,288].map(deg=>(
             <line key={deg}
-              x1={Math.cos(deg*Math.PI/180)*18} y1={Math.sin(deg*Math.PI/180)*18}
-              x2={Math.cos(deg*Math.PI/180)*32} y2={Math.sin(deg*Math.PI/180)*32}
+              x1={n(Math.cos(deg*Math.PI/180)*18)} y1={n(Math.sin(deg*Math.PI/180)*18)}
+              x2={n(Math.cos(deg*Math.PI/180)*32)} y2={n(Math.sin(deg*Math.PI/180)*32)}
               stroke="#E07A38" strokeWidth="6" strokeLinecap="round" opacity="0.22"/>
           ))}
         </g>
@@ -232,8 +235,8 @@ const BlueprintBg = () => {
           <circle cx="0" cy="0" r="18" fill="none" stroke="#4A9EDB" strokeWidth="2" opacity="0.2"/>
           {[0,90,180,270].map(deg=>(
             <line key={deg}
-              x1={Math.cos(deg*Math.PI/180)*20} y1={Math.sin(deg*Math.PI/180)*20}
-              x2={Math.cos(deg*Math.PI/180)*36} y2={Math.sin(deg*Math.PI/180)*36}
+              x1={n(Math.cos(deg*Math.PI/180)*20)} y1={n(Math.sin(deg*Math.PI/180)*20)}
+              x2={n(Math.cos(deg*Math.PI/180)*36)} y2={n(Math.sin(deg*Math.PI/180)*36)}
               stroke="#4A9EDB" strokeWidth="7" strokeLinecap="round" opacity="0.18"/>
           ))}
         </g>
@@ -272,6 +275,12 @@ export const JoinScreen = ({ code }: Props) => {
   );
   const currentUser = useQuery(api.users.me);
 
+  // Use server-side auth as the source of truth.
+  // isAuthenticated (client token) can lag — when the server session is stale,
+  // currentUser is null even if isAuthenticated is still true client-side.
+  // currentUser===undefined = still loading; null = server doesn't recognise the session.
+  const isServerAuthed = isAuthenticated && currentUser != null;
+
   const isDifferentUser = !!(
     peek?.invitedEmail &&
     currentUser?.email &&
@@ -281,6 +290,8 @@ export const JoinScreen = ({ code }: Props) => {
   const [form, setForm] = React.useState({ name: '', email: '', phone: '', password: '' });
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [verificationSent, setVerificationSent] = React.useState(false);
+  const [isGoogleAccount, setIsGoogleAccount] = React.useState(false);
   const [mounted, setMounted] = React.useState(false);
 
   React.useEffect(() => {
@@ -391,7 +402,7 @@ export const JoinScreen = ({ code }: Props) => {
     setSubmitting(true);
     setError(null);
 
-    if (isAuthenticated) {
+    if (isServerAuthed) {
       try {
         await redeemExisting({ code });
         navigate({ to: '/' });
@@ -408,17 +419,45 @@ export const JoinScreen = ({ code }: Props) => {
         setSubmitting(false);
         return;
       }
+
+      // Step 1: sign in
+      let signInOk = false;
       try {
-        await signIn('password', {
+        const result = await signIn('password', {
           flow: 'signIn',
           email: peek.invitedEmail!.trim().toLowerCase(),
           password: form.password,
         });
-        await redeemExisting({ code });
-        navigate({ to: '/' });
+        // Account needs email verification — lib sent the email, stop here.
+        // Save the code so the root hook can auto-complete the join after verification.
+        if (result && !result.signingIn) {
+          localStorage.setItem('buildsync:pendingJoinCode', code);
+          setVerificationSent(true);
+          setSubmitting(false);
+          return;
+        }
+        signInOk = true;
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'התחברות נכשלה. אנא ודא שהסיסמה נכונה.');
+        const msg = err instanceof Error ? err.message : '';
+        if (msg.includes('InvalidSecret')) {
+          setIsGoogleAccount(true);
+          setError('נראה שנרשמת דרך Google ואין לחשבונך סיסמה. אנא התחבר דרך Google בדף הכניסה, ואז חזור לקישור ההזמנה.');
+        } else {
+          setError('הסיסמה שגויה. אנא בדוק ונסה שוב.');
+        }
         setSubmitting(false);
+        return;
+      }
+
+      // Step 2: redeem (sign-in succeeded)
+      if (signInOk) {
+        try {
+          await redeemExisting({ code });
+          navigate({ to: '/' });
+        } catch (err) {
+          setError(err instanceof Error ? err.message : 'הצטרפות לפרויקט נכשלה');
+          setSubmitting(false);
+        }
       }
       return;
     }
@@ -428,6 +467,8 @@ export const JoinScreen = ({ code }: Props) => {
       setSubmitting(false);
       return;
     }
+
+    // Step 1: Create the account. Invite is NOT consumed here — stays open.
     try {
       await redeem({
         code,
@@ -436,15 +477,44 @@ export const JoinScreen = ({ code }: Props) => {
         password: form.password,
         ...(form.phone ? { phone: form.phone } : {}),
       });
-      await signIn('password', {
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'יצירת החשבון נכשלה');
+      setSubmitting(false);
+      return;
+    }
+
+    // Step 2: Sign in — triggers email verification for unverified accounts.
+    let newSignInOk = false;
+    try {
+      const result = await signIn('password', {
         flow: 'signIn',
         email: form.email,
         password: form.password,
       });
-      navigate({ to: '/' });
+      if (result && !result.signingIn) {
+        // Email verification required — store the code so the root hook can
+        // auto-complete the join once the user clicks the verification link.
+        localStorage.setItem('buildsync:pendingJoinCode', code);
+        setVerificationSent(true);
+        setSubmitting(false);
+        return;
+      }
+      newSignInOk = true;
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'הצטרפות נכשלה');
+      setError(err instanceof Error ? err.message : 'שגיאה בכניסה לחשבון');
       setSubmitting(false);
+      return;
+    }
+
+    // Step 3: Signed in with verified email — consume the invite now.
+    if (newSignInOk) {
+      try {
+        await redeemExisting({ code });
+        navigate({ to: '/' });
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'הצטרפות לפרויקט נכשלה');
+        setSubmitting(false);
+      }
     }
   };
 
@@ -499,7 +569,7 @@ export const JoinScreen = ({ code }: Props) => {
               {peek.projectName}
             </h1>
             <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14, margin: 0, lineHeight: 1.7 }}>
-              {isAuthenticated
+              {isServerAuthed
                 ? 'אתה מחובר למערכת. לחץ על הכפתור כדי להצטרף לפרויקט עכשיו.'
                 : emailExists
                   ? 'ברוך שובך! נראה שיש לך כבר חשבון. הזן סיסמה כדי להתחבר ולהצטרף.'
@@ -515,7 +585,7 @@ export const JoinScreen = ({ code }: Props) => {
           </div>
 
           {/* Form / CTA */}
-          {isAuthenticated ? (
+          {isServerAuthed ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               {isDifferentUser && (
                 <div style={{
@@ -605,20 +675,44 @@ export const JoinScreen = ({ code }: Props) => {
                 />
               </FieldRow>
 
+              {verificationSent && (
+                <div style={{ fontSize: 13, color: '#6ee7b7', background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.25)', borderRadius: 8, padding: '10px 14px', lineHeight: 1.6 }}>
+                  <strong>נדרש אימות דוא"ל</strong><br />
+                  שלחנו קישור אימות לכתובת <strong>{peek.invitedEmail}</strong>.<br />
+                  אמת את כתובת הדוא"ל שלך ואז חזור לקישור ההזמנה הזה.
+                </div>
+              )}
               {error && <ErrorBox msg={error} />}
 
-              <button
-                type="submit"
-                disabled={submitting}
-                style={joinBtnStyle(submitting)}
-              >
-                {submitting ? (
-                  <>
-                    <span style={{ width: 16, height: 16, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.4)', borderTopColor: '#fff', display: 'inline-block', animation: 'spin 0.8s linear infinite' }} />
-                    מתחבר ומצטרף...
-                  </>
-                ) : '🔑  התחבר והצטרף לפרויקט'}
-              </button>
+              {isGoogleAccount ? (
+                <Link
+                  to="/login"
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+                    width: '100%', padding: '15px 24px', boxSizing: 'border-box',
+                    background: 'linear-gradient(135deg, #4285F4 0%, #1a73e8 100%)',
+                    borderRadius: 12, border: 'none', cursor: 'pointer',
+                    color: '#fff', fontSize: 15, fontWeight: 800,
+                    boxShadow: '0 6px 24px rgba(66,133,244,0.35)',
+                    textDecoration: 'none', fontFamily: "'Heebo', sans-serif",
+                  }}
+                >
+                  עבור לדף הכניסה והתחבר דרך Google
+                </Link>
+              ) : !verificationSent && (
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  style={joinBtnStyle(submitting)}
+                >
+                  {submitting ? (
+                    <>
+                      <span style={{ width: 16, height: 16, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.4)', borderTopColor: '#fff', display: 'inline-block', animation: 'spin 0.8s linear infinite' }} />
+                      מתחבר ומצטרף...
+                    </>
+                  ) : '🔑  התחבר והצטרף לפרויקט'}
+                </button>
+              )}
             </form>
           ) : (
             <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -658,25 +752,34 @@ export const JoinScreen = ({ code }: Props) => {
                 />
               </FieldRow>
 
+              {verificationSent && (
+                <div style={{ fontSize: 13, color: '#6ee7b7', background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.25)', borderRadius: 8, padding: '10px 14px', lineHeight: 1.6 }}>
+                  <strong>נדרש אימות דוא"ל</strong><br />
+                  שלחנו קישור אימות לכתובת <strong>{form.email}</strong>.<br />
+                  אמת את כתובת הדוא"ל שלך ואז חזור לקישור ההזמנה הזה.
+                </div>
+              )}
               {error && <ErrorBox msg={error} />}
 
-              <button
-                type="submit"
-                disabled={submitting}
-                style={joinBtnStyle(submitting)}
-              >
-                {submitting ? (
-                  <>
-                    <span style={{ width: 16, height: 16, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.4)', borderTopColor: '#fff', display: 'inline-block', animation: 'spin 0.8s linear infinite' }} />
-                    יוצר חשבון...
-                  </>
-                ) : '🏗️  צור חשבון והצטרף לפרויקט'}
-              </button>
+              {!verificationSent && (
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  style={joinBtnStyle(submitting)}
+                >
+                  {submitting ? (
+                    <>
+                      <span style={{ width: 16, height: 16, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.4)', borderTopColor: '#fff', display: 'inline-block', animation: 'spin 0.8s linear infinite' }} />
+                      יוצר חשבון...
+                    </>
+                  ) : '🏗️  צור חשבון והצטרף לפרויקט'}
+                </button>
+              )}
             </form>
           )}
 
           {/* Footer */}
-          {!isAuthenticated && (
+          {!isServerAuthed && (
             <p style={{ textAlign: 'center', marginTop: 22, fontSize: 13, color: 'rgba(255,255,255,0.35)' }}>
               יש לך כבר חשבון?{' '}
               <Link to="/login" style={{ color: '#E07A38', fontWeight: 700, textDecoration: 'none' }}>
