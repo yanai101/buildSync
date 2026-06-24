@@ -72,6 +72,7 @@ export const PersonalFilesScreen = () => {
   const [activeTab, setActiveTab] = React.useState<'images' | 'docs'>('images');
   const [fileToDelete, setFileToDelete] = React.useState<{id: Id<'personalFiles'>, name: string} | null>(null);
   const [viewGallery, setViewGallery] = React.useState<{ images: {url: string, title?: string, description?: string}[], initialIndex: number } | null>(null);
+  const [expandedSections, setExpandedSections] = React.useState<Set<string>>(new Set());
 
   const fileList = files ?? [];
   const imageFiles = fileList.filter(f => f.originalMimeType?.startsWith('image/'));
@@ -470,7 +471,6 @@ export const PersonalFilesScreen = () => {
     );
   };
 
-  const [expandedSections, setExpandedSections] = React.useState<Set<string>>(new Set());
 
   const toggleSection = (id: string) => {
     setExpandedSections(prev => {
