@@ -1,5 +1,5 @@
 import * as React from 'react';
-// Cache-Buster: 2026-06-24-v2
+console.log('Cache-Buster: 2026-06-24-v3');
 import { motion, AnimatePresence } from 'framer-motion';
 
 // ── BuildSync SHARED COMPONENTS ───────────────────────────────────────────────
