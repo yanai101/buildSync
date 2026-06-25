@@ -1107,19 +1107,40 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       {/* BOTTOM NAV (mobile) */}
       <div className="bottom-nav">
         <div className="bottom-nav-items">
-          {currentBottomNav.map(n => (
-            <Link 
-              key={n.id} 
-              to={n.id} 
-              className="bottom-nav-item"
-              activeProps={{ className: 'active' }}
-              activeOptions={{ exact: true }}
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              <Icon n={n.icon} s={20} />
-              <span>{n.label}</span>
-            </Link>
-          ))}
+          {currentBottomNav.map(n => {
+            const hasUnreadNotes = n.id === '/notes' && unreadNotesCount > 0;
+            return (
+              <Link 
+                key={n.id} 
+                to={n.id} 
+                className="bottom-nav-item"
+                activeProps={{ className: 'active' }}
+                activeOptions={{ exact: true }}
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <div style={{ position: 'relative' }}>
+                  <Icon n={n.icon} s={20} />
+                  {hasUnreadNotes && (
+                    <span 
+                      style={{ 
+                        position: 'absolute', 
+                        top: -4, 
+                        right: -4, 
+                        width: 10, 
+                        height: 10, 
+                        borderRadius: '50%', 
+                        background: 'var(--accent)', 
+                        animation: 'pulse-dot 2s infinite ease-in-out',
+                        border: '2px solid var(--surface)',
+                        boxShadow: '0 0 8px rgba(224, 122, 56, 0.4)'
+                      }} 
+                    />
+                  )}
+                </div>
+                <span>{n.label}</span>
+              </Link>
+            )
+          })}
           <button 
             type="button" 
             className={`bottom-nav-item ${mobileMenuOpen ? 'active' : ''}`} 

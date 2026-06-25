@@ -212,12 +212,14 @@ export const _completeRedemption = internalMutation({
     if (inv.role === 'manager') {
       await ctx.db.patch(inv.projectId, { 
         managerUserId: args.newUserId,
+        managerName: args.name,
         managerCanViewBudget: allowBudgetView,
         managerCanViewSchedule: allowScheduleView,
       });
     } else if (inv.role === 'inspector') {
       await ctx.db.patch(inv.projectId, { 
         inspectorUserId: args.newUserId,
+        inspectorName: args.name,
         inspectorCanViewBudget: allowBudgetView,
         inspectorCanViewSchedule: allowScheduleView,
       });

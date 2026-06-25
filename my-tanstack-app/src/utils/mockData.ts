@@ -265,7 +265,7 @@ export const TOTAL_WEEKS = 58;
 export const fmt = (n) => new Intl.NumberFormat('he-IL').format(Math.round(n));
 export const fmtMoney = (n) => `₪${fmt(n)}`;
 
-export const ROLE_LABELS = {owner:"בעל הבית",manager:"בעל בנייה",inspector:"מפקח",contractor:"קבלן"};
+export const ROLE_LABELS = {owner:"בעל הבית",manager:"מנהל עבודה",inspector:"מפקח",contractor:"קבלן"};
 export const ROLE_COLORS = {owner:"#7B9B8A",manager:"#E07A38",inspector:"#7B8FA1",contractor:"#8B7B5A"};
 
 // ── PRICE QUOTES ────────────────────────────────────────────────────────────

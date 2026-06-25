@@ -28,18 +28,37 @@ export const listMine = query({
       .collect();
     const contractorProjectIds = new Set(userContractorRoles.map(c => c.projectId));
 
-    return allProjects.filter(p => 
+    const filteredProjects = allProjects.filter(p => 
       p.ownerUserId === userId || 
       p.managerUserId === userId || 
       p.inspectorUserId === userId || 
       contractorProjectIds.has(p._id)
-    ).map(p => {
-      let myRole = 'contractor';
-      if (p.ownerUserId === userId) myRole = 'owner';
-      else if (p.managerUserId === userId) myRole = 'manager';
-      else if (p.inspectorUserId === userId) myRole = 'inspector';
-      return { ...p, myRole };
-    }).sort((a, b) => b._creationTime - a._creationTime);
+    );
+
+    const projectsWithRolesAndNames = await Promise.all(
+      filteredProjects.map(async (p) => {
+        let myRole = 'contractor';
+        if (p.ownerUserId === userId) myRole = 'owner';
+        else if (p.managerUserId === userId) myRole = 'manager';
+        else if (p.inspectorUserId === userId) myRole = 'inspector';
+
+        const [ownerDoc, managerDoc, inspectorDoc] = await Promise.all([
+          p.ownerUserId ? ctx.db.get(p.ownerUserId) : null,
+          p.managerUserId ? ctx.db.get(p.managerUserId) : null,
+          p.inspectorUserId ? ctx.db.get(p.inspectorUserId) : null,
+        ]);
+
+        return { 
+          ...p, 
+          myRole,
+          ownerName: ownerDoc?.name || ownerDoc?.email || p.ownerName,
+          managerName: managerDoc?.name || managerDoc?.email || p.managerName,
+          inspectorName: inspectorDoc?.name || inspectorDoc?.email || p.inspectorName,
+        };
+      })
+    );
+
+    return projectsWithRolesAndNames.sort((a, b) => b._creationTime - a._creationTime);
   },
 });
 
