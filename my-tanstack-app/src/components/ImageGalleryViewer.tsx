@@ -9,6 +9,32 @@ export interface GalleryImage {
   description?: string;
 }
 
+const ZoomableSlide = ({ img, index }: { img: GalleryImage; index: number }) => {
+  const [scale, setScale] = useState(1);
+  return (
+    <div className="gallery-slide">
+      <TransformWrapper 
+        initialScale={1}
+        minScale={1}
+        maxScale={8}
+        doubleClick={{ step: 2 }}
+        wheel={{ step: 0.2 }}
+        onTransform={(ref: any) => setScale(ref.state.scale)}
+        panning={{ disabled: scale <= 1 }}
+      >
+        <TransformComponent wrapperStyle={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }} contentStyle={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <img 
+            src={img.url} 
+            alt={img.title || `Image ${index + 1}`} 
+            onClick={(e) => e.stopPropagation()} 
+            style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+          />
+        </TransformComponent>
+      </TransformWrapper>
+    </div>
+  );
+};
+
 interface ImageGalleryViewerProps {
   images: GalleryImage[];
   initialIndex?: number;
@@ -164,24 +190,7 @@ export const ImageGalleryViewer: React.FC<ImageGalleryViewerProps> = ({
           onScroll={handleScroll}
         >
           {images.map((img, index) => (
-            <div key={index} className="gallery-slide">
-              <TransformWrapper 
-                initialScale={1}
-                minScale={1}
-                maxScale={8}
-                doubleClick={{ step: 2 }}
-                wheel={{ step: 0.2 }}
-              >
-                <TransformComponent wrapperStyle={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }} contentStyle={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <img 
-                    src={img.url} 
-                    alt={img.title || `Image ${index + 1}`} 
-                    onClick={(e) => e.stopPropagation()} 
-                    style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
-                  />
-                </TransformComponent>
-              </TransformWrapper>
-            </div>
+            <ZoomableSlide key={index} img={img} index={index} />
           ))}
         </div>
 
