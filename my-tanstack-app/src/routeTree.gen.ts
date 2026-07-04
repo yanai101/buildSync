@@ -18,6 +18,7 @@ import { Route as SetupRouteImport } from './routes/setup'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as QuotesRouteImport } from './routes/quotes'
 import { Route as ProjectsRouteImport } from './routes/projects'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as PhotosRouteImport } from './routes/photos'
 import { Route as PersonalFilesRouteImport } from './routes/personal-files'
 import { Route as PermitsRouteImport } from './routes/permits'
@@ -83,6 +84,11 @@ const QuotesRoute = QuotesRouteImport.update({
 const ProjectsRoute = ProjectsRouteImport.update({
   id: '/projects',
   path: '/projects',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PhotosRoute = PhotosRouteImport.update({
@@ -209,6 +215,7 @@ export interface FileRoutesByFullPath {
   '/permits': typeof PermitsRoute
   '/personal-files': typeof PersonalFilesRoute
   '/photos': typeof PhotosRoute
+  '/privacy': typeof PrivacyRoute
   '/projects': typeof ProjectsRoute
   '/quotes': typeof QuotesRoute
   '/register': typeof RegisterRoute
@@ -241,6 +248,7 @@ export interface FileRoutesByTo {
   '/permits': typeof PermitsRoute
   '/personal-files': typeof PersonalFilesRoute
   '/photos': typeof PhotosRoute
+  '/privacy': typeof PrivacyRoute
   '/projects': typeof ProjectsRoute
   '/quotes': typeof QuotesRoute
   '/register': typeof RegisterRoute
@@ -274,6 +282,7 @@ export interface FileRoutesById {
   '/permits': typeof PermitsRoute
   '/personal-files': typeof PersonalFilesRoute
   '/photos': typeof PhotosRoute
+  '/privacy': typeof PrivacyRoute
   '/projects': typeof ProjectsRoute
   '/quotes': typeof QuotesRoute
   '/register': typeof RegisterRoute
@@ -308,6 +317,7 @@ export interface FileRouteTypes {
     | '/permits'
     | '/personal-files'
     | '/photos'
+    | '/privacy'
     | '/projects'
     | '/quotes'
     | '/register'
@@ -340,6 +350,7 @@ export interface FileRouteTypes {
     | '/permits'
     | '/personal-files'
     | '/photos'
+    | '/privacy'
     | '/projects'
     | '/quotes'
     | '/register'
@@ -372,6 +383,7 @@ export interface FileRouteTypes {
     | '/permits'
     | '/personal-files'
     | '/photos'
+    | '/privacy'
     | '/projects'
     | '/quotes'
     | '/register'
@@ -405,6 +417,7 @@ export interface RootRouteChildren {
   PermitsRoute: typeof PermitsRoute
   PersonalFilesRoute: typeof PersonalFilesRoute
   PhotosRoute: typeof PhotosRoute
+  PrivacyRoute: typeof PrivacyRoute
   ProjectsRoute: typeof ProjectsRoute
   QuotesRoute: typeof QuotesRoute
   RegisterRoute: typeof RegisterRoute
@@ -483,6 +496,13 @@ declare module '@tanstack/react-router' {
       path: '/projects'
       fullPath: '/projects'
       preLoaderRoute: typeof ProjectsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/photos': {
@@ -653,6 +673,7 @@ const rootRouteChildren: RootRouteChildren = {
   PermitsRoute: PermitsRoute,
   PersonalFilesRoute: PersonalFilesRoute,
   PhotosRoute: PhotosRoute,
+  PrivacyRoute: PrivacyRoute,
   ProjectsRoute: ProjectsRoute,
   QuotesRoute: QuotesRoute,
   RegisterRoute: RegisterRoute,

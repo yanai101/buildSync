@@ -859,9 +859,13 @@ function LandingPage() {
       </main>
       <footer style={{ padding: '60px 5%', textAlign: 'center', color: '#666', background: '#08080a', fontSize: '1rem', borderTop: '1px solid rgba(255,255,255,0.03)' }}>
         © {new Date().getFullYear()} BuildSync. פותח במטרה לייעל את הבנייה בעולם היזמות, הקבלנות והשיפוצים. כל הזכויות שמורות.
-        <div style={{ marginTop: '16px' }}>
+        <div style={{ marginTop: '16px', display: 'flex', gap: '16px', justifyContent: 'center' }}>
           <Link to="/terms" style={{ color: '#888', textDecoration: 'none', fontSize: '0.9rem' }}>
             תנאי שימוש והגבלת אחריות
+          </Link>
+          <span style={{ color: '#555' }}>|</span>
+          <Link to="/privacy" style={{ color: '#888', textDecoration: 'none', fontSize: '0.9rem' }}>
+            מדיניות פרטיות
           </Link>
         </div>
       </footer>

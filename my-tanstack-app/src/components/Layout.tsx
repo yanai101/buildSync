@@ -488,7 +488,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   // group nav sections
   const sections = Array.from(new Set(NAV.map(n => n.section)))
 
-  const publicRoutes = ['/', '/register', '/login', '/terms']
+  const publicRoutes = ['/', '/register', '/login', '/terms', '/privacy']
   const isPublicRoute = (path: string) =>
     publicRoutes.includes(path) || path.startsWith('/join/')
 
