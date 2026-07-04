@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { C } from '~/styles/theme'
+
 
 export const Route = createFileRoute('/privacy')({
   component: PrivacyScreen,
