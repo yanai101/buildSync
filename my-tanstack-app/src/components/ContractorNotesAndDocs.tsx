@@ -4,6 +4,7 @@ import { api } from '../../convex/_generated/api';
 import type { Id } from '../../convex/_generated/dataModel';
 import { Icon, Btn, Modal } from './Shared';
 import { useProjectFileUploader } from '../hooks/useProjectFileUploader';
+import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
 
 const formatRelative = (createdAt: number): string => {
   const seconds = Math.max(0, Math.round((Date.now() - createdAt) / 1000));
@@ -58,7 +59,7 @@ export const ContractorNotesAndDocs = ({ projectId, contractorId, contractorName
   const [pendingFileId, setPendingFileId] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [isDragOver, setIsDragOver] = React.useState(false);
-  const [previewDocumentUrl, setPreviewDocumentUrl] = React.useState<string | null>(null);
+  const [previewDocument, setPreviewDocument] = React.useState<{url: string, kind: string} | null>(null);
 
   const submitNote = async () => {
     const trimmed = text.trim();
@@ -252,7 +253,7 @@ export const ContractorNotesAndDocs = ({ projectId, contractorId, contractorName
                   {file.url && (
                     <button
                       type="button"
-                      onClick={() => setPreviewDocumentUrl(file.url!)}
+                      onClick={() => setPreviewDocument({url: file.url!, kind: file.kind})}
                       title="צפה"
                       style={{padding:6,color:"var(--accent)",display:"flex",alignItems:"center",background:"none",border:"none",cursor:"pointer"}}
                     >
@@ -276,10 +277,18 @@ export const ContractorNotesAndDocs = ({ projectId, contractorId, contractorName
       </div>
 
       {/* Preview Document */}
-      {previewDocumentUrl && (
-        <Modal title="צפייה במסמך" onClose={() => setPreviewDocumentUrl(null)} width={800}>
+      {previewDocument && (
+        <Modal title="צפייה במסמך" onClose={() => setPreviewDocument(null)} width={800}>
           <div style={{ height: '70vh', background: '#f5f5f5', borderRadius: 8, overflow: 'hidden' }}>
-            <iframe src={previewDocumentUrl} width="100%" height="100%" style={{ border: 'none' }} title="Preview" />
+            {previewDocument.kind === 'image' ? (
+              <TransformWrapper initialScale={1} minScale={1} maxScale={8} centerOnInit>
+                <TransformComponent wrapperStyle={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }} contentStyle={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <img src={previewDocument.url} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} alt="Preview" />
+                </TransformComponent>
+              </TransformWrapper>
+            ) : (
+              <iframe src={previewDocument.url} width="100%" height="100%" style={{ border: 'none' }} title="Preview" />
+            )}
           </div>
         </Modal>
       )}
