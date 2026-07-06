@@ -598,7 +598,7 @@ const PaymentSchedule = ({
           disabled={savingSchedule || locked || m.isLocked || m.paid || isSyncedLocked}
           onChange={e=>updateMilestone(i, {name:e.target.value})}
           onBlur={()=>saveOnBlur(i)}
-          style={{minWidth:150,fontSize:13,fontWeight:500}}
+          style={{width: "100%", minWidth:150,fontSize:13,fontWeight:500}}
         />
       </td>
       <td>
@@ -608,7 +608,7 @@ const PaymentSchedule = ({
           disabled={savingSchedule || locked || m.isLocked || m.paid || isSyncedLocked}
           onChange={e=>updateMilestone(i, {triggerText:e.target.value})}
           onBlur={()=>saveOnBlur(i)}
-          style={{minWidth:180,fontSize:12}}
+          style={{width: "100%", minWidth:180,fontSize:12}}
         />
       </td>
       <td>
