@@ -865,6 +865,52 @@ export const lockContractorPaymentMilestone = mutation({
   },
 });
 
+export const addFilesToContractorPaymentMilestone = mutation({
+  args: {
+    milestoneId: v.string(),
+    fileIds: v.array(v.id('projectFiles')),
+  },
+  handler: async (ctx, args) => {
+    const milestoneId = await resolveMilestoneId(ctx as any, args.milestoneId);
+    const milestone = await ctx.db.get(milestoneId);
+    if (!milestone) {
+      throw new Error('Payment milestone not found');
+    }
+
+    const currentFileIds = milestone.fileIds ?? [];
+    const newFileIds = Array.from(new Set([...currentFileIds, ...args.fileIds]));
+
+    await ctx.db.patch(milestoneId, {
+      fileIds: newFileIds,
+    });
+  },
+});
+
+export const deleteContractorPaymentMilestoneFile = mutation({
+  args: {
+    milestoneId: v.string(),
+    fileId: v.id('projectFiles'),
+  },
+  handler: async (ctx, args) => {
+    const milestoneId = await resolveMilestoneId(ctx as any, args.milestoneId);
+    const milestone = await ctx.db.get(milestoneId);
+    if (!milestone) {
+      throw new Error('Payment milestone not found');
+    }
+
+    if (milestone.fileIds) {
+      const newFileIds = milestone.fileIds.filter(id => id !== args.fileId);
+      await ctx.db.patch(milestoneId, { fileIds: newFileIds });
+    }
+
+    const file = await ctx.db.get(args.fileId);
+    if (file && file.storageId) {
+      await ctx.storage.delete(file.storageId);
+      await ctx.db.delete(args.fileId);
+    }
+  },
+});
+
 export const deleteContractor = mutation({
   args: {
     contractorId: v.id('contractors'),

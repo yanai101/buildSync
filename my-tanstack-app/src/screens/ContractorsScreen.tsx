@@ -190,6 +190,72 @@ const ConfirmPaymentModal = ({
   );
 };
 
+const AddReceiptModal = ({
+  onClose,
+  onUpload,
+}: {
+  onClose: () => void;
+  onUpload: (files: File[]) => void;
+}) => {
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const cameraInputRef = React.useRef<HTMLInputElement>(null);
+
+  const handleFilesSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files?.length) {
+      onUpload(Array.from(e.target.files));
+    }
+  };
+
+  return (
+    <Modal title="הוספת מסמך לתשלום" onClose={onClose}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div style={{ fontSize: 13, color: 'var(--text2)' }}>
+          בחר כיצד תרצה להעלות את הקבלה או התיעוד:
+        </div>
+        
+        <div style={{ display: 'flex', gap: 12 }}>
+          <style>{`.receipt-camera-btn{display:none !important} @media (pointer: coarse){.receipt-camera-btn{display:flex !important}}`}</style>
+          <Btn
+            variant="ghost"
+            className="receipt-camera-btn"
+            style={{ flex: 1, padding: '24px 0', flexDirection: 'column', gap: 8, height: 'auto', border: '1px solid var(--border)' }}
+            onClick={() => cameraInputRef.current?.click()}
+          >
+            <Icon n="camera" s={24} c="var(--accent)" />
+            <span style={{ fontSize: 14, fontWeight: 600 }}>צלם עכשיו</span>
+          </Btn>
+          
+          <Btn
+            variant="ghost"
+            style={{ flex: 1, padding: '24px 0', display: 'flex', flexDirection: 'column', gap: 8, height: 'auto', border: '1px solid var(--border)' }}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <Icon n="folder" s={24} c="var(--accent)" />
+            <span style={{ fontSize: 14, fontWeight: 600 }}>מגלריה / קובץ</span>
+          </Btn>
+        </div>
+
+        <input
+          ref={cameraInputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          style={{ display: 'none' }}
+          onChange={handleFilesSelected}
+        />
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          accept="image/*,.pdf"
+          style={{ display: 'none' }}
+          onChange={handleFilesSelected}
+        />
+      </div>
+    </Modal>
+  );
+};
+
 const DEFAULT_SCHEDULE = [
   {name:"מקדמה לפני התחלה", pct:30, triggerText:"לפני תחילת עבודה"},
   {name:"תשלום ביניים א'", pct:25, triggerText:"אחרי 30% מהעבודה"},
@@ -407,14 +473,18 @@ const PaymentSchedule = ({
   onLock,
   onViewFile,
   onSyncBudget,
+  onAddFiles,
+  uploadingFilesToMilestone,
   locked,
 }: {
   contractor: Contractor;
   onTogglePaid: (milestone: Milestone, paid: boolean) => Promise<void>;
   onSaveSchedule: (contractor: Contractor, milestones: DraftMilestone[]) => Promise<void>;
   onLock?: (milestoneId: string) => Promise<void>;
-  onViewFile?: (file: { url: string; name: string }) => void;
+  onViewFile?: (file: { id: string; url: string; name: string; milestoneId: string }) => void;
   onSyncBudget?: (budget: number) => Promise<void>;
+  onAddFiles?: (milestoneId: string, files: File[]) => Promise<void>;
+  uploadingFilesToMilestone?: string | null;
   locked?: boolean;
 }) => {
   const sourceMilestones = React.useMemo(() => normalizeMilestones(contractor), [contractor]);
@@ -422,8 +492,13 @@ const PaymentSchedule = ({
   const [adding, setAdding] = React.useState(false);
   const [newM, setNewM] = React.useState({name:"", pct:10, triggerText:""});
   const [pendingId, setPendingId] = React.useState<string | null>(null);
+  const [attachmentModalId, setAttachmentModalId] = React.useState<string | null>(null);
   const [savingNew, setSavingNew] = React.useState(false);
   const [savingSchedule, setSavingSchedule] = React.useState(false);
+
+  React.useEffect(() => {
+    setMilestones(sourceMilestones);
+  }, [sourceMilestones]);
 
   const totalPaid = milestones.filter(m=>m.paid).reduce((a,m)=>a+m.amount,0);
   const totalPct = roundPct(milestones.filter(m=>m.paid).reduce((a,m)=>a+m.pct,0));
@@ -509,9 +584,9 @@ const PaymentSchedule = ({
           <span
             onPointerDown={gripStarter}
             title="גרור לסידור"
-            style={{cursor:"grab",display:"inline-flex",verticalAlign:"middle",marginInlineEnd:6,padding:2,touchAction:"none"}}
+            style={{cursor:"grab",display:"inline-flex",verticalAlign:"middle",marginInlineEnd:2,padding:16,marginInlineStart:-12,touchAction:"none"}}
           >
-            <Icon n="menu" s={12} c="var(--text3)"/>
+            <Icon n="menu" s={16} c="var(--text3)"/>
           </span>
         )}
         {i+1}
@@ -626,11 +701,28 @@ const PaymentSchedule = ({
             {m.files && m.files.length > 0 && (
               <div style={{ display: 'flex', gap: 4 }}>
                 {m.files.map(f => (
-                  <button key={f.id} onClick={() => onViewFile?.({ url: f.url, name: f.name })} title={f.name} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, background: '#EEF2FF', color: '#4F46E5', borderRadius: 4, border: 'none', cursor: 'pointer' }}>
+                  <button key={f.id} onClick={() => onViewFile?.({ id: f.id as string, url: f.url, name: f.name, milestoneId: m.id as string })} title={f.name} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, background: '#EEF2FF', color: '#4F46E5', borderRadius: 4, border: 'none', cursor: 'pointer' }}>
                     <Icon n="file-text" s={12}/>
                   </button>
                 ))}
               </div>
+            )}
+            {onAddFiles && m.id && (
+              <label 
+                style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, background: 'var(--bg)', color: 'var(--accent)', borderRadius: 4, border: '1px dashed var(--border)', cursor: uploadingFilesToMilestone === m.id ? 'wait' : 'pointer' }} 
+                title="הוסף קבצים"
+                onClick={() => {
+                  if (uploadingFilesToMilestone !== m.id) {
+                    setAttachmentModalId(m.id as string);
+                  }
+                }}
+              >
+                {uploadingFilesToMilestone === m.id ? (
+                  <Icon n="loader" s={12} className="spin" />
+                ) : (
+                  <Icon n="plus" s={12}/>
+                )}
+              </label>
             )}
           </div>
         ) : (
@@ -794,6 +886,16 @@ const PaymentSchedule = ({
           </tfoot>
         </table>
       </div>
+      
+      {attachmentModalId && (
+        <AddReceiptModal 
+          onClose={() => setAttachmentModalId(null)} 
+          onUpload={(files) => {
+            setAttachmentModalId(null);
+            onAddFiles?.(attachmentModalId, files);
+          }} 
+        />
+      )}
 
     </div>
   );
@@ -815,6 +917,9 @@ export const ContractorsScreen = () => {
   const saveSchedule = useMutation(api.mutations.saveContractorPaymentSchedule);
   const setMilestonePaid = useMutation(api.mutations.setContractorPaymentMilestonePaid);
   const lockPaymentMilestone = useMutation(api.mutations.lockContractorPaymentMilestone);
+  const addFilesToLockedMilestone = useMutation(api.mutations.addFilesToContractorPaymentMilestone);
+  const deleteFileMutation = useMutation(api.mutations.deleteContractorPaymentMilestoneFile);
+  const uploadProjectFile = useProjectFileUploader();
   const setContractorStages = useMutation(api.stages.setContractorStages);
   const setContractorPaymentMode = useMutation(api.stages.setContractorPaymentMode);
   const [selectedId, setSelectedId] = React.useState<string | null>(search?.contractorId ?? null);
@@ -832,8 +937,11 @@ export const ContractorsScreen = () => {
   const [feedback, setFeedback] = React.useState<{ title: string; message: string; type: 'success' | 'error' | 'info' } | null>(null);
   const [savingStageLinks, setSavingStageLinks] = React.useState(false);
   const [savingPaymentMode, setSavingPaymentMode] = React.useState(false);
+  const [uploadingFilesToMilestone, setUploadingFilesToMilestone] = React.useState<string | null>(null);
   const [form, setForm] = React.useState<ContractorForm>(emptyForm);
-  const [viewFile, setViewFile] = React.useState<{ url: string; name: string } | null>(null);
+  const [viewFile, setViewFile] = React.useState<{ id: string; url: string; name: string; milestoneId: string } | null>(null);
+  const [fileToDelete, setFileToDelete] = React.useState<{ id: Id<'projectFiles'>; milestoneId: string } | null>(null);
+  const [deletingFile, setDeletingFile] = React.useState(false);
 
   const selected = contractors.find(c => String(c.id) === selectedId || String(c._id) === selectedId) ?? null;
   const stages = (dbStages ?? []) as any[];
@@ -983,6 +1091,33 @@ export const ContractorsScreen = () => {
       });
     } finally {
       setLockingPayment(false);
+    }
+  };
+
+  const handleAddFilesToLockedMilestone = async (milestoneId: string, files: File[]) => {
+    if (mode !== 'db' || !projectId || !selectedId) return;
+    setUploadingFilesToMilestone(milestoneId);
+    try {
+      const fileIds: Id<'projectFiles'>[] = [];
+      for (const file of files) {
+        const { fileId } = await uploadProjectFile({
+          projectId,
+          file,
+          usage: 'receipt',
+          kind: file.type.startsWith('image/') ? 'image' : 'document',
+          contractorId: selectedId as Id<'contractors'>,
+        });
+        fileIds.push(fileId);
+      }
+      await addFilesToLockedMilestone({ milestoneId, fileIds });
+    } catch (err) {
+      setFeedback({
+        title: "שגיאה",
+        message: err instanceof Error ? err.message : "לא הצלחנו להעלות קבצים. אנא נסו שוב.",
+        type: "error",
+      });
+    } finally {
+      setUploadingFilesToMilestone(null);
     }
   };
 
@@ -1354,6 +1489,8 @@ export const ContractorsScreen = () => {
               onSaveSchedule={handleSaveSchedule}
               onLock={handleLockPayment}
               onViewFile={setViewFile}
+              onAddFiles={handleAddFilesToLockedMilestone}
+              uploadingFilesToMilestone={uploadingFilesToMilestone}
             />
             {projectId && c._id && (
               <ContractorNotesAndDocs
@@ -1425,10 +1562,36 @@ export const ContractorsScreen = () => {
               title={viewFile.name}
             />
           </div>
-          <div style={{ marginTop: 12, display: 'flex', justifyContent: 'center' }}>
+          <div style={{ marginTop: 12, display: 'flex', justifyContent: 'center', gap: 12 }}>
             <Btn variant="ghost" onClick={() => setViewFile(null)}>סגור</Btn>
+            <Btn variant="ghost" style={{ color: 'var(--danger)', border: '1px solid var(--danger)', background: 'transparent' }} onClick={() => setFileToDelete({ id: viewFile.id as Id<'projectFiles'>, milestoneId: viewFile.milestoneId })}>
+              <Icon n="trash-2" s={14} /> מחק קובץ
+            </Btn>
           </div>
         </Modal>
+      )}
+      {fileToDelete && (
+        <ConfirmDialog
+          title="מחיקת מסמך"
+          message="האם אתה בטוח שברצונך למחוק מסמך זה? פעולה זו תמחק את הקובץ מהמערכת לצמיתות."
+          confirmText={deletingFile ? "מוחק..." : "מחק מסמך"}
+          cancelText="ביטול"
+          type="danger"
+          onConfirm={async () => {
+            try {
+              setDeletingFile(true);
+              await deleteFileMutation({ fileId: fileToDelete.id, milestoneId: fileToDelete.milestoneId });
+              setFileToDelete(null);
+              setViewFile(null);
+              setFeedback({ title: "נמחק בהצלחה", message: "הקובץ נמחק בהצלחה", type: "success" });
+            } catch (err) {
+              setFeedback({ title: "שגיאה", message: "לא הצלחנו למחוק את הקובץ", type: "error" });
+            } finally {
+              setDeletingFile(false);
+            }
+          }}
+          onClose={() => setFileToDelete(null)}
+        />
       )}
       {feedback && (
         <FeedbackModal
