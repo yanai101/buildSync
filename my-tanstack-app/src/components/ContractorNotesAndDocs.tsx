@@ -157,7 +157,7 @@ export const ContractorNotesAndDocs = ({ projectId, contractorId, contractorName
             <textarea
               className="bp-input"
               value={text}
-              placeholder={`כתוב הערה על ${contractorName}...`}
+              placeholder="הוסף הערה חדשה..."
               onChange={(e) => setText(e.target.value)}
               onKeyDown={(e) => {
                 if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') void submitNote();
