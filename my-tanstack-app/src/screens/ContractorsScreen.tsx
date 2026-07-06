@@ -773,7 +773,12 @@ const PaymentSchedule = ({
   return (
     <div className="card">
       <div className="card-header" style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-        <span>לוח תשלומים</span>
+        <div style={{display:"flex",alignItems:"center",gap:12}}>
+          <span>לוח תשלומים</span>
+          <a href="#mobile-notes-section" className="mobile-only" style={{fontSize:12,color:"var(--accent)",display:"flex",alignItems:"center",gap:4,textDecoration:"none",background:"var(--accent-light)",padding:"4px 8px",borderRadius:999,fontWeight:600}}>
+            <Icon n="arrow-down" s={12}/> הערות
+          </a>
+        </div>
         <div style={{display:"flex",gap:8,alignItems:"center"}}>
           {locked && (
             <span style={{fontSize:11,background:"#EEF2FF",color:"#3730A3",borderRadius:999,padding:"3px 8px",fontWeight:700}}>
@@ -1374,6 +1379,16 @@ export const ContractorsScreen = () => {
                   );
                 })()}
               </div>
+            
+            {projectId && c._id && (
+              <div className="desktop-only">
+                <ContractorNotesAndDocs
+                  projectId={projectId}
+                  contractorId={c._id as Id<'contractors'>}
+                  contractorName={c.name}
+                />
+              </div>
+            )}
           </div>
           <div style={{display:"flex",flexDirection:"column",gap:16}}>
             <div className="card">
@@ -1493,11 +1508,13 @@ export const ContractorsScreen = () => {
               uploadingFilesToMilestone={uploadingFilesToMilestone}
             />
             {projectId && c._id && (
-              <ContractorNotesAndDocs
-                projectId={projectId}
-                contractorId={c._id as Id<'contractors'>}
-                contractorName={c.name}
-              />
+              <div id="mobile-notes-section" className="mobile-block-only">
+                <ContractorNotesAndDocs
+                  projectId={projectId}
+                  contractorId={c._id as Id<'contractors'>}
+                  contractorName={c.name}
+                />
+              </div>
             )}
           </div>
         </div>

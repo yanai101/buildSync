@@ -292,6 +292,7 @@ body {
 
 /* ─── Responsive ──────────────────────────────────────────────────────────── */
 .mobile-only { display: none !important; }
+.mobile-block-only { display: none !important; }
 @media(max-width:768px){
   .sidebar { display: none; }
   .bottom-nav { display: block; }
@@ -301,6 +302,7 @@ body {
   .grid-2 { grid-template-columns: 1fr; gap: 16px; }
   .photo-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
   .mobile-only { display: inline-flex !important; }
+  .mobile-block-only { display: block !important; }
   .desktop-only { display: none !important; }
 }
 @media(max-width:480px){
