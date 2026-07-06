@@ -4,7 +4,7 @@ import { api } from '../../convex/_generated/api';
 import type { Id } from '../../convex/_generated/dataModel';
 import { Icon, Btn, Modal } from './Shared';
 import { useProjectFileUploader } from '../hooks/useProjectFileUploader';
-import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
+import { ImageGalleryViewer } from './ImageGalleryViewer';
 
 const formatRelative = (createdAt: number): string => {
   const seconds = Math.max(0, Math.round((Date.now() - createdAt) / 1000));
@@ -278,19 +278,19 @@ export const ContractorNotesAndDocs = ({ projectId, contractorId, contractorName
 
       {/* Preview Document */}
       {previewDocument && (
-        <Modal title="צפייה במסמך" onClose={() => setPreviewDocument(null)} width={800}>
-          <div style={{ height: '70vh', background: '#f5f5f5', borderRadius: 8, overflow: 'hidden' }}>
-            {previewDocument.kind === 'image' ? (
-              <TransformWrapper initialScale={1} minScale={1} maxScale={8} centerOnInit>
-                <TransformComponent wrapperStyle={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }} contentStyle={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <img src={previewDocument.url} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} alt="Preview" />
-                </TransformComponent>
-              </TransformWrapper>
-            ) : (
+        previewDocument.kind === 'image' ? (
+          <ImageGalleryViewer 
+            images={files.filter(f => f.kind === 'image' && f.url).map(f => ({ url: f.url!, title: f.originalName }))}
+            initialIndex={Math.max(0, files.filter(f => f.kind === 'image' && f.url).findIndex(f => f.url === previewDocument.url))}
+            onClose={() => setPreviewDocument(null)}
+          />
+        ) : (
+          <Modal title="צפייה במסמך" onClose={() => setPreviewDocument(null)} width={800}>
+            <div style={{ height: '70vh', background: '#f5f5f5', borderRadius: 8, overflow: 'hidden' }}>
               <iframe src={previewDocument.url} width="100%" height="100%" style={{ border: 'none' }} title="Preview" />
-            )}
-          </div>
-        </Modal>
+            </div>
+          </Modal>
+        )
       )}
     </div>
   );
