@@ -772,23 +772,22 @@ const PaymentSchedule = ({
 
   return (
     <div className="card">
-      <div className="card-header" style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-        <div style={{display:"flex",alignItems:"center",gap:12}}>
+      <div className="card-header" style={{display:"flex",flexDirection:"column",gap:12}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:12}}>
           <span>לוח תשלומים</span>
-          <a href="#mobile-notes-section" className="mobile-only" style={{fontSize:12,color:"var(--accent)",display:"flex",alignItems:"center",gap:4,textDecoration:"none",background:"var(--accent-light)",padding:"4px 8px",borderRadius:999,fontWeight:600}}>
-            <Icon n="arrow-down" s={12}/> הערות
-          </a>
+          <div style={{display:"flex",gap:12,alignItems:"center",flexWrap:"wrap"}}>
+            <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",lineHeight:1.3}}>
+              <span style={{fontSize:12,color:scheduleOverBudget?"var(--danger)":totalPctAll===100?"var(--success)":"var(--warning)",fontWeight:700}}>סה"כ: {totalPctAll}%</span>
+              <span style={{fontSize:11,color:"var(--text3)",fontWeight:400}}>שולם: {totalPct}% · {fmtMoney(totalPaid)}</span>
+            </div>
+            <Btn size="sm" onClick={()=>setAdding(v=>!v)} disabled={locked}><Icon n="plus" s={12}/> הוסף שלב</Btn>
+          </div>
         </div>
-        <div style={{display:"flex",gap:8,alignItems:"center"}}>
-          {locked && (
-            <span style={{fontSize:11,background:"#EEF2FF",color:"#3730A3",borderRadius:999,padding:"3px 8px",fontWeight:700}}>
-              מסונכרן לפי משימות השלבים
-            </span>
-          )}
-          <span style={{fontSize:12,color:"var(--text3)",fontWeight:400}}>שולם: {totalPct}% · {fmtMoney(totalPaid)}</span>
-          <span style={{fontSize:12,color:scheduleOverBudget?"var(--danger)":totalPctAll===100?"var(--success)":"var(--warning)",fontWeight:700}}>סה"כ: {totalPctAll}%</span>
-          <Btn size="sm" onClick={()=>setAdding(v=>!v)} disabled={locked}><Icon n="plus" s={12}/> שלב תשלום</Btn>
-        </div>
+        {locked && (
+          <div style={{background:"#EEF2FF",color:"#3730A3",borderRadius:8,padding:"6px 12px",fontSize:12,fontWeight:600,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+            <Icon n="lock" s={12}/> מסונכרן לפי משימות השלבים
+          </div>
+        )}
       </div>
 
       {scheduleOverBudget && !locked && (
@@ -1299,7 +1298,10 @@ export const ContractorsScreen = () => {
             <button onClick={()=>setSelectedId(null)} style={{display:"flex",alignItems:"center",gap:6,background:"none",border:"none",cursor:"pointer",color:"var(--text2)",fontSize:13,padding:0}}>
               <Icon n="arrow-right" s={14}/> חזרה לרשימה
             </button>
-            <div style={{display:"flex",gap:8}}>
+            <div style={{display:"flex",gap:8,alignItems:"center"}}>
+              <button onClick={() => document.getElementById('mobile-notes-section')?.scrollIntoView({ behavior: 'smooth' })} className="mobile-only" style={{border:"none",cursor:"pointer",fontSize:12,color:"var(--accent)",display:"flex",alignItems:"center",gap:4,textDecoration:"none",background:"var(--accent-light)",padding:"4px 8px",borderRadius:999,fontWeight:600}}>
+                <Icon n="arrow-down" s={12}/> הערות
+              </button>
               <Btn
                 size="sm"
                 variant="outline"
