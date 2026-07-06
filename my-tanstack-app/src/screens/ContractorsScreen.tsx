@@ -11,6 +11,7 @@ import { useMutation, useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import type { Id } from '../../convex/_generated/dataModel';
 import { useProjectFileUploader } from '../hooks/useProjectFileUploader';
+import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
 
 const LockPaymentModal = ({
   milestone,
@@ -1572,23 +1573,77 @@ export const ContractorsScreen = () => {
           onClose={() => setConfirmPaymentMode(null)}
         />
       )}
-      {viewFile && (
-        <Modal title={viewFile.name} onClose={() => setViewFile(null)}>
-          <div style={{ height: '70vh', minHeight: 400, width: '100%', position: 'relative' }}>
-            <iframe 
-              src={viewFile.url} 
-              style={{ width: '100%', height: '100%', border: 'none', borderRadius: 8 }}
-              title={viewFile.name}
-            />
-          </div>
-          <div style={{ marginTop: 12, display: 'flex', justifyContent: 'center', gap: 12 }}>
-            <Btn variant="ghost" onClick={() => setViewFile(null)}>סגור</Btn>
-            <Btn variant="ghost" style={{ color: 'var(--danger)', border: '1px solid var(--danger)', background: 'transparent' }} onClick={() => setFileToDelete({ id: viewFile.id as Id<'projectFiles'>, milestoneId: viewFile.milestoneId })}>
-              <Icon n="trash-2" s={14} /> מחק קובץ
-            </Btn>
-          </div>
-        </Modal>
-      )}
+      {viewFile && (() => {
+        let currentMilestoneFiles: any[] = [];
+        for (const c of contractors) {
+          if (!c.milestones) continue;
+          const milestone = c.milestones.find((m: any) => m.id === viewFile.milestoneId);
+          if (milestone && milestone.files) {
+            currentMilestoneFiles = milestone.files;
+            break;
+          }
+        }
+        
+        const currentFileIndex = currentMilestoneFiles.findIndex(f => f.id === viewFile.id);
+        const hasNextFile = currentFileIndex >= 0 && currentFileIndex < currentMilestoneFiles.length - 1;
+        const hasPrevFile = currentFileIndex > 0;
+
+        return (
+          <Modal title={currentMilestoneFiles.length > 1 ? `${viewFile.name} (${currentFileIndex + 1}/${currentMilestoneFiles.length})` : viewFile.name} onClose={() => setViewFile(null)}>
+            <div style={{ height: '70vh', minHeight: 400, width: '100%', position: 'relative' }}>
+              {hasPrevFile && (
+                <button 
+                  onClick={() => {
+                    const prev = currentMilestoneFiles[currentFileIndex - 1];
+                    setViewFile({ id: prev.id as string, url: prev.url, name: prev.name, milestoneId: viewFile.milestoneId });
+                  }} 
+                  style={{ position: 'absolute', right: 16, top: '50%', transform: 'translateY(-50%)', background: 'rgba(255,255,255,0.9)', border: 'none', borderRadius: '50%', width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', zIndex: 10, backdropFilter: 'blur(4px)', boxShadow: 'var(--shadow-lg)', color: 'var(--text1)' }}
+                >
+                  <Icon n="chevron-right" s={24} />
+                </button>
+              )}
+              {/\.(jpg|jpeg|png|gif|webp)$/i.test(viewFile.name) ? (
+                <TransformWrapper 
+                  initialScale={1} 
+                  minScale={1} 
+                  maxScale={8} 
+                  centerOnInit
+                  doubleClick={{ step: 2 }}
+                  wheel={{ step: 0.2 }}
+                  pinch={{ step: 5 }}
+                >
+                  <TransformComponent wrapperStyle={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f5f5f5', borderRadius: 8 }} contentStyle={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <img src={viewFile.url} draggable={false} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} alt="Preview" />
+                  </TransformComponent>
+                </TransformWrapper>
+              ) : (
+                <iframe 
+                  src={viewFile.url} 
+                  style={{ width: '100%', height: '100%', border: 'none', borderRadius: 8, background: '#f5f5f5' }}
+                  title={viewFile.name}
+                />
+              )}
+              {hasNextFile && (
+                <button 
+                  onClick={() => {
+                    const next = currentMilestoneFiles[currentFileIndex + 1];
+                    setViewFile({ id: next.id as string, url: next.url, name: next.name, milestoneId: viewFile.milestoneId });
+                  }} 
+                  style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', background: 'rgba(255,255,255,0.9)', border: 'none', borderRadius: '50%', width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', zIndex: 10, backdropFilter: 'blur(4px)', boxShadow: 'var(--shadow-lg)', color: 'var(--text1)' }}
+                >
+                  <div style={{ transform: 'rotate(180deg)', display: 'flex' }}><Icon n="chevron-right" s={24} /></div>
+                </button>
+              )}
+            </div>
+            <div style={{ marginTop: 12, display: 'flex', justifyContent: 'center', gap: 12 }}>
+              <Btn variant="ghost" onClick={() => setViewFile(null)}>סגור</Btn>
+              <Btn variant="ghost" style={{ color: 'var(--danger)', border: '1px solid var(--danger)', background: 'transparent' }} onClick={() => setFileToDelete({ id: viewFile.id as Id<'projectFiles'>, milestoneId: viewFile.milestoneId })}>
+                <Icon n="trash-2" s={14} /> מחק קובץ
+              </Btn>
+            </div>
+          </Modal>
+        );
+      })()}
       {fileToDelete && (
         <ConfirmDialog
           title="מחיקת מסמך"
