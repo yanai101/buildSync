@@ -1197,9 +1197,9 @@ export const StagesScreen = () => {
       onRetry={refetch}
     >
       <div className="page-content">
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}>
-          <div style={{display:"flex",alignItems:"center",gap:12}}>
-            <div style={{width:42,height:42,borderRadius:12,background:"var(--accent-light)",color:"var(--accent)",display:"flex",alignItems:"center",justifyContent:"center"}}>
+        <div style={{display:"flex",flexWrap:"wrap",justifyContent:"space-between",alignItems:"flex-start",gap:16,marginBottom:24}}>
+          <div style={{display:"flex",alignItems:"center",gap:12,flex:"1 1 300px"}}>
+            <div style={{width:42,height:42,borderRadius:12,background:"var(--accent-light)",color:"var(--accent)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
               <Icon n="layers" s={22}/>
             </div>
             <div>
@@ -1208,14 +1208,14 @@ export const StagesScreen = () => {
             </div>
           </div>
           {!isContractor && (
-            <div style={{display:"flex", alignItems:"center", gap: 12}}>
+            <div style={{display:"flex", alignItems:"center", gap: 12, flexWrap: "wrap", flex:"1 1 auto", justifyContent:"flex-end"}}>
               {hasTurnkeyContractor && (
-                <div style={{display:"flex", alignItems:"center", gap: 8, background:"#EEF2FF", padding:"8px 12px", borderRadius: 8, color:"#3730A3", fontSize:12, fontWeight:600}}>
-                  <Icon n="info" s={14}/>
-                  שלבי קבלן מפתח מנוהלים דרך לוח התשלומים שלו. הוספת שלבים כאן מיועדת לקבלנים נוספים בלבד. <a href={`/contractors?projectId=${projectId}`} style={{color:"#4F46E5", textDecoration:"underline", cursor:"pointer"}}>למעבר לקבלנים</a>
+                <div style={{display:"flex", alignItems:"flex-start", gap: 8, background:"#EEF2FF", padding:"8px 12px", borderRadius: 8, color:"#3730A3", fontSize:12, fontWeight:600, flex: "1 1 250px"}}>
+                  <Icon n="info" s={14} style={{marginTop: 2, flexShrink: 0}}/>
+                  <span style={{lineHeight: 1.4}}>שלבי קבלן מפתח מנוהלים דרך לוח התשלומים שלו. הוספת שלבים כאן מיועדת לקבלנים נוספים בלבד. <a href={`/contractors?projectId=${projectId}`} style={{color:"#4F46E5", textDecoration:"underline", cursor:"pointer"}}>למעבר לקבלנים</a></span>
                 </div>
               )}
-              <Btn onClick={() => {
+              <Btn style={{flexShrink:0}} onClick={() => {
                 if (!isProOrPremium) {
                   setFeedback({ title: 'שדרוג נדרש', message: 'הוספת שלבי בנייה זמינה במסלול Pro ומעלה.', type: 'error' });
                   return;
