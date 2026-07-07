@@ -552,12 +552,11 @@ const PaymentSchedule = ({
   };
 
   const updateMilestone = (index: number, patch: Partial<DraftMilestone>, shouldBalance = false) => {
-    setMilestones(prev => {
-      const edited = prev.map((m, i) => i === index ? { ...m, ...patch } : m);
-      const next = shouldBalance ? balanceMilestones(edited, index, contractor) : edited;
-      milestonesRef.current = next;
-      return next;
-    });
+    const prev = milestonesRef.current;
+    const edited = prev.map((m, i) => i === index ? { ...m, ...patch } : m);
+    const next = shouldBalance ? balanceMilestones(edited, index, contractor) : edited;
+    milestonesRef.current = next;
+    setMilestones(next);
   };
 
   const addMilestone = async () => {
@@ -565,7 +564,7 @@ const PaymentSchedule = ({
     setSavingNew(true);
     try {
       const next = balanceMilestones([
-        ...milestones,
+        ...milestonesRef.current,
         {
           id: `new-${Date.now()}`,
           name: newM.name.trim(),
@@ -578,7 +577,8 @@ const PaymentSchedule = ({
           paidAt: null,
           isNew: true,
         },
-      ], milestones.length, contractor);
+      ], milestonesRef.current.length, contractor);
+      milestonesRef.current = next;
       setMilestones(next);
       await onSaveSchedule(contractor, next);
       setNewM({name:"", pct:10, triggerText:""});
@@ -590,12 +590,14 @@ const PaymentSchedule = ({
 
   const saveOnBlur = async (changedIndex: number) => {
     const balanced = balanceMilestones(milestonesRef.current, changedIndex, contractor);
+    milestonesRef.current = balanced;
     setMilestones(balanced);
     await saveSchedule(balanced);
   };
 
   const handleReorder = (next: DraftMilestone[]) => {
     if (locked) return;
+    milestonesRef.current = next;
     setMilestones(next);
     void saveSchedule(next);
   };
