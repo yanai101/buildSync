@@ -641,7 +641,8 @@ const PaymentSchedule = ({
           disabled={savingSchedule || locked || m.isLocked || m.paid || isSyncedLocked}
           onChange={e=>{
             const val = e.target.value;
-            updateMilestone(i, {pct: val === "" ? 0 : Number(val)}, false);
+            const newPct = val === "" ? 0 : Number(val);
+            updateMilestone(i, {pct: newPct, amount: contractor.budget ? Math.round((newPct / 100) * contractor.budget) : 0}, false);
           }}
           onBlur={()=>saveOnBlur(i)}
           style={{width:86,fontSize:13,fontWeight:600,textAlign:"center"}}
@@ -662,8 +663,9 @@ const PaymentSchedule = ({
               onChange={e => {
                 if (contractor.budget > 0) {
                   const val = e.target.value;
-                  const newPct = val === "" ? 0 : (Number(val) / contractor.budget) * 100;
-                  updateMilestone(i, { pct: newPct }, false);
+                  const newAmount = val === "" ? 0 : Number(val);
+                  const newPct = (newAmount / contractor.budget) * 100;
+                  updateMilestone(i, { amount: newAmount, pct: newPct }, false);
                 }
               }}
               onBlur={()=>saveOnBlur(i)}
