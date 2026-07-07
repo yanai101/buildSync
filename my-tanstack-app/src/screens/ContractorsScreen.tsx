@@ -314,10 +314,24 @@ const clampPct = (pct: number) => Math.max(0, Math.min(100, Math.round((Number.i
 const roundPct = (value: number) => Math.round(value * 100) / 100;
 
 const withAmounts = (contractor: Contractor, milestones: DraftMilestone[]): DraftMilestone[] => {
-  let sumAmount = 0;
+  if (contractor.budget === 0) return milestones.map(m => ({...m, amount: 0, pct: clampPct(m.pct)}));
   
-  // First, fix percentages for locked/paid milestones if budget is > 0
-  const adjustedMilestones = milestones.map(m => {
+  let sumAmount = 0;
+  const next = [...milestones];
+  
+  // Calculate what the amounts sum up to currently
+  const totalAmount = next.reduce((sum, m) => sum + (m.amount || 0), 0);
+  const needsRescaling = Math.abs(totalAmount - contractor.budget) > 1;
+
+  if (!needsRescaling) {
+    return next.map(m => ({
+      ...m,
+      pct: (m.amount / contractor.budget) * 100
+    }));
+  }
+
+  // Fallback: derive amounts from pct (e.g. initialization or budget change)
+  const adjustedMilestones = next.map(m => {
     const isImmutable = m.isLocked || m.paid;
     if (isImmutable && contractor.budget > 0) {
        return { ...m, pct: clampPct((m.amount / contractor.budget) * 100) };
@@ -334,9 +348,11 @@ const withAmounts = (contractor: Contractor, milestones: DraftMilestone[]): Draf
       return m;
     }
     if (i === adjustedMilestones.length - 1 && totalPct === 100 && contractor.budget > 0) {
+      const amount = Math.max(0, contractor.budget - sumAmount);
       return {
         ...m,
-        amount: Math.max(0, contractor.budget - sumAmount),
+        amount,
+        pct: (amount / contractor.budget) * 100
       };
     }
     const amount = Math.round(contractor.budget * m.pct / 100);
@@ -344,6 +360,7 @@ const withAmounts = (contractor: Contractor, milestones: DraftMilestone[]): Draf
     return {
       ...m,
       amount,
+      pct: (amount / contractor.budget) * 100
     };
   });
 };
@@ -356,7 +373,7 @@ const normalizeMilestones = (contractor: Contractor): Milestone[] => {
       paid: m.isLocked ? true : m.paid,
       status: (m.paid || m.isLocked) ? 'paid' : m.status,
       paidAt: m.paidAt ?? null,
-      amount: (m.isLocked || m.paid) ? m.amount : 0,
+      amount: m.amount || 0,
     }));
   } else {
     const base = DEFAULT_PAYMENT_SCHEDULES[contractor.role] || DEFAULT_SCHEDULE;
@@ -396,12 +413,12 @@ const paymentScheduleKey = (contractor: Contractor) =>
     ].join(':')),
   ].join('|');
 
-const balanceMilestones = (milestones: DraftMilestone[], changedIndex: number): DraftMilestone[] => {
-  const next = milestones.map(m => ({ ...m, pct: clampPct(m.pct) }));
-  if (next.length === 0) return next;
+const balanceMilestones = (milestones: DraftMilestone[], changedIndex: number, contractor: Contractor): DraftMilestone[] => {
+  const next = [...milestones];
+  if (next.length === 0 || contractor.budget === 0) return next;
 
-  const total = next.reduce((sum, m) => sum + m.pct, 0);
-  let delta = total - 100;
+  const totalAmount = next.reduce((sum, m) => sum + (m.amount || 0), 0);
+  let delta = totalAmount - contractor.budget;
 
   if (delta > 0) {
     const indexes = [
@@ -411,13 +428,13 @@ const balanceMilestones = (milestones: DraftMilestone[], changedIndex: number): 
 
     for (const index of indexes) {
       if (delta <= 0) break;
-      const reduction = Math.min(next[index].pct, delta);
-      next[index].pct -= reduction;
+      const reduction = Math.min(next[index].amount, delta);
+      next[index].amount -= reduction;
       delta -= reduction;
     }
 
     if (delta > 0) {
-      next[changedIndex].pct = Math.max(0, next[changedIndex].pct - delta);
+      next[changedIndex].amount = Math.max(0, next[changedIndex].amount - delta);
     }
   }
 
@@ -426,24 +443,24 @@ const balanceMilestones = (milestones: DraftMilestone[], changedIndex: number): 
     const targetIndex = unlockedIndexes.reverse().find(i => i < changedIndex) ?? unlockedIndexes[0];
     
     if (targetIndex !== undefined) {
-      next[targetIndex].pct += Math.abs(delta);
+      next[targetIndex].amount += Math.abs(delta);
     } else {
-      next[changedIndex].pct += Math.abs(delta);
+      next[changedIndex].amount += Math.abs(delta);
     }
   }
 
-  const balancedTotal = next.reduce((sum, m) => sum + m.pct, 0);
-  if (balancedTotal !== 100) {
+  const balancedTotal = next.reduce((sum, m) => sum + (m.amount || 0), 0);
+  if (balancedTotal !== contractor.budget) {
     const unlockedIndexes = next.map((_, i) => i).filter(i => i !== changedIndex && !(next[i].isLocked || next[i].paid));
     const targetIndex = unlockedIndexes[0];
     if (targetIndex !== undefined) {
-      next[targetIndex].pct += 100 - balancedTotal;
+      next[targetIndex].amount += contractor.budget - balancedTotal;
     } else {
-      next[changedIndex].pct += 100 - balancedTotal;
+      next[changedIndex].amount += contractor.budget - balancedTotal;
     }
   }
 
-  return next.map(m => ({ ...m, pct: clampPct(m.pct) }));
+  return next.map(m => ({ ...m, pct: (m.amount / contractor.budget) * 100 }));
 };
 
 type DraggableMilestoneRowProps = {
@@ -532,7 +549,7 @@ const PaymentSchedule = ({
   const updateMilestone = (index: number, patch: Partial<DraftMilestone>, shouldBalance = false) => {
     setMilestones(prev => {
       const edited = prev.map((m, i) => i === index ? { ...m, ...patch } : m);
-      return withAmounts(contractor, shouldBalance ? balanceMilestones(edited, index) : edited);
+      return shouldBalance ? balanceMilestones(edited, index, contractor) : edited;
     });
   };
 
@@ -540,21 +557,21 @@ const PaymentSchedule = ({
     if (!newM.name.trim()) return;
     setSavingNew(true);
     try {
-      const next = withAmounts(contractor, balanceMilestones([
+      const next = balanceMilestones([
         ...milestones,
         {
           id: `new-${Date.now()}`,
           name: newM.name.trim(),
           triggerText: newM.triggerText.trim(),
-          pct: clampPct(Number(newM.pct)),
+          pct: Number(newM.pct),
+          amount: Math.round(contractor.budget * Number(newM.pct) / 100),
           taskIds: [],
-          amount: 0,
           status: 'pending',
           paid: false,
           paidAt: null,
           isNew: true,
         },
-      ], milestones.length));
+      ], milestones.length, contractor);
       setMilestones(next);
       await onSaveSchedule(contractor, next);
       setNewM({name:"", pct:10, triggerText:""});
@@ -565,7 +582,7 @@ const PaymentSchedule = ({
   };
 
   const saveOnBlur = async (changedIndex: number) => {
-    await saveSchedule(withAmounts(contractor, balanceMilestones(milestones, changedIndex)));
+    await saveSchedule(balanceMilestones(milestones, changedIndex, contractor));
   };
 
   const handleReorder = (next: DraftMilestone[]) => {
@@ -763,10 +780,11 @@ const PaymentSchedule = ({
     if (locked) return;
     const milestone = milestones[index];
     if (!milestone || milestone.paid || (milestone.sourceMode === 'stage_synced' && contractor.role !== 'קבלן עד מפתח')) return;
-    const next = withAmounts(contractor, balanceMilestones(
+    const next = balanceMilestones(
       milestones.filter((_, i) => i !== index),
       Math.max(0, index - 1),
-    ));
+      contractor
+    );
     setMilestones(next);
     await saveSchedule(next);
   };
@@ -1074,6 +1092,7 @@ export const ContractorsScreen = () => {
         name: milestone.name,
         triggerText: milestone.triggerText || '',
         pct: milestone.pct,
+        amount: milestone.amount,
       })),
     });
   };

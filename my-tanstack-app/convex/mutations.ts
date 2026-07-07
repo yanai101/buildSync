@@ -507,6 +507,7 @@ export const saveContractorPaymentSchedule = mutation({
       name: v.string(),
       triggerText: v.string(),
       pct: v.number(),
+      amount: v.optional(v.number()),
     })),
   },
   handler: async (ctx, args) => {
@@ -547,7 +548,7 @@ export const saveContractorPaymentSchedule = mutation({
 
       for (let i = 0; i < args.milestones.length; i++) {
         const milestone = args.milestones[i];
-        const amount = Math.round((contractor.budget * milestone.pct) / 100);
+        const amount = milestone.amount !== undefined ? milestone.amount : Math.round((contractor.budget * milestone.pct) / 100);
 
         const stageId = await ctx.db.insert('stages', {
           projectId: contractor.projectId,
@@ -598,7 +599,7 @@ export const saveContractorPaymentSchedule = mutation({
 
       for (let i = 0; i < args.milestones.length; i++) {
         const milestone = args.milestones[i];
-        const amount = Math.round((contractor.budget * milestone.pct) / 100);
+        const amount = milestone.amount !== undefined ? milestone.amount : Math.round((contractor.budget * milestone.pct) / 100);
 
         let stageId: Id<'stages'> | undefined = undefined;
 
@@ -728,7 +729,7 @@ export const saveContractorPaymentSchedule = mutation({
 
     for (let i = 0; i < args.milestones.length; i++) {
       const milestone = args.milestones[i];
-      const amount = Math.round((contractor.budget * milestone.pct) / 100);
+      const amount = milestone.amount !== undefined ? milestone.amount : Math.round((contractor.budget * milestone.pct) / 100);
 
       let realMilestoneId: Id<'contractorPaymentMilestones'> | undefined = undefined;
       if (milestone.milestoneId && !milestone.milestoneId.includes('-')) {
