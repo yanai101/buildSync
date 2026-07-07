@@ -414,7 +414,7 @@ const paymentScheduleKey = (contractor: Contractor) =>
   ].join('|');
 
 const balanceMilestones = (milestones: DraftMilestone[], changedIndex: number, contractor: Contractor): DraftMilestone[] => {
-  const next = [...milestones];
+  const next = milestones.map(m => ({ ...m }));
   if (next.length === 0 || contractor.budget === 0) return next;
 
   const totalAmount = next.reduce((sum, m) => sum + (m.amount || 0), 0);
@@ -507,6 +507,7 @@ const PaymentSchedule = ({
 }) => {
   const sourceMilestones = React.useMemo(() => normalizeMilestones(contractor), [contractor]);
   const [milestones, setMilestones] = React.useState<DraftMilestone[]>(() => sourceMilestones);
+  const milestonesRef = React.useRef(milestones);
   const [adding, setAdding] = React.useState(false);
   const [newM, setNewM] = React.useState({name:"", pct:10, triggerText:""});
   const [pendingId, setPendingId] = React.useState<string | null>(null);
@@ -517,6 +518,10 @@ const PaymentSchedule = ({
   React.useEffect(() => {
     setMilestones(sourceMilestones);
   }, [sourceMilestones]);
+
+  React.useEffect(() => {
+    milestonesRef.current = milestones;
+  }, [milestones]);
 
   const totalPaid = milestones.filter(m=>m.paid).reduce((a,m)=>a+m.amount,0);
   const totalPct = roundPct(milestones.filter(m=>m.paid).reduce((a,m)=>a+m.pct,0));
@@ -549,7 +554,9 @@ const PaymentSchedule = ({
   const updateMilestone = (index: number, patch: Partial<DraftMilestone>, shouldBalance = false) => {
     setMilestones(prev => {
       const edited = prev.map((m, i) => i === index ? { ...m, ...patch } : m);
-      return shouldBalance ? balanceMilestones(edited, index, contractor) : edited;
+      const next = shouldBalance ? balanceMilestones(edited, index, contractor) : edited;
+      milestonesRef.current = next;
+      return next;
     });
   };
 
@@ -582,7 +589,7 @@ const PaymentSchedule = ({
   };
 
   const saveOnBlur = async (changedIndex: number) => {
-    await saveSchedule(balanceMilestones(milestones, changedIndex, contractor));
+    await saveSchedule(balanceMilestones(milestonesRef.current, changedIndex, contractor));
   };
 
   const handleReorder = (next: DraftMilestone[]) => {
