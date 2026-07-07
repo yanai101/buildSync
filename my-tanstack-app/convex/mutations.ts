@@ -771,6 +771,11 @@ export const setContractorPaymentMilestonePaid = mutation({
     milestoneId: v.string(),
     paid: v.boolean(),
     vatAdded: v.optional(v.boolean()),
+    // On-screen amount at the moment the user confirmed payment. Passing
+    // this makes the paid expense authoritative on what the user saw and
+    // approved, instead of trusting a separate (and racy) schedule-save
+    // write to have already landed in the DB.
+    amount: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const milestoneId = await resolveMilestoneId(ctx as any, args.milestoneId);
@@ -798,17 +803,22 @@ export const setContractorPaymentMilestonePaid = mutation({
       }
     }
 
-    const vatAmount = args.paid && args.vatAdded ? Math.round(milestone.amount * (vatPct / 100)) : undefined;
+    const amount =
+      args.paid && args.amount !== undefined && Number.isFinite(args.amount) && args.amount >= 0
+        ? args.amount
+        : milestone.amount;
+    const vatAmount = args.paid && args.vatAdded ? Math.round(amount * (vatPct / 100)) : undefined;
 
     await ctx.db.patch(milestoneId, {
       paid: args.paid,
       paidAt: args.paid ? today : undefined,
       vatAdded: args.paid ? args.vatAdded : undefined,
       vatAmount,
+      amount,
     });
 
     if (args.paid) {
-      const finalAmount = milestone.amount + (vatAmount || 0);
+      const finalAmount = amount + (vatAmount || 0);
       if (!existingExpense) {
         await ctx.db.insert('expenses', {
           projectId: contractor.projectId,

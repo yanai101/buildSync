@@ -433,15 +433,17 @@ const balanceMilestones = (milestones: DraftMilestone[], changedIndex: number, c
       delta -= reduction;
     }
 
-    if (delta > 0) {
-      next[changedIndex].amount = Math.max(0, next[changedIndex].amount - delta);
-    }
+    // Note: any remaining delta here means every other adjustable row has
+    // already been drained to 0 and there is genuinely no room in the
+    // budget. We deliberately do NOT touch next[changedIndex] — the amount
+    // the user just entered must be preserved. The schedule may end up
+    // slightly over budget; `scheduleOverBudget` surfaces that in the UI.
   }
 
   if (delta < 0) {
     const unlockedIndexes = next.map((_, i) => i).filter(i => i !== changedIndex && !(next[i].isLocked || next[i].paid));
     const targetIndex = unlockedIndexes.reverse().find(i => i < changedIndex) ?? unlockedIndexes[0];
-    
+
     if (targetIndex !== undefined) {
       next[targetIndex].amount += Math.abs(delta);
     } else {
@@ -449,8 +451,12 @@ const balanceMilestones = (milestones: DraftMilestone[], changedIndex: number, c
     }
   }
 
+  // Reconciliation pass: only applies when the schedule is under budget
+  // (there's slack to hand to another row). If we're at/over budget, leave
+  // the totals as-is rather than forcing an exact match onto some other
+  // row or clawing amount back from the row the user just edited.
   const balancedTotal = next.reduce((sum, m) => sum + (m.amount || 0), 0);
-  if (balancedTotal !== contractor.budget) {
+  if (balancedTotal < contractor.budget) {
     const unlockedIndexes = next.map((_, i) => i).filter(i => i !== changedIndex && !(next[i].isLocked || next[i].paid));
     const targetIndex = unlockedIndexes[0];
     if (targetIndex !== undefined) {
@@ -540,9 +546,12 @@ const PaymentSchedule = ({
 
   const saveSchedule = async (nextMilestones = milestones) => {
     if (locked) return;
-    const nextTotalPct = roundPct(nextMilestones.reduce((sum, milestone) => sum + milestone.pct, 0));
-    const nextTotalAmount = nextMilestones.reduce((sum, milestone) => sum + milestone.amount, 0);
-    if (nextTotalPct > 100 || nextTotalAmount > contractor.budget) return;
+    // Over-budget schedules are allowed to save (surfaced via
+    // `scheduleOverBudget` in the UI) — only refuse genuinely invalid
+    // input, since blocking the save here would silently drop an edit
+    // and leave a stale amount in the DB.
+    const hasInvalidAmount = nextMilestones.some(milestone => !Number.isFinite(milestone.amount) || milestone.amount < 0);
+    if (hasInvalidAmount) return;
     setSavingSchedule(true);
     try {
       await onSaveSchedule(contractor, nextMilestones);
@@ -1072,10 +1081,13 @@ export const ContractorsScreen = () => {
     if (!pendingPayment) return;
     setSavingPayment(true);
     try {
-      await setMilestonePaid({ 
-        milestoneId: String(pendingPayment.milestone.id) as any, 
+      await setMilestonePaid({
+        milestoneId: String(pendingPayment.milestone.id) as any,
         paid: pendingPayment.paid,
-        vatAdded
+        vatAdded,
+        // Pass the on-screen amount so paying can never fall back to a
+        // stale/racy value already written to the DB by a schedule save.
+        amount: pendingPayment.paid ? pendingPayment.milestone.amount : undefined,
       });
       setFeedback({
         title: pendingPayment.paid ? "תשלום אושר" : "תשלום בוטל",
