@@ -589,7 +589,9 @@ const PaymentSchedule = ({
   };
 
   const saveOnBlur = async (changedIndex: number) => {
-    await saveSchedule(balanceMilestones(milestonesRef.current, changedIndex, contractor));
+    const balanced = balanceMilestones(milestonesRef.current, changedIndex, contractor);
+    setMilestones(balanced);
+    await saveSchedule(balanced);
   };
 
   const handleReorder = (next: DraftMilestone[]) => {
