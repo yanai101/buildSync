@@ -1106,9 +1106,17 @@ const PaymentSchedule = ({
 
       <div style={{padding:"10px 18px 0"}}>
         <div style={{height:8,background:"var(--border)",borderRadius:4,overflow:"hidden",display:"flex"}}>
-          {milestones.map((m,i)=>(
-            <div key={m.id} style={{width:`${m.pct}%`,background:m.paid?"var(--success)":"transparent",borderLeft:i>0?"1px solid var(--bg)":""}} title={`${m.name}: ${roundPct(m.pct)}%`}/>
-          ))}
+          {milestones.map((m,i)=>{
+            const partials = ((m as any).partialPayments || []).reduce((sum: number, p: any) => sum + p.amount, 0);
+            const fillPct = m.paid ? 100 : (m.amount > 0 ? (partials / m.amount) * 100 : 0);
+            return (
+              <div key={m.id} style={{
+                width:`${m.pct}%`,
+                background: fillPct > 0 ? (fillPct === 100 ? "var(--success)" : `linear-gradient(to left, var(--success) ${fillPct}%, transparent 0)`) : "transparent",
+                borderLeft:i>0?"1px solid var(--bg)":""
+              }} title={`${m.name}: ${roundPct(m.pct)}%`} />
+            );
+          })}
         </div>
         <div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:"var(--text3)",marginTop:4}}>
           <span>₪0</span><span>{fmtMoney(contractor.budget)}</span>
