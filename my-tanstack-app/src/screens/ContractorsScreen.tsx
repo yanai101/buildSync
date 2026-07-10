@@ -871,14 +871,21 @@ const PaymentSchedule = ({
             </div>
           ) : null)}
           
-          {(m as any).partialPayments?.length > 0 && (
+          {(m as any).partialPayments?.length > 0 && (() => {
+            const mPartialsSum = ((m as any).partialPayments || []).reduce((sum: number, p: any) => sum + p.amount, 0);
+            const mRemaining = Math.max(0, m.amount - mPartialsSum);
+            return (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 8, background: 'var(--bg)', padding: '6px 8px', borderRadius: 6, border: '1px solid var(--border)', width: 'max-content' }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text2)' }}>היסטוריית תשלומים:</div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+                <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text2)' }}>היסטוריית תשלומים:</span>
+                {!m.paid && mRemaining > 0 && <span style={{ fontSize: 10, color: 'var(--accent)', fontWeight: 600 }}>נותרו {fmtMoney(mRemaining)}</span>}
+              </div>
               {(m as any).partialPayments.map((p: any) => (
                 <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11, gap: 12 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <span style={{ fontWeight: 600, color: 'var(--success)' }}>{fmtMoney(p.amount)}</span> <span style={{ color: 'var(--text3)' }}>({p.date.split('-').reverse().join('/')})</span>
-                    {p.files && p.files.length > 0 && (
+                    {p.note && <span style={{ color: 'var(--text2)', fontSize: 10, background: '#F1F5F9', padding: '2px 4px', borderRadius: 4, maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={p.note}>{p.note}</span>}
+                    {!m.isLocked && p.files && p.files.length > 0 && (
                       <div style={{ display: 'flex', gap: 4 }}>
                         {p.files.map((f: any) => (
                           <button key={f.id} onClick={() => onViewFile?.({ id: f.id as string, url: f.url, name: f.name, milestoneId: m.id as string })} title={f.name} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 20, height: 20, background: '#EEF2FF', color: '#4F46E5', borderRadius: 4, border: 'none', cursor: 'pointer' }}>
@@ -896,7 +903,7 @@ const PaymentSchedule = ({
                 </div>
               ))}
             </div>
-          )}
+          );})()}
         </div>
       </td>
       <td style={{fontSize:12,color:"var(--text3)"}}>
@@ -940,12 +947,14 @@ const PaymentSchedule = ({
       </td>
       <td>
         <div style={{ display: 'flex', gap: 4 }}>
-        {m.isLocked ? (
+        {m.isLocked ? (() => {
+          const allFiles = [...(m.files || []), ...((m as any).partialPayments || []).flatMap((p: any) => p.files || [])];
+          return (
           <div style={{ padding: "6px 8px", color: "var(--text2)", display: "flex", alignItems: "center", gap: 8 }}>
             <Icon n="lock" s={14}/>
-            {m.files && m.files.length > 0 && (
+            {allFiles.length > 0 && (
               <div style={{ display: 'flex', gap: 4 }}>
-                {m.files.map(f => (
+                {allFiles.map(f => (
                   <button key={f.id} onClick={() => onViewFile?.({ id: f.id as string, url: f.url, name: f.name, milestoneId: m.id as string })} title={f.name} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, background: '#EEF2FF', color: '#4F46E5', borderRadius: 4, border: 'none', cursor: 'pointer' }}>
                     <Icon n="file-text" s={12}/>
                   </button>
@@ -970,7 +979,7 @@ const PaymentSchedule = ({
               </label>
             )}
           </div>
-        ) : (
+        )})() : (
           <>
             {m.paid && onLock && m.id && (
               <Btn

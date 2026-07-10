@@ -843,7 +843,7 @@ export const setContractorPaymentMilestonePaid = mutation({
           });
         }
       }
-    } else if (existingExpense) {
+    } else if (!args.paid) {
       if (milestone.fileIds && milestone.fileIds.length > 0) {
         for (const fileId of milestone.fileIds) {
           const file = await ctx.db.get(fileId);
@@ -852,18 +852,49 @@ export const setContractorPaymentMilestonePaid = mutation({
             await ctx.db.delete(fileId);
           }
         }
-        await ctx.db.patch(milestoneId, { fileIds: undefined });
       }
 
-      await ctx.db.delete(existingExpense._id);
-      if (existingExpense.categoryId) {
-        const expenseCategory = await ctx.db.get(existingExpense.categoryId);
-        if (expenseCategory) {
-          await ctx.db.patch(expenseCategory._id, {
-            spent: Math.max(0, expenseCategory.spent - existingExpense.amount),
-          });
+      if (existingExpense) {
+        await ctx.db.delete(existingExpense._id);
+        if (existingExpense.categoryId) {
+          const expenseCategory = await ctx.db.get(existingExpense.categoryId);
+          if (expenseCategory) {
+            await ctx.db.patch(expenseCategory._id, {
+              spent: Math.max(0, expenseCategory.spent - existingExpense.amount),
+            });
+          }
         }
       }
+
+      if (milestone.partialPayments && milestone.partialPayments.length > 0) {
+        for (const p of milestone.partialPayments) {
+          if (p.fileIds && p.fileIds.length > 0) {
+            for (const fileId of p.fileIds) {
+              const file = await ctx.db.get(fileId as Id<'projectFiles'>);
+              if (file && file.storageId) {
+                await ctx.storage.delete(file.storageId);
+                await ctx.db.delete(fileId as Id<'projectFiles'>);
+              }
+            }
+          }
+          if (p.expenseId) {
+            const exp = await ctx.db.get(p.expenseId as Id<'expenses'>);
+            if (exp) {
+              await ctx.db.delete(exp._id);
+              if (exp.categoryId) {
+                const expenseCategory = await ctx.db.get(exp.categoryId);
+                if (expenseCategory) {
+                  await ctx.db.patch(expenseCategory._id, {
+                    spent: Math.max(0, expenseCategory.spent - exp.amount),
+                  });
+                }
+              }
+            }
+          }
+        }
+      }
+
+      await ctx.db.patch(milestoneId, { fileIds: undefined, partialPayments: undefined });
     }
 
     await recomputeContractorPaid(ctx, milestone.contractorId);
