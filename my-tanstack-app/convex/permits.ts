@@ -12,10 +12,16 @@ export const list = query({
       .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
       .collect();
       
-    return await Promise.all(records.map(async (p) => ({
+    const withUrls = await Promise.all(records.map(async (p) => ({
       ...p,
       url: p.fileId ? await ctx.storage.getUrl(p.fileId) : null,
     })));
+
+    return withUrls.sort((a, b) => {
+      const aOrder = a.sortOrder ?? a._creationTime;
+      const bOrder = b.sortOrder ?? b._creationTime;
+      return aOrder - bOrder;
+    });
   },
 });
 
@@ -47,6 +53,7 @@ export const addPermit = mutation({
       expirationDate: args.expirationDate,
       notes: args.notes,
       fileId: args.fileId,
+      sortOrder: Date.now(),
     });
 
     await insertActivity(ctx, {
@@ -87,5 +94,23 @@ export const deletePermit = mutation({
       await ctx.storage.delete(permit.fileId);
     }
     await ctx.db.delete(args.permitId);
+  },
+});
+
+export const reorderPermits = mutation({
+  args: {
+    updates: v.array(
+      v.object({
+        id: v.id('permits'),
+        sortOrder: v.number(),
+      })
+    ),
+  },
+  handler: async (ctx, args) => {
+    await Promise.all(
+      args.updates.map((update) =>
+        ctx.db.patch(update.id, { sortOrder: update.sortOrder })
+      )
+    );
   },
 });

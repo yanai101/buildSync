@@ -511,6 +511,7 @@ export const zPermit = {
   expirationDate: z.string().optional(),
   notes: z.string().optional(),
   fileId: zid('_storage').optional(),
+  sortOrder: z.number().optional(),
 };
 
 export const zDailyLog = {

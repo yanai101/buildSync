@@ -1,4 +1,21 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  rectSortingStrategy,
+  useSortable
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { useCurrentProject } from '../hooks/useCurrentProject';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
@@ -9,6 +26,112 @@ import { AccessDenied, AccessLoading } from '../components/AccessDenied';
 import type { Id } from '../../convex/_generated/dataModel';
 import { useSubscription } from '../hooks/useSubscription';
 
+const PermitCard = ({ permit, authorityDraft, noteDraft, onAuthorityChange, onNoteChange, onDelete, onPreview }: any) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging
+  } = useSortable({ id: permit._id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 10 : 1,
+    boxShadow: isDragging ? '0 12px 24px rgba(0,0,0,0.15)' : 'none',
+    scale: isDragging ? 1.02 : 1,
+    border: '1px solid var(--border)', 
+    borderRadius: 10, 
+    padding: 16, 
+    background: 'var(--surface)', 
+    display: 'flex', 
+    flexDirection: 'column', 
+    gap: 12, 
+    position: 'relative'
+  };
+
+  return (
+    <div ref={setNodeRef} style={style as any}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+        <div 
+          {...attributes}
+          {...listeners}
+          style={{ cursor: 'grab', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text3)', marginTop: 8, padding: 4, touchAction: 'none' }}
+        >
+          <Icon n="menu" s={18} />
+        </div>
+        <div style={{ background: 'var(--bg)', width: 40, height: 40, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text2)' }}>
+          <Icon n="file-text" s={20} />
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text1)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {permit.title}
+          </div>
+          <input
+            list="authorities-list"
+            className="bp-input"
+            value={authorityDraft ?? permit.authority ?? ''}
+            placeholder="הגדר רשות (עירייה, תאגיד...)"
+            onChange={(e) => onAuthorityChange(permit._id, e.target.value)}
+            style={{
+              width: '100%', fontSize: 13, padding: '4px 8px', marginTop: 4,
+              border: '1px solid transparent', borderRadius: 6, background: 'transparent',
+              color: 'var(--text2)', transition: 'all 0.2s', height: 28,
+            }}
+            onFocus={(e) => {
+              e.target.style.background = 'var(--bg)';
+              e.target.style.borderColor = 'var(--border)';
+            }}
+            onBlur={(e) => {
+              if (!e.target.value) {
+                e.target.style.background = 'transparent';
+                e.target.style.borderColor = 'transparent';
+              }
+            }}
+          />
+        </div>
+      </div>
+
+      <textarea
+        className="bp-input"
+        value={noteDraft ?? permit.notes ?? ''}
+        placeholder="הוסף הערה למסמך..."
+        onChange={(e) => onNoteChange(permit._id, e.target.value)}
+        rows={2}
+        style={{
+          width: '100%', resize: 'vertical', fontFamily: "'Heebo',sans-serif",
+          fontSize: 13, padding: '8px 10px', border: '1px solid var(--border)',
+          borderRadius: 8, background: 'var(--bg)',
+        }}
+      />
+
+      {permit.url && (
+        <div style={{ display: 'flex', gap: 8, marginTop: 'auto' }}>
+          <div style={{ flex: 1 }}>
+            <Btn variant="secondary" onClick={() => onPreview(permit.url as string)} style={{ width: '100%', justifyContent: 'center' }}>
+              <Icon n="eye" s={16} /> צפה במסמך
+            </Btn>
+          </div>
+          <button
+            type="button"
+            onClick={() => onDelete({ id: permit._id, title: permit.title })}
+            style={{
+              background: 'none', border: '1px solid var(--border)', borderRadius: 8,
+              padding: '0 12px', cursor: 'pointer', color: 'var(--danger)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}
+            title="מחק מסמך"
+          >
+            <Icon n="trash" s={16} />
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
+
 export const PermitsScreen = () => {
   const { allowed, loading: roleLoading } = useRequireRole(['owner', 'manager', 'inspector']);
   const { projectId } = useCurrentProject();
@@ -18,6 +141,7 @@ export const PermitsScreen = () => {
   const addPermit = useMutation(api.permits.addPermit);
   const deletePermit = useMutation(api.permits.deletePermit);
   const updatePermit = useMutation(api.permits.updatePermit);
+  const reorderPermits = useMutation(api.permits.reorderPermits);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -27,6 +151,43 @@ export const PermitsScreen = () => {
   const noteTimers = useRef<Record<string, number>>({});
   const [authorityDrafts, setAuthorityDrafts] = useState<Record<string, string>>({});
   const authorityTimers = useRef<Record<string, number>>({});
+  const [localPermits, setLocalPermits] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (permits) {
+      setLocalPermits(permits);
+    }
+  }, [permits]);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    
+    if (active.id !== over?.id && over) {
+      const oldIndex = localPermits.findIndex((item) => item._id === active.id);
+      const newIndex = localPermits.findIndex((item) => item._id === over.id);
+      
+      const newOrder = arrayMove(localPermits, oldIndex, newIndex);
+      setLocalPermits(newOrder);
+      
+      try {
+        const updates = newOrder.map((p, index) => ({
+          id: p._id,
+          sortOrder: index,
+        }));
+        await reorderPermits({ updates });
+      } catch (e) {
+        console.error('Failed to reorder', e);
+        if (permits) setLocalPermits(permits);
+      }
+    }
+  };
 
   const handlePick = () => {
     if (uploading) return;
@@ -129,7 +290,7 @@ export const PermitsScreen = () => {
         <option value="רשות העתיקות" />
         <option value="רשות מקרקעי ישראל" />
       </datalist>
-      <div className="page-content" style={{ display: 'flex', flexDirection: 'column', gap: 24, paddingBottom: 60, minHeight: 'calc(100vh - 130px)' }}>
+      <div className="page-content" style={{ display: 'flex', flexDirection: 'column', gap: 24, paddingBottom: 120, minHeight: 'calc(100vh - 130px)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h1 style={{ margin: 0, fontSize: 24 }}>בירוקרטיה והיתרים</h1>
           {permits && permits.length > 0 && (
@@ -163,98 +324,35 @@ export const PermitsScreen = () => {
             </div>
           </div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
-            {permits?.map((permit) => (
-              <div key={permit._id} style={{ border: '1px solid var(--border)', borderRadius: 10, padding: 16, background: 'var(--surface)', display: 'flex', flexDirection: 'column', gap: 12 }}>
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-                  <div style={{ background: 'var(--bg)', width: 40, height: 40, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text2)' }}>
-                    <Icon n="file-text" s={20} />
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text1)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {permit.title}
-                    </div>
-                    <input
-                      list="authorities-list"
-                      className="bp-input"
-                      value={authorityDrafts[permit._id] ?? permit.authority ?? ''}
-                      placeholder="הגדר רשות (עירייה, תאגיד...)"
-                      onChange={(e) => handleAuthorityChange(permit._id, e.target.value)}
-                      style={{
-                        width: '100%',
-                        fontSize: 13,
-                        padding: '4px 8px',
-                        marginTop: 4,
-                        border: '1px solid transparent',
-                        borderRadius: 6,
-                        background: 'transparent',
-                        color: 'var(--text2)',
-                        transition: 'all 0.2s',
-                        height: 28,
-                      }}
-                      onFocus={(e) => {
-                        e.target.style.background = 'var(--bg)';
-                        e.target.style.borderColor = 'var(--border)';
-                      }}
-                      onBlur={(e) => {
-                        if (!e.target.value) {
-                          e.target.style.background = 'transparent';
-                          e.target.style.borderColor = 'transparent';
-                        }
-                      }}
-                    />
-                  </div>
-                </div>
-
-                <textarea
-                  className="bp-input"
-                  value={noteDrafts[permit._id] ?? permit.notes ?? ''}
-                  placeholder="הוסף הערה למסמך..."
-                  onChange={(e) => handleNoteChange(permit._id, e.target.value)}
-                  rows={2}
-                  style={{
-                    width: '100%',
-                    resize: 'vertical',
-                    fontFamily: "'Heebo',sans-serif",
-                    fontSize: 13,
-                    padding: '8px 10px',
-                    border: '1px solid var(--border)',
-                    borderRadius: 8,
-                    background: 'var(--bg)',
-                  }}
-                />
-
-                {permit.url && (
-                  <div style={{ display: 'flex', gap: 8, marginTop: 'auto' }}>
-                    <div style={{ flex: 1 }}>
-                      <Btn variant="secondary" onClick={() => setPreviewDocumentUrl(permit.url as string)} style={{ width: '100%', justifyContent: 'center' }}>
-                        <Icon n="eye" s={16} /> צפה במסמך
-                      </Btn>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setPermitToDelete({ id: permit._id, title: permit.title })}
-                      style={{
-                        background: 'none',
-                        border: '1px solid var(--border)',
-                        borderRadius: 8,
-                        padding: '0 12px',
-                        cursor: 'pointer',
-                        color: 'var(--danger)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}
-                      title="מחק מסמך"
-                    >
-                      <Icon n="trash" s={16} />
-                    </button>
-                  </div>
-                )}
+          <DndContext 
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext 
+              items={localPermits.map(p => p._id)}
+              strategy={rectSortingStrategy}
+            >
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
+                {localPermits.map((permit) => (
+                  <PermitCard 
+                    key={permit._id}
+                    permit={permit}
+                    authorityDraft={authorityDrafts[permit._id]}
+                    noteDraft={noteDrafts[permit._id]}
+                    onAuthorityChange={handleAuthorityChange}
+                    onNoteChange={handleNoteChange}
+                    onDelete={setPermitToDelete}
+                    onPreview={setPreviewDocumentUrl}
+                  />
+                ))}
               </div>
-            ))}
-          </div>
+            </SortableContext>
+          </DndContext>
         )}
+        
+        {/* Explicit spacer for mobile scroll issues */}
+        <div style={{ height: 100, flexShrink: 0 }} />
 
         {permitToDelete && (
           <ConfirmDialog
