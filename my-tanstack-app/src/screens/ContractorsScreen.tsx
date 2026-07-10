@@ -1112,9 +1112,21 @@ const PaymentSchedule = ({
             return (
               <div key={m.id} style={{
                 width:`${m.pct}%`,
-                background: fillPct > 0 ? (fillPct === 100 ? "var(--success)" : `linear-gradient(to left, var(--success) ${fillPct}%, transparent 0)`) : "transparent",
-                borderLeft:i>0?"1px solid var(--bg)":""
-              }} title={`${m.name}: ${roundPct(m.pct)}%`} />
+                background: "transparent",
+                borderLeft:i>0?"1px solid var(--bg)":"",
+                position: "relative"
+              }} title={`${m.name}: ${roundPct(m.pct)}%`}>
+                {fillPct > 0 && (
+                  <div style={{
+                    position: "absolute",
+                    top: 0,
+                    bottom: 0,
+                    right: 0,
+                    width: `${fillPct}%`,
+                    background: "var(--success)"
+                  }} />
+                )}
+              </div>
             );
           })}
         </div>
