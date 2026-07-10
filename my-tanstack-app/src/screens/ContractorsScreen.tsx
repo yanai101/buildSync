@@ -875,7 +875,7 @@ const PaymentSchedule = ({
             const mPartialsSum = ((m as any).partialPayments || []).reduce((sum: number, p: any) => sum + p.amount, 0);
             const mRemaining = Math.max(0, m.amount - mPartialsSum);
             return (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 8, background: 'var(--bg)', padding: '6px 8px', borderRadius: 6, border: '1px solid var(--border)', width: 'max-content' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 8, background: 'var(--bg)', padding: '6px 8px', borderRadius: 6, border: '1px solid var(--border)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
                 <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text2)' }}>היסטוריית תשלומים:</span>
                 {!m.paid && mRemaining > 0 && <span style={{ fontSize: 10, color: 'var(--accent)', fontWeight: 600 }}>נותרו {fmtMoney(mRemaining)}</span>}
