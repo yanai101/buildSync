@@ -639,7 +639,7 @@ const DraggableMilestoneRow = ({ m, i, renderCells }: DraggableMilestoneRowProps
       value={m}
       dragListener={false}
       dragControls={controls}
-      style={{background:(m.paid || m.isLocked)?"#F0FDF4":"transparent"}}
+      style={{background:(m.paid || m.isLocked)?"#F0FDF4":(!m.paid && (m as any).partialPayments?.length > 0)?"#FFFBEB":"transparent"}}
     >
       {renderCells(m, i, (e) => controls.start(e))}
     </Reorder.Item>
@@ -1141,7 +1141,7 @@ const PaymentSchedule = ({
           {locked ? (
             <tbody>
               {milestones.map((m,i)=>(
-                <tr key={m.id} style={{background:(m.paid || m.isLocked)?"#F0FDF4":"transparent"}}>
+                <tr key={m.id} style={{background:(m.paid || m.isLocked)?"#F0FDF4":(!m.paid && (m as any).partialPayments?.length > 0)?"#FFFBEB":"transparent"}}>
                   {renderMilestoneCells(m, i)}
                 </tr>
               ))}
