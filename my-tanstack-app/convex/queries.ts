@@ -604,8 +604,21 @@ export const listContractors = query({
               const url = await ctx.storage.getUrl(file.storageId);
               return url ? { id: file._id, url, name: file.originalName } : null;
             })) : [];
+            const partialPayments = milestone.partialPayments ? await Promise.all(milestone.partialPayments.map(async (p) => {
+              const pFiles = p.fileIds ? await Promise.all(p.fileIds.map(async (fileId) => {
+                const file = await ctx.db.get(fileId as Id<'projectFiles'>);
+                if (!file) return null;
+                const url = await ctx.storage.getUrl(file.storageId);
+                return url ? { id: file._id, url, name: file.originalName } : null;
+              })) : [];
+              return {
+                ...p,
+                files: pFiles.filter((f): f is NonNullable<typeof f> => f !== null),
+              };
+            })) : undefined;
             return {
               ...milestone,
+              partialPayments,
               id: milestone._id,
               taskIds: [],
               status: milestone.paid ? 'paid' : 'pending',

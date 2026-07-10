@@ -67,9 +67,15 @@ const recomputeContractorPaid = async (ctx: MutationCtx, contractorId: Id<'contr
     .withIndex('by_contractor', (q) => q.eq('contractorId', contractorId))
     .take(100);
 
-  const paid = milestones
-    .filter((milestone) => milestone.paid)
-    .reduce((total, milestone) => total + milestone.amount + (milestone.vatAmount || 0), 0);
+  const paid = milestones.reduce((total, milestone) => {
+    let milestoneTotal = 0;
+    if (milestone.paid) {
+      milestoneTotal = milestone.amount + (milestone.vatAmount || 0);
+    } else if (milestone.partialPayments && milestone.partialPayments.length > 0) {
+      milestoneTotal = milestone.partialPayments.reduce((sum, p) => sum + p.amount, 0);
+    }
+    return total + milestoneTotal;
+  }, 0);
 
   await ctx.db.patch(contractorId, { paid });
 };
@@ -838,6 +844,17 @@ export const setContractorPaymentMilestonePaid = mutation({
         }
       }
     } else if (existingExpense) {
+      if (milestone.fileIds && milestone.fileIds.length > 0) {
+        for (const fileId of milestone.fileIds) {
+          const file = await ctx.db.get(fileId);
+          if (file && file.storageId) {
+            await ctx.storage.delete(file.storageId);
+            await ctx.db.delete(fileId);
+          }
+        }
+        await ctx.db.patch(milestoneId, { fileIds: undefined });
+      }
+
       await ctx.db.delete(existingExpense._id);
       if (existingExpense.categoryId) {
         const expenseCategory = await ctx.db.get(existingExpense.categoryId);
@@ -1679,5 +1696,116 @@ export const updatePhotoDefect = mutation({
 
     await ctx.db.patch(args.photoId, updates);
     return { updated: true };
+  },
+});
+
+export const addContractorPartialPayment = mutation({
+  args: {
+    milestoneId: v.string(),
+    amount: v.number(),
+    date: v.string(),
+    note: v.optional(v.string()),
+    fileIds: v.optional(v.array(v.id('projectFiles'))),
+  },
+  handler: async (ctx, args) => {
+    const milestoneId = await resolveMilestoneId(ctx as any, args.milestoneId);
+    const milestone = await ctx.db.get(milestoneId);
+    if (!milestone) throw new Error('Payment milestone not found');
+
+    const contractor = await ctx.db.get(milestone.contractorId);
+    if (!contractor) throw new Error('Contractor not found');
+
+    const category = await findBudgetCategoryForContractor(ctx, contractor.projectId, contractor.role);
+
+    const expenseId = await ctx.db.insert('expenses', {
+      projectId: contractor.projectId,
+      description: `תשלום חלקי לקבלן ${contractor.name} — ${milestone.name}${args.note ? ` (${args.note})` : ''}`,
+      amount: args.amount,
+      expenseDate: args.date,
+      status: 'שולם',
+      categoryId: category?._id,
+      contractorId: contractor._id,
+      milestoneId,
+      fileIds: args.fileIds,
+    });
+
+    if (category) {
+      await ctx.db.patch(category._id, {
+        spent: category.spent + args.amount,
+      });
+    }
+
+    const newPartial = {
+      id: Date.now().toString(36) + Math.random().toString(36).substring(2),
+      amount: args.amount,
+      date: args.date,
+      expenseId,
+      note: args.note,
+      fileIds: args.fileIds,
+    };
+
+    const partialPayments = [...(milestone.partialPayments || []), newPartial];
+    const totalPartials = partialPayments.reduce((sum, p) => sum + p.amount, 0);
+    const isFullyPaid = totalPartials >= milestone.amount;
+
+    await ctx.db.patch(milestoneId, {
+      partialPayments,
+      paid: isFullyPaid,
+      paidAt: isFullyPaid ? args.date : milestone.paidAt,
+    });
+
+    await recomputeContractorPaid(ctx, milestone.contractorId);
+  },
+});
+
+export const deleteContractorPartialPayment = mutation({
+  args: {
+    milestoneId: v.string(),
+    partialPaymentId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const milestoneId = await resolveMilestoneId(ctx as any, args.milestoneId);
+    const milestone = await ctx.db.get(milestoneId);
+    if (!milestone) throw new Error('Payment milestone not found');
+
+    const partialPayments = milestone.partialPayments || [];
+    const partialPayment = partialPayments.find((p) => p.id === args.partialPaymentId);
+    if (!partialPayment) throw new Error('Partial payment not found');
+
+    if (partialPayment.fileIds && partialPayment.fileIds.length > 0) {
+      for (const fileId of partialPayment.fileIds) {
+        const file = await ctx.db.get(fileId);
+        if (file && file.storageId) {
+          await ctx.storage.delete(file.storageId);
+          await ctx.db.delete(fileId);
+        }
+      }
+    }
+
+    if (partialPayment.expenseId) {
+      const expense = await ctx.db.get(partialPayment.expenseId as Id<'expenses'>);
+      if (expense) {
+        await ctx.db.delete(expense._id);
+        if (expense.categoryId) {
+          const category = await ctx.db.get(expense.categoryId);
+          if (category) {
+            await ctx.db.patch(category._id, {
+              spent: Math.max(0, category.spent - expense.amount),
+            });
+          }
+        }
+      }
+    }
+
+    const updatedPartials = partialPayments.filter((p) => p.id !== args.partialPaymentId);
+    const totalPartials = updatedPartials.reduce((sum, p) => sum + p.amount, 0);
+
+    await ctx.db.patch(milestoneId, {
+      partialPayments: updatedPartials,
+      paid: totalPartials >= milestone.amount,
+      paidAt: totalPartials >= milestone.amount ? milestone.paidAt : undefined,
+    });
+
+    await recomputeContractorPaid(ctx, milestone.contractorId);
   },
 });

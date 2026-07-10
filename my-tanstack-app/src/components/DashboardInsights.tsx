@@ -251,6 +251,7 @@ export const InsightCard = ({ insight, icon, onAction, variants }) => {
       style={{
         padding: 24,
         borderTop: `3px solid ${s.dot}`,
+        borderColor: "var(--border)",
         background: `linear-gradient(160deg, ${s.bg}22 0%, var(--surface) 60%)`,
         display: "flex",
         flexDirection: "column",

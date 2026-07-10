@@ -98,10 +98,17 @@ const LockPaymentModal = ({
             ))}
           </div>
 
-          <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 12, padding: '10px 0', border: '1px dashed var(--border)', borderRadius: 6, cursor: 'pointer', color: 'var(--accent)', fontWeight: 700, fontSize: 13 }}>
-            <Icon n="upload" s={14}/> בחר קבצים / צלם
-            <input type="file" multiple accept="image/*,.pdf" style={{ display: 'none' }} onChange={handleFilesSelected} disabled={uploading || saving} />
-          </label>
+          <div style={{ display: 'flex', gap: 12, marginTop: 12 }}>
+            <style>{`.receipt-camera-btn{display:none !important} @media (pointer: coarse){.receipt-camera-btn{display:flex !important}}`}</style>
+            <label className="receipt-camera-btn" style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8, padding: '10px 0', border: '1px dashed var(--border)', borderRadius: 6, cursor: 'pointer', color: 'var(--accent)', fontWeight: 700, fontSize: 13 }}>
+              <Icon n="camera" s={14}/> צלם עכשיו
+              <input type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={handleFilesSelected} disabled={uploading || saving} />
+            </label>
+            <label style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '10px 0', border: '1px dashed var(--border)', borderRadius: 6, cursor: 'pointer', color: 'var(--accent)', fontWeight: 700, fontSize: 13 }}>
+              <Icon n="folder" s={14}/> מגלריה / קובץ
+              <input type="file" multiple accept="image/*,.pdf" style={{ display: 'none' }} onChange={handleFilesSelected} disabled={uploading || saving} />
+            </label>
+          </div>
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 10 }}>
@@ -184,6 +191,155 @@ const ConfirmPaymentModal = ({
           <Btn variant="ghost" onClick={onClose} disabled={saving}>ביטול</Btn>
           <Btn onClick={() => onConfirm(vatAdded)} disabled={saving} style={!pendingPayment.paid ? { background: 'var(--danger)' } : {}}>
             {saving ? "שומר..." : pendingPayment.paid ? "אשר תשלום" : "בטל תשלום"}
+          </Btn>
+        </div>
+      </div>
+    </Modal>
+  );
+};
+
+const PartialPaymentModal = ({
+  pendingPartial,
+  onConfirm,
+  onClose,
+  saving,
+  projectId,
+}: {
+  pendingPartial: { contractor: Contractor; milestone: Milestone };
+  onConfirm: (amount: number, date: string, note: string, fileIds?: Id<'projectFiles'>[]) => Promise<void>;
+  onClose: () => void;
+  saving: boolean;
+  projectId: Id<'projects'>;
+}) => {
+  const [amount, setAmount] = React.useState<number>(() => {
+    const totalPartials = (pendingPartial.milestone.partialPayments || []).reduce((sum, p) => sum + p.amount, 0);
+    return Math.max(0, pendingPartial.milestone.amount - totalPartials);
+  });
+  const [date, setDate] = React.useState<string>(new Date().toISOString().slice(0, 10));
+  const [note, setNote] = React.useState<string>("");
+  const [files, setFiles] = React.useState<{ file: File; id?: Id<'projectFiles'>; progress: number }[]>([]);
+  const [uploading, setUploading] = React.useState(false);
+  const uploadProjectFile = useProjectFileUploader();
+
+  const totalPartials = (pendingPartial.milestone.partialPayments || []).reduce((sum, p) => sum + p.amount, 0);
+  const remaining = pendingPartial.milestone.amount - totalPartials;
+
+  const handleFilesSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files?.length) return;
+    const newFiles: { file: File; id?: Id<'projectFiles'>; progress: number }[] = Array.from(e.target.files).map(file => ({ file, progress: 0 }));
+    setFiles(prev => [...prev, ...newFiles]);
+    setUploading(true);
+
+    const updatedFiles = [...files, ...newFiles];
+    
+    for (const item of newFiles) {
+      try {
+        const { fileId } = await uploadProjectFile({
+          projectId,
+          file: item.file,
+          usage: 'receipt',
+          kind: item.file.type.startsWith('image/') ? 'image' : 'document',
+          contractorId: (pendingPartial.contractor._id ?? pendingPartial.contractor.id) as Id<'contractors'>,
+        });
+        const index = updatedFiles.findIndex(f => f.file === item.file);
+        if (index !== -1) {
+          updatedFiles[index].id = fileId;
+          updatedFiles[index].progress = 100;
+          setFiles([...updatedFiles]);
+        }
+      } catch (err) {
+        console.error("Failed to upload file", err);
+      }
+    }
+    setUploading(false);
+  };
+
+  const submit = () => {
+    const fileIds = files.map(f => f.id).filter((id): id is Id<'projectFiles'> => id !== undefined);
+    onConfirm(amount, date, note, fileIds.length > 0 ? fileIds : undefined);
+  };
+
+  return (
+    <Modal title="הזנת תשלום חלקי" onClose={saving ? undefined : onClose}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div style={{ fontSize: 13, color: 'var(--text2)' }}>
+          הזן את הסכום שהועבר לקבלן {pendingPartial.contractor.name} עבור {pendingPartial.milestone.name}.
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <label style={{ fontSize: 12, fontWeight: 600 }}>סכום התשלום (₪)</label>
+          <input
+            type="number"
+            className="bp-input"
+            value={amount === 0 ? "" : amount}
+            max={remaining}
+            onChange={(e) => setAmount(Number(e.target.value))}
+            style={{ fontSize: 14 }}
+          />
+          <div style={{ fontSize: 11, color: 'var(--text3)' }}>
+            נותרו לתשלום בשלב זה: {fmtMoney(remaining)}
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <label style={{ fontSize: 12, fontWeight: 600 }}>תאריך תשלום</label>
+          <input
+            type="date"
+            className="bp-input"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            style={{ fontSize: 14 }}
+          />
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <label style={{ fontSize: 12, fontWeight: 600 }}>הערה (אופציונלי)</label>
+          <input
+            type="text"
+            className="bp-input"
+            placeholder="למשל: העברה בנקאית מקדמה"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            style={{ fontSize: 14 }}
+          />
+        </div>
+
+        <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: 16 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8 }}>צירוף מסמכים (רשות)</div>
+          <div style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 12 }}>
+            מומלץ לצרף חשבונית מס, קבלה או תצלום של הצ'ק כהוכחת תשלום.
+          </div>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {files.map((f, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 12, background: '#F9FAFB', padding: '6px 10px', borderRadius: 6 }}>
+                <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: 200 }}>{f.file.name}</span>
+                {f.progress < 100 ? (
+                  <span style={{ color: 'var(--text3)' }}>מעלה...</span>
+                ) : (
+                  <span style={{ color: 'var(--success)', fontWeight: 700 }}><Icon n="check" s={12}/> הועלה</span>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <div style={{ display: 'flex', gap: 12, marginTop: 12 }}>
+            <style>{`.receipt-camera-btn{display:none !important} @media (pointer: coarse){.receipt-camera-btn{display:flex !important}}`}</style>
+            <label className="receipt-camera-btn" style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8, padding: '10px 0', border: '1px dashed var(--border)', borderRadius: 6, cursor: 'pointer', color: 'var(--accent)', fontWeight: 700, fontSize: 13 }}>
+              <Icon n="camera" s={14}/> צלם עכשיו
+              <input type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={handleFilesSelected} disabled={uploading || saving} />
+            </label>
+            <label style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '10px 0', border: '1px dashed var(--border)', borderRadius: 6, cursor: 'pointer', color: 'var(--accent)', fontWeight: 700, fontSize: 13 }}>
+              <Icon n="folder" s={14}/> מגלריה / קובץ
+              <input type="file" multiple accept="image/*,.pdf" style={{ display: 'none' }} onChange={handleFilesSelected} disabled={uploading || saving} />
+            </label>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 10 }}>
+          <Btn variant="ghost" onClick={onClose} disabled={saving}>ביטול</Btn>
+          <Btn onClick={submit} disabled={saving || uploading || amount <= 0 || amount > remaining}>
+            {saving ? "שומר..." : "הוסף תשלום"}
           </Btn>
         </div>
       </div>
@@ -500,6 +656,8 @@ const PaymentSchedule = ({
   onAddFiles,
   uploadingFilesToMilestone,
   locked,
+  onPartialPayment,
+  onDeletePartialPayment,
 }: {
   contractor: Contractor;
   onTogglePaid: (milestone: Milestone, paid: boolean) => Promise<void>;
@@ -510,6 +668,8 @@ const PaymentSchedule = ({
   onAddFiles?: (milestoneId: string, files: File[]) => Promise<void>;
   uploadingFilesToMilestone?: string | null;
   locked?: boolean;
+  onPartialPayment?: (milestone: Milestone) => void;
+  onDeletePartialPayment?: (milestoneId: string, partialId: string) => Promise<void>;
 }) => {
   const sourceMilestones = React.useMemo(() => normalizeMilestones(contractor), [contractor]);
   const [milestones, setMilestones] = React.useState<DraftMilestone[]>(() => sourceMilestones);
@@ -529,8 +689,17 @@ const PaymentSchedule = ({
     milestonesRef.current = milestones;
   }, [milestones]);
 
-  const totalPaid = milestones.filter(m=>m.paid).reduce((a,m)=>a+m.amount,0);
-  const totalPct = roundPct(milestones.filter(m=>m.paid).reduce((a,m)=>a+m.pct,0));
+  const totalPaid = milestones.reduce((a, m) => {
+    if (m.paid) return a + m.amount;
+    const partials = ((m as any).partialPayments || []).reduce((sum: number, p: any) => sum + p.amount, 0);
+    return a + partials;
+  }, 0);
+  const totalPct = roundPct(milestones.reduce((a, m) => {
+    if (m.paid) return a + m.pct;
+    const partials = ((m as any).partialPayments || []).reduce((sum: number, p: any) => sum + p.amount, 0);
+    const partialPct = m.amount > 0 ? (partials / m.amount) * m.pct : 0;
+    return a + partialPct;
+  }, 0));
   const totalPctAll = roundPct(milestones.reduce((a,m)=>a+m.pct,0));
   const totalAmount = milestones.reduce((a,m)=>a+m.amount,0);
   const scheduleOverBudget = totalPctAll > 100 || totalAmount > contractor.budget;
@@ -701,6 +870,33 @@ const PaymentSchedule = ({
               + מע"מ
             </div>
           ) : null)}
+          
+          {(m as any).partialPayments?.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 8, background: 'var(--bg)', padding: '6px 8px', borderRadius: 6, border: '1px solid var(--border)', width: 'max-content' }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text2)' }}>היסטוריית תשלומים:</div>
+              {(m as any).partialPayments.map((p: any) => (
+                <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11, gap: 12 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontWeight: 600, color: 'var(--success)' }}>{fmtMoney(p.amount)}</span> <span style={{ color: 'var(--text3)' }}>({p.date.split('-').reverse().join('/')})</span>
+                    {p.files && p.files.length > 0 && (
+                      <div style={{ display: 'flex', gap: 4 }}>
+                        {p.files.map((f: any) => (
+                          <button key={f.id} onClick={() => onViewFile?.({ id: f.id as string, url: f.url, name: f.name, milestoneId: m.id as string })} title={f.name} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 20, height: 20, background: '#EEF2FF', color: '#4F46E5', borderRadius: 4, border: 'none', cursor: 'pointer' }}>
+                            <Icon n="file-text" s={10}/>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  {!m.paid && !m.isLocked && (
+                    <button onClick={() => onDeletePartialPayment?.(String(m.id), p.id)} style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', padding: 2, display: 'flex', alignItems: 'center' }} title="מחק תשלום">
+                      <Icon n="x" s={10} />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </td>
       <td style={{fontSize:12,color:"var(--text3)"}}>
@@ -731,6 +927,15 @@ const PaymentSchedule = ({
           <div style={{fontSize:10,color:"#B45309",fontWeight:700,marginTop:3}}>
             {m.lockedReason || "השלב עדיין לא מוכן לתשלום"}
           </div>
+        )}
+        {!m.paid && !syncedLocked && !m.isLocked && !m.isNew && (
+          <button
+            onClick={() => onPartialPayment?.(m as Milestone)}
+            style={{ marginTop: 4, display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: '1px solid var(--border)', borderRadius: 4, padding: '2px 6px', fontSize: 10, cursor: 'pointer', color: 'var(--text2)' }}
+          >
+            <Icon n="plus" s={10} />
+            תשלום חלקי
+          </button>
         )}
       </td>
       <td>
@@ -964,6 +1169,8 @@ export const ContractorsScreen = () => {
   const lockPaymentMilestone = useMutation(api.mutations.lockContractorPaymentMilestone);
   const addFilesToLockedMilestone = useMutation(api.mutations.addFilesToContractorPaymentMilestone);
   const deleteFileMutation = useMutation(api.mutations.deleteContractorPaymentMilestoneFile);
+  const addPartialPayment = useMutation(api.mutations.addContractorPartialPayment);
+  const deletePartialPayment = useMutation(api.mutations.deleteContractorPartialPayment);
   const uploadProjectFile = useProjectFileUploader();
   const setContractorStages = useMutation(api.stages.setContractorStages);
   const setContractorPaymentMode = useMutation(api.stages.setContractorPaymentMode);
@@ -977,6 +1184,10 @@ export const ContractorsScreen = () => {
 
   const [savingPayment, setSavingPayment] = React.useState(false);
   const [pendingPayment, setPendingPayment] = React.useState<{ contractor: Contractor; milestone: Milestone; paid: boolean } | null>(null);
+  const [pendingPartial, setPendingPartial] = React.useState<{ contractor: Contractor; milestone: Milestone } | null>(null);
+  const [savingPartial, setSavingPartial] = React.useState(false);
+  const [deletePartialTarget, setDeletePartialTarget] = React.useState<{ milestoneId: string; partialId: string } | null>(null);
+  const [deletingPartial, setDeletingPartial] = React.useState(false);
   const [lockTarget, setLockTarget] = React.useState<string | null>(null);
   const [lockingPayment, setLockingPayment] = React.useState(false);
   const [feedback, setFeedback] = React.useState<{ title: string; message: string; type: 'success' | 'error' | 'info' } | null>(null);
@@ -1105,6 +1316,44 @@ export const ContractorsScreen = () => {
       });
     } finally {
       setSavingPayment(false);
+    }
+  };
+
+  const handleAddPartialPayment = async (amount: number, date: string, note: string, fileIds?: Id<'projectFiles'>[]) => {
+    if (!pendingPartial) return;
+    setSavingPartial(true);
+    try {
+      await addPartialPayment({
+        milestoneId: String(pendingPartial.milestone.id),
+        amount,
+        date,
+        note: note || undefined,
+        fileIds,
+      });
+      setPendingPartial(null);
+      setFeedback({ title: "נשמר בהצלחה", message: "התשלום החלקי נוסף וההוצאה עודכנה", type: "success" });
+    } catch (err) {
+      setFeedback({ title: "שגיאה", message: "שגיאה בהוספת תשלום חלקי", type: "error" });
+    } finally {
+      setSavingPartial(false);
+    }
+  };
+
+  const handleDeletePartialPayment = async (milestoneId: string, partialId: string): Promise<void> => {
+    setDeletePartialTarget({ milestoneId, partialId });
+  };
+
+  const confirmDeletePartialPayment = async () => {
+    if (!deletePartialTarget) return;
+    setDeletingPartial(true);
+    try {
+      await deletePartialPayment({ milestoneId: deletePartialTarget.milestoneId, partialPaymentId: deletePartialTarget.partialId });
+      setFeedback({ title: "נמחק", message: "התשלום החלקי הוסר מהתקציב", type: "success" });
+      setDeletePartialTarget(null);
+    } catch (err) {
+      setFeedback({ title: "שגיאה", message: "שגיאה במחיקת תשלום", type: "error" });
+    } finally {
+      setDeletingPartial(false);
     }
   };
 
@@ -1553,6 +1802,8 @@ export const ContractorsScreen = () => {
               onViewFile={setViewFile}
               onAddFiles={handleAddFilesToLockedMilestone}
               uploadingFilesToMilestone={uploadingFilesToMilestone}
+              onPartialPayment={(milestone) => setPendingPartial({ contractor: c, milestone })}
+              onDeletePartialPayment={handleDeletePartialPayment}
             />
             {projectId && c._id && (
               <div id="mobile-notes-section" className="mobile-block-only">
@@ -1572,6 +1823,15 @@ export const ContractorsScreen = () => {
             onClose={() => savingPayment ? undefined : setPendingPayment(null)}
             saving={savingPayment}
             vatPct={(project as any)?.vatPct ?? 18}
+          />
+        )}
+        {pendingPartial && (
+          <PartialPaymentModal
+            pendingPartial={pendingPartial}
+            onConfirm={handleAddPartialPayment}
+            onClose={() => savingPartial ? undefined : setPendingPartial(null)}
+            saving={savingPartial}
+            projectId={projectId as Id<'projects'>}
           />
         )}
         {lockTarget && selected && (() => {
@@ -1615,6 +1875,18 @@ export const ContractorsScreen = () => {
           type="info"
           onConfirm={() => executePaymentModeChange(confirmPaymentMode.contractor, confirmPaymentMode.mode)}
           onClose={() => setConfirmPaymentMode(null)}
+        />
+      )}
+      {deletePartialTarget && (
+        <ConfirmDialog
+          title="מחיקת תשלום חלקי"
+          message="האם למחוק תשלום חלקי זה? ההוצאה תימחק מהתקציב, והקבצים שצורפו לתשלום יימחקו גם הם."
+          confirmText={deletingPartial ? "מוחק..." : "מחק תשלום"}
+          cancelText="ביטול"
+          loading={deletingPartial}
+          type="error"
+          onConfirm={confirmDeletePartialPayment}
+          onClose={() => deletingPartial ? undefined : setDeletePartialTarget(null)}
         />
       )}
       {viewFile && (() => {
@@ -1755,7 +2027,7 @@ export const ContractorsScreen = () => {
                 <motion.div
                   key={c.id}
                   className="card"
-                  style={{padding:24,cursor:"pointer"}}
+                  style={{padding:24,cursor:"pointer",borderColor:"var(--border)",backgroundColor:"var(--surface)"}}
                   whileHover={{y:-5,boxShadow:"var(--shadow-xl)",borderColor:"rgba(224,122,56,0.3)"}}
                   whileTap={{scale:0.99}}
                   onClick={()=>setSelectedId(String(c.id))}

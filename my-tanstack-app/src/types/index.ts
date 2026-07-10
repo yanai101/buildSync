@@ -30,6 +30,13 @@ export interface Milestone {
   files?: Array<{ id: string; url: string; name: string }>;
   vatAdded?: boolean;
   vatAmount?: number;
+  partialPayments?: Array<{
+    id: string;
+    amount: number;
+    date: string;
+    expenseId?: string;
+    note?: string;
+  }>;
 }
 
 export interface Payment {
