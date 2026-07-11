@@ -625,23 +625,31 @@ const balanceMilestones = (milestones: DraftMilestone[], changedIndex: number, c
   return next.map(m => ({ ...m, pct: (m.amount / contractor.budget) * 100 }));
 };
 
-type DraggableMilestoneRowProps = {
+type DraggableMilestoneAccordionProps = {
   m: DraftMilestone;
   i: number;
-  renderCells: (m: DraftMilestone, i: number, gripStarter: (e: React.PointerEvent) => void) => React.ReactNode;
+  renderAccordion: (m: DraftMilestone, i: number, isExpanded: boolean, toggleExpand: () => void, gripStarter?: (e: React.PointerEvent) => void) => React.ReactNode;
 };
 
-const DraggableMilestoneRow = ({ m, i, renderCells }: DraggableMilestoneRowProps) => {
+const DraggableMilestoneAccordion = ({ m, i, renderAccordion }: DraggableMilestoneAccordionProps) => {
   const controls = useDragControls();
+  const [isExpanded, setIsExpanded] = React.useState(m.isNew || false);
   return (
     <Reorder.Item
-      as="tr"
+      as="div"
+      layout="position"
       value={m}
       dragListener={false}
       dragControls={controls}
-      style={{background:(m.paid || m.isLocked)?"#F0FDF4":(!m.paid && (m as any).partialPayments?.length > 0)?"#FFFBEB":"transparent"}}
+      style={{
+        background: (m.paid || m.isLocked) ? "#F0FDF4" : (!m.paid && (m as any).partialPayments?.length > 0) ? "#FFFBEB" : "#FFFFFF",
+        border: "1px solid var(--border)",
+        borderRadius: 8,
+        marginBottom: 8,
+        overflow: "hidden"
+      }}
     >
-      {renderCells(m, i, (e) => controls.start(e))}
+      {renderAccordion(m, i, isExpanded, () => setIsExpanded(!isExpanded), (e) => controls.start(e))}
     </Reorder.Item>
   );
 };
@@ -724,6 +732,10 @@ const PaymentSchedule = ({
     setSavingSchedule(true);
     try {
       await onSaveSchedule(contractor, nextMilestones);
+    } catch (err) {
+      // Backend rejects >100% schedules. The UI surfaces this via scheduleOverBudget,
+      // so we just catch the error here to prevent an unhandled promise rejection crash.
+      console.warn("Schedule save rejected:", err);
     } finally {
       setSavingSchedule(false);
     }
@@ -780,249 +792,207 @@ const PaymentSchedule = ({
     void saveSchedule(next);
   };
 
-  const renderMilestoneCells = (m: DraftMilestone, i: number, gripStarter?: (e: React.PointerEvent) => void) => (
-    (() => {
-      const syncedLocked = m.sourceMode === 'stage_synced' && !m.paid && m.readyToPay === false;
-      const isSyncedLocked = m.sourceMode === 'stage_synced' && contractor.role !== 'קבלן עד מפתח';
-      return (
-    <>
-      <td style={{fontSize:12,color:"var(--text3)",fontWeight:700,whiteSpace:"nowrap"}}>
-        {gripStarter && (
-          <span
-            onPointerDown={gripStarter}
-            title="גרור לסידור"
-            style={{cursor:"grab",display:"inline-flex",verticalAlign:"middle",marginInlineEnd:2,padding:16,marginInlineStart:-12,touchAction:"none"}}
-          >
-            <Icon n="menu" s={16} c="var(--text3)"/>
-          </span>
-        )}
-        {i+1}
-      </td>
-      <td>
-        <input
-          className="bp-input"
-          value={m.name}
-          disabled={savingSchedule || locked || m.isLocked || m.paid || isSyncedLocked}
-          onChange={e=>updateMilestone(i, {name:e.target.value})}
-          onBlur={()=>saveOnBlur(i)}
-          style={{width: "100%", minWidth:150,fontSize:13,fontWeight:500}}
-        />
-      </td>
-      <td>
-        <input
-          className="bp-input"
-          value={m.triggerText || ""}
-          disabled={savingSchedule || locked || m.isLocked || m.paid || isSyncedLocked}
-          onChange={e=>updateMilestone(i, {triggerText:e.target.value})}
-          onBlur={()=>saveOnBlur(i)}
-          style={{width: "100%", minWidth:180,fontSize:12}}
-        />
-      </td>
-      <td>
-        <input
-          className="bp-input"
-          type="number"
-          min={0}
-          max={100}
-          step="any"
-          placeholder="0"
-          value={m.pct === 0 ? "" : Number(m.pct.toFixed(2))}
-          disabled={savingSchedule || locked || m.isLocked || m.paid || isSyncedLocked}
-          onChange={e=>{
-            const val = e.target.value;
-            const newPct = val === "" ? 0 : Number(val);
-            updateMilestone(i, {pct: newPct, amount: contractor.budget ? Math.round((newPct / 100) * contractor.budget) : 0}, false);
-          }}
-          onBlur={()=>saveOnBlur(i)}
-          style={{width:86,fontSize:13,fontWeight:600,textAlign:"center"}}
-        />
-      </td>
-      <td>
-        <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <span style={{ fontSize: 13, color: "var(--text2)", fontWeight: 400 }}>₪</span>
-            <input
-              className="bp-input"
-              type="number"
-              min={0}
-              max={contractor.budget}
-              placeholder="0"
-              value={m.amount === 0 ? "" : m.amount}
-              disabled={savingSchedule || locked || m.isLocked || m.paid || isSyncedLocked}
-              onChange={e => {
-                if (contractor.budget > 0) {
-                  const val = e.target.value;
-                  const newAmount = val === "" ? 0 : Number(val);
-                  const newPct = (newAmount / contractor.budget) * 100;
-                  updateMilestone(i, { amount: newAmount, pct: newPct }, false);
-                }
-              }}
-              onBlur={()=>saveOnBlur(i)}
-              style={{ width: 90, fontSize: 13, fontWeight: 700, color: m.paid ? "var(--success)" : "var(--text1)" }}
-            />
+  const renderMilestoneAccordion = (m: DraftMilestone, i: number, isExpanded: boolean, toggleExpand: () => void, gripStarter?: (e: React.PointerEvent) => void) => {
+    const isSyncedLocked = m.sourceMode === 'stage_synced' && contractor.role !== 'קבלן עד מפתח';
+    const partialsSum = ((m as any).partialPayments || []).reduce((sum: number, p: any) => sum + p.amount, 0);
+    const totalFilesCount = (m.files?.length || 0) + ((m as any).partialPayments || []).reduce((acc: number, p: any) => acc + (p.files?.length || 0), 0);
+    const mRemaining = Math.max(0, m.amount - partialsSum);
+
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column' }}>
+        {/* Accordion Header */}
+        <div style={{ display: 'flex', alignItems: 'center', padding: '12px 16px', gap: 12, cursor: 'pointer', flexWrap: 'wrap' }} onClick={toggleExpand}>
+          {gripStarter && (
+            <div onPointerDown={(e) => { e.stopPropagation(); gripStarter(e); }} title="גרור לסידור" style={{ cursor: "grab", padding: 4, marginInlineStart: -8, touchAction: "none" }}>
+              <Icon n="menu" s={16} c="var(--text3)"/>
+            </div>
+          )}
+          <div style={{ width: 24, height: 24, flexShrink: 0, borderRadius: '50%', background: 'var(--surface)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: 'var(--text2)' }}>
+            {i + 1}
           </div>
-          {m.paid && m.vatAmount ? (
-            <div style={{ fontSize: 10, color: "var(--success)", fontWeight: 600, marginTop: 2, paddingRight: 16 }}>
-              + {fmtMoney(m.vatAmount)} מע"מ
-            </div>
-          ) : (!contractor.includesVat ? (
-            <div style={{ fontSize: 10, color: "var(--text3)", marginTop: 2, paddingRight: 16 }}>
-              + מע"מ
-            </div>
-          ) : null)}
-          
-          {(m as any).partialPayments?.length > 0 && (() => {
-            const mPartialsSum = ((m as any).partialPayments || []).reduce((sum: number, p: any) => sum + p.amount, 0);
-            const mRemaining = Math.max(0, m.amount - mPartialsSum);
-            return (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 8, background: 'var(--bg)', padding: '6px 8px', borderRadius: 6, border: '1px solid var(--border)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
-                <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text2)' }}>היסטוריית תשלומים:</span>
-                {!m.paid && mRemaining > 0 && <span style={{ fontSize: 10, color: 'var(--accent)', fontWeight: 600 }}>נותרו {fmtMoney(mRemaining)}</span>}
-              </div>
-              {(m as any).partialPayments.map((p: any) => (
-                <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11, gap: 12 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ fontWeight: 600, color: 'var(--success)' }}>{fmtMoney(p.amount)}</span> <span style={{ color: 'var(--text3)' }}>({p.date.split('-').reverse().join('/')})</span>
-                    {p.note && <span style={{ color: 'var(--text2)', fontSize: 10, background: '#F1F5F9', padding: '2px 4px', borderRadius: 4, maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={p.note}>{p.note}</span>}
-                    {!m.isLocked && p.files && p.files.length > 0 && (
-                      <div style={{ display: 'flex', gap: 4 }}>
-                        {p.files.map((f: any) => (
-                          <button key={f.id} onClick={() => onViewFile?.({ id: f.id as string, url: f.url, name: f.name, milestoneId: m.id as string })} title={f.name} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 20, height: 20, background: '#EEF2FF', color: '#4F46E5', borderRadius: 4, border: 'none', cursor: 'pointer' }}>
-                            <Icon n="file-text" s={10}/>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                  {!m.paid && !m.isLocked && (
-                    <button onClick={() => onDeletePartialPayment?.(String(m.id), p.id)} style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', padding: 2, display: 'flex', alignItems: 'center' }} title="מחק תשלום">
-                      <Icon n="x" s={10} />
-                    </button>
+          <div style={{ flex: '1 1 150px', display: 'flex', flexDirection: 'column', minWidth: 150 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text1)' }}>{m.name || "שלב ללא שם"}</span>
+              <Icon n={isExpanded ? "chevron-up" : "chevron-down"} s={14} c="var(--text3)" />
+              {((!m.paid && (m as any).partialPayments?.length > 0) || totalFilesCount > 0) && (
+                <div style={{ display: 'flex', gap: 6, marginInlineStart: 4, alignItems: 'center' }}>
+                  {!m.paid && (m as any).partialPayments?.length > 0 && (
+                    <span style={{fontSize: 10, background: '#FEF3C7', color: '#92400E', padding: '2px 6px', borderRadius: 4, fontWeight: 600}}>
+                      שולם חלקי
+                    </span>
+                  )}
+                  {totalFilesCount > 0 && (
+                    <span style={{fontSize: 10, background: 'var(--bg)', padding: '2px 6px', borderRadius: 10, color: 'var(--text2)', display: 'flex', alignItems: 'center', gap: 4}}>
+                      <Icon n="file-text" s={10}/>
+                      {totalFilesCount}
+                    </span>
                   )}
                 </div>
-              ))}
+              )}
             </div>
-          );})()}
-        </div>
-      </td>
-      <td style={{fontSize:12,color:"var(--text3)"}}>
-        {m.paidAt || "—"}
-        {isSyncedLocked && (
-          <div style={{fontSize:10,color:"#3730A3",fontWeight:700,marginTop:2}}>ממשימות השלב</div>
-        )}
-      </td>
-      <td>
-        {m.isLocked ? (
-          <div style={{display:"flex",alignItems:"center",gap:6, paddingRight: 4}}>
-            <Icon n="check-circle" s={14} c="var(--success)"/>
-            <span className="badge badge-done">שולם (נעול)</span>
+            <span style={{ fontSize: 12, color: 'var(--text2)' }}>
+              {m.pct === 0 ? "0%" : `${Number(m.pct.toFixed(2))}%`} · ₪{fmtMoney(m.amount)}
+              {m.paidAt && ` · שולם: ${m.paidAt}`}
+            </span>
           </div>
-        ) : (
-          <label style={{display:"flex",alignItems:"center",gap:6,cursor:"pointer"}}>
-            <input
-              type="checkbox"
-              checked={Boolean(m.paid)}
-              disabled={pendingId === String(m.id) || m.isNew || syncedLocked}
-              onChange={()=>toggle(m)}
-              style={{accentColor:"var(--success)",width:14,height:14}}
-            />
-            <span className={`badge ${m.paid?"badge-done":"badge-pending"}`}>{m.paid?"שולם":"ממתין"}</span>
-          </label>
-        )}
-        {syncedLocked && (
-          <div style={{fontSize:10,color:"#B45309",fontWeight:700,marginTop:3}}>
-            {m.lockedReason || "השלב עדיין לא מוכן לתשלום"}
-          </div>
-        )}
-        {!m.paid && !syncedLocked && !m.isLocked && !m.isNew && (
-          <button
-            onClick={() => onPartialPayment?.(m as Milestone)}
-            style={{ marginTop: 4, display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: '1px solid var(--border)', borderRadius: 4, padding: '2px 6px', fontSize: 10, cursor: 'pointer', color: 'var(--text2)' }}
-          >
-            <Icon n="plus" s={10} />
-            תשלום חלקי
-          </button>
-        )}
-      </td>
-      <td>
-        <div style={{ display: 'flex', gap: 4 }}>
-        {m.isLocked ? (() => {
-          const allFiles = [...(m.files || []), ...((m as any).partialPayments || []).flatMap((p: any) => p.files || [])];
-          return (
-          <div style={{ padding: "6px 8px", color: "var(--text2)", display: "flex", alignItems: "center", gap: 8 }}>
-            <Icon n="lock" s={14}/>
-            {allFiles.length > 0 && (
-              <div style={{ display: 'flex', gap: 4 }}>
-                {allFiles.map(f => (
-                  <button key={f.id} onClick={() => onViewFile?.({ id: f.id as string, url: f.url, name: f.name, milestoneId: m.id as string })} title={f.name} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, background: '#EEF2FF', color: '#4F46E5', borderRadius: 4, border: 'none', cursor: 'pointer' }}>
-                    <Icon n="file-text" s={12}/>
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }} onClick={(e) => e.stopPropagation()}>
+            {m.isLocked ? (
+              <div style={{ display: "flex", alignItems: "center", gap: 6, paddingRight: 4 }}>
+                <Icon n="check-circle" s={14} c="var(--success)"/>
+                <span className="badge badge-done hide-mobile">שולם (נעול)</span>
+              </div>
+            ) : m.paid ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <button onClick={() => toggle(m as Milestone)} disabled={pendingId === String(m.id)} style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'var(--bg)', color: 'var(--text1)', border: '1px solid var(--border)', borderRadius: 4, padding: '4px 10px', fontSize: 11, cursor: 'pointer', fontWeight: 600 }} title="בטל תשלום">
+                  {pendingId === String(m.id) ? <Icon n="loader" s={12} c="var(--success)" /> : <Icon n="check-square" s={14} c="var(--success)" />}
+                  <span className="hide-mobile">בטל תשלום</span>
+                </button>
+                {onLock && (
+                  <button onClick={() => onLock(String(m.id))} style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'var(--success)', color: '#fff', border: 'none', borderRadius: 4, padding: '4px 10px', fontSize: 11, cursor: 'pointer', fontWeight: 600 }}>
+                    <Icon n="lock" s={12}/> <span className="hide-mobile">נעל</span>
                   </button>
+                )}
+              </div>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                {(m as any).partialPayments?.length > 0 && mRemaining > 0 && (
+                  <button onClick={() => onPartialPayment?.(m as Milestone)} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, background: '#FEF3C7', color: '#92400E', border: '1px solid #FCD34D', borderRadius: 4, padding: '4px 8px', fontWeight: 600, cursor: 'pointer' }} title="הוסף תשלום חלקי נוסף">
+                    <Icon n="plus" s={12} />
+                    <span>עוד חלקי (יתרה: {fmtMoney(mRemaining)})</span>
+                  </button>
+                )}
+                {(!((m as any).partialPayments?.length > 0)) && (
+                  <button onClick={() => onPartialPayment?.(m as Milestone)} style={{ fontSize: 11, background: 'var(--bg)', color: 'var(--text2)', border: '1px solid var(--border)', borderRadius: 4, padding: '4px 8px', fontWeight: 600, cursor: 'pointer' }}>
+                    חלקי
+                  </button>
+                )}
+                <button onClick={() => toggle(m as Milestone)} disabled={pendingId === String(m.id)} style={{ fontSize: 11, background: 'var(--success)', color: '#fff', border: 'none', borderRadius: 4, padding: '4px 12px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+                  {pendingId === String(m.id) && <Icon n="loader" s={10} />}
+                  שלם
+                </button>
+              </div>
+            )}
+            
+            {/* Delete Stage Button in Header */}
+            {!m.isLocked && !m.paid && !isSyncedLocked && milestones.length > 1 && (
+              <button onClick={() => {
+                const next = milestonesRef.current.filter((_, idx) => idx !== i);
+                const balanced = balanceMilestones(next, next.length - 1, contractor);
+                milestonesRef.current = balanced;
+                setMilestones(balanced);
+                void saveSchedule(balanced);
+              }} style={{ display: 'flex', alignItems: 'center', gap: 4, background: '#FEF2F2', color: 'var(--danger)', border: '1px solid #FECACA', borderRadius: 4, padding: '4px 8px', fontSize: 11, cursor: 'pointer', fontWeight: 600 }} title="מחק שלב">
+                <Icon n="trash-2" s={12}/>
+                <span>מחק</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Accordion Body (Everything inside is only visible when expanded) */}
+        {isExpanded && (
+          <div style={{ padding: '0 16px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+            
+            {/* Divider */}
+            <div style={{ height: 1, background: 'var(--border)', margin: '0 -16px 8px' }} />
+
+            {/* VAT Info & Synced Badge */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ fontSize: 11, color: m.paid ? 'var(--success)' : 'var(--text3)', fontWeight: m.paid ? 600 : 400 }}>
+                {m.paid && m.vatAmount ? `+ ${fmtMoney(m.vatAmount)} מע"מ` : (!contractor.includesVat && !m.paid ? `+ מע"מ` : null)}
+              </div>
+              {isSyncedLocked && (
+                <div style={{fontSize:11,color:"#3730A3",fontWeight:700,background:"#EEF2FF",padding:"4px 8px",borderRadius:4}}>ממשימות השלב</div>
+              )}
+            </div>
+
+            {/* Partial payments list */}
+            {(m as any).partialPayments?.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, background: 'var(--bg)', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text2)' }}>היסטוריית תשלומים חלקיים:</span>
+                </div>
+                {(m as any).partialPayments.map((p: any, idx: number, arr: any[]) => (
+                  <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, borderBottom: idx < arr.length - 1 ? '1px solid var(--border)' : 'none', paddingBottom: idx < arr.length - 1 ? 6 : 0, marginBottom: idx < arr.length - 1 ? 6 : 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <span style={{ fontWeight: 600, color: 'var(--success)' }}>{fmtMoney(p.amount)}</span>
+                      <span style={{ color: 'var(--text3)' }}>({p.date.split('-').reverse().join('/')})</span>
+                      {p.note && <span style={{ color: 'var(--text2)', fontSize: 11, background: '#F1F5F9', padding: '2px 6px', borderRadius: 4 }} title={p.note}>{p.note}</span>}
+                      {p.files && p.files.length > 0 && (
+                        <div style={{ display: 'flex', gap: 4 }}>
+                          {p.files.map((f: any) => (
+                            <button key={f.id} onClick={() => onViewFile?.({ id: f.id as string, url: f.url, name: f.name, milestoneId: m.id as string })} title={f.name} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, background: '#EEF2FF', color: '#4F46E5', borderRadius: 4, border: 'none', cursor: 'pointer' }}>
+                              <Icon n="file-text" s={12}/>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    {!m.paid && !m.isLocked && (
+                      <button onClick={() => onDeletePartialPayment?.(String(m.id), p.id)} style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', padding: 4 }} title="מחק תשלום חלקי">
+                        <Icon n="trash-2" s={14} />
+                      </button>
+                    )}
+                  </div>
                 ))}
               </div>
             )}
-            {onAddFiles && m.id && (
-              <label 
-                style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, background: 'var(--bg)', color: 'var(--accent)', borderRadius: 4, border: '1px dashed var(--border)', cursor: uploadingFilesToMilestone === m.id ? 'wait' : 'pointer' }} 
-                title="הוסף קבצים"
-                onClick={() => {
-                  if (uploadingFilesToMilestone !== m.id) {
-                    setAttachmentModalId(m.id as string);
-                  }
-                }}
-              >
-                {uploadingFilesToMilestone === m.id ? (
-                  <Icon n="loader" s={12} className="spin" />
-                ) : (
-                  <Icon n="plus" s={12}/>
-                )}
-              </label>
-            )}
-          </div>
-        )})() : (
-          <>
-            {m.paid && onLock && m.id && (
-              <Btn
-                size="sm"
-                variant="ghost"
-                disabled={savingSchedule}
-                onClick={() => onLock(m.id)}
-                title="נעל תשלום מעריכה או מחיקה"
-              >
-                <Icon n="lock" s={14}/> נעל
-              </Btn>
-            )}
-            {!m.paid && (
-              <Btn
-                size="sm"
-                variant="ghost"
-                disabled={savingSchedule || locked || Boolean(m.paid) || isSyncedLocked}
-                onClick={()=>removeMilestone(i)}
-                style={{color:"var(--danger)"}}
-              >
-                <Icon n="trash" s={12}/> מחק
-              </Btn>
-            )}
-          </>
-        )}
-        </div>
-      </td>
-    </>
-      );
-    })()
-  );
+            
+            {/* Notes and files */}
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 4 }}>
+              <button onClick={() => setAttachmentModalId(String(m.id))} disabled={uploadingFilesToMilestone === m.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'var(--bg)', color: 'var(--accent)', borderRadius: 4, border: '1px dashed var(--border)', padding: '4px 8px', fontSize: 11, fontWeight: 600, cursor: uploadingFilesToMilestone === m.id ? 'wait' : 'pointer' }} title="הוסף קובץ">
+                {uploadingFilesToMilestone === m.id ? <Icon n="loader" s={12} /> : <Icon n="paperclip" s={12} />}
+                הוסף קובץ לשלב זה
+              </button>
+              <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                {(m.files || []).map((f: any) => (
+                  <button key={f.id} onClick={() => onViewFile?.({ id: f.id as string, url: f.url, name: f.name, milestoneId: m.id as string })} title={f.name} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: '#EEF2FF', color: '#4F46E5', borderRadius: 4, border: 'none', padding: '4px 8px', fontSize: 11, cursor: 'pointer' }}>
+                    <Icon n="file-text" s={12}/>
+                    {f.name.length > 15 ? f.name.substring(0, 15) + "..." : f.name}
+                  </button>
+                ))}
+              </div>
+            </div>
 
-  const removeMilestone = async (index: number) => {
-    if (locked) return;
-    const milestone = milestones[index];
-    if (!milestone || milestone.paid || (milestone.sourceMode === 'stage_synced' && contractor.role !== 'קבלן עד מפתח')) return;
-    const next = balanceMilestones(
-      milestones.filter((_, i) => i !== index),
-      Math.max(0, index - 1),
-      contractor
+            {/* Accordion Configuration Form */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 8 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text1)' }}>הגדרות שלב תשלום (עריכה)</div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <span style={{ fontSize: 11, color: 'var(--text3)' }}>שם השלב</span>
+                  <input className="bp-input" value={m.name} disabled={savingSchedule || locked || m.isLocked || m.paid || isSyncedLocked} onChange={e=>updateMilestone(i, {name:e.target.value})} onBlur={()=>saveOnBlur(i)} style={{ fontSize: 13 }} />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <span style={{ fontSize: 11, color: 'var(--text3)' }}>תנאי לתשלום</span>
+                  <input className="bp-input" value={m.triggerText || ""} disabled={savingSchedule || locked || m.isLocked || m.paid || isSyncedLocked} onChange={e=>updateMilestone(i, {triggerText:e.target.value})} onBlur={()=>saveOnBlur(i)} style={{ fontSize: 13 }} />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <span style={{ fontSize: 11, color: 'var(--text3)' }}>אחוז (%)</span>
+                  <input className="bp-input" type="number" min={0} max={100} step="any" placeholder="0" value={m.pct === 0 ? "" : Number(m.pct.toFixed(2))} disabled={savingSchedule || locked || m.isLocked || m.paid || isSyncedLocked} onChange={e=>{
+                    const val = e.target.value;
+                    const newPct = val === "" ? 0 : Number(val);
+                    updateMilestone(i, {pct: newPct, amount: contractor.budget ? Math.round((newPct / 100) * contractor.budget) : 0}, false);
+                  }} onBlur={()=>saveOnBlur(i)} style={{ fontSize: 13 }} />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <span style={{ fontSize: 11, color: 'var(--text3)' }}>סכום (₪)</span>
+                  <input className="bp-input" type="number" min={0} max={contractor.budget} placeholder="0" value={m.amount === 0 ? "" : m.amount} disabled={savingSchedule || locked || m.isLocked || m.paid || isSyncedLocked} onChange={e => {
+                    if (contractor.budget > 0) {
+                      const val = e.target.value;
+                      const newAmount = val === "" ? 0 : Number(val);
+                      const newPct = (newAmount / contractor.budget) * 100;
+                      updateMilestone(i, { amount: newAmount, pct: newPct }, false);
+                    }
+                  }} onBlur={()=>saveOnBlur(i)} style={{ fontSize: 13 }} />
+                </div>
+              </div>
+            </div>
+            
+          </div>
+        )}
+      </div>
     );
-    setMilestones(next);
-    await saveSchedule(next);
   };
 
   return (
@@ -1135,35 +1105,46 @@ const PaymentSchedule = ({
         </div>
       </div>
 
-      <div style={{overflowX:"auto"}}>
-        <table className="bp-table" style={{width:"100%"}}>
-          <thead><tr><th>#</th><th>שלב תשלום</th><th>תנאי לתשלום</th><th>%</th><th>סכום</th><th>תאריך</th><th>סטטוס</th><th></th></tr></thead>
-          {locked ? (
-            <tbody>
-              {milestones.map((m,i)=>(
-                <tr key={m.id} style={{background:(m.paid || m.isLocked)?"#F0FDF4":(!m.paid && (m as any).partialPayments?.length > 0)?"#FFFBEB":"transparent"}}>
-                  {renderMilestoneCells(m, i)}
-                </tr>
-              ))}
-            </tbody>
-          ) : (
-            <Reorder.Group as="tbody" axis="y" values={milestones} onReorder={handleReorder}>
-              {milestones.map((m,i)=>(
-                <DraggableMilestoneRow key={m.id} m={m} i={i} renderCells={renderMilestoneCells} />
-              ))}
-            </Reorder.Group>
-          )}
-          <tfoot>
-            <tr style={{background:"#F9F8F6"}}>
-              <td colSpan={3} style={{padding:"10px 12px",fontSize:13,fontWeight:700}}>סה"כ</td>
-              <td style={{fontSize:13,fontWeight:700,color:scheduleOverBudget?"var(--danger)":totalPctAll===100?"var(--text1)":"var(--warning)"}}>{totalPctAll}%</td>
-              <td style={{fontSize:13,fontWeight:700,color:scheduleOverBudget?"var(--danger)":"var(--text1)"}}>{fmtMoney(totalAmount)}</td>
-              <td/>
-              <td style={{fontSize:12,color:"var(--success)",fontWeight:600}}>{fmtMoney(totalPaid)} שולם</td>
-              <td/>
-            </tr>
-          </tfoot>
-        </table>
+      <div style={{ padding: "16px 18px", display: "flex", flexDirection: "column", gap: 0 }}>
+        {locked ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {milestones.map((m, i) => (
+              <div key={m.id} style={{
+                background: (m.paid || m.isLocked) ? "#F0FDF4" : (!m.paid && (m as any).partialPayments?.length > 0) ? "#FFFBEB" : "#FFFFFF",
+                border: "1px solid var(--border)",
+                borderRadius: 8,
+                overflow: "hidden"
+              }}>
+                {renderMilestoneAccordion(m, i, false, () => {}, undefined)}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <Reorder.Group as="div" axis="y" values={milestones} onReorder={handleReorder}>
+            {milestones.map((m, i) => (
+              <DraggableMilestoneAccordion key={m.id} m={m} i={i} renderAccordion={renderMilestoneAccordion} />
+            ))}
+          </Reorder.Group>
+        )}
+        
+        {/* Footer Summary */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#F9FAFB", padding: "12px 16px", borderRadius: 8, border: "1px solid var(--border)", marginTop: 8 }}>
+          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text1)' }}>סה"כ</span>
+          <div style={{ display: 'flex', gap: 24 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+              <span style={{ fontSize: 11, color: 'var(--text3)' }}>אחוז כולל</span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: scheduleOverBudget ? "var(--danger)" : totalPctAll === 100 ? "var(--text1)" : "var(--warning)" }}>{totalPctAll}%</span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+              <span style={{ fontSize: 11, color: 'var(--text3)' }}>סכום מתוכנן</span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: scheduleOverBudget ? "var(--danger)" : "var(--text1)" }}>{fmtMoney(totalAmount)}</span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+              <span style={{ fontSize: 11, color: 'var(--text3)' }}>שולם בפועל</span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: "var(--success)" }}>{fmtMoney(totalPaid)}</span>
+            </div>
+          </div>
+        </div>
       </div>
       
       {attachmentModalId && (
