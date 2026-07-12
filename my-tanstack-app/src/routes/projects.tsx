@@ -98,26 +98,68 @@ function ProjectsRoute() {
   };
 
   if (projects.length === 0 && !isMock) {
+    // Only an owner is meant to land in "create your first project" — a
+    // manager/inspector/contractor with zero projects has no project to
+    // create, they're just not (or no longer) associated with one. Showing
+    // them a "create project" CTA is misleading; point them at whoever
+    // invited them instead.
+    const canCreateProjects = !user?.role || user.role === 'owner';
+
+    if (!canCreateProjects) {
+      return (
+        <div style={{
+          minHeight: '80vh',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: 40,
+          margin: 24,
+          border: '1px solid var(--border)',
+          borderRadius: 24,
+        }}>
+          <div style={{
+            width: 100,
+            height: 100,
+            borderRadius: 30,
+            background: 'var(--surface2, #f1f1f1)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginBottom: 32,
+          }}>
+            <Icon n="lock" s={48} c="var(--text3)" />
+          </div>
+          <h1 style={{ fontSize: 28, fontWeight: 900, marginBottom: 12, textAlign: 'center' }}>
+            אין גישה לפרויקטים
+          </h1>
+          <div style={{ fontSize: 15, color: 'var(--text3)', textAlign: 'center', maxWidth: 420 }}>
+            עדיין לא שויכת לאף פרויקט במערכת. אנא פנה למנהל הפרויקט כדי שיזמין אותך.
+          </div>
+        </div>
+      );
+    }
+
     return (
-      <div style={{ 
-        minHeight: '80vh', 
-        display: 'flex', 
-        flexDirection: 'column', 
-        alignItems: 'center', 
-        justifyContent: 'center', 
+      <div style={{
+        minHeight: '80vh',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
         padding: 40,
         background: 'radial-gradient(circle at top right, var(--accent-light) 0%, transparent 40%), radial-gradient(circle at bottom left, #fff7ed 0%, transparent 40%)',
         borderRadius: 24,
         margin: 24,
         border: '1px solid var(--border)'
       }}>
-        <div style={{ 
-          width: 100, 
-          height: 100, 
-          borderRadius: 30, 
-          background: 'linear-gradient(135deg, var(--accent) 0%, #c96b30 100%)', 
-          display: 'flex', 
-          alignItems: 'center', 
+        <div style={{
+          width: 100,
+          height: 100,
+          borderRadius: 30,
+          background: 'linear-gradient(135deg, var(--accent) 0%, #c96b30 100%)',
+          display: 'flex',
+          alignItems: 'center',
           justifyContent: 'center',
           boxShadow: '0 20px 40px rgba(224, 122, 56, 0.3)',
           marginBottom: 32
@@ -131,10 +173,10 @@ function ProjectsRoute() {
         </Btn>
 
         {isWizardOpen && (
-          <CreateProjectWizard 
-            onClose={() => setIsWizardOpen(false)} 
-            onSave={handleCreate} 
-            saving={isSaving} 
+          <CreateProjectWizard
+            onClose={() => setIsWizardOpen(false)}
+            onSave={handleCreate}
+            saving={isSaving}
           />
         )}
       </div>
