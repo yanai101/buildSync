@@ -10,7 +10,11 @@ export const useDataMutation = (resource: MutationResource) => {
   const saveBoqMutation = useMutation(api.mutations.saveBoq);
   const saveProjectSetupMutation = useMutation(api.projects.saveProjectSetup);
   const addExpenseMutation = useMutation(api.budget.addExpense);
+  const updateExpenseMutation = useMutation(api.budget.updateExpense);
+  const deleteExpenseMutation = useMutation(api.budget.deleteExpense);
   const addCategoryMutation = useMutation(api.budget.addCategory);
+  const updateCategoryMutation = useMutation(api.budget.updateBudgetCategory);
+  const deleteCategoryMutation = useMutation(api.budget.deleteBudgetCategory);
   const saveQuoteMutation = useMutation(api.quotes.saveQuote);
   const deleteQuoteMutation = useMutation(api.quotes.deleteQuote);
   const addQuoteTopicMutation = useMutation(api.quotes.addTopic);
@@ -34,7 +38,7 @@ export const useDataMutation = (resource: MutationResource) => {
   const savedMode = localStorage.getItem(`buildsync:ds:${resource}`);
   const isMock = savedMode ? savedMode !== 'db' : !defaultDbResources.includes(resource);
 
-  const mutate = useCallback(async (action: 'toggleTask' | 'saveBoq' | 'saveProjectSetup' | 'addExpense' | 'saveNote' | 'markMessagesAsRead' | 'savePhotoAnnotation' | 'deletePhoto' | 'updatePhotoTag' | 'createProject' | 'deleteProject' | 'addBudgetCategory' | 'saveQuote' | 'deleteQuote' | 'addQuoteTopic' | 'addChecklist' | 'deleteChecklist' | 'addChecklistItem' | 'toggleChecklistItem' | 'deleteChecklistItem' | 'updateChecklistItem' | 'updateChecklistTitle', payload: any) => {
+  const mutate = useCallback(async (action: 'toggleTask' | 'saveBoq' | 'saveProjectSetup' | 'addExpense' | 'updateExpense' | 'deleteExpense' | 'saveNote' | 'markMessagesAsRead' | 'savePhotoAnnotation' | 'deletePhoto' | 'updatePhotoTag' | 'createProject' | 'deleteProject' | 'addBudgetCategory' | 'updateBudgetCategory' | 'deleteBudgetCategory' | 'saveQuote' | 'deleteQuote' | 'addQuoteTopic' | 'addChecklist' | 'deleteChecklist' | 'addChecklistItem' | 'toggleChecklistItem' | 'deleteChecklistItem' | 'updateChecklistItem' | 'updateChecklistTitle', payload: any) => {
     if (isMock) {
       console.log(`[MOCK MUTATION] ${resource}:${action}`, payload);
       return { success: true, mock: true };
@@ -64,8 +68,16 @@ export const useDataMutation = (resource: MutationResource) => {
           });
         case 'addExpense':
           return await addExpenseMutation({ projectId: payload.projectId, description: payload.description, amount: payload.amount, category: payload.category, date: payload.date, status: payload.status, fileIds: payload.fileIds });
+        case 'updateExpense':
+          return await updateExpenseMutation({ expenseId: payload.expenseId, description: payload.description, amount: payload.amount, category: payload.category, date: payload.date, status: payload.status, fileIds: payload.fileIds });
+        case 'deleteExpense':
+          return await deleteExpenseMutation({ expenseId: payload.expenseId });
         case 'addBudgetCategory':
           return await addCategoryMutation({ projectId: payload.projectId, name: payload.name, budget: payload.budget, color: payload.color });
+        case 'updateBudgetCategory':
+          return await updateCategoryMutation({ categoryId: payload.categoryId, name: payload.name, budget: payload.budget, color: payload.color });
+        case 'deleteBudgetCategory':
+          return await deleteCategoryMutation({ categoryId: payload.categoryId });
         case 'saveQuote':
           return await saveQuoteMutation({ ...payload });
         case 'deleteQuote':
@@ -122,7 +134,7 @@ export const useDataMutation = (resource: MutationResource) => {
       console.error(`[DB MUTATION ERROR] ${resource}:${action}`, err);
       throw err;
     }
-  }, [isMock, resource, toggleTaskMutation, saveBoqMutation, saveProjectSetupMutation, addExpenseMutation, saveNoteMutation, markMessagesAsReadMutation, savePhotoAnnotationMutation, deletePhotoMutation, updatePhotoTagMutation, createProjectMutation, deleteProjectMutation, addChecklistMutation, deleteChecklistMutation, addChecklistItemMutation, toggleChecklistItemMutation, deleteChecklistItemMutation, updateChecklistItemMutation, updateChecklistTitleMutation]);
+  }, [isMock, resource, toggleTaskMutation, saveBoqMutation, saveProjectSetupMutation, addExpenseMutation, updateExpenseMutation, deleteExpenseMutation, saveNoteMutation, markMessagesAsReadMutation, savePhotoAnnotationMutation, deletePhotoMutation, updatePhotoTagMutation, createProjectMutation, deleteProjectMutation, addChecklistMutation, deleteChecklistMutation, addChecklistItemMutation, toggleChecklistItemMutation, deleteChecklistItemMutation, updateChecklistItemMutation, updateChecklistTitleMutation, updateCategoryMutation, deleteCategoryMutation, addCategoryMutation]);
 
   return { mutate };
 };

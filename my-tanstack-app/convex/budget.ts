@@ -1,5 +1,5 @@
 import { query, mutation } from './_generated/server';
-import { v } from 'convex/values';
+import { v, ConvexError } from 'convex/values';
 import { getFinancialSummary } from './_lib/financialSummary';
 import { canUserViewBudget, requireProjectBudgetView } from './_lib/projectAccess';
 
@@ -135,5 +135,131 @@ export const addExpense = mutation({
         spent: category.spent + args.amount
       });
     }
+  },
+});
+
+export const deleteExpense = mutation({
+  args: {
+    expenseId: v.id('expenses'),
+  },
+  handler: async (ctx, args) => {
+    const expense = await ctx.db.get(args.expenseId);
+    if (!expense) throw new ConvexError("Expense not found");
+    if (expense.contractorId) throw new ConvexError("Cannot modify contractor expenses from the budget screen");
+    await requireProjectBudgetView(ctx, expense.projectId);
+
+    if (expense.categoryId && expense.status === 'שולם') {
+      const category = await ctx.db.get(expense.categoryId);
+      if (category) {
+        await ctx.db.patch(category._id, {
+          spent: Math.max(0, category.spent - expense.amount)
+        });
+      }
+    }
+
+    await ctx.db.delete(args.expenseId);
+  },
+});
+
+export const updateExpense = mutation({
+  args: {
+    expenseId: v.id('expenses'),
+    description: v.string(),
+    amount: v.number(),
+    category: v.optional(v.string()),
+    date: v.string(),
+    status: v.union(v.literal('שולם'), v.literal('ממתין')),
+    fileIds: v.optional(v.array(v.id('projectFiles'))),
+  },
+  handler: async (ctx, args) => {
+    const expense = await ctx.db.get(args.expenseId);
+    if (!expense) throw new ConvexError("Expense not found");
+    if (expense.contractorId) throw new ConvexError("Cannot modify contractor expenses from the budget screen");
+    await requireProjectBudgetView(ctx, expense.projectId);
+
+    // Rollback old category spent
+    if (expense.categoryId && expense.status === 'שולם') {
+      const oldCategory = await ctx.db.get(expense.categoryId);
+      if (oldCategory) {
+        await ctx.db.patch(oldCategory._id, {
+          spent: Math.max(0, oldCategory.spent - expense.amount)
+        });
+      }
+    }
+
+    // Find new category
+    let newCategoryId = undefined;
+    if (args.category) {
+      const cat = await ctx.db
+        .query('budgetCategories')
+        .withIndex('by_project', (q) => q.eq('projectId', expense.projectId))
+        .filter(q => q.eq(q.field('name'), args.category))
+        .first();
+      newCategoryId = cat?._id;
+    }
+
+    // Apply new category spent
+    if (newCategoryId && args.status === 'שולם') {
+      const newCategory = await ctx.db.get(newCategoryId);
+      if (newCategory) {
+        await ctx.db.patch(newCategory._id, {
+          spent: newCategory.spent + args.amount
+        });
+      }
+    }
+
+    const patchData: any = {
+      description: args.description,
+      amount: args.amount,
+      expenseDate: args.date,
+      status: args.status,
+      categoryId: newCategoryId,
+    };
+    if (args.fileIds !== undefined) {
+      patchData.fileIds = [...(expense.fileIds || []), ...args.fileIds];
+    }
+    await ctx.db.patch(args.expenseId, patchData);
+  },
+});
+
+export const updateBudgetCategory = mutation({
+  args: {
+    categoryId: v.id('budgetCategories'),
+    name: v.string(),
+    budget: v.number(),
+    color: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const cat = await ctx.db.get(args.categoryId);
+    if (!cat) throw new ConvexError("Category not found");
+    await requireProjectBudgetView(ctx, cat.projectId);
+    await ctx.db.patch(args.categoryId, {
+      name: args.name,
+      budget: args.budget,
+      color: args.color,
+    });
+  },
+});
+
+export const deleteBudgetCategory = mutation({
+  args: {
+    categoryId: v.id('budgetCategories'),
+  },
+  handler: async (ctx, args) => {
+    const cat = await ctx.db.get(args.categoryId);
+    if (!cat) throw new ConvexError("Category not found");
+    await requireProjectBudgetView(ctx, cat.projectId);
+    
+    // Check if there are expenses linked to this category
+    const expenses = await ctx.db
+      .query('expenses')
+      .withIndex('by_category', q => q.eq('categoryId', args.categoryId))
+      .collect();
+      
+    if (expenses.length > 0) {
+      throw new ConvexError("לא ניתן למחוק קטגוריה עם הוצאות מקושרות. מחק או העבר את ההוצאות קודם.");
+    }
+    
+    await ctx.db.delete(args.categoryId);
   },
 });

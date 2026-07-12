@@ -35,6 +35,16 @@ export const BudgetScreen = () => {
   const [addCatOpen, setAddCatOpen] = React.useState(false);
   const [newExp, setNewExp] = React.useState({ desc: '', amount: '', cat: '', date: new Date().toISOString().split('T')[0] });
   const [newCat, setNewCat] = React.useState({ name: '', budget: '', color: '#F97316' });
+
+  const [editingCatId, setEditingCatId] = React.useState<string | null>(null);
+  const [editCatState, setEditCatState] = React.useState({ name: '', budget: '', color: '#F97316' });
+  const [deleteConfirmId, setDeleteConfirmId] = React.useState<string | null>(null);
+
+  const [deleteExpenseConfirmId, setDeleteExpenseConfirmId] = React.useState<string | null>(null);
+  const [editExpenseData, setEditExpenseData] = React.useState<any | null>(null);
+  const [selectedEditReceiptFile, setSelectedEditReceiptFile] = React.useState<File | null>(null);
+
+
   const [budgetDraft, setBudgetDraft] = React.useState('');
   const [saving, setSaving] = React.useState(false);
   const [savingBudget, setSavingBudget] = React.useState(false);
@@ -140,6 +150,96 @@ export const BudgetScreen = () => {
     }
   };
 
+
+  const handleUpdateCategory = async (id: string) => {
+    if (!editCatState.name || !editCatState.budget) return;
+    setSaving(true);
+    try {
+      await mutate('updateBudgetCategory', {
+        categoryId: id as any,
+        name: editCatState.name,
+        budget: Number(editCatState.budget),
+        color: editCatState.color,
+      });
+      setEditingCatId(null);
+      catsRefetch();
+      setFeedback({ title: "עודכן", message: "הקטגוריה עודכנה בהצלחה.", type: "success" });
+    } catch (err) {
+      setFeedback({ title: "שגיאה", message: "לא הצלחנו לעדכן את הקטגוריה.", type: "error" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteCategory = async (id: string) => {
+    setSaving(true);
+    try {
+      await mutate('deleteBudgetCategory', { categoryId: id as any });
+      catsRefetch();
+      setFeedback({ title: "נמחק", message: "הקטגוריה נמחקה בהצלחה.", type: "success" });
+      setDeleteConfirmId(null);
+    } catch (err: any) {
+      const errorMessage = err.data || err.message || "לא ניתן למחוק קטגוריה עם הוצאות מקושרות.";
+      setFeedback({ title: "שגיאה במחיקה", message: typeof errorMessage === 'string' ? errorMessage : "אירעה שגיאה.", type: "error" });
+      setDeleteConfirmId(null);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+
+  const handleDeleteExpense = async (id: string) => {
+    setSaving(true);
+    try {
+      await mutate('deleteExpense', { expenseId: id });
+      expRefetch();
+      catsRefetch();
+      setFeedback({ title: "נמחק", message: "ההוצאה נמחקה בהצלחה.", type: "success" });
+      setDeleteExpenseConfirmId(null);
+    } catch (err: any) {
+      setFeedback({ title: "שגיאה", message: err.message || "אירעה שגיאה במחיקת ההוצאה.", type: "error" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleUpdateExpense = async () => {
+    if (!editExpenseData || !editExpenseData.desc || !editExpenseData.amount) return;
+    setSaving(true);
+    try {
+      let fileIds: any[] = [];
+      if (selectedEditReceiptFile && projectId) {
+        const uploadResult = await uploadProjectFile({
+          projectId,
+          file: selectedEditReceiptFile,
+          usage: 'receipt'
+        });
+        if (uploadResult?.fileId) {
+          fileIds = [uploadResult.fileId];
+        }
+      }
+
+      await mutate('updateExpense', {
+        expenseId: editExpenseData.id,
+        description: editExpenseData.desc,
+        amount: Number(editExpenseData.amount),
+        category: editExpenseData.cat || undefined,
+        date: editExpenseData.date,
+        status: editExpenseData.status,
+        fileIds: fileIds.length > 0 ? fileIds : undefined
+      });
+      setEditExpenseData(null);
+      setSelectedEditReceiptFile(null);
+      expRefetch();
+      catsRefetch();
+      setFeedback({ title: "עודכן", message: "ההוצאה עודכנה בהצלחה.", type: "success" });
+    } catch (err: any) {
+      setFeedback({ title: "שגיאה", message: err.message || "לא הצלחנו לעדכן את ההוצאה.", type: "error" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const COLORS = ['#F97316', '#3B82F6', '#10B981', '#8B5CF6', '#EC4899', '#6366F1', '#14B8A6', '#F59E0B'];
 
   return (
@@ -209,15 +309,55 @@ export const BudgetScreen = () => {
               const over=c.spent>c.budget;
               return (
                 <div key={i} className="card" style={{padding:20}}>
-                  <div style={{display:"flex",alignItems:"center",gap:8,fontSize:13,marginBottom:8}}>
-                    <span style={{width:8,height:8,borderRadius:2,background:c.color,display:"inline-block",flexShrink:0}}/>
-                    {c.name}
-                  </div>
-                  <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}>
-                      <span style={{fontSize:13}}>{fmtMoney(c.budget)}</span>
-                      <span style={{fontSize:13,color:over?"var(--danger)":"inherit",fontWeight:over?700:400}}>{fmtMoney(c.spent)}</span>
-                  </div>
-                  <ProgressBar value={Math.min(pct,100)} color={over?"var(--danger)":c.color} height={5}/>
+                  {editingCatId === c._id ? (
+                    <div style={{display: 'flex', flexDirection: 'column', gap: 12}}>
+                      <input className="bp-input" value={editCatState.name} onChange={e=>setEditCatState({...editCatState, name: e.target.value})} placeholder="שם קטגוריה" style={{width: '100%'}}/>
+                      <input className="bp-input" type="number" value={editCatState.budget} onChange={e=>setEditCatState({...editCatState, budget: e.target.value})} placeholder="תקציב" style={{width: '100%'}}/>
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                        {COLORS.map(color => (
+                          <div 
+                            key={color} 
+                            onClick={() => setEditCatState({...editCatState, color})}
+                            style={{
+                              width: 20, height: 20, borderRadius: 4, background: color, cursor: 'pointer',
+                              border: editCatState.color === color ? '2px solid #000' : 'none'
+                            }}
+                          />
+                        ))}
+                      </div>
+                      <div style={{display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 4}}>
+                        <Btn onClick={() => setEditingCatId(null)} variant="secondary">ביטול</Btn>
+                        <Btn onClick={() => handleUpdateCategory(c._id)} disabled={saving}>שמור</Btn>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:8}}>
+                        <div style={{display:"flex",alignItems:"center",gap:8,fontSize:13}}>
+                          <span style={{width:8,height:8,borderRadius:2,background:c.color,display:"inline-block",flexShrink:0}}/>
+                          <span style={{fontWeight: 700}}>{c.name}</span>
+                        </div>
+                        <div style={{display: 'flex', gap: 4}}>
+                          <button onClick={() => {
+                            setEditingCatId(c._id);
+                            setEditCatState({ name: c.name, budget: String(c.budget), color: c.color });
+                          }} style={{background:'none',border:'none',cursor:'pointer',color:'var(--text3)'}} title="ערוך">
+                            <Icon n="edit" s={14}/>
+                          </button>
+                          <button onClick={() => setDeleteConfirmId(c._id)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--danger)'}} title="מחק">
+                            <Icon n="trash" s={14}/>
+                          </button>
+                        </div>
+                      </div>
+                      <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}>
+                          <span style={{fontSize:13}}>{fmtMoney(c.budget)}</span>
+                          <span style={{fontSize:13,color:over?"var(--danger)":"var(--text2)",fontWeight:over?700:400}}>
+                            {fmtMoney(c.spent)} <span style={{fontSize:11, fontWeight:400}}>({pct}%)</span>
+                          </span>
+                      </div>
+                      <ProgressBar value={Math.min(pct,100)} color={over?"var(--danger)":c.color} height={5}/>
+                    </>
+                  )}
                 </div>
               );
             })}
@@ -311,19 +451,35 @@ export const BudgetScreen = () => {
                   </select>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 16 }}>
-                  <label style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text2)', background: 'var(--surface)', padding: '10px 16px', borderRadius: 8, border: '1px solid var(--border)' }}>
-                    <input 
-                      type="file" 
-                      accept="image/*,.pdf" 
-                      style={{ display: 'none' }}
-                      onChange={e => {
-                        const file = e.target.files?.[0];
-                        if (file) setSelectedReceiptFile(file);
-                      }}
-                    />
-                    <Icon n={selectedReceiptFile ? "check" : "paperclip"} s={16} c={selectedReceiptFile ? "var(--success)" : "currentColor"} />
-                    {selectedReceiptFile ? "קובץ נבחר" : "הוסף קבלה"}
-                  </label>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <label style={{ cursor: 'pointer', display: 'flex', flex: 1, alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 13, color: 'var(--text2)', background: 'var(--surface)', padding: '10px 16px', borderRadius: 8, border: '1px solid var(--border)' }}>
+                      <input 
+                        type="file" 
+                        accept="image/*,.pdf" 
+                        style={{ display: 'none' }}
+                        onChange={e => {
+                          const file = e.target.files?.[0];
+                          if (file) setSelectedReceiptFile(file);
+                        }}
+                      />
+                      <Icon n={selectedReceiptFile ? "check" : "paperclip"} s={16} c={selectedReceiptFile ? "var(--success)" : "currentColor"} />
+                      קובץ
+                    </label>
+                    <label className="mobile-only" style={{ cursor: 'pointer', display: 'flex', flex: 1, alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 13, color: 'var(--text2)', background: 'var(--surface)', padding: '10px 16px', borderRadius: 8, border: '1px solid var(--border)' }}>
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        capture="environment"
+                        style={{ display: 'none' }}
+                        onChange={e => {
+                          const file = e.target.files?.[0];
+                          if (file) setSelectedReceiptFile(file);
+                        }}
+                      />
+                      <Icon n="camera" s={16} />
+                      צלם
+                    </label>
+                  </div>
                 </div>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
@@ -360,9 +516,9 @@ export const BudgetScreen = () => {
               <div style={{padding:40,textAlign:"center",color:"var(--text3)",fontSize:13}}>לא נמצאו הוצאות.</div>
             ) : (
               <table className="bp-table" style={{width:"100%"}}>
-                <thead><tr><th>תאריך</th><th>תיאור</th><th>קטגוריה</th><th>סכום</th><th>סטטוס</th><th>קבלה</th></tr></thead>
+                <thead><tr><th>תאריך</th><th>תיאור</th><th>קטגוריה</th><th>סכום</th><th>סטטוס</th><th>קבלה</th><th>פעולות</th></tr></thead>
                 <tbody>
-                  {expenses?.map((e,i)=>(
+                  {expenses?.slice().sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map((e,i)=>(
                     <tr key={i}>
                       <td style={{fontSize:13,color:"var(--text3)"}}>{new Date(e.date).toLocaleDateString('he-IL')}</td>
                       <td style={{fontSize:13,fontWeight:500}}>{e.desc}</td>
@@ -377,6 +533,24 @@ export const BudgetScreen = () => {
                             title="צפה בקבלה"
                           >
                             <Icon n="file-text" s={16} />
+                          </div>
+                        )}
+                      </td>
+                      <td>
+                        {!e.contractorId ? (
+                          <div style={{ display: 'flex', gap: 8 }}>
+                            <button onClick={() => setEditExpenseData({
+                              id: e.id, desc: e.desc, amount: String(e.amount), cat: e.cat || '', date: e.date, status: e.status
+                            })} style={{background:'none',border:'none',cursor:'pointer',color:'var(--text3)'}} title="ערוך הוצאה מזדמנת">
+                              <Icon n="edit" s={14}/>
+                            </button>
+                            <button onClick={() => setDeleteExpenseConfirmId(e.id)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--danger)'}} title="מחק הוצאה מזדמנת">
+                              <Icon n="trash" s={14}/>
+                            </button>
+                          </div>
+                        ) : (
+                          <div style={{ fontSize: 11, color: 'var(--text3)' }} title="הוצאה מקושרת לקבלן - נהל ממסך הקבלנים">
+                            הוצאת קבלן
                           </div>
                         )}
                       </td>
@@ -436,6 +610,105 @@ export const BudgetScreen = () => {
               <div style={{marginTop:8,display:"flex",justifyContent:"flex-end",gap:12, borderTop: '1px solid var(--border)', paddingTop: 16}}>
                 <Btn variant="ghost" onClick={()=>setAddCatOpen(false)}>ביטול</Btn>
                 <Btn onClick={handleAddCategory} disabled={saving}>{saving ? "שומר..." : "הוסף קטגוריה"}</Btn>
+              </div>
+            </div>
+          </Modal>
+        )}
+
+        {deleteConfirmId && (
+          <Modal title="מחיקת קטגוריה" onClose={() => setDeleteConfirmId(null)}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <div style={{ fontSize: 14, color: "var(--text2)", lineHeight: 1.5 }}>
+                האם אתה בטוח שברצונך למחוק קטגוריה זו? <br/>
+                הפעולה תמחק את התקציב המשויך אליה, ולא ניתנת לביטול.
+              </div>
+              <div style={{ marginTop: 8, display: "flex", justifyContent: "flex-end", gap: 12, borderTop: '1px solid var(--border)', paddingTop: 16 }}>
+                <Btn variant="ghost" onClick={() => setDeleteConfirmId(null)}>ביטול</Btn>
+                <Btn onClick={() => handleDeleteCategory(deleteConfirmId)} disabled={saving} style={{ background: 'var(--danger)' }}>
+                  {saving ? "מוחק..." : "כן, מחק"}
+                </Btn>
+              </div>
+            </div>
+          </Modal>
+        )}
+
+        {deleteExpenseConfirmId && (
+          <Modal title="מחיקת הוצאה" onClose={() => setDeleteExpenseConfirmId(null)}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <div style={{ fontSize: 14, color: "var(--text2)", lineHeight: 1.5 }}>
+                האם אתה בטוח שברצונך למחוק הוצאה זו?
+              </div>
+              <div style={{ marginTop: 8, display: "flex", justifyContent: "flex-end", gap: 12, borderTop: '1px solid var(--border)', paddingTop: 16 }}>
+                <Btn variant="ghost" onClick={() => setDeleteExpenseConfirmId(null)}>ביטול</Btn>
+                <Btn onClick={() => handleDeleteExpense(deleteExpenseConfirmId)} disabled={saving} style={{ background: 'var(--danger)' }}>
+                  {saving ? "מוחק..." : "כן, מחק"}
+                </Btn>
+              </div>
+            </div>
+          </Modal>
+        )}
+
+        {editExpenseData && (
+          <Modal title="עריכת הוצאה מזדמנת" onClose={() => setEditExpenseData(null)}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div>
+                <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 4 }}>תיאור ההוצאה</div>
+                <input className="bp-input" value={editExpenseData.desc} onChange={e => setEditExpenseData({...editExpenseData, desc: e.target.value})} style={{ width: '100%' }} />
+              </div>
+              <div>
+                <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 4 }}>סכום (₪)</div>
+                <input className="bp-input" type="number" value={editExpenseData.amount} onChange={e => setEditExpenseData({...editExpenseData, amount: e.target.value})} style={{ width: '100%' }} />
+              </div>
+              <div>
+                <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 4 }}>קטגוריה (אופציונלי)</div>
+                <select className="bp-input" value={editExpenseData.cat} onChange={e => setEditExpenseData({...editExpenseData, cat: e.target.value})} style={{ width: '100%' }}>
+                  <option value="">ללא קטגוריה</option>
+                  {categories?.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 4 }}>סטטוס תשלום</div>
+                <select className="bp-input" value={editExpenseData.status} onChange={e => setEditExpenseData({...editExpenseData, status: e.target.value})} style={{ width: '100%' }}>
+                  <option value="שולם">שולם</option>
+                  <option value="ממתין">ממתין</option>
+                </select>
+              </div>
+              <div>
+                <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 4 }}>הוסף/עדכן קבלה</div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <label style={{ cursor: 'pointer', display: 'flex', flex: 1, alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 13, color: 'var(--text2)', background: 'var(--surface)', padding: '10px 16px', borderRadius: 8, border: '1px solid var(--border)' }}>
+                    <input 
+                      type="file" 
+                      accept="image/*,.pdf" 
+                      style={{ display: 'none' }}
+                      onChange={e => {
+                        const file = e.target.files?.[0];
+                        if (file) setSelectedEditReceiptFile(file);
+                      }}
+                    />
+                    <Icon n={selectedEditReceiptFile ? "check" : "paperclip"} s={16} c={selectedEditReceiptFile ? "var(--success)" : "currentColor"} />
+                    {selectedEditReceiptFile ? "קובץ נבחר" : "בחר קובץ"}
+                  </label>
+                  <label className="mobile-only" style={{ cursor: 'pointer', display: 'flex', flex: 1, alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 13, color: 'var(--text2)', background: 'var(--surface)', padding: '10px 16px', borderRadius: 8, border: '1px solid var(--border)' }}>
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      capture="environment"
+                      style={{ display: 'none' }}
+                      onChange={e => {
+                        const file = e.target.files?.[0];
+                        if (file) setSelectedEditReceiptFile(file);
+                      }}
+                    />
+                    <Icon n="camera" s={16} /> צלם
+                  </label>
+                </div>
+              </div>
+              <div style={{ marginTop: 8, display: "flex", justifyContent: "flex-end", gap: 12, borderTop: '1px solid var(--border)', paddingTop: 16 }}>
+                <Btn variant="ghost" onClick={() => setEditExpenseData(null)}>ביטול</Btn>
+                <Btn onClick={handleUpdateExpense} disabled={saving || !editExpenseData.desc || !editExpenseData.amount}>
+                  {saving ? "שומר..." : "שמור שינויים"}
+                </Btn>
               </div>
             </div>
           </Modal>
