@@ -18,6 +18,7 @@ export const DailyLogsScreen = () => {
   const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [activeTab, setActiveTab] = useState<'log' | 'history'>('log');
   const [selectedLogId, setSelectedLogId] = useState<string | null>(null);
+  const [openMonths, setOpenMonths] = useState<Set<string>>(() => new Set([new Date().toISOString().slice(0, 7)]));
 
   const logsForDate = useQuery(api.dailyLogs.getLogsByDate, projectId ? { projectId, date: selectedDate } : 'skip');
   const allLogs = useQuery(api.dailyLogs.getLogs, projectId && activeTab === 'history' ? { projectId } : 'skip') || [];
@@ -700,49 +701,118 @@ export const DailyLogsScreen = () => {
               </div>
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               {allLogs.length === 0 ? (
                 <EmptyState title="אין היסטוריית יומנים" description="עדיין לא נוצרו יומני עבודה בפרויקט זה." icon="file-text" />
-              ) : (
-                allLogs.map(l => (
-                  <div key={l._id} style={{ background: 'var(--surface)', padding: 16, borderRadius: 12, border: '1px solid var(--border)', display: 'flex', flexWrap: 'wrap', gap: 16, justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-                        <span style={{ fontSize: 16, fontWeight: 700 }}>
-                          {new Date(l.date).toLocaleDateString('he-IL')}
-                          <span style={{ fontSize: 13, color: 'var(--text2)', fontWeight: 400, marginRight: 8 }}>
-                            ({new Date(l._creationTime).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })})
-                          </span>
-                        </span>
-                        {l.status === 'locked' ? (
-                          <span className="badge" style={{ background: 'rgba(255,59,48,0.1)', color: '#FF3B30' }}><Icon n="lock" s={12} /> נעול (מסמך)</span>
-                        ) : (
-                          <span className="badge badge-draft">טיוטה</span>
-                        )}
-                      </div>
-                      <div style={{ fontSize: 13, color: 'var(--text2)' }}>
-                        <span>פעילויות: {l.activities.length}</span>
-                        <span style={{ margin: '0 8px' }}>·</span>
-                        <span>חריגות: {l.issues.length}</span>
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
-                      <Btn variant="outline" size="sm" onClick={() => {
-                        setSelectedDate(l.date);
-                        setSelectedLogId(l._id);
-                        setActiveTab('log');
-                      }}>
-                        <Icon n="eye" s={14} /> צפה ביומן
-                      </Btn>
-                      {l.status === 'locked' && (
-                        <Btn variant="outline" size="sm" onClick={() => exportPDF(allLogs.filter(x => x.date === l.date))} disabled={exporting}>
-                          <Icon n="download" s={14} /> {exporting ? 'מפיק...' : 'PDF (כל יומני התאריך)'}
-                        </Btn>
+              ) : (() => {
+                // Group logs by year-month
+                const groups: Record<string, typeof allLogs> = {};
+                for (const l of allLogs) {
+                  const d = new Date(l.date);
+                  const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+                  if (!groups[key]) groups[key] = [];
+                  groups[key].push(l);
+                }
+                const sortedKeys = Object.keys(groups).sort((a, b) => b.localeCompare(a));
+                const currentMonthKey = new Date().toISOString().slice(0, 7);
+
+                return sortedKeys.map(monthKey => {
+                  const monthLogs = groups[monthKey];
+                  const [year, month] = monthKey.split('-');
+                  const monthName = new Date(Number(year), Number(month) - 1, 1).toLocaleDateString('he-IL', { month: 'long', year: 'numeric' });
+                  const isCurrentMonth = monthKey === currentMonthKey;
+                  const isOpen = openMonths.has(monthKey);
+                  const lockedCount = monthLogs.filter(l => l.status === 'locked').length;
+
+                  return (
+                    <div key={monthKey} style={{ background: 'var(--surface)', borderRadius: 12, border: '1px solid var(--border)', overflow: 'hidden' }}>
+                      {/* Month Header */}
+                      <button
+                        onClick={() => setOpenMonths(prev => {
+                          const next = new Set(prev);
+                          if (next.has(monthKey)) next.delete(monthKey);
+                          else next.add(monthKey);
+                          return next;
+                        })}
+                        style={{
+                          width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                          padding: '14px 20px', background: 'none', border: 'none', cursor: 'pointer',
+                          borderBottom: isOpen ? '1px solid var(--border)' : 'none',
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                          <Icon n={isOpen ? 'chevron-down' : 'chevron-left'} s={18} c="var(--text3)" />
+                          <span style={{ fontWeight: 700, fontSize: 15 }}>{monthName}</span>
+                          {isCurrentMonth && (
+                            <span style={{ fontSize: 11, background: 'var(--accent)', color: '#fff', padding: '2px 8px', borderRadius: 20, fontWeight: 600 }}>עכשיו</span>
+                          )}
+                        </div>
+                        <div style={{ display: 'flex', gap: 16, fontSize: 13, color: 'var(--text2)' }}>
+                          <span>{monthLogs.length} דוחות</span>
+                          {lockedCount > 0 && (
+                            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                              <Icon n="lock" s={12} c="#FF3B30" /> {lockedCount} נעולים
+                            </span>
+                          )}
+                        </div>
+                      </button>
+
+                      {/* Month Logs */}
+                      {isOpen && (
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                          {monthLogs.map((l, idx) => (
+                            <div
+                              key={l._id}
+                              style={{
+                                display: 'flex', flexWrap: 'wrap', gap: 16, justifyContent: 'space-between', alignItems: 'center',
+                                padding: '14px 20px',
+                                borderBottom: idx < monthLogs.length - 1 ? '1px solid var(--border)' : 'none',
+                              }}
+                            >
+                              <div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+                                  <span style={{ fontSize: 15, fontWeight: 700 }}>
+                                    {new Date(l.date).toLocaleDateString('he-IL')}
+                                  </span>
+                                  <span style={{ fontSize: 12, color: 'var(--text3)' }}>
+                                    ({new Date(l._creationTime).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })})
+                                  </span>
+                                  {l.status === 'locked' ? (
+                                    <span className="badge" style={{ background: 'rgba(255,59,48,0.1)', color: '#FF3B30' }}>
+                                      <Icon n="lock" s={11} /> נעול
+                                    </span>
+                                  ) : (
+                                    <span className="badge badge-draft">טיוטה</span>
+                                  )}
+                                </div>
+                                <div style={{ fontSize: 12, color: 'var(--text2)' }}>
+                                  <span>פעילויות: {l.activities.length}</span>
+                                  <span style={{ margin: '0 8px' }}>·</span>
+                                  <span>חריגות: {l.issues.length}</span>
+                                </div>
+                              </div>
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                                <Btn variant="outline" size="sm" onClick={() => {
+                                  setSelectedDate(l.date);
+                                  setSelectedLogId(l._id);
+                                  setActiveTab('log');
+                                }}>
+                                  <Icon n="eye" s={14} /> צפה ביומן
+                                </Btn>
+                                {l.status === 'locked' && (
+                                  <Btn variant="outline" size="sm" onClick={() => exportPDF(allLogs.filter(x => x.date === l.date))} disabled={exporting}>
+                                    <Icon n="download" s={14} /> {exporting ? 'מפיק...' : 'PDF'}
+                                  </Btn>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
                       )}
                     </div>
-                  </div>
-                ))
-              )}
+                  );
+                });
+              })()}
             </div>
           )}
         </div>
