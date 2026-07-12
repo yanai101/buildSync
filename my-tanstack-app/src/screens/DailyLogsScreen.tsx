@@ -759,7 +759,7 @@ export const DailyLogsScreen = () => {
 
                       {/* Month Logs */}
                       {isOpen && (
-                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', maxHeight: '65vh', overflowY: 'auto' }}>
                           {monthLogs.map((l, idx) => (
                             <div
                               key={l._id}
