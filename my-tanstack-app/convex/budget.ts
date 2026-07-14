@@ -157,6 +157,17 @@ export const deleteExpense = mutation({
       }
     }
 
+    // Delete attached files from storage and projectFiles table
+    if (expense.fileIds && expense.fileIds.length > 0) {
+      for (const fileId of expense.fileIds) {
+        const fileDoc = await ctx.db.get(fileId);
+        if (fileDoc) {
+          try { await ctx.storage.delete(fileDoc.storageId); } catch {}
+          await ctx.db.delete(fileId);
+        }
+      }
+    }
+
     await ctx.db.delete(args.expenseId);
   },
 });
