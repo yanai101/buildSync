@@ -43,7 +43,7 @@ export const BudgetScreen = () => {
   const [deleteExpenseConfirmId, setDeleteExpenseConfirmId] = React.useState<string | null>(null);
   const [editExpenseData, setEditExpenseData] = React.useState<any | null>(null);
   const [selectedEditReceiptFile, setSelectedEditReceiptFile] = React.useState<File | null>(null);
-
+  const [openExpMonths, setOpenExpMonths] = React.useState<Set<string>>(() => new Set([new Date().toISOString().slice(0, 7)]));
 
   const [budgetDraft, setBudgetDraft] = React.useState('');
   const [saving, setSaving] = React.useState(false);
@@ -506,61 +506,126 @@ export const BudgetScreen = () => {
           </div>
         </div>
 
-        {/* Expenses Table */}
+
+        {/* Expenses — grouped by month */}
         <div className="card">
           <div className="card-header" style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-            <span>הוצאות אחרונות</span>
+            <span>הוצאות</span>
           </div>
-          <div style={{overflowX:"auto"}}>
-            {expenses && expenses.length === 0 ? (
+          <div style={{ padding: '8px 0' }}>
+            {!expenses || expenses.length === 0 ? (
               <div style={{padding:40,textAlign:"center",color:"var(--text3)",fontSize:13}}>לא נמצאו הוצאות.</div>
-            ) : (
-              <table className="bp-table" style={{width:"100%"}}>
-                <thead><tr><th>תאריך</th><th>תיאור</th><th>קטגוריה</th><th>סכום</th><th>סטטוס</th><th>קבלה</th><th>פעולות</th></tr></thead>
-                <tbody>
-                  {expenses?.slice().sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map((e,i)=>(
-                    <tr key={i}>
-                      <td style={{fontSize:13,color:"var(--text3)"}}>{new Date(e.date).toLocaleDateString('he-IL')}</td>
-                      <td style={{fontSize:13,fontWeight:500}}>{e.desc}</td>
-                      <td style={{fontSize:12,color:"var(--text2)"}}>{e.cat}</td>
-                      <td style={{fontSize:13,fontWeight:600}}>{fmtMoney(e.amount)}</td>
-                      <td><Badge type={e.status==="שולם"?"done":"active"}>{e.status}</Badge></td>
-                      <td>
-                        {e.files && e.files.length > 0 && (
-                          <div 
-                            style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: 8, background: 'var(--surface)', cursor: 'pointer', color: 'var(--accent)' }}
-                            onClick={() => setViewFile(e.files[0])}
-                            title="צפה בקבלה"
+            ) : (() => {
+              // Group by year-month
+              const sorted = expenses.slice().sort((a:any,b:any) => (b._creationTime || 0) - (a._creationTime || 0));
+              const groups: Record<string, typeof sorted> = {};
+              for (const e of sorted) {
+                const d = new Date(e.date);
+                const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+                if (!groups[key]) groups[key] = [];
+                groups[key].push(e);
+              }
+              const keys = Object.keys(groups).sort((a,b) => b.localeCompare(a));
+              const currentKey = new Date().toISOString().slice(0,7);
+
+              return keys.map(monthKey => {
+                const monthExps = groups[monthKey];
+                const [yr, mo] = monthKey.split('-');
+                const monthName = new Date(Number(yr), Number(mo)-1, 1).toLocaleDateString('he-IL', { month: 'long', year: 'numeric' });
+                const isCurrentMonth = monthKey === currentKey;
+                const isOpen = openExpMonths.has(monthKey);
+                const monthTotal = monthExps.reduce((s:number, e:any) => s + e.amount, 0);
+                const paidTotal = monthExps.filter((e:any) => e.status === 'שולם').reduce((s:number, e:any) => s + e.amount, 0);
+
+                return (
+                  <div key={monthKey} style={{ borderBottom: '1px solid var(--border)' }}>
+                    {/* Month header */}
+                    <button
+                      onClick={() => setOpenExpMonths(prev => {
+                        const next = new Set(prev);
+                        if (next.has(monthKey)) next.delete(monthKey); else next.add(monthKey);
+                        return next;
+                      })}
+                      style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between', padding:'14px 20px', background:'none', border:'none', cursor:'pointer' }}
+                    >
+                      <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                        <Icon n={isOpen ? 'chevron-down' : 'chevron-left'} s={16} c="var(--text3)" />
+                        <span style={{ fontWeight:700, fontSize:15 }}>{monthName}</span>
+                        {isCurrentMonth && <span style={{ fontSize:11, background:'var(--accent)', color:'#fff', padding:'2px 8px', borderRadius:20, fontWeight:600 }}>עכשיו</span>}
+                      </div>
+                      <div style={{ display:'flex', gap:16, fontSize:13, color:'var(--text2)', alignItems:'center' }}>
+                        <span>{monthExps.length} הוצאות</span>
+                        <span style={{ fontWeight:600, color:'var(--text1)' }}>{fmtMoney(monthTotal)}</span>
+                      </div>
+                    </button>
+
+                    {/* Expense cards */}
+                    {isOpen && (
+                      <div style={{ display:'flex', flexDirection:'column', gap:0, maxHeight:'65vh', overflowY:'auto', padding:'0 16px 12px' }}>
+                        {monthExps.map((e:any, idx:number) => (
+                          <div
+                            key={e.id || idx}
+                            style={{
+                              display:'flex', alignItems:'center', gap:12, padding:'12px 4px',
+                              borderBottom: idx < monthExps.length - 1 ? '1px solid var(--border)' : 'none',
+                            }}
                           >
-                            <Icon n="file-text" s={16} />
+                            {/* Status bar */}
+                            <div style={{ width:3, height:40, borderRadius:4, background: e.status==='שולם' ? 'var(--success)' : 'var(--accent)', flexShrink:0 }} />
+
+                            {/* Receipt icon */}
+                            {e.files && e.files.length > 0 ? (
+                              <div
+                                onClick={() => setViewFile(e.files[0])}
+                                style={{ width:36, height:36, borderRadius:8, background:'var(--surface)', border:'1px solid var(--border)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', color:'var(--accent)', flexShrink:0 }}
+                                title="צפה בקבלה"
+                              >
+                                <Icon n="file-text" s={16} />
+                              </div>
+                            ) : (
+                              <div style={{ width:36, height:36, borderRadius:8, background:'var(--bg)', border:'1px dashed var(--border)', display:'flex', alignItems:'center', justifyContent:'center', color:'var(--text3)', flexShrink:0 }}>
+                                <Icon n={e.contractorId ? 'user' : 'shopping-cart'} s={15} />
+                              </div>
+                            )}
+
+                            {/* Main info */}
+                            <div style={{ flex:1, minWidth:0 }}>
+                              <div style={{ fontWeight:600, fontSize:14, wordBreak:'break-word' }}>{e.desc}</div>
+                              <div style={{ fontSize:12, color:'var(--text2)', display:'flex', gap:8, marginTop:2, flexWrap:'wrap' }}>
+                                {e.cat && <span>קטג': {e.cat}</span>}
+                                <span>{new Date(e.date).toLocaleDateString('he-IL')}</span>
+                                {e.contractorId && <span style={{ color:'var(--text3)' }}>הוצאת קבלן</span>}
+                              </div>
+                            </div>
+
+                            {/* Amount + status */}
+                            <div style={{ textAlign:'left', flexShrink:0 }}>
+                              <div style={{ fontWeight:700, fontSize:15 }}>{fmtMoney(e.amount)}</div>
+                              <div style={{ fontSize:11, marginTop:2, color: e.status==='שולם' ? 'var(--success)' : 'var(--accent)', fontWeight:600 }}>{e.status}</div>
+                            </div>
+
+                            {/* Actions */}
+                            {!e.contractorId && (
+                              <div style={{ display:'flex', gap:4, flexShrink:0 }}>
+                                <button onClick={() => setEditExpenseData({ id:e.id, desc:e.desc, amount:String(e.amount), cat:e.cat||'', date:e.date, status:e.status })} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text3)', padding:4, borderRadius:6 }} title="ערוך">
+                                  <Icon n="edit" s={14}/>
+                                </button>
+                                <button onClick={() => setDeleteExpenseConfirmId(e.id)} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--danger)', padding:4, borderRadius:6 }} title="מחק">
+                                  <Icon n="trash" s={14}/>
+                                </button>
+                              </div>
+                            )}
                           </div>
-                        )}
-                      </td>
-                      <td>
-                        {!e.contractorId ? (
-                          <div style={{ display: 'flex', gap: 8 }}>
-                            <button onClick={() => setEditExpenseData({
-                              id: e.id, desc: e.desc, amount: String(e.amount), cat: e.cat || '', date: e.date, status: e.status
-                            })} style={{background:'none',border:'none',cursor:'pointer',color:'var(--text3)'}} title="ערוך הוצאה מזדמנת">
-                              <Icon n="edit" s={14}/>
-                            </button>
-                            <button onClick={() => setDeleteExpenseConfirmId(e.id)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--danger)'}} title="מחק הוצאה מזדמנת">
-                              <Icon n="trash" s={14}/>
-                            </button>
-                          </div>
-                        ) : (
-                          <div style={{ fontSize: 11, color: 'var(--text3)' }} title="הוצאה מקושרת לקבלן - נהל ממסך הקבלנים">
-                            הוצאת קבלן
-                          </div>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              });
+            })()}
           </div>
         </div>
+
 
         {viewFile && (
           <Modal title={viewFile.name} onClose={() => setViewFile(null)}>
