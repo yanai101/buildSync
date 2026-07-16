@@ -42,6 +42,14 @@ export function SuperAdminScreen() {
   const [editingUser, setEditingUser] = useState<any | null>(null);
   const [showConfirmDelete, setShowConfirmDelete] = useState<Id<'users'> | null>(null);
   const [resetPasswordUser, setResetPasswordUser] = useState<any | null>(null);
+  const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
+
+  React.useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, []);
   const [newPassword, setNewPassword] = useState('');
   const [promoTier, setPromoTier] = useState<'pro' | 'premium'>('pro');
   const [promoValidity, setPromoValidity] = useState<number>(1);
@@ -139,12 +147,13 @@ export function SuperAdminScreen() {
     return result;
   }, [users, searchQuery, filterTier, filterStatus, filterRole, filterActivity, filterExpiration, filterJoinDate, sortBy]);
 
-  // Virtualizer setup
+  // Virtualizer setup — dynamic height via measureElement
   const parentRef = useRef<HTMLDivElement>(null);
   const rowVirtualizer = useVirtualizer({
     count: filteredUsers.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => 75,
+    estimateSize: (i) => expandedUserId === filteredUsers[i]?._id ? 260 : 68,
+    measureElement: (el) => el.getBoundingClientRect().height,
     overscan: 5,
   });
 
@@ -428,16 +437,25 @@ export function SuperAdminScreen() {
           </div>
 
           <div style={{ border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 2fr 1fr 1fr 1fr 1fr 2fr', background: 'var(--surface)', borderBottom: '1px solid var(--border)', fontWeight: 600, fontSize: 13, color: 'var(--text3)', padding: '12px 16px', gap: 12 }}>
-              <div>שם משתמש</div>
-              <div>אימייל / טלפון</div>
-              <div>תפקיד</div>
-              <div>פרויקטים</div>
-              <div>מנוי</div>
-              <div>סטטוס</div>
-              <div>פעולות</div>
-            </div>
-            
+            {/* Table header — hidden on mobile */}
+            {!isMobile && (
+              <div style={{ display: 'grid', gridTemplateColumns: '2fr 2fr 1fr 1fr 1fr 32px', background: 'var(--surface)', borderBottom: '1px solid var(--border)', fontWeight: 600, fontSize: 13, color: 'var(--text3)', padding: '12px 16px', gap: 12 }}>
+                <div>שם משתמש</div>
+                <div>אימייל / טלפון</div>
+                <div>תפקיד</div>
+                <div>מנוי</div>
+                <div>סטטוס</div>
+                <div></div>
+              </div>
+            )}
+            {isMobile && (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px 32px', background: 'var(--surface)', borderBottom: '1px solid var(--border)', fontWeight: 600, fontSize: 13, color: 'var(--text3)', padding: '12px 16px', gap: 12 }}>
+                <div>שם משתמש</div>
+                <div>מנוי / סטטוס</div>
+                <div></div>
+              </div>
+            )}
+
             <div ref={parentRef} style={{ height: '600px', overflowY: 'auto', background: 'var(--bg)' }}>
               {filteredUsers.length === 0 ? (
                 <div style={{ padding: 40, textAlign: 'center', color: 'var(--text3)' }}>
@@ -448,106 +466,293 @@ export function SuperAdminScreen() {
                   {rowVirtualizer.getVirtualItems().map((virtualRow) => {
                     const u = filteredUsers[virtualRow.index];
                     const isCurrentAdmin = u._id === identity?.userId;
-                    
+                    const isExpanded = expandedUserId === u._id;
+
+                    const tierBadge = u.subscriptionTier === 'premium'
+                      ? <span style={{ fontSize: 11, background: '#FEF9C3', color: '#A16207', fontWeight: 700, padding: '2px 8px', borderRadius: 10, whiteSpace: 'nowrap' }}>⭐ פרימיום</span>
+                      : u.subscriptionTier === 'pro'
+                      ? <span style={{ fontSize: 11, background: 'var(--accent-light, #EFF6FF)', color: 'var(--accent)', fontWeight: 700, padding: '2px 8px', borderRadius: 10 }}>Pro</span>
+                      : <span style={{ fontSize: 11, color: 'var(--text3)', padding: '2px 8px', borderRadius: 10, background: 'var(--surface)' }}>חינם</span>;
+
+                    const statusBadge = u.isSuspended
+                      ? <span style={{ fontSize: 11, color: '#EF4444', fontWeight: 600 }}>● מושעה</span>
+                      : <span style={{ fontSize: 11, color: '#22C55E', fontWeight: 600 }}>● פעיל</span>;
+
                     return (
-                      <div 
+                      <div
                         key={virtualRow.key}
+                        data-index={virtualRow.index}
+                        ref={rowVirtualizer.measureElement}
                         style={{
                           position: 'absolute',
                           top: 0,
                           left: 0,
                           width: '100%',
-                          height: `${virtualRow.size}px`,
                           transform: `translateY(${virtualRow.start}px)`,
-                          display: 'grid', 
-                          gridTemplateColumns: '1.5fr 2fr 1fr 1fr 1fr 1fr 2fr',
-                          gap: 12,
                           borderBottom: '1px solid var(--border)',
-                          opacity: isCurrentAdmin ? 0.6 : 1,
-                          background: isCurrentAdmin ? 'var(--surface)' : '#fff',
-                          padding: '0 16px',
-                          alignItems: 'center'
+                          opacity: isCurrentAdmin ? 0.7 : 1,
+                          background: isExpanded ? 'var(--surface)' : (isCurrentAdmin ? 'var(--surface)' : 'var(--bg)'),
+                          transition: 'background 0.15s',
                         }}
                       >
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <span style={{ fontWeight: 600 }}>{u.name || 'ללא שם'}</span>
-                            {u.isSuperAdmin && (
-                              <span style={{ fontSize: 10, background: 'var(--accent)', color: '#fff', padding: '2px 6px', borderRadius: 10 }}>Admin</span>
-                            )}
-                          </div>
-                          <div style={{ fontSize: 12, color: 'var(--text3)' }}>
-                            הצטרף/ה: {new Date(u._creationTime).toLocaleDateString('he-IL')} ({formatTimeAgo(u._creationTime)})
-                          </div>
-                        </div>
-                        <div style={{ color: 'var(--text2)', fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {u.email && <div>{u.email}</div>}
-                          {u.phone && <div>{u.phone}</div>}
-                        </div>
-                        <div style={{ fontSize: 14 }}>{u.role || 'owner'}</div>
-                        <div style={{ fontSize: 14 }}>{u.projectCount || 0}</div>
-                        <div>
-                          {u.subscriptionTier === 'premium' ? (
-                            <span style={{ color: '#EAB308', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}><Icon n="star" s={14} /> פרימיום</span>
-                          ) : u.subscriptionTier === 'pro' ? (
-                            <span style={{ color: 'var(--accent)', fontWeight: 600 }}>Pro</span>
-                          ) : (
-                            <span style={{ color: 'var(--text3)' }}>ללא מנוי</span>
-                          )}
-                        </div>
-                        <div>
-                          {u.isSuspended ? (
-                            <span style={{ color: '#EF4444', fontWeight: 600 }}>מושעה</span>
-                          ) : (
-                            <span style={{ color: '#22C55E' }}>פעיל</span>
-                          )}
-                        </div>
-                        <div>
-                          {isCurrentAdmin ? (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                              <span style={{ fontSize: 13, color: 'var(--text3)', fontWeight: 600 }}>מנהל מערכת (מוגן)</span>
-                              {import.meta.env.DEV && (
-                                <button
-                                  onClick={() => handleSendTestPush(u._id)}
-                                  title="שלח התראת Push לבדיקה למכשירים הרשומים שלך"
-                                  style={{ border: 'none', background: 'var(--surface-hover)', padding: '6px 12px', borderRadius: 6, cursor: 'pointer', color: 'var(--accent)' }}
-                                >
-                                  🔔 בדיקת Push
-                                </button>
+                        {/* ── Collapsed row header (always visible) ── */}
+                        <div
+                          onClick={() => setExpandedUserId(isExpanded ? null : u._id)}
+                          style={{
+                            display: 'grid',
+                            gridTemplateColumns: isMobile ? '1fr 80px 32px' : '2fr 2fr 1fr 1fr 1fr 32px',
+                            gap: 12,
+                            padding: '0 16px',
+                            alignItems: 'center',
+                            height: 68,
+                            cursor: 'pointer',
+                            userSelect: 'none',
+                          }}
+                        >
+                          {/* Name */}
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                              <span style={{ fontWeight: 600, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {u.name || 'ללא שם'}
+                              </span>
+                              {u.isSuperAdmin && (
+                                <span style={{ fontSize: 10, background: 'var(--accent)', color: '#fff', padding: '2px 6px', borderRadius: 10, flexShrink: 0 }}>Admin</span>
                               )}
                             </div>
-                          ) : (
-                            <div style={{ display: 'flex', gap: 8 }}>
-                              <button
-                                onClick={() => setEditingUser(u)}
-                                style={{ border: 'none', background: 'var(--surface-hover)', padding: '6px 12px', borderRadius: 6, cursor: 'pointer', color: 'var(--text1)' }}
-                              >
-                                עריכה
-                              </button>
-                              <button
-                                onClick={() => setResetPasswordUser(u)}
-                                style={{ border: 'none', background: 'var(--surface-hover)', padding: '6px 12px', borderRadius: 6, cursor: 'pointer', color: '#F59E0B' }}
-                              >
-                                איפוס סיסמה
-                              </button>
-                              {import.meta.env.DEV && (
-                                <button
-                                  onClick={() => handleSendTestPush(u._id)}
-                                  title="שלח התראת Push לבדיקה למכשירים הרשומים של המשתמש"
-                                  style={{ border: 'none', background: 'var(--surface-hover)', padding: '6px 12px', borderRadius: 6, cursor: 'pointer', color: 'var(--accent)' }}
-                                >
-                                  🔔 בדיקת Push
-                                </button>
-                              )}
-                              <button
-                                onClick={() => setShowConfirmDelete(u._id)}
-                                style={{ border: 'none', background: '#FEF2F2', padding: '6px 12px', borderRadius: 6, cursor: 'pointer', color: '#EF4444' }}
-                              >
-                                מחיקה
-                              </button>
+                            <div style={{ fontSize: 11, color: 'var(--text3)' }}>
+                              הצטרף/ה: {new Date(u._creationTime).toLocaleDateString('he-IL')} ({formatTimeAgo(u._creationTime)})
+                            </div>
+                          </div>
+
+                          {/* Desktop: email + phone */}
+                          {!isMobile && (
+                            <div style={{ color: 'var(--text2)', fontSize: 13, overflow: 'hidden', minWidth: 0 }}>
+                              {u.email && <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.email}</div>}
+                              {u.phone && <div style={{ color: 'var(--text3)' }}>{u.phone}</div>}
                             </div>
                           )}
+
+                          {/* Desktop: role */}
+                          {!isMobile && (
+                            <div style={{ fontSize: 13, color: 'var(--text2)' }}>{u.role || 'owner'}</div>
+                          )}
+
+                          {/* Desktop: tier badge */}
+                          {!isMobile && <div>{tierBadge}</div>}
+
+                          {/* Desktop: status */}
+                          {!isMobile && <div>{statusBadge}</div>}
+
+                          {/* Mobile: tier + status together */}
+                          {isMobile && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}>
+                              {tierBadge}
+                              {statusBadge}
+                            </div>
+                          )}
+
+                          {/* Chevron */}
+                          <div style={{
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            transition: 'transform 0.2s',
+                            transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                            color: 'var(--text3)',
+                            fontSize: 18,
+                          }}>
+                            ▾
+                          </div>
                         </div>
+
+                        {/* ── Expanded panel ── */}
+                        {isExpanded && (
+                          <div style={{
+                            padding: '16px 20px 20px',
+                            background: 'linear-gradient(to bottom, var(--surface), var(--surface))',
+                            borderTop: '1px solid var(--border)',
+                          }}>
+                            {/* Details grid */}
+                            <div style={{
+                              display: 'grid',
+                              gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4, 1fr)',
+                              gap: '12px 24px',
+                              marginBottom: 16,
+                              fontSize: 13,
+                            }}>
+                              <div>
+                                <div style={{ fontSize: 11, color: 'var(--text3)', fontWeight: 600, marginBottom: 4 }}>אימייל</div>
+                                <div style={{ color: 'var(--text1)', wordBreak: 'break-all' }}>{u.email || '—'}</div>
+                              </div>
+                              <div>
+                                <div style={{ fontSize: 11, color: 'var(--text3)', fontWeight: 600, marginBottom: 4 }}>טלפון</div>
+                                <div>{u.phone || '—'}</div>
+                              </div>
+                              <div>
+                                <div style={{ fontSize: 11, color: 'var(--text3)', fontWeight: 600, marginBottom: 4 }}>תפקיד</div>
+                                <div>{u.role || 'owner'}</div>
+                              </div>
+                              <div>
+                                <div style={{ fontSize: 11, color: 'var(--text3)', fontWeight: 600, marginBottom: 4 }}>פרויקטים</div>
+                                <div>{u.projectCount || 0}</div>
+                              </div>
+                              <div>
+                                <div style={{ fontSize: 11, color: 'var(--text3)', fontWeight: 600, marginBottom: 4 }}>מנוי</div>
+                                <div>{tierBadge}</div>
+                              </div>
+                              <div>
+                                <div style={{ fontSize: 11, color: 'var(--text3)', fontWeight: 600, marginBottom: 4 }}>סטטוס</div>
+                                <div>{statusBadge}</div>
+                              </div>
+                              {u.subscriptionExpiresAt && (
+                                <div>
+                                  <div style={{ fontSize: 11, color: 'var(--text3)', fontWeight: 600, marginBottom: 4 }}>תוקף מנוי</div>
+                                  <div style={{ color: u.subscriptionExpiresAt < Date.now() ? '#EF4444' : 'var(--text1)' }}>
+                                    {new Date(u.subscriptionExpiresAt).toLocaleDateString('he-IL')}
+                                  </div>
+                                </div>
+                              )}
+                              <div>
+                                <div style={{ fontSize: 11, color: 'var(--text3)', fontWeight: 600, marginBottom: 4 }}>הצטרפות</div>
+                                <div>{new Date(u._creationTime).toLocaleDateString('he-IL')}</div>
+                              </div>
+                            </div>
+
+                            {/* ── Activity Stats ── */}
+                            {(() => {
+                              const lastActivity = (u as any).lastActivityAt as number | null;
+                              const lastSession = (u as any).lastSessionAt as number | null;
+                              const pushDevices = (u as any).pushDeviceCount as number ?? 0;
+                              const teamMembers = (u as any).teamMemberCount as number ?? 0;
+                              const lastDailyLog = (u as any).lastDailyLogDate as string | null;
+
+                              // Activity score 0–100
+                              const now = Date.now();
+                              let score = 0;
+                              if (lastActivity) {
+                                const daysSince = (now - lastActivity) / (1000 * 60 * 60 * 24);
+                                if (daysSince <= 7) score += 40;
+                                else if (daysSince <= 30) score += 20;
+                                else if (daysSince <= 90) score += 8;
+                              }
+                              if (pushDevices > 0) score += 15;
+                              if (teamMembers > 0) score += 20;
+                              if ((u as any).projectCount > 0) score += 10;
+                              if (lastDailyLog) score += 15;
+                              score = Math.min(score, 100);
+
+                              const scoreColor = score >= 70 ? '#22C55E' : score >= 35 ? '#F59E0B' : '#EF4444';
+                              const scoreLabel = score >= 70 ? 'פעיל מאוד' : score >= 35 ? 'פעיל חלקית' : 'לא פעיל';
+
+                              return (
+                                <div style={{
+                                  marginBottom: 16,
+                                  padding: '14px 16px',
+                                  background: '#fff',
+                                  borderRadius: 10,
+                                  border: '1px solid var(--border)',
+                                  borderRight: `4px solid ${scoreColor}`,
+                                  boxShadow: '0 1px 6px rgba(0,0,0,0.06)',
+                                }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                                    <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text2)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                      📊 פעילות באפליקציה
+                                    </span>
+                                    <span style={{ fontSize: 12, fontWeight: 700, color: scoreColor }}>
+                                      {scoreLabel} ({score}%)
+                                    </span>
+                                  </div>
+
+                                  {/* Score bar */}
+                                  <div style={{ height: 6, background: 'var(--border)', borderRadius: 4, marginBottom: 14, overflow: 'hidden' }}>
+                                    <div style={{
+                                      height: '100%',
+                                      width: `${score}%`,
+                                      background: scoreColor,
+                                      borderRadius: 4,
+                                      transition: 'width 0.4s ease',
+                                    }} />
+                                  </div>
+
+                                  {/* Stats row */}
+                                  <div style={{
+                                    display: 'grid',
+                                    gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(5, 1fr)',
+                                    gap: '8px 16px',
+                                    fontSize: 12,
+                                  }}>
+                                    <div>
+                                      <div style={{ color: 'var(--text3)', marginBottom: 2 }}>🛠 פעולה בפרויקט</div>
+                                      <div style={{ fontWeight: 600, color: lastActivity ? 'var(--text1)' : 'var(--text3)' }}>
+                                        {lastActivity ? formatTimeAgo(lastActivity) : 'אין פעילות'}
+                                      </div>
+                                    </div>
+                                    <div>
+                                      <div style={{ color: 'var(--text3)', marginBottom: 2 }}>🔑 כניסה לאפליקציה</div>
+                                      <div style={{ fontWeight: 600, color: lastSession ? 'var(--text1)' : 'var(--text3)' }}>
+                                        {lastSession ? formatTimeAgo(lastSession) : 'לא ידוע'}
+                                      </div>
+                                    </div>
+                                    <div>
+                                      <div style={{ color: 'var(--text3)', marginBottom: 2 }}>📱 מכשירי Push</div>
+                                      <div style={{ fontWeight: 600, color: pushDevices > 0 ? '#22C55E' : 'var(--text3)' }}>
+                                        {pushDevices > 0 ? `${pushDevices} מכשיר${pushDevices > 1 ? 'ים' : ''}` : 'לא מופעל'}
+                                      </div>
+                                    </div>
+                                    <div>
+                                      <div style={{ color: 'var(--text3)', marginBottom: 2 }}>👥 חברי צוות</div>
+                                      <div style={{ fontWeight: 600, color: teamMembers > 0 ? 'var(--accent)' : 'var(--text3)' }}>
+                                        {teamMembers > 0 ? `${teamMembers} חבר${teamMembers > 1 ? 'י צוות' : ' צוות'}` : 'עובד לבד'}
+                                      </div>
+                                    </div>
+                                    <div>
+                                      <div style={{ color: 'var(--text3)', marginBottom: 2 }}>📋 יומן אחרון</div>
+                                      <div style={{ fontWeight: 600, color: lastDailyLog ? 'var(--text1)' : 'var(--text3)' }}>
+                                        {lastDailyLog
+                                          ? new Date(lastDailyLog).toLocaleDateString('he-IL')
+                                          : 'אין יומנים'}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })()}
+
+                            {/* Action buttons */}
+                            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                              {isCurrentAdmin ? (
+                                <>
+                                  <span style={{ fontSize: 13, color: 'var(--text3)', fontWeight: 600, alignSelf: 'center' }}>מנהל מערכת (מוגן)</span>
+                                  {import.meta.env.DEV && (
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); handleSendTestPush(u._id); }}
+                                      style={{ border: 'none', background: 'var(--surface-hover)', padding: '8px 14px', borderRadius: 8, cursor: 'pointer', color: 'var(--accent)', fontWeight: 600, fontSize: 13 }}
+                                    >🔔 בדיקת Push</button>
+                                  )}
+                                </>
+                              ) : (
+                                <>
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); setEditingUser(u); }}
+                                    style={{ border: 'none', background: 'var(--surface-hover)', padding: '8px 16px', borderRadius: 8, cursor: 'pointer', color: 'var(--text1)', fontWeight: 600, fontSize: 13 }}
+                                  >✏️ עריכה</button>
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); setResetPasswordUser(u); }}
+                                    style={{ border: 'none', background: '#FFFBEB', padding: '8px 16px', borderRadius: 8, cursor: 'pointer', color: '#F59E0B', fontWeight: 600, fontSize: 13 }}
+                                  >🔑 איפוס סיסמה</button>
+                                  {import.meta.env.DEV && (
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); handleSendTestPush(u._id); }}
+                                      style={{ border: 'none', background: 'var(--surface-hover)', padding: '8px 16px', borderRadius: 8, cursor: 'pointer', color: 'var(--accent)', fontWeight: 600, fontSize: 13 }}
+                                    >🔔 בדיקת Push</button>
+                                  )}
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); setShowConfirmDelete(u._id); }}
+                                    style={{ border: 'none', background: '#FEF2F2', padding: '8px 16px', borderRadius: 8, cursor: 'pointer', color: '#EF4444', fontWeight: 600, fontSize: 13 }}
+                                  >🗑 מחיקה</button>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     );
                   })}

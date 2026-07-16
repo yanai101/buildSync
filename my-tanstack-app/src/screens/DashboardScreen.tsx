@@ -12,11 +12,35 @@ import { useCurrentProject } from '../hooks/useCurrentProject';
 
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
+import { openUpgradeModal } from '../components/UpgradeModalHost';
 
 export const DashboardScreen = () => {
   const { role } = useRequireRole(['owner', 'manager', 'inspector', 'contractor']);
   const [showAllStages, setShowAllStages] = React.useState(false);
   const [showAllAlerts, setShowAllAlerts] = React.useState(false);
+  const identity = useQuery(api.users.currentIdentity);
+
+  // Free-tier retention warning — dismissed state via localStorage (7 days)
+  const DISMISS_KEY = 'free_retention_warning_dismissed_at';
+  const [retentionDismissed, setRetentionDismissed] = React.useState(() => {
+    try {
+      const saved = localStorage.getItem(DISMISS_KEY);
+      if (!saved) return false;
+      const sevenDays = 7 * 24 * 60 * 60 * 1000;
+      return Date.now() - Number(saved) < sevenDays;
+    } catch { return false; }
+  });
+
+  const dismissRetentionWarning = () => {
+    try { localStorage.setItem(DISMISS_KEY, String(Date.now())); } catch {}
+    setRetentionDismissed(true);
+  };
+
+  const isFreeTier = identity !== undefined &&
+    !identity?.isSuperAdmin &&
+    (!identity?.subscriptionTier || identity?.subscriptionTier === 'free');
+
+  const showRetentionBanner = isFreeTier && !retentionDismissed && role === 'owner';
   const { overview } = useDashboardOverview();
   const { data: dashboard, loading, error, refetch } = useDataSource<any>('dashboard', { db: overview });
   const seedAlert = useMutation(api.dashboard.seedAlert);
@@ -315,6 +339,71 @@ export const DashboardScreen = () => {
           )}
         </div>
 
+        {/* ── Free-tier data retention warning ── */}
+        {showRetentionBanner && (
+          <div style={{
+            position: 'relative',
+            background: 'rgba(245, 158, 11, 0.08)',
+            border: '1px solid rgba(245, 158, 11, 0.35)',
+            borderRight: '4px solid #F59E0B',
+            borderRadius: 12,
+            padding: '14px 40px 14px 16px',
+            marginBottom: 16,
+            display: 'flex',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+            gap: 12,
+          }}>
+            {/* X — absolute top-left */}
+            <button
+              onClick={dismissRetentionWarning}
+              title="הסתר למשך שבוע"
+              style={{ position: 'absolute', top: 10, left: 12, background: 'none', border: 'none', cursor: 'pointer', color: '#B45309', padding: 4, opacity: 0.6, lineHeight: 1 }}
+            >
+              <Icon n="x" s={16} />
+            </button>
+
+            {/* Text */}
+            <div style={{ flex: '1 1 200px', display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+              <span style={{ fontSize: 17, flexShrink: 0, marginTop: 1 }}>⚠️</span>
+              <div>
+                <div style={{ fontWeight: 700, color: '#B45309', fontSize: 14, lineHeight: 1.4 }}>
+                  פרויקט לא פעיל מעל 3 חודשים עלול להימחק
+                </div>
+                <div style={{ fontSize: 12, color: '#92400E', marginTop: 3 }}>
+                  חשבון חינמי ללא פעילות — הנתונים נמחקים אוטומטית. שדרג לפרו כדי לשמור עליהם.
+                </div>
+              </div>
+            </div>
+
+            {/* Upgrade button */}
+            <button
+              onClick={() => openUpgradeModal({
+                title: 'שמור על הנתונים שלך',
+                reason: 'משתמשי פרו לא נמחקים גם אחרי חודשים של אי-פעילות.',
+              })}
+              style={{
+                background: '#F59E0B',
+                color: '#fff',
+                border: 'none',
+                borderRadius: 8,
+                padding: '8px 16px',
+                fontSize: 13,
+                fontWeight: 700,
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                flexShrink: 0,
+                marginLeft: 24,
+              }}
+            >
+              ⭐ שדרג לפרו
+            </button>
+          </div>
+        )}
+
+
+
+
         {alerts && alerts.length > 0 && (() => {
           const getAlertStyle = (type: string) => {
             switch (type) {
@@ -338,25 +427,35 @@ export const DashboardScreen = () => {
               gap: 12
             }}>
               {!showAllAlerts ? (
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontWeight: 600, color: mainStyle.text }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10 }}>
+                  <div style={{ flex: '1 1 160px', display: 'flex', alignItems: 'center', gap: 10, fontWeight: 600, color: mainStyle.text }}>
                     <Icon n="alert" s={20} />
                     <span>{alerts[0].text}</span>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: 13, color: 'var(--text2)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
                     {alerts[0].isDynamic && alerts[0].link && (
-                      <Link to={alerts[0].link} style={{ color: mainStyle.text, fontWeight: 600, textDecoration: 'none', background: 'rgba(255,255,255,0.1)', padding: '4px 10px', borderRadius: 6 }}>
+                      <Link to={alerts[0].link} style={{
+                        color: mainStyle.text,
+                        fontWeight: 700,
+                        textDecoration: 'none',
+                        border: `1.5px solid ${mainStyle.text}`,
+                        padding: '5px 12px',
+                        borderRadius: 8,
+                        fontSize: 13,
+                        whiteSpace: 'nowrap',
+                        background: 'transparent',
+                      }}>
                         {alerts[0].actionText || 'לטפל'}
                       </Link>
                     )}
-                    {!alerts[0].isDynamic && <span>{alerts[0].dateLabel}</span>}
+                    {!alerts[0].isDynamic && <span style={{ fontSize: 13, color: 'var(--text2)' }}>{alerts[0].dateLabel}</span>}
                     {!alerts[0].isDynamic && (
                       <button onClick={() => deleteAlert({ alertId: alerts[0].id })} style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer' }} title="מחק התראה">
                         <Icon n="x" s={16} />
                       </button>
                     )}
                     {alerts.length > 1 && (
-                      <button onClick={() => setShowAllAlerts(true)} style={{ background: 'none', border: 'none', color: mainStyle.text, fontWeight: 700, cursor: 'pointer', textDecoration: 'underline' }}>
+                      <button onClick={() => setShowAllAlerts(true)} style={{ background: 'none', border: 'none', color: mainStyle.text, fontWeight: 700, cursor: 'pointer', textDecoration: 'underline', fontSize: 13, whiteSpace: 'nowrap' }}>
                         ראה הכל ({alerts.length})
                       </button>
                     )}
@@ -376,18 +475,28 @@ export const DashboardScreen = () => {
                   {alerts.map((alert: any, idx: number) => {
                     const ast = getAlertStyle(alert.type);
                     return (
-                      <div key={alert.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderTop: idx > 0 ? `1px solid ${mainStyle.border}` : 'none' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontWeight: 500, color: ast.text }}>
-                          <span style={{ width: 8, height: 8, borderRadius: '50%', background: ast.text }}></span>
+                      <div key={alert.id} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10, padding: '12px 0', borderTop: idx > 0 ? `1px solid ${mainStyle.border}` : 'none' }}>
+                        <div style={{ flex: '1 1 160px', display: 'flex', alignItems: 'center', gap: 10, fontWeight: 500, color: ast.text }}>
+                          <span style={{ width: 8, height: 8, borderRadius: '50%', background: ast.text, flexShrink: 0 }}></span>
                           <span>{alert.text}</span>
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: 13, color: 'var(--text2)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
                           {alert.isDynamic && alert.link && (
-                            <Link to={alert.link} style={{ color: ast.text, fontWeight: 600, textDecoration: 'none', background: 'rgba(255,255,255,0.1)', padding: '4px 10px', borderRadius: 6 }}>
+                            <Link to={alert.link} style={{
+                              color: ast.text,
+                              fontWeight: 700,
+                              textDecoration: 'none',
+                              border: `1.5px solid ${ast.text}`,
+                              padding: '5px 12px',
+                              borderRadius: 8,
+                              fontSize: 13,
+                              whiteSpace: 'nowrap',
+                              background: 'transparent',
+                            }}>
                               {alert.actionText || 'לטפל'}
                             </Link>
                           )}
-                          {!alert.isDynamic && <span>{alert.dateLabel}</span>}
+                          {!alert.isDynamic && <span style={{ fontSize: 13, color: 'var(--text2)' }}>{alert.dateLabel}</span>}
                           {!alert.isDynamic && (
                             <button onClick={() => deleteAlert({ alertId: alert.id })} style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer' }} title="מחק התראה">
                               <Icon n="x" s={16} />

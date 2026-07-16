@@ -21,16 +21,87 @@ export const getAllUsers = query({
     await checkSuperAdmin(ctx);
     const users = await ctx.db.query('users').collect();
 
-    // Fetch project counts in parallel using the index
+    // Fetch per-user stats in parallel
     const usersWithStats = await Promise.all(
       users.map(async (u) => {
-        const projects = await ctx.db
-          .query('projects')
-          .withIndex('by_ownerUserId', (q) => q.eq('ownerUserId', u._id))
-          .collect();
+        const [projects, lastActivityEntry, sessions, pushSubs] = await Promise.all([
+          // Projects owned by this user
+          ctx.db
+            .query('projects')
+            .withIndex('by_ownerUserId', (q) => q.eq('ownerUserId', u._id))
+            .collect(),
+          // Most recent activity this user performed (as actor)
+          ctx.db
+            .query('activityFeed')
+            .filter((q) => q.eq(q.field('actorUserId'), u._id))
+            .order('desc')
+            .first(),
+          // Auth sessions — proxy for last login
+          ctx.db
+            .query('authSessions' as any)
+            .filter((q: any) => q.eq(q.field('userId'), u._id))
+            .order('desc')
+            .collect(),
+          // Push subscriptions — how many devices
+          ctx.db
+            .query('pushSubscriptions')
+            .withIndex('by_user', (q) => q.eq('userId', u._id))
+            .collect(),
+        ]);
+
+        // Team members: count accepted invitations across all owned projects
+        const projectIds = projects.map((p) => p._id);
+        let teamMemberCount = 0;
+        if (projectIds.length > 0) {
+          const invitations = await Promise.all(
+            projectIds.map((pid) =>
+              ctx.db
+                .query('projectInvitations')
+                .withIndex('by_project', (q) => q.eq('projectId', pid))
+                .filter((q) => q.neq(q.field('consumedByUserId'), undefined))
+                .collect(),
+            ),
+          );
+          // Unique users who joined (deduplicate across projects)
+          const uniqueMembers = new Set(
+            invitations.flat().map((inv: any) => inv.consumedByUserId).filter(Boolean),
+          );
+          teamMemberCount = uniqueMembers.size;
+        }
+
+        // Last login: most recent session's _creationTime
+        const lastSessionAt =
+          sessions.length > 0
+            ? Math.max(...sessions.map((s: any) => s._creationTime))
+            : null;
+
+        // Last daily log: find most recent log date across all owned projects
+        let lastDailyLogDate: string | null = null;
+        if (projectIds.length > 0) {
+          const recentLogs = await Promise.all(
+            projectIds.map((pid) =>
+              ctx.db
+                .query('dailyLogs')
+                .withIndex('by_project_date', (q) => q.eq('projectId', pid))
+                .order('desc')
+                .first(),
+            ),
+          );
+          // date is a string like "2026-07-16" — lexicographic max = most recent
+          const dates = recentLogs.map((l) => l?.date).filter(Boolean) as string[];
+          if (dates.length > 0) {
+            lastDailyLogDate = dates.reduce((a, b) => (a > b ? a : b));
+          }
+        }
+
         return {
           ...u,
           projectCount: projects.length,
+          lastActivityAt: lastActivityEntry?.createdAt ?? null,
+          lastSessionAt,
+          pushDeviceCount: pushSubs.length,
+          teamMemberCount,
+          lastDailyLogDate,
         };
       }),
     );
