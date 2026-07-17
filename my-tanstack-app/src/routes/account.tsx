@@ -1,6 +1,7 @@
 import { createFileRoute, useSearch } from '@tanstack/react-router'
 import * as React from 'react'
 import { useAction, useMutation, useQuery } from 'convex/react'
+import { AnimatePresence } from 'framer-motion'
 import { Btn, Input, Icon } from '~/components/Shared'
 import { api } from '../../convex/_generated/api'
 import { useSubscription } from '~/hooks/useSubscription'
@@ -8,6 +9,9 @@ import { useAppNotify } from '~/hooks/useAppNotify'
 import { SupportModal } from '~/components/SupportModal'
 import { PushNotificationToggle } from '~/components/PushNotificationToggle'
 import { checkoutUrl } from '~/billing'
+import { BottomNavCustomizer } from '~/components/BottomNavCustomizer'
+import { useBottomNavShortcuts } from '~/hooks/useBottomNavShortcuts'
+import { NAV } from '~/components/Layout'
 
 export const Route = createFileRoute('/account')({
   component: AccountPage,
@@ -40,6 +44,16 @@ function AccountPage() {
   const { success } = Route.useSearch()
   const { notify } = useAppNotify()
   const [showSupportModal, setShowSupportModal] = React.useState(false)
+  const [showCustomizer, setShowCustomizer] = React.useState(false)
+  const [isMobile, setIsMobile] = React.useState(false)
+  const [shortcuts] = useBottomNavShortcuts()
+
+  React.useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth <= 768)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
 
   const user = useQuery(api.users.me, {})
   const updateProfile = useMutation(api.users.updateProfile)
@@ -504,6 +518,52 @@ function AccountPage() {
           </div>
         </div>
       )}
+
+      {isMobile && (
+        <div className="card" style={{ padding: 24 }}>
+          <SectionHeader
+            title="קיצורי דרך בנייד"
+            subtitle="בחרו 2 קיצורים שיופיעו בסרגל הניווט התחתון"
+          />
+          <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+            {shortcuts.map(id => {
+              const item = NAV.find(n => n.id === id)
+              if (!item) return null
+              return (
+                <div
+                  key={id}
+                  style={{
+                    flex: 1, display: 'flex', alignItems: 'center', gap: 8,
+                    padding: '10px 12px', borderRadius: 12,
+                    background: 'rgba(224,122,56,0.07)',
+                    border: '1.5px solid rgba(224,122,56,0.25)'
+                  }}
+                >
+                  <Icon n={item.icon} s={16} c="var(--accent)" />
+                  <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text1)' }}>{item.label}</span>
+                </div>
+              )
+            })}
+          </div>
+          <Btn
+            variant="outline"
+            onClick={() => setShowCustomizer(true)}
+            style={{ marginTop: 14, width: '100%', justifyContent: 'center' }}
+          >
+            <Icon n="settings" s={15} /> שנה קיצורים
+          </Btn>
+        </div>
+      )}
+
+      <AnimatePresence>
+        {showCustomizer && (
+          <BottomNavCustomizer
+            onClose={() => setShowCustomizer(false)}
+            isProOrPremium={isProOrPremium}
+            allowedIds={NAV.map(n => n.id)}
+          />
+        )}
+      </AnimatePresence>
 
       {showSupportModal && (
         <SupportModal onClose={() => setShowSupportModal(false)} />

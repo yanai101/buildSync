@@ -11,6 +11,7 @@ import { useAuthActions } from '@convex-dev/auth/react'
 import { api } from '../../convex/_generated/api'
 import { useRequireRole } from '~/hooks/useRequireRole'
 import { useSubscription } from '~/hooks/useSubscription'
+import { useBottomNavShortcuts } from '~/hooks/useBottomNavShortcuts'
 import { SupportModal } from './SupportModal'
 import { UpgradeModalHost, openUpgradeModal } from './UpgradeModalHost'
 import { SubscriptionChangePopup } from './SubscriptionChangePopup'
@@ -248,12 +249,16 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useConvexAuth()
   const { role: resolvedRole } = useRequireRole(ALL_ROLES)
   const userRole = resolvedRole ?? 'owner'
+  const [shortcuts] = useBottomNavShortcuts()
   const currentBottomNav = React.useMemo(() => {
-    const bottomNavIds = (userRole === 'inspector' || userRole === 'contractor') 
-      ? ["/dashboard", "/daily-logs", "/photos", "/notes"] 
-      : ["/dashboard", "/boqwizard", "/photos", "/notes"];
-    return bottomNavIds.map(id => NAV.find(n => n.id === id)!);
-  }, [userRole]);
+    const fixed = (userRole === 'inspector' || userRole === 'contractor')
+      ? ["/dashboard", "/daily-logs"]
+      : ["/dashboard", "/boqwizard"];
+    const custom = shortcuts
+      .map(id => NAV.find(n => n.id === id))
+      .filter(Boolean) as typeof NAV;
+    return [...fixed.map(id => NAV.find(n => n.id === id)!), ...custom];
+  }, [userRole, shortcuts]);
   const { isProOrPremium } = useSubscription()
   const { signOut } = useAuthActions()
   const identity = useQuery(api.users.currentIdentity, {})
