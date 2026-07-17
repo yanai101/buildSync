@@ -9,7 +9,6 @@ import { useCurrentProject } from '~/hooks/useCurrentProject'
 import { useConvexAuth, useQuery, useMutation } from 'convex/react'
 import { useAuthActions } from '@convex-dev/auth/react'
 import { api } from '../../convex/_generated/api'
-import { useOnboardingTour } from '~/hooks/useOnboardingTour'
 import { useRequireRole } from '~/hooks/useRequireRole'
 import { useSubscription } from '~/hooks/useSubscription'
 import { SupportModal } from './SupportModal'
@@ -267,7 +266,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const [menuOpen, setMenuOpen] = React.useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false)
   const menuRef = React.useRef<HTMLDivElement>(null)
-  const { startTour } = useOnboardingTour()
 
   const [deferredPrompt, setDeferredPrompt] = React.useState<any>(null);
   const [showPWABanner, setShowPWABanner] = React.useState(false);
@@ -416,7 +414,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const showDailyLogBadge = hasDailyLogToday && lastViewedDailyLogs !== todayStr && currentPath !== '/daily-logs';
 
   const [showWelcomeModal, setShowWelcomeModal] = React.useState(false);
-  const [showMobileGuidesModal, setShowMobileGuidesModal] = React.useState(false);
   const [showSupportModal, setShowSupportModal] = React.useState(false);
   const [isMobile, setIsMobile] = React.useState(false);
 
@@ -542,33 +539,16 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
       const onboardingCompleted = window.localStorage.getItem('buildsync:welcome_onboarding_completed');
       if (!onboardingCompleted) {
-        if (isMobile) {
-          setShowMobileGuidesModal(true);
-        } else {
-          setShowWelcomeModal(true);
-        }
+        setShowWelcomeModal(true);
       }
     }
-  }, [isAuthenticated, isLoading, isProjectLoading, currentPath, projects.length, isMobile]);
+  }, [isAuthenticated, isLoading, isProjectLoading, currentPath, projects.length]);
 
   const handleCloseWelcomeModal = () => {
     setShowWelcomeModal(false);
     if (typeof window !== 'undefined') {
       window.localStorage.setItem('buildsync:welcome_onboarding_completed', 'true');
-      // Set old tour to true so it doesn't pop up as well
       window.localStorage.setItem('buildsync:tour_completed', 'true');
-    }
-  };
-
-  const handleCloseMobileGuidesModal = (goToGuides: boolean) => {
-    setShowMobileGuidesModal(false);
-    if (typeof window !== 'undefined') {
-      window.localStorage.setItem('buildsync:welcome_onboarding_completed', 'true');
-      window.localStorage.setItem('buildsync:tour_completed', 'true');
-      window.localStorage.setItem('buildsync:mobile_guides_prompt_completed', 'true');
-    }
-    if (goToGuides) {
-      navigate({ to: '/guides' });
     }
   };
 
@@ -983,32 +963,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                     </>
                   )}
                   <div style={{ height: 1, background: "var(--border)", margin: "6px 0" }} />
-                  <button
-                    onClick={() => {
-                      setMenuOpen(false);
-                      startTour();
-                    }}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 8,
-                      padding: "8px 10px",
-                      borderRadius: 8,
-                      color: "var(--text1)",
-                      fontSize: 13,
-                      fontWeight: 600,
-                      textDecoration: "none",
-                      background: "none",
-                      border: "none",
-                      width: "100%",
-                      cursor: "pointer",
-                      textAlign: "right",
-                      fontFamily: "inherit"
-                    }}
-                  >
-                    <Icon n="help-circle" s={14} />
-                    מדריך מערכת
-                  </button>
 
                   <Link
                     to="/terms"
@@ -1384,21 +1338,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       <WelcomeOnboardingModal 
         isOpen={showWelcomeModal} 
         onClose={handleCloseWelcomeModal} 
-        onStartTour={() => {
-          handleCloseWelcomeModal();
-          setTimeout(() => {
-            startTour();
-          }, 400);
-        }}
       />
-
-      <AnimatePresence>
-        {showMobileGuidesModal && (
-          <MobileGuidesPromptModal 
-            onClose={handleCloseMobileGuidesModal} 
-          />
-        )}
-      </AnimatePresence>
 
       {showSupportModal && (
         <SupportModal onClose={() => setShowSupportModal(false)} />
