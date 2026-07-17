@@ -12,6 +12,7 @@ import { checkoutUrl } from '~/billing'
 import { BottomNavCustomizer } from '~/components/BottomNavCustomizer'
 import { useBottomNavShortcuts } from '~/hooks/useBottomNavShortcuts'
 import { NAV } from '~/components/Layout'
+import { useRequireRole } from '~/hooks/useRequireRole'
 
 export const Route = createFileRoute('/account')({
   component: AccountPage,
@@ -63,6 +64,8 @@ function AccountPage() {
   const [portalLoading, setPortalLoading] = React.useState(false)
   const [portalMsg, setPortalMsg] = React.useState<{ kind: 'ok' | 'err'; text: string } | null>(null)
   const { isProOrPremium, tier, isSuperAdmin } = useSubscription()
+  const { role: resolvedRole } = useRequireRole(['owner', 'manager', 'inspector', 'contractor'])
+  const userRole = (resolvedRole ?? 'owner') as 'owner' | 'manager' | 'inspector' | 'contractor'
 
   const handleOpenPortal = async () => {
     setPortalLoading(true)
@@ -560,7 +563,7 @@ function AccountPage() {
           <BottomNavCustomizer
             onClose={() => setShowCustomizer(false)}
             isProOrPremium={isProOrPremium}
-            allowedIds={NAV.map(n => n.id)}
+            userRole={userRole}
           />
         )}
       </AnimatePresence>

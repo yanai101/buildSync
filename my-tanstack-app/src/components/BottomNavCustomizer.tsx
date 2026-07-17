@@ -1,50 +1,60 @@
 import * as React from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Icon } from './Shared'
-import { NAV } from './Layout'
+import { NAV, PREMIUM_ROUTES } from './Layout'
 import { useBottomNavShortcuts } from '~/hooks/useBottomNavShortcuts'
 
-// Nav items that are always fixed — cannot be chosen as shortcuts
-const FIXED_IDS = new Set(['/dashboard', '/boqwizard', '/daily-logs', '/projects'])
+// Always fixed — never appear as choosable shortcuts
+const ALWAYS_FIXED = new Set(['/dashboard', '/projects'])
 
 // Items that are premium-only routes
-const PREMIUM_IDS = new Set([
-  '/analytics', '/orders', '/boq', '/boqwizard', '/permits', '/daily-logs', '/personal-files'
-])
+const PREMIUM_IDS = new Set(PREMIUM_ROUTES)
+
+type UserRole = 'owner' | 'manager' | 'inspector' | 'contractor'
+
+function getFixedIds(userRole: UserRole): Set<string> {
+  const fixed = new Set(ALWAYS_FIXED)
+  // slot #2 fixed per role
+  if (userRole === 'inspector' || userRole === 'contractor') {
+    fixed.add('/daily-logs')
+  } else {
+    fixed.add('/boqwizard')
+  }
+  return fixed
+}
+
+function isAllowedForRole(navRoles: string[], userRole: UserRole): boolean {
+  return navRoles.includes(userRole)
+}
 
 interface Props {
   onClose: () => void
   isProOrPremium: boolean
-  /** nav ids accessible by the user's role */
-  allowedIds: string[]
+  userRole: UserRole
 }
 
-export function BottomNavCustomizer({ onClose, isProOrPremium, allowedIds }: Props) {
+export function BottomNavCustomizer({ onClose, isProOrPremium, userRole }: Props) {
   const [shortcuts, setShortcuts] = useBottomNavShortcuts()
   const [selected, setSelected] = React.useState<string[]>(shortcuts)
 
-  const candidates = NAV.filter(n => !FIXED_IDS.has(n.id))
+  const fixedIds = React.useMemo(() => getFixedIds(userRole), [userRole])
+
+  // All candidates: not fixed, allowed for this role
+  const candidates = NAV.filter(n =>
+    !fixedIds.has(n.id) && isAllowedForRole(n.roles, userRole)
+  )
 
   function toggleItem(id: string) {
-    const isPremiumLocked = PREMIUM_IDS.has(id) && !isProOrPremium
-    if (isPremiumLocked) return
-    if (!allowedIds.includes(id)) return
+    if (PREMIUM_IDS.has(id) && !isProOrPremium) return
 
     setSelected(prev => {
-      if (prev.includes(id)) {
-        // deselect
-        return prev.filter(x => x !== id)
-      }
-      if (prev.length < 2) {
-        return [...prev, id]
-      }
-      // replace oldest (FIFO)
-      return [prev[1], id]
+      if (prev.includes(id)) return prev.filter(x => x !== id)
+      if (prev.length < 2) return [...prev, id]
+      return [prev[1], id] // FIFO
     })
   }
 
   function handleSave() {
-    // ensure exactly 2 (pad with defaults if needed)
     let final = [...selected]
     if (final.length === 0) final = ['/photos', '/notes']
     if (final.length === 1) final = [final[0], final[0] === '/photos' ? '/notes' : '/photos']
@@ -140,7 +150,6 @@ export function BottomNavCustomizer({ onClose, isProOrPremium, allowedIds }: Pro
 
         {/* Items list */}
         <div style={{ overflowY: 'auto', flex: 1, padding: '12px 16px' }}>
-          {/* Group by section */}
           {Array.from(new Set(candidates.map(n => n.section))).map(section => (
             <div key={section} style={{ marginBottom: 16 }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text3)', marginBottom: 6, padding: '0 8px', letterSpacing: 0.5 }}>
@@ -149,10 +158,8 @@ export function BottomNavCustomizer({ onClose, isProOrPremium, allowedIds }: Pro
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                 {candidates.filter(n => n.section === section).map(item => {
                   const isSelected = selected.includes(item.id)
-                  const isRoleLocked = !allowedIds.includes(item.id)
                   const isPremiumLocked = PREMIUM_IDS.has(item.id) && !isProOrPremium
-                  const isLocked = isRoleLocked || isPremiumLocked
-                  const isDisabled = isLocked
+                  const isDisabled = isPremiumLocked
 
                   return (
                     <button
@@ -167,9 +174,9 @@ export function BottomNavCustomizer({ onClose, isProOrPremium, allowedIds }: Pro
                           : '1.5px solid transparent',
                         background: isSelected
                           ? 'rgba(224,122,56,0.08)'
-                          : isDisabled ? 'transparent' : 'var(--bg)',
+                          : isDisabled ? 'rgba(0,0,0,0.02)' : 'var(--bg)',
                         cursor: isDisabled ? 'not-allowed' : 'pointer',
-                        opacity: isDisabled ? 0.45 : 1,
+                        opacity: isDisabled ? 0.5 : 1,
                         transition: 'all 0.15s',
                         textAlign: 'right',
                         fontFamily: 'inherit',
@@ -182,7 +189,7 @@ export function BottomNavCustomizer({ onClose, isProOrPremium, allowedIds }: Pro
                         border: '1px solid var(--border)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center'
                       }}>
-                        <Icon n={item.icon} s={17} c={isSelected ? 'var(--accent)' : 'var(--text2)'} />
+                        <Icon n={item.icon} s={17} c={isSelected ? 'var(--accent)' : isDisabled ? 'var(--text3)' : 'var(--text2)'} />
                       </div>
                       <div style={{ flex: 1 }}>
                         <div style={{ fontSize: 13.5, fontWeight: 700, color: isDisabled ? 'var(--text3)' : 'var(--text1)' }}>
@@ -190,7 +197,7 @@ export function BottomNavCustomizer({ onClose, isProOrPremium, allowedIds }: Pro
                         </div>
                         {isPremiumLocked && (
                           <div style={{ fontSize: 11, color: 'var(--accent)', fontWeight: 600, marginTop: 1 }}>
-                            🔒 דורש מנוי Pro
+                            🔒 דרוש מנוי Pro
                           </div>
                         )}
                       </div>
