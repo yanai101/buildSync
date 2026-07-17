@@ -506,7 +506,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     if (isLoading) return
     if (isAuthenticated && (currentPath === '/login' || currentPath === '/')) {
-      navigate({ to: '/dashboard' })
+      navigate({ to: '/dashboard', replace: true })
     }
   }, [currentPath, isAuthenticated, isLoading, navigate])
 

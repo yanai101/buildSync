@@ -68,7 +68,7 @@ function LoginPage() {
   const handleGoogle = async () => {
     setError(null)
     try {
-      await signIn('google')
+      await signIn('google', { redirectTo: '/dashboard' })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'שגיאה בהתחברות Google')
     }
