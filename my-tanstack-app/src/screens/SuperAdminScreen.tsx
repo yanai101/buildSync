@@ -78,6 +78,7 @@ export function SuperAdminScreen() {
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterRole, setFilterRole] = useState<string>('all');
   const [filterActivity, setFilterActivity] = useState<string>('all');
+  const [filterLastActivity, setFilterLastActivity] = useState<string>('all');
   const [filterExpiration, setFilterExpiration] = useState<string>('all');
   const [filterJoinDate, setFilterJoinDate] = useState<string>('all');
   const [sortBy, setSortBy] = useState<string>('newest');
@@ -108,6 +109,21 @@ export function SuperAdminScreen() {
         (filterActivity === 'active' && (u.projectCount || 0) > 0) ||
         (filterActivity === 'inactive' && (u.projectCount || 0) === 0);
 
+      let matchesLastActivity = true;
+      if (filterLastActivity !== 'all') {
+        const ts = u.lastActivityAt as number | null;
+        if (filterLastActivity === 'never') {
+          matchesLastActivity = !ts;
+        } else if (ts) {
+          const days = (Date.now() - ts) / (1000 * 60 * 60 * 24);
+          if (filterLastActivity === 'week') matchesLastActivity = days <= 7;
+          else if (filterLastActivity === 'month') matchesLastActivity = days <= 30;
+          else if (filterLastActivity === 'inactive30') matchesLastActivity = days > 30;
+        } else {
+          matchesLastActivity = false;
+        }
+      }
+
       let matchesExpiration = true;
       if (filterExpiration !== 'all') {
         const now = Date.now();
@@ -133,7 +149,7 @@ export function SuperAdminScreen() {
         else if (filterJoinDate === 'year') matchesJoinDate = joinDays <= 365;
       }
 
-      return matchesSearch && matchesTier && matchesStatus && matchesRole && matchesActivity && matchesExpiration && matchesJoinDate;
+      return matchesSearch && matchesTier && matchesStatus && matchesRole && matchesActivity && matchesLastActivity && matchesExpiration && matchesJoinDate;
     });
 
     // Sorting
@@ -141,11 +157,12 @@ export function SuperAdminScreen() {
       if (sortBy === 'newest') return (b._creationTime || 0) - (a._creationTime || 0);
       if (sortBy === 'oldest') return (a._creationTime || 0) - (b._creationTime || 0);
       if (sortBy === 'projects') return (b.projectCount || 0) - (a.projectCount || 0);
+      if (sortBy === 'activity') return (b.lastActivityAt || 0) - (a.lastActivityAt || 0);
       return 0;
     });
 
     return result;
-  }, [users, searchQuery, filterTier, filterStatus, filterRole, filterActivity, filterExpiration, filterJoinDate, sortBy]);
+  }, [users, searchQuery, filterTier, filterStatus, filterRole, filterActivity, filterLastActivity, filterExpiration, filterJoinDate, sortBy]);
 
   // Virtualizer setup — dynamic height via measureElement
   const parentRef = useRef<HTMLDivElement>(null);
@@ -354,11 +371,12 @@ export function SuperAdminScreen() {
                   <option value="newest">מיין לפי: חדשים קודם</option>
                   <option value="oldest">מיין לפי: ותיקים קודם</option>
                   <option value="projects">מיין לפי: כמות פרויקטים</option>
+                  <option value="activity">מיין לפי: פעילות אחרונה</option>
                 </select>
-                <button 
+                <button
                   onClick={() => {
-                    setSearchQuery(''); setFilterTier('all'); setFilterStatus('all'); 
-                    setFilterRole('all'); setFilterActivity('all'); setFilterExpiration('all'); setFilterJoinDate('all'); setSortBy('newest');
+                    setSearchQuery(''); setFilterTier('all'); setFilterStatus('all');
+                    setFilterRole('all'); setFilterActivity('all'); setFilterLastActivity('all'); setFilterExpiration('all'); setFilterJoinDate('all'); setSortBy('newest');
                   }}
                   style={{ padding: '10px 16px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg)', cursor: 'pointer', fontSize: 14, color: 'var(--danger)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}
                 >
@@ -413,6 +431,17 @@ export function SuperAdminScreen() {
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text2)' }}>פעילות אחרונה</label>
+                <select value={filterLastActivity} onChange={e => setFilterLastActivity(e.target.value)} className="input" style={{ padding: '10px 12px', background: 'var(--bg)' }}>
+                  <option value="all">הכל</option>
+                  <option value="week">פעיל/ה ב-7 ימים</option>
+                  <option value="month">פעיל/ה ב-30 יום</option>
+                  <option value="inactive30">לא פעיל/ה 30+ יום</option>
+                  <option value="never">אף פעם</option>
+                </select>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text2)' }}>תוקף מנוי</label>
                 <select value={filterExpiration} onChange={e => setFilterExpiration(e.target.value)} className="input" style={{ padding: '10px 12px', background: 'var(--bg)' }}>
                   <option value="all">הכל</option>
@@ -439,12 +468,13 @@ export function SuperAdminScreen() {
           <div style={{ border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
             {/* Table header — hidden on mobile */}
             {!isMobile && (
-              <div style={{ display: 'grid', gridTemplateColumns: '2fr 2fr 1fr 1fr 1fr 32px', background: 'var(--surface)', borderBottom: '1px solid var(--border)', fontWeight: 600, fontSize: 13, color: 'var(--text3)', padding: '12px 16px', gap: 12 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1.7fr 1fr 1fr 1fr 1.1fr 32px', background: 'var(--surface)', borderBottom: '1px solid var(--border)', fontWeight: 600, fontSize: 13, color: 'var(--text3)', padding: '12px 16px', gap: 12 }}>
                 <div>שם משתמש</div>
                 <div>אימייל / טלפון</div>
                 <div>תפקיד</div>
                 <div>מנוי</div>
                 <div>סטטוס</div>
+                <div>פעילות אחרונה</div>
                 <div></div>
               </div>
             )}
@@ -500,7 +530,7 @@ export function SuperAdminScreen() {
                           onClick={() => setExpandedUserId(isExpanded ? null : u._id)}
                           style={{
                             display: 'grid',
-                            gridTemplateColumns: isMobile ? '1fr 80px 32px' : '2fr 2fr 1fr 1fr 1fr 32px',
+                            gridTemplateColumns: isMobile ? '1fr 80px 32px' : '2fr 1.7fr 1fr 1fr 1fr 1.1fr 32px',
                             gap: 12,
                             padding: '0 16px',
                             alignItems: 'center',
@@ -542,6 +572,13 @@ export function SuperAdminScreen() {
 
                           {/* Desktop: status */}
                           {!isMobile && <div>{statusBadge}</div>}
+
+                          {/* Desktop: last activity */}
+                          {!isMobile && (
+                            <div style={{ fontSize: 12, color: u.lastActivityAt ? 'var(--text2)' : 'var(--text3)' }}>
+                              {u.lastActivityAt ? formatTimeAgo(u.lastActivityAt) : '—'}
+                            </div>
+                          )}
 
                           {/* Mobile: tier + status together */}
                           {isMobile && (
