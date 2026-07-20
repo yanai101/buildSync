@@ -225,39 +225,49 @@ export const syncContractorStagePayments = async (
     .withIndex('by_contractor', (q) => q.eq('contractorId', contractorId))
     .take(200);
 
+  // Budget already committed to milestones outside the stage-weight system
+  // (e.g. legacy/imported milestones deliberately kept on a 'custom'
+  // stageContractors link) must not be redistributed away. Only the
+  // remaining budget should be divided by stage weight among the
+  // stage_synced items — otherwise a single stage_synced item ends up
+  // claiming the FULL contractor budget even when most of it is already
+  // spoken for by custom milestones.
+  const customTotal = milestones
+    .filter((m) => m.sourceMode !== 'stage_synced')
+    .reduce((sum, m) => sum + (m.amount || 0), 0);
+  const availablePool = Math.max(0, contractor.budget - customTotal);
+
+  // Each item's own weight (its stage's payment.amount, i.e. what was
+  // literally entered for it) is used as-is — NOT stretched to fill the
+  // available pool. Weights are only scaled *down* when they collectively
+  // exceed the pool, proportionally reducing every item so the total fits.
+  // If they add up to less than the pool, that's a genuine gap and is left
+  // alone (surfaced via the "unplanned difference" banner) rather than
+  // inflating whichever item happens to sort last.
   const totalWeight = items.reduce((sum, item) => sum + item.weight, 0);
+  const needsShrink = totalWeight > availablePool && totalWeight > 0;
+  const scale = needsShrink ? availablePool / totalWeight : 1;
   const balancedItems = items.map((item, index) => {
-    const pct = totalWeight > 0
-      ? roundPct((item.weight / totalWeight) * 100)
-      : roundPct(100 / Math.max(1, items.length));
+    const amount = Math.round(item.weight * scale);
+    const pct = contractor.budget > 0 ? roundPct((amount / contractor.budget) * 100) : 0;
     return {
       ...item,
       pct,
       sortOrder: index,
-      amount: Math.round((contractor.budget * pct) / 100),
+      amount,
     };
   });
 
-  // Only correct the last item for genuine floating-point/rounding residue — not for
-  // a real gap between total stage weight and budget. Forcing an exact match here
-  // would silently dump any unaccounted budget onto whichever stage happens to sort
-  // last (e.g. a newly added stage), inflating it far past its own weight. A real gap
-  // is intentionally left as-is; the UI surfaces it via the "unplanned difference"
-  // banner instead.
-  const ROUNDING_EPSILON_PCT = 0.05;
-  const ROUNDING_EPSILON_AMOUNT = 5; // shekels
-  const pctTotal = balancedItems.reduce((sum, item) => sum + item.pct, 0);
-  if (balancedItems.length > 0) {
+  // When shrinking to fit, correct rounding residue on the last item so the
+  // total lands exactly on the available pool. When not shrinking, leave any
+  // shortfall as-is — it's a genuine gap, not rounding noise.
+  if (needsShrink && balancedItems.length > 0) {
     const last = balancedItems[balancedItems.length - 1];
-    if (pctTotal !== 100 && Math.abs(100 - pctTotal) <= ROUNDING_EPSILON_PCT) {
-      last.pct = roundPct(last.pct + (100 - pctTotal));
-      last.amount = Math.round((contractor.budget * last.pct) / 100);
-    }
-    // Fix rounding errors in amounts so they sum exactly to the budget
     const sumAmounts = balancedItems.reduce((sum, item) => sum + item.amount, 0);
-    const amountDiff = Math.round(contractor.budget) - sumAmounts;
-    if (amountDiff !== 0 && Math.abs(amountDiff) <= ROUNDING_EPSILON_AMOUNT) {
+    const amountDiff = Math.round(availablePool) - sumAmounts;
+    if (amountDiff !== 0) {
       last.amount += amountDiff;
+      last.pct = contractor.budget > 0 ? roundPct((last.amount / contractor.budget) * 100) : last.pct;
     }
   }
 
