@@ -510,6 +510,7 @@ export const saveContractorPaymentSchedule = mutation({
     contractorId: v.id('contractors'),
     milestones: v.array(v.object({
       milestoneId: v.optional(v.string()),
+      sourceStageId: v.optional(v.id('stages')),
       name: v.string(),
       triggerText: v.string(),
       pct: v.number(),
@@ -622,7 +623,13 @@ export const saveContractorPaymentSchedule = mutation({
 
         let stageId: Id<'stages'> | undefined = undefined;
 
-        if (milestone.milestoneId && !milestone.milestoneId.includes('-')) {
+        // Priority 1: direct sourceStageId sent from the UI (most reliable — survives milestone replacement by sync)
+        if (milestone.sourceStageId) {
+          stageId = milestone.sourceStageId;
+        }
+
+        // Priority 2: look up the milestone in DB and get its sourceStageId
+        if (!stageId && milestone.milestoneId && !milestone.milestoneId.includes('-')) {
           const parsedId = ctx.db.normalizeId('contractorPaymentMilestones', milestone.milestoneId);
           if (parsedId) {
             const existingMilestone = await ctx.db.get(parsedId);
@@ -632,15 +639,24 @@ export const saveContractorPaymentSchedule = mutation({
           }
         }
 
+        // Priority 3: name matching
         if (!stageId) {
           const matchByName = existingStages.find(s => !incomingStageIdsToKeep.has(s._id) && s.name === milestone.name);
           if (matchByName) {
             stageId = matchByName._id;
-          } else {
-            const matchByIndex = existingStages.find(s => !incomingStageIdsToKeep.has(s._id) && s.sortOrder === i + 1);
-            if (matchByIndex) {
-              stageId = matchByIndex._id;
-            }
+          }
+        }
+
+        // Priority 4: position-based matching (use rank in sorted list, not literal sortOrder value)
+        if (!stageId) {
+          const unmatchedSorted = existingStages
+            .filter(s => !incomingStageIdsToKeep.has(s._id))
+            .sort((a, b) => a.sortOrder - b.sortOrder);
+          // Match i-th incoming milestone (0-based) to i-th unmatched stage
+          const currentMatchedCount = incomingStageIdsToKeep.size;
+          const matchByPosition = unmatchedSorted[i - currentMatchedCount];
+          if (matchByPosition) {
+            stageId = matchByPosition._id;
           }
         }
 

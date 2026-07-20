@@ -1145,23 +1145,32 @@ const PaymentSchedule = ({
         )}
         
         {/* Footer Summary */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#F9FAFB", padding: "12px 16px", borderRadius: 8, border: "1px solid var(--border)", marginTop: 8 }}>
-          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text1)' }}>סה"כ</span>
-          <div style={{ display: 'flex', gap: 24 }}>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-              <span style={{ fontSize: 11, color: 'var(--text3)' }}>אחוז כולל</span>
-              <span style={{ fontSize: 13, fontWeight: 700, color: scheduleOverBudget ? "var(--danger)" : totalPctAll === 100 ? "var(--text1)" : "var(--warning)" }}>{totalPctAll}%</span>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-              <span style={{ fontSize: 11, color: 'var(--text3)' }}>סכום מתוכנן</span>
-              <span style={{ fontSize: 13, fontWeight: 700, color: scheduleOverBudget ? "var(--danger)" : "var(--text1)" }}>{fmtMoney(totalAmount)}</span>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-              <span style={{ fontSize: 11, color: 'var(--text3)' }}>שולם בפועל</span>
-              <span style={{ fontSize: 13, fontWeight: 700, color: "var(--success)" }}>{fmtMoney(totalPaid)}</span>
+        <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 8 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#F9FAFB", padding: "12px 16px", borderRadius: 8, border: "1px solid var(--border)" }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text1)' }}>סה"כ</span>
+            <div style={{ display: 'flex', gap: 24 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                <span style={{ fontSize: 11, color: 'var(--text3)' }}>אחוז כולל</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: scheduleOverBudget ? "var(--danger)" : totalPctAll === 100 ? "var(--text1)" : "var(--warning)" }}>{totalPctAll}%</span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                <span style={{ fontSize: 11, color: 'var(--text3)' }}>סכום חוזה</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: scheduleOverBudget ? "var(--danger)" : "var(--text1)" }}>{fmtMoney(contractor.budget)}</span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                <span style={{ fontSize: 11, color: 'var(--text3)' }}>שולם בפועל</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: "var(--success)" }}>{fmtMoney(totalPaid)}</span>
+              </div>
             </div>
           </div>
+          {contractor.budget > totalAmount + 1 && (
+            <div style={{ background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 8, padding: "8px 14px", fontSize: 12, color: "#92400E", display: "flex", alignItems: "center", gap: 6 }}>
+              <Icon n="alert-triangle" s={13}/>
+              <span>יש הפרש בלתי מתוכנן של <strong>{fmtMoney(contractor.budget - totalAmount)}</strong> — הוסף שלב תשלום כדי לכסות אותו</span>
+            </div>
+          )}
         </div>
+
       </div>
       
       {attachmentModalId && (
@@ -1395,6 +1404,7 @@ export const ContractorsScreen = () => {
       contractorId: contractorDbId(contractor) as any,
       milestones: milestones.map(milestone => ({
         milestoneId: milestone.isNew ? undefined : String(milestone.id) as any,
+        sourceStageId: milestone.sourceStageId as any,
         name: milestone.name,
         triggerText: milestone.triggerText || '',
         pct: milestone.pct,
@@ -1402,6 +1412,7 @@ export const ContractorsScreen = () => {
       })),
     });
   };
+
 
   const handleLockPayment = async (milestoneId: string) => {
     setLockTarget(milestoneId);
