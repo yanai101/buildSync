@@ -511,6 +511,8 @@ export const saveContractorPaymentSchedule = mutation({
     milestones: v.array(v.object({
       milestoneId: v.optional(v.string()),
       sourceStageId: v.optional(v.id('stages')),
+      sourceStageMilestoneId: v.optional(v.id('stageMilestones')),
+      sourceTaskId: v.optional(v.id('stageTasks')),
       name: v.string(),
       triggerText: v.string(),
       pct: v.number(),
@@ -673,6 +675,18 @@ export const saveContractorPaymentSchedule = mutation({
           const firstTask = await ctx.db.query('stageTasks').withIndex('by_stage', q => q.eq('stageId', stageId)).first();
           if (firstTask) {
              await ctx.db.patch(firstTask._id, { name: milestone.triggerText || `ביצוע ${milestone.name}` });
+          }
+
+          // A milestone can be a sub-item of a stage (one of several stageMilestones
+          // or required stageTasks), not just the stage itself. Reordering only patches
+          // the shared parent stage's sortOrder above, which can't disambiguate the
+          // relative order of sub-items belonging to the same stage — that's driven by
+          // the sub-item's own sortOrder, so it must be patched too or a drag reorder
+          // reverts once syncContractorStagePayments re-derives order from these fields.
+          if (milestone.sourceStageMilestoneId) {
+            await ctx.db.patch(milestone.sourceStageMilestoneId, { sortOrder: i });
+          } else if (milestone.sourceTaskId) {
+            await ctx.db.patch(milestone.sourceTaskId, { sortOrder: i });
           }
 
           // Ensure this stage has a stage_synced link to the contractor. Without it,

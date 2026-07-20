@@ -1488,6 +1488,8 @@ export const ContractorsScreen = () => {
       milestones: milestones.map(milestone => ({
         milestoneId: milestone.isNew ? undefined : String(milestone.id) as any,
         sourceStageId: milestone.sourceStageId as any,
+        sourceStageMilestoneId: milestone.sourceStageMilestoneId as any,
+        sourceTaskId: milestone.sourceTaskId as any,
         name: milestone.name,
         triggerText: milestone.triggerText || '',
         pct: milestone.pct,
