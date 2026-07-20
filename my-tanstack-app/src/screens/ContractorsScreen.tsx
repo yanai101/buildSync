@@ -831,7 +831,7 @@ const PaymentSchedule = ({
               )}
             </div>
             <span style={{ fontSize: 12, color: 'var(--text2)' }}>
-              {m.pct === 0 ? "0%" : `${Number(m.pct.toFixed(2))}%`} · ₪{fmtMoney(m.amount)}
+              {m.pct === 0 ? "0%" : `${Number(m.pct.toFixed(2))}%`} · {fmtMoney(m.amount)}
               {m.paidAt && ` · שולם: ${m.paidAt}`}
             </span>
           </div>
