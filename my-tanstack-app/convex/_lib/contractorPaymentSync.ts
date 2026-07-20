@@ -295,13 +295,20 @@ export const syncContractorStagePayments = async (
   const totalWeight = items.reduce((sum, item) => sum + item.weight, 0);
   const needsShrink = totalWeight > availablePool && totalWeight > 0;
   const scale = needsShrink ? availablePool / totalWeight : 1;
-  const balancedItems = items.map((item, index) => {
+  const balancedItems = items.map((item) => {
     const amount = Math.round(item.weight * scale);
     const pct = contractor.budget > 0 ? roundPct((amount / contractor.budget) * 100) : 0;
     return {
       ...item,
       pct,
-      sortOrder: index,
+      // Derived from the stage's own sortOrder (which saveContractorPaymentSchedule
+      // sets from the dragged position) rather than a freshly-compacted local index —
+      // a compacted 0..n-1 index among stage_synced items alone ignores custom-mode
+      // milestones occupying the same sortOrder space under the same contractor,
+      // so a drag past/before a custom milestone would keep reverting on resync.
+      // milestoneSortOrder is a small fractional tiebreaker for sub-items sharing
+      // one stage (multiple stageMilestones/stageTasks under it).
+      sortOrder: item.stageSortOrder + item.milestoneSortOrder / 1000,
       amount,
     };
   });

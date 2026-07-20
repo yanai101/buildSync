@@ -623,6 +623,21 @@ export const saveContractorPaymentSchedule = mutation({
         const milestone = args.milestones[i];
         const amount = milestone.amount !== undefined ? milestone.amount : Math.round((contractor.budget * milestone.pct) / 100);
 
+        // Legacy/custom-mode milestones can coexist with stage_synced ones under a
+        // turnkey contractor (e.g. imported historical payments alongside newly added
+        // stages). syncContractorStagePayments below only manages stage_synced records'
+        // sortOrder — custom-mode ones must be kept in sync with the dragged position
+        // here directly, or their frozen sortOrder collides with/ignores the reorder.
+        if (milestone.milestoneId && !milestone.milestoneId.includes('-')) {
+          const parsedMilestoneId = ctx.db.normalizeId('contractorPaymentMilestones', milestone.milestoneId);
+          if (parsedMilestoneId) {
+            const existingMilestoneDoc = await ctx.db.get(parsedMilestoneId);
+            if (existingMilestoneDoc) {
+              await ctx.db.patch(parsedMilestoneId, { sortOrder: i + 1 });
+            }
+          }
+        }
+
         let stageId: Id<'stages'> | undefined = undefined;
 
         // Priority 1: direct sourceStageId sent from the UI (most reliable — survives milestone replacement by sync)
