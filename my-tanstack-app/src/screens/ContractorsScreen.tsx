@@ -600,10 +600,13 @@ const balanceMilestones = (milestones: DraftMilestone[], changedIndex: number, c
     const unlockedIndexes = next.map((_, i) => i).filter(i => i !== changedIndex && !(next[i].isLocked || next[i].paid));
     const targetIndex = unlockedIndexes.reverse().find(i => i < changedIndex) ?? unlockedIndexes[0];
 
+    // If there's no other unlocked row to absorb the shortfall, leave it
+    // unfilled rather than dumping it back onto next[changedIndex] — that
+    // would silently overwrite the value the user just entered (e.g. typing
+    // 10% snapping back to ~100% because it's the only open row). The gap
+    // is surfaced to the user via the "unplanned difference" banner instead.
     if (targetIndex !== undefined) {
       next[targetIndex].amount += Math.abs(delta);
-    } else {
-      next[changedIndex].amount += Math.abs(delta);
     }
   }
 
@@ -617,8 +620,6 @@ const balanceMilestones = (milestones: DraftMilestone[], changedIndex: number, c
     const targetIndex = unlockedIndexes[0];
     if (targetIndex !== undefined) {
       next[targetIndex].amount += contractor.budget - balancedTotal;
-    } else {
-      next[changedIndex].amount += contractor.budget - balancedTotal;
     }
   }
 
@@ -687,6 +688,7 @@ const PaymentSchedule = ({
   const [pendingId, setPendingId] = React.useState<string | null>(null);
   const [attachmentModalId, setAttachmentModalId] = React.useState<string | null>(null);
   const [savingNew, setSavingNew] = React.useState(false);
+  const [addError, setAddError] = React.useState<string | null>(null);
   const [savingSchedule, setSavingSchedule] = React.useState(false);
 
   React.useEffect(() => {
@@ -752,6 +754,8 @@ const PaymentSchedule = ({
   const addMilestone = async () => {
     if (!newM.name.trim()) return;
     setSavingNew(true);
+    setAddError(null);
+    const prev = milestonesRef.current;
     try {
       const newEntry: DraftMilestone = {
         id: `new-${Date.now()}`,
@@ -769,7 +773,7 @@ const PaymentSchedule = ({
         isNew: true,
       };
       // Append to the CURRENT ref (not state) to avoid stale-closure issues
-      const next = [...milestonesRef.current, newEntry];
+      const next = [...prev, newEntry];
       milestonesRef.current = next;
       setMilestones(next);
       await onSaveSchedule(contractor, next);
@@ -777,7 +781,12 @@ const PaymentSchedule = ({
       setNewM({ name: "", pct: newM.pct, triggerText: "" });
       setAdding(false);
     } catch (err) {
-      // Keep form open so the user can retry — their input is preserved
+      // Save failed (e.g. the schedule would exceed 100%) — revert the
+      // optimistic addition so no phantom stage is left in the UI, but keep
+      // the form open with the user's input so they can adjust and retry.
+      milestonesRef.current = prev;
+      setMilestones(prev);
+      setAddError("לא ניתן להוסיף את השלב — סך האחוזים חורג מ-100%. הקטן את האחוז או צמצם שלב אחר.");
       console.warn("שגיאה בהוספת שלב תשלום:", err);
     } finally {
       setSavingNew(false);
@@ -1018,6 +1027,7 @@ const PaymentSchedule = ({
                 ? Math.round((remainingAmount / contractor.budget) * 10000) / 100  // 2 decimal precision
                 : 10;
               setNewM({ name: "", pct: remainingPct > 0 ? remainingPct : 10, triggerText: "" });
+              setAddError(null);
               setAdding(v => !v);
             }} disabled={locked}><Icon n="plus" s={12}/> הוסף שלב</Btn>
           </div>
@@ -1082,9 +1092,15 @@ const PaymentSchedule = ({
               <Btn variant="ghost" onClick={()=>setAdding(false)} disabled={savingNew}>ביטול</Btn>
             </div>
           </div>
-          <div style={{fontSize:11,color:"var(--text3)",marginTop:8}}>
-            ההוספה מאזנת אוטומטית את האחוזים כך שכל השלבים יחד נשארים 100%.
-          </div>
+          {addError ? (
+            <div style={{fontSize:12,color:"var(--danger)",marginTop:8,fontWeight:600}}>
+              {addError}
+            </div>
+          ) : (
+            <div style={{fontSize:11,color:"var(--text3)",marginTop:8}}>
+              השלב יתווסף באחוז שהזנת. אם סך כל השלבים לא יגיע ל-100%, יוצג עדכון שיש להוסיף שלב נוסף.
+            </div>
+          )}
         </div>
       )}
 
