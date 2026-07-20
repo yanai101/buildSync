@@ -629,10 +629,11 @@ const balanceMilestones = (milestones: DraftMilestone[], changedIndex: number, c
 type DraggableMilestoneAccordionProps = {
   m: DraftMilestone;
   i: number;
+  onDragEnd: () => void;
   renderAccordion: (m: DraftMilestone, i: number, isExpanded: boolean, toggleExpand: () => void, gripStarter?: (e: React.PointerEvent) => void) => React.ReactNode;
 };
 
-const DraggableMilestoneAccordion = ({ m, i, renderAccordion }: DraggableMilestoneAccordionProps) => {
+const DraggableMilestoneAccordion = ({ m, i, onDragEnd, renderAccordion }: DraggableMilestoneAccordionProps) => {
   const controls = useDragControls();
   const [isExpanded, setIsExpanded] = React.useState(m.isNew || false);
   return (
@@ -642,6 +643,7 @@ const DraggableMilestoneAccordion = ({ m, i, renderAccordion }: DraggableMilesto
       value={m}
       dragListener={false}
       dragControls={controls}
+      onDragEnd={onDragEnd}
       style={{
         background: (m.paid || m.isLocked) ? "#F0FDF4" : (!m.paid && (m as any).partialPayments?.length > 0) ? "#FFFBEB" : "#FFFFFF",
         border: "1px solid var(--border)",
@@ -683,6 +685,10 @@ const PaymentSchedule = ({
   const sourceMilestones = React.useMemo(() => normalizeMilestones(contractor), [contractor]);
   const [milestones, setMilestones] = React.useState<DraftMilestone[]>(() => sourceMilestones);
   const milestonesRef = React.useRef(milestones);
+  // Tracks whether the user is actively dragging a milestone.
+  // While true, we suppress the sourceMilestones→state sync so Framer Motion
+  // doesn't receive a new `values` prop mid-drag (which causes snap-back).
+  const isDragging = React.useRef(false);
   const [adding, setAdding] = React.useState(false);
   const [newM, setNewM] = React.useState({name:"", pct:10, triggerText:""});
   const [pendingId, setPendingId] = React.useState<string | null>(null);
@@ -696,7 +702,13 @@ const PaymentSchedule = ({
   const deleteMilestoneMutation = useMutation(api.mutations.deleteContractorPaymentMilestone);
 
   React.useEffect(() => {
-    setMilestones(sourceMilestones);
+    // Skip if the user is dragging — overwriting milestones state while Framer
+    // Motion's Reorder.Group is active causes it to receive a new `values` prop
+    // mid-gesture which resets its internal tracking and snaps the item back.
+    if (!isDragging.current) {
+      setMilestones(sourceMilestones);
+      milestonesRef.current = sourceMilestones;
+    }
   }, [sourceMilestones]);
 
   React.useEffect(() => {
@@ -832,10 +844,21 @@ const PaymentSchedule = ({
 
   const handleReorder = (next: DraftMilestone[]) => {
     if (locked) return;
+    // Mark drag as active so the sourceMilestones useEffect doesn't override
+    // state while Framer Motion is still tracking the gesture.
+    isDragging.current = true;
     milestonesRef.current = next;
     setMilestones(next);
-    void saveSchedule(next);
+    // Do NOT save here — saving triggers a Convex reactive update which fires
+    // useEffect and resets values mid-drag, causing snap-back.
   };
+
+  // Called by DraggableMilestoneAccordion's onDragEnd — fires once when the
+  // user releases the drag handle. Safe to save here because the gesture is over.
+  const handleDragEnd = React.useCallback(() => {
+    isDragging.current = false;
+    void saveSchedule(milestonesRef.current);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const renderMilestoneAccordion = (m: DraftMilestone, i: number, isExpanded: boolean, toggleExpand: () => void, gripStarter?: (e: React.PointerEvent) => void) => {
     const isSyncedLocked = m.sourceMode === 'stage_synced' && contractor.role !== 'קבלן עד מפתח';
@@ -1175,7 +1198,7 @@ const PaymentSchedule = ({
         ) : (
           <Reorder.Group as="div" axis="y" values={milestones} onReorder={handleReorder}>
             {milestones.map((m, i) => (
-              <DraggableMilestoneAccordion key={m.id} m={m} i={i} renderAccordion={renderMilestoneAccordion} />
+              <DraggableMilestoneAccordion key={m.id} m={m} i={i} onDragEnd={handleDragEnd} renderAccordion={renderMilestoneAccordion} />
             ))}
           </Reorder.Group>
         )}
