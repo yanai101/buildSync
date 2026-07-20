@@ -692,6 +692,8 @@ const PaymentSchedule = ({
   const [savingSchedule, setSavingSchedule] = React.useState(false);
   const [deleteStageIndex, setDeleteStageIndex] = React.useState<number | null>(null);
   const [deletingStage, setDeletingStage] = React.useState(false);
+  const [deleteStageError, setDeleteStageError] = React.useState<string | null>(null);
+  const deleteMilestoneMutation = useMutation(api.mutations.deleteContractorPaymentMilestone);
 
   React.useEffect(() => {
     setMilestones(sourceMilestones);
@@ -755,14 +757,24 @@ const PaymentSchedule = ({
 
   const confirmDeleteStage = async () => {
     if (deleteStageIndex === null) return;
+    const target = milestonesRef.current[deleteStageIndex];
+    if (!target) { setDeleteStageIndex(null); return; }
     setDeletingStage(true);
+    setDeleteStageError(null);
     try {
+      // A never-saved draft milestone (added locally, not yet persisted) has
+      // nothing to delete server-side — just drop it from local state.
+      if (!target.isNew) {
+        await deleteMilestoneMutation({ milestoneId: String(target.id) });
+      }
       const next = milestonesRef.current.filter((_, idx) => idx !== deleteStageIndex);
-      const balanced = balanceMilestones(next, next.length - 1, contractor);
-      milestonesRef.current = balanced;
-      setMilestones(balanced);
-      await saveSchedule(balanced);
+      milestonesRef.current = next;
+      setMilestones(next);
       setDeleteStageIndex(null);
+    } catch (err) {
+      // Keep the dialog open so the user sees the failure and can retry —
+      // the mutation guards against deleting paid/locked stages.
+      setDeleteStageError(err instanceof Error ? err.message : "שגיאה במחיקת השלב");
     } finally {
       setDeletingStage(false);
     }
@@ -1215,7 +1227,9 @@ const PaymentSchedule = ({
           <ConfirmDialog
             title="מחיקת שלב תשלום"
             message={
-              hasPartials || hasFiles
+              deleteStageError
+                ? deleteStageError
+                : hasPartials || hasFiles
                 ? `האם למחוק את השלב "${target?.name || ''}"? פעולה זו תמחק גם את התשלומים החלקיים והקבצים המצורפים אליו לצמיתות.`
                 : `האם למחוק את השלב "${target?.name || ''}"?`
             }
@@ -1224,7 +1238,7 @@ const PaymentSchedule = ({
             type="danger"
             loading={deletingStage}
             onConfirm={confirmDeleteStage}
-            onClose={() => setDeleteStageIndex(null)}
+            onClose={() => { setDeleteStageIndex(null); setDeleteStageError(null); }}
           />
         );
       })()}

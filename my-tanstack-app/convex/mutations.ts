@@ -1032,6 +1032,52 @@ export const deleteContractorPaymentMilestoneFile = mutation({
   },
 });
 
+// Explicit, user-initiated single-milestone delete. Unlike
+// saveContractorPaymentSchedule's implicit "not in the incoming array" diff
+// (which deliberately refuses to remove milestones with partial payments, to
+// avoid silently wiping payment history during routine/automatic resyncs),
+// this mutation carries explicit user intent and cascades the delete to the
+// milestone's linked stage (for stage_synced/turnkey contractors), files,
+// and partial payments/expenses.
+export const deleteContractorPaymentMilestone = mutation({
+  args: {
+    milestoneId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const milestoneId = await resolveMilestoneId(ctx as any, args.milestoneId);
+    const milestone = await ctx.db.get(milestoneId);
+    if (!milestone) {
+      throw new Error('Payment milestone not found');
+    }
+    if (milestone.paid) {
+      throw new Error('Cannot remove a payment stage after it was paid');
+    }
+    if (milestone.isLocked) {
+      throw new Error('Cannot remove a locked payment stage');
+    }
+
+    const contractorId = milestone.contractorId;
+
+    if (milestone.sourceStageId) {
+      const stage = await ctx.db.get(milestone.sourceStageId);
+      if (stage) {
+        if (stage.progressPct > 0 || stage.payment.status === 'paid') {
+          throw new Error('לא ניתן למחוק את השלב כי הוא כבר התחיל או שולם');
+        }
+        await deleteStageSafely(ctx, stage._id, stage.projectId);
+      }
+    }
+
+    await deleteMilestoneCascade(ctx, milestone);
+
+    const contractor = await ctx.db.get(contractorId);
+    if (contractor?.role === 'קבלן עד מפתח') {
+      await syncContractorStagePayments(ctx, contractorId);
+    }
+    await recomputeContractorPaid(ctx, contractorId);
+  },
+});
+
 export const deleteContractor = mutation({
   args: {
     contractorId: v.id('contractors'),
