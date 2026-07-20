@@ -344,7 +344,11 @@ export const syncContractorStagePayments = async (
   for (const item of balancedItems) {
     const existing = existingSyncedByKey.get(itemKey(item));
     if (existing) {
-      if (!existing.paid) {
+      if (existing.paid) {
+        // Paid milestones: protect pct/amount (financial data) but DO update
+        // sortOrder so reordering stages is reflected in the UI after a save.
+        await ctx.db.patch(existing._id, { sortOrder: item.sortOrder });
+      } else {
         await ctx.db.patch(existing._id, {
           sortOrder: item.sortOrder,
           name: item.name,
