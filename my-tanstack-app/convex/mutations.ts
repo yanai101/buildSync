@@ -3,7 +3,7 @@ import type { MutationCtx } from './_generated/server';
 import type { Id } from './_generated/dataModel';
 import { v } from 'convex/values';
 import { getAuthUserId } from '@convex-dev/auth/server';
-import { getSyncedPaymentReadiness, syncContractorStagePayments } from './_lib/contractorPaymentSync';
+import { getSyncedPaymentReadiness, syncContractorStagePayments, deleteMilestoneCascade } from './_lib/contractorPaymentSync';
 import { requireProjectFeature } from './_lib/projectAccess';
 import { scheduleUserNotifications } from './notifications';
 
@@ -788,7 +788,10 @@ export const saveContractorPaymentSchedule = mutation({
         if (milestone.paid) {
           throw new Error('Cannot remove a payment stage after it was paid');
         }
-        await ctx.db.delete(milestone._id);
+        if (milestone.isLocked) {
+          throw new Error('Cannot remove a locked payment stage');
+        }
+        await deleteMilestoneCascade(ctx, milestone);
       }
     }
 

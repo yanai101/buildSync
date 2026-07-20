@@ -690,6 +690,8 @@ const PaymentSchedule = ({
   const [savingNew, setSavingNew] = React.useState(false);
   const [addError, setAddError] = React.useState<string | null>(null);
   const [savingSchedule, setSavingSchedule] = React.useState(false);
+  const [deleteStageIndex, setDeleteStageIndex] = React.useState<number | null>(null);
+  const [deletingStage, setDeletingStage] = React.useState(false);
 
   React.useEffect(() => {
     setMilestones(sourceMilestones);
@@ -749,6 +751,21 @@ const PaymentSchedule = ({
     const next = shouldBalance ? balanceMilestones(edited, index, contractor) : edited;
     milestonesRef.current = next;
     setMilestones(next);
+  };
+
+  const confirmDeleteStage = async () => {
+    if (deleteStageIndex === null) return;
+    setDeletingStage(true);
+    try {
+      const next = milestonesRef.current.filter((_, idx) => idx !== deleteStageIndex);
+      const balanced = balanceMilestones(next, next.length - 1, contractor);
+      milestonesRef.current = balanced;
+      setMilestones(balanced);
+      await saveSchedule(balanced);
+      setDeleteStageIndex(null);
+    } finally {
+      setDeletingStage(false);
+    }
   };
 
   const addMilestone = async () => {
@@ -892,13 +909,7 @@ const PaymentSchedule = ({
             
             {/* Delete Stage Button in Header */}
             {!m.isLocked && !m.paid && !isSyncedLocked && milestones.length > 1 && (
-              <button onClick={() => {
-                const next = milestonesRef.current.filter((_, idx) => idx !== i);
-                const balanced = balanceMilestones(next, next.length - 1, contractor);
-                milestonesRef.current = balanced;
-                setMilestones(balanced);
-                void saveSchedule(balanced);
-              }} style={{ display: 'flex', alignItems: 'center', gap: 4, background: '#FEF2F2', color: 'var(--danger)', border: '1px solid #FECACA', borderRadius: 4, padding: '4px 8px', fontSize: 11, cursor: 'pointer', fontWeight: 600 }} title="מחק שלב">
+              <button onClick={() => setDeleteStageIndex(i)} style={{ display: 'flex', alignItems: 'center', gap: 4, background: '#FEF2F2', color: 'var(--danger)', border: '1px solid #FECACA', borderRadius: 4, padding: '4px 8px', fontSize: 11, cursor: 'pointer', fontWeight: 600 }} title="מחק שלב">
                 <Icon n="trash-2" s={12}/>
                 <span>מחק</span>
               </button>
@@ -1187,14 +1198,36 @@ const PaymentSchedule = ({
       </div>
       
       {attachmentModalId && (
-        <AddReceiptModal 
-          onClose={() => setAttachmentModalId(null)} 
+        <AddReceiptModal
+          onClose={() => setAttachmentModalId(null)}
           onUpload={(files) => {
             setAttachmentModalId(null);
             onAddFiles?.(attachmentModalId, files);
-          }} 
+          }}
         />
       )}
+
+      {deleteStageIndex !== null && (() => {
+        const target = milestones[deleteStageIndex];
+        const hasPartials = ((target as any)?.partialPayments?.length || 0) > 0;
+        const hasFiles = (target?.files?.length || 0) > 0;
+        return (
+          <ConfirmDialog
+            title="מחיקת שלב תשלום"
+            message={
+              hasPartials || hasFiles
+                ? `האם למחוק את השלב "${target?.name || ''}"? פעולה זו תמחק גם את התשלומים החלקיים והקבצים המצורפים אליו לצמיתות.`
+                : `האם למחוק את השלב "${target?.name || ''}"?`
+            }
+            confirmText={deletingStage ? "מוחק..." : "מחק שלב"}
+            cancelText="ביטול"
+            type="danger"
+            loading={deletingStage}
+            onConfirm={confirmDeleteStage}
+            onClose={() => setDeleteStageIndex(null)}
+          />
+        );
+      })()}
 
     </div>
   );

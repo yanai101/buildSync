@@ -17,6 +17,54 @@ type SyncedPaymentItem = {
 
 const roundPct = (value: number) => Math.round(value * 100) / 100;
 
+// Cascades a contractorPaymentMilestone delete to its attached files (milestone-level
+// and per-partial-payment) and any expenses linked from its partial payments, mirroring
+// the cleanup already done by deleteContractorPaymentMilestoneFile / deleteContractorPartialPayment.
+// Without this, deleting a milestone directly (e.g. from the schedule editor's "delete
+// stage" action) leaves orphaned projectFiles/storage rows and dangling expenses behind.
+export const deleteMilestoneCascade = async (
+  ctx: MutationCtx,
+  milestone: {
+    _id: Id<'contractorPaymentMilestones'>;
+    fileIds?: Id<'projectFiles'>[];
+    partialPayments?: { fileIds?: Id<'projectFiles'>[]; expenseId?: string }[];
+  },
+) => {
+  for (const fileId of milestone.fileIds || []) {
+    const file = await ctx.db.get(fileId);
+    if (file && file.storageId) {
+      await ctx.storage.delete(file.storageId);
+      await ctx.db.delete(fileId);
+    }
+  }
+
+  for (const partial of milestone.partialPayments || []) {
+    for (const fileId of partial.fileIds || []) {
+      const file = await ctx.db.get(fileId);
+      if (file && file.storageId) {
+        await ctx.storage.delete(file.storageId);
+        await ctx.db.delete(fileId);
+      }
+    }
+    if (partial.expenseId) {
+      const expense = await ctx.db.get(partial.expenseId as Id<'expenses'>);
+      if (expense) {
+        await ctx.db.delete(expense._id);
+        if (expense.categoryId) {
+          const category = await ctx.db.get(expense.categoryId);
+          if (category) {
+            await ctx.db.patch(category._id, {
+              spent: Math.max(0, category.spent - expense.amount),
+            });
+          }
+        }
+      }
+    }
+  }
+
+  await ctx.db.delete(milestone._id);
+};
+
 const itemKey = (item: Pick<SyncedPaymentItem, 'sourceStageId' | 'sourceStageMilestoneId' | 'sourceTaskId'>) =>
   item.sourceStageMilestoneId
     ? `milestone:${item.sourceStageMilestoneId}`
@@ -289,7 +337,7 @@ export const syncContractorStagePayments = async (
       !hasPartialPayments &&
       ((isSynced && !targetKeys.has(key)) || (isCustom && items.length > 0));
     if (shouldDelete) {
-      await ctx.db.delete(milestone._id);
+      await deleteMilestoneCascade(ctx, milestone);
     }
   }
 
