@@ -1005,7 +1005,14 @@ const PaymentSchedule = ({
               <span style={{fontSize:12,color:scheduleOverBudget?"var(--danger)":totalPctAll===100?"var(--success)":"var(--warning)",fontWeight:700}}>סה"כ: {totalPctAll}%</span>
               <span style={{fontSize:11,color:"var(--text3)",fontWeight:400}}>שולם: {totalPct}% · {fmtMoney(totalPaid)}</span>
             </div>
-            <Btn size="sm" onClick={()=>setAdding(v=>!v)} disabled={locked}><Icon n="plus" s={12}/> הוסף שלב</Btn>
+            <Btn size="sm" onClick={() => {
+              const remainingAmount = Math.max(0, contractor.budget - totalAmount);
+              const remainingPct = contractor.budget > 0
+                ? Math.round((remainingAmount / contractor.budget) * 10000) / 100  // 2 decimal precision
+                : 10;
+              setNewM({ name: "", pct: remainingPct > 0 ? remainingPct : 10, triggerText: "" });
+              setAdding(v => !v);
+            }} disabled={locked}><Icon n="plus" s={12}/> הוסף שלב</Btn>
           </div>
         </div>
         {locked && (
