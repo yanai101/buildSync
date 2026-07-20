@@ -771,12 +771,22 @@ const PaymentSchedule = ({
       milestonesRef.current = next;
       setMilestones(next);
       await onSaveSchedule(contractor, next);
-      setNewM({name:"", pct:10, triggerText:""});
+      // Success: close form and reset with the new remaining budget as default
+      const newTotalAmount = next.reduce((a, m) => a + m.amount, 0);
+      const remainingAfterAdd = Math.max(0, contractor.budget - newTotalAmount);
+      const remainingPctAfterAdd = contractor.budget > 0
+        ? Math.round((remainingAfterAdd / contractor.budget) * 10000) / 100
+        : 10;
+      setNewM({ name: "", pct: remainingPctAfterAdd > 0 ? remainingPctAfterAdd : 10, triggerText: "" });
       setAdding(false);
+    } catch (err) {
+      // Keep form open so the user can retry — their input is preserved
+      console.warn("שגיאה בהוספת שלב תשלום:", err);
     } finally {
       setSavingNew(false);
     }
   };
+
 
   const saveOnBlur = async (changedIndex: number) => {
     const balanced = balanceMilestones(milestonesRef.current, changedIndex, contractor);
