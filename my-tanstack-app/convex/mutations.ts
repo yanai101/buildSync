@@ -716,6 +716,15 @@ export const saveContractorPaymentSchedule = mutation({
         }
       }
 
+      // Always preserve stages that are paid or have progress — they must not be deleted
+      // and must be included in syncContractorStagePayments' totalWeight calculation.
+      // If the UI didn't send them (stale ref), add them here automatically.
+      for (const stage of existingStages) {
+        if (stage.contractorId === contractor._id && (stage.payment.status === 'paid' || stage.progressPct > 0)) {
+          incomingStageIdsToKeep.add(stage._id);
+        }
+      }
+
       for (const stage of existingStages) {
         if (!incomingStageIdsToKeep.has(stage._id) && stage.contractorId === contractor._id) {
            if (stage.progressPct > 0 || stage.payment.status === 'paid') {
