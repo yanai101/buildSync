@@ -674,6 +674,27 @@ export const saveContractorPaymentSchedule = mutation({
           if (firstTask) {
              await ctx.db.patch(firstTask._id, { name: milestone.triggerText || `ביצוע ${milestone.name}` });
           }
+
+          // Ensure this stage has a stage_synced link to the contractor. Without it,
+          // syncContractorStagePayments silently excludes this stage's weight from the
+          // total, which can inflate other (e.g. newly added) stages' shares far beyond
+          // what was entered.
+          const existingLink = await ctx.db
+            .query('stageContractors')
+            .withIndex('by_stage', q => q.eq('stageId', stageId))
+            .filter(q => q.eq(q.field('contractorId'), contractor._id))
+            .first();
+          if (!existingLink) {
+            await ctx.db.insert('stageContractors', {
+              projectId: contractor.projectId,
+              stageId,
+              contractorId: contractor._id,
+              roleLabel: contractor.name,
+              paymentMode: 'stage_synced',
+              sortOrder: i,
+            });
+          }
+
           incomingStageIdsToKeep.add(stageId);
         } else {
           const project = await ctx.db.get(contractor.projectId);

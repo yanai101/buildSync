@@ -238,17 +238,26 @@ export const syncContractorStagePayments = async (
     };
   });
 
+  // Only correct the last item for genuine floating-point/rounding residue — not for
+  // a real gap between total stage weight and budget. Forcing an exact match here
+  // would silently dump any unaccounted budget onto whichever stage happens to sort
+  // last (e.g. a newly added stage), inflating it far past its own weight. A real gap
+  // is intentionally left as-is; the UI surfaces it via the "unplanned difference"
+  // banner instead.
+  const ROUNDING_EPSILON_PCT = 0.05;
+  const ROUNDING_EPSILON_AMOUNT = 5; // shekels
   const pctTotal = balancedItems.reduce((sum, item) => sum + item.pct, 0);
   if (balancedItems.length > 0) {
     const last = balancedItems[balancedItems.length - 1];
-    if (pctTotal !== 100) {
+    if (pctTotal !== 100 && Math.abs(100 - pctTotal) <= ROUNDING_EPSILON_PCT) {
       last.pct = roundPct(last.pct + (100 - pctTotal));
       last.amount = Math.round((contractor.budget * last.pct) / 100);
     }
     // Fix rounding errors in amounts so they sum exactly to the budget
     const sumAmounts = balancedItems.reduce((sum, item) => sum + item.amount, 0);
-    if (sumAmounts !== Math.round(contractor.budget)) {
-      last.amount += Math.round(contractor.budget) - sumAmounts;
+    const amountDiff = Math.round(contractor.budget) - sumAmounts;
+    if (amountDiff !== 0 && Math.abs(amountDiff) <= ROUNDING_EPSILON_AMOUNT) {
+      last.amount += amountDiff;
     }
   }
 
