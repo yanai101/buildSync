@@ -753,31 +753,28 @@ const PaymentSchedule = ({
     if (!newM.name.trim()) return;
     setSavingNew(true);
     try {
-      const next = balanceMilestones([
-        ...milestonesRef.current,
-        {
-          id: `new-${Date.now()}`,
-          name: newM.name.trim(),
-          triggerText: newM.triggerText.trim(),
-          pct: Number(newM.pct),
-          amount: Math.round(contractor.budget * Number(newM.pct) / 100),
-          taskIds: [],
-          status: 'pending',
-          paid: false,
-          paidAt: null,
-          isNew: true,
-        },
-      ], milestonesRef.current.length, contractor);
+      const newEntry: DraftMilestone = {
+        id: `new-${Date.now()}`,
+        name: newM.name.trim(),
+        triggerText: newM.triggerText.trim(),
+        pct: Number(newM.pct),
+        // Use user-entered amount directly — do NOT run balanceMilestones here.
+        // balanceMilestones would erroneously inflate the amount to fill the entire
+        // remaining budget when milestonesRef is stale/empty after a sync update.
+        amount: Math.round(contractor.budget * Number(newM.pct) / 100),
+        taskIds: [],
+        status: 'pending',
+        paid: false,
+        paidAt: null,
+        isNew: true,
+      };
+      // Append to the CURRENT ref (not state) to avoid stale-closure issues
+      const next = [...milestonesRef.current, newEntry];
       milestonesRef.current = next;
       setMilestones(next);
       await onSaveSchedule(contractor, next);
-      // Success: close form and reset with the new remaining budget as default
-      const newTotalAmount = next.reduce((a, m) => a + m.amount, 0);
-      const remainingAfterAdd = Math.max(0, contractor.budget - newTotalAmount);
-      const remainingPctAfterAdd = contractor.budget > 0
-        ? Math.round((remainingAfterAdd / contractor.budget) * 10000) / 100
-        : 10;
-      setNewM({ name: "", pct: remainingPctAfterAdd > 0 ? remainingPctAfterAdd : 10, triggerText: "" });
+      // Success: close form
+      setNewM({ name: "", pct: newM.pct, triggerText: "" });
       setAdding(false);
     } catch (err) {
       // Keep form open so the user can retry — their input is preserved
