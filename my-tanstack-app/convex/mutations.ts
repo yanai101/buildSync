@@ -522,8 +522,21 @@ export const saveContractorPaymentSchedule = mutation({
       throw new Error('Contractor not found');
     }
 
+    // Fetch already-paid milestones to account for budget that has already been committed.
+    // When a budget is increased after full payment, paid milestones still hold their original
+    // pct values (they can't be recalculated). The new milestones should only be checked
+    // against the remaining budget space, not against the absolute 100% limit.
+    const existingPaidMilestones = await ctx.db
+      .query('contractorPaymentMilestones')
+      .withIndex('by_contractor', (q) => q.eq('contractorId', args.contractorId))
+      .collect();
+    const paidPct = existingPaidMilestones
+      .filter((m) => m.paid)
+      .reduce((sum, m) => sum + m.pct, 0);
+    const maxAllowedPct = Math.max(100, paidPct) + 0.01;
+
     const totalPct = args.milestones.reduce((sum, milestone) => sum + milestone.pct, 0);
-    if (totalPct > 100.01) {
+    if (totalPct > maxAllowedPct) {
       throw new Error('Contractor payment schedule cannot exceed the agreed budget');
     }
 
