@@ -1737,16 +1737,34 @@ export const addContractorPartialPayment = mutation({
     date: v.string(),
     note: v.optional(v.string()),
     fileIds: v.optional(v.array(v.id('projectFiles'))),
+    // Fallback args used when the milestone ID is stale (e.g. sync deleted & recreated it)
+    contractorId: v.optional(v.id('contractors')),
+    sortOrder: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const milestoneId = await resolveMilestoneId(ctx as any, args.milestoneId);
-    const milestone = await ctx.db.get(milestoneId);
+    let milestone = await ctx.db.get(milestoneId);
+
+    // Fallback: the milestone may have been deleted and recreated by a sync after the UI loaded.
+    // If we have contractorId + sortOrder, try to find the replacement milestone.
+    if (!milestone && args.contractorId !== undefined && args.sortOrder !== undefined) {
+      const milestones = await ctx.db
+        .query('contractorPaymentMilestones')
+        .withIndex('by_contractor', (q) => q.eq('contractorId', args.contractorId!))
+        .collect();
+      const sorted = milestones.sort((a, b) => a.sortOrder - b.sortOrder);
+      milestone = sorted.find((m) => m.sortOrder === args.sortOrder && !m.paid) ?? null;
+    }
+
     if (!milestone) throw new Error('Payment milestone not found');
 
     const contractor = await ctx.db.get(milestone.contractorId);
     if (!contractor) throw new Error('Contractor not found');
 
     const category = await findBudgetCategoryForContractor(ctx, contractor.projectId, contractor.role);
+
+    // Use the resolved milestone's actual _id (may differ from milestoneId if the fallback was used)
+    const resolvedMilestoneId = milestone._id;
 
     const expenseId = await ctx.db.insert('expenses', {
       projectId: contractor.projectId,
@@ -1756,7 +1774,7 @@ export const addContractorPartialPayment = mutation({
       status: 'שולם',
       categoryId: category?._id,
       contractorId: contractor._id,
-      milestoneId,
+      milestoneId: resolvedMilestoneId,
       fileIds: args.fileIds,
     });
 
@@ -1779,7 +1797,7 @@ export const addContractorPartialPayment = mutation({
     const totalPartials = partialPayments.reduce((sum, p) => sum + p.amount, 0);
     const isFullyPaid = totalPartials >= milestone.amount;
 
-    await ctx.db.patch(milestoneId, {
+    await ctx.db.patch(resolvedMilestoneId, {
       partialPayments,
       paid: isFullyPaid,
       paidAt: isFullyPaid ? args.date : milestone.paidAt,

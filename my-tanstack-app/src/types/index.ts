@@ -17,6 +17,7 @@ export interface Milestone {
   status: string;
   triggerText?: string;
   paid?: boolean;
+  sortOrder?: number;
   supervisorApproval?: { by: string; at: string } | null;
   paidAt?: string | null;
   receipts?: string[];

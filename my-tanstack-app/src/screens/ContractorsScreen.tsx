@@ -1339,6 +1339,10 @@ export const ContractorsScreen = () => {
         date,
         note: note || undefined,
         fileIds,
+        // Fallback: if the milestone was replaced by a sync after the UI loaded,
+        // the server uses contractorId + sortOrder to find the new milestone.
+        contractorId: contractorDbId(pendingPartial.contractor) as any,
+        sortOrder: (pendingPartial.milestone as any).sortOrder,
       });
       setPendingPartial(null);
       setFeedback({ title: "נשמר בהצלחה", message: "התשלום החלקי נוסף וההוצאה עודכנה", type: "success" });
@@ -1348,6 +1352,7 @@ export const ContractorsScreen = () => {
       setSavingPartial(false);
     }
   };
+
 
   const handleDeletePartialPayment = async (milestoneId: string, partialId: string): Promise<void> => {
     setDeletePartialTarget({ milestoneId, partialId });

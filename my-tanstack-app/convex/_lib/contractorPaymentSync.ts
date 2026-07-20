@@ -263,8 +263,11 @@ export const syncContractorStagePayments = async (
     const key = milestoneKey(milestone);
     const isSynced = milestone.sourceMode === 'stage_synced';
     const isCustom = milestone.sourceMode !== 'stage_synced';
+    const hasPartialPayments = milestone.partialPayments && milestone.partialPayments.length > 0;
     const shouldDelete =
       !milestone.paid &&
+      !milestone.isLocked &&
+      !hasPartialPayments &&
       ((isSynced && !targetKeys.has(key)) || (isCustom && items.length > 0));
     if (shouldDelete) {
       await ctx.db.delete(milestone._id);
