@@ -135,7 +135,7 @@ const AddItemWidget = ({
           }}
         >
           <div style={{
-            background:"#fff", borderRadius:20, width:480, maxWidth:"94vw",
+            background:"var(--surface)", borderRadius:20, width:480, maxWidth:"94vw",
             boxShadow:"0 24px 64px rgba(0,0,0,0.2)",
             padding:28, display:"flex", flexDirection:"column", gap:16,
           }}>
@@ -248,7 +248,7 @@ const AddItemWidget = ({
                   placeholder="הערות לפריט (אופציונלי)"
                   onChange={e => setPendingItem((prev: any) => prev ? { ...prev, notes: e.target.value } : prev)}
                   rows={3}
-                  style={{width:"100%",resize:"vertical",fontFamily:"'Heebo',sans-serif",fontSize:13,padding:"8px 10px",border:"1px solid var(--border)",borderRadius:10,background:"#fff"}}
+                  style={{width:"100%",resize:"vertical",fontFamily:"'Heebo',sans-serif",fontSize:13,padding:"8px 10px",border:"1px solid var(--border)",borderRadius:10,background:"var(--surface)",color:"var(--text1)"}}
                 />
                 <div style={{display:"flex",gap:10}}>
                   <button
@@ -827,7 +827,7 @@ export const BOQWizardScreen = () => {
           <div className="page-content" style={{maxWidth:1200,margin:"0 auto"}}>
           <div style={{display:"flex",flexWrap:"wrap",justifyContent:"space-between",alignItems:"flex-end",gap:16,marginBottom:32}}>
             <div>
-              <h1 style={{fontSize:28,fontWeight:900,margin:0,color:"#1A1A1A"}}>אשף כמויות</h1>
+              <h1 style={{fontSize:28,fontWeight:900,margin:0,color:"var(--text1)"}}>אשף כמויות</h1>
               <div style={{color:"var(--text3)",fontSize:15,marginTop:4}}>עבור חדר-חדר ובנה רשימת כמויות לרכישה / ייבוא</div>
             </div>
             <div style={{display:"flex",alignItems:"center",gap:16,fontSize:14,color:"var(--text3)"}}>
@@ -896,7 +896,7 @@ export const BOQWizardScreen = () => {
                           <td style={{padding:"20px 0"}}>
                             <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
                               {item.rooms.filter(r=>r.qty>0).map((r, ri)=>(
-                                <span key={ri} style={{fontSize:11,padding:"4px 10px",borderRadius:20,background:"#F3F4F6",color:"#4B5563",fontWeight:500}}>
+                                <span key={ri} style={{fontSize:11,padding:"4px 10px",borderRadius:20,background:"var(--surface-2)",color:"var(--text2)",fontWeight:500}}>
                                   {r.name}: {r.qty}
                                 </span>
                               ))}
@@ -988,7 +988,7 @@ export const BOQWizardScreen = () => {
           {/* Header Section */}
         <div style={{display:"flex",flexWrap:"wrap",justifyContent:"space-between",alignItems:"flex-end",gap:16,marginBottom:32}}>
           <div>
-            <h1 style={{fontSize:28,fontWeight:900,margin:0,color:"#1A1A1A"}}>אשף כמויות</h1>
+            <h1 style={{fontSize:28,fontWeight:900,margin:0,color:"var(--text1)"}}>אשף כמויות</h1>
             <div style={{color:"var(--text3)",fontSize:15,marginTop:4}}>עבור חדר-חדר ובנה רשימת כמויות לרכישה / ייבוא</div>
           </div>
           <div style={{display:"flex",alignItems:"center",gap:16,fontSize:14,color:"var(--text3)"}}>
@@ -1005,7 +1005,7 @@ export const BOQWizardScreen = () => {
           <div style={{display:"flex",flexDirection:"column",gap:12}}>
             <div style={{fontSize:13,fontWeight:700,color:"var(--text3)",marginBottom:4,textTransform:"uppercase",letterSpacing:".5px",textAlign:"right"}}>חדרים</div>
             {rooms.map((r: Room, i: number)=>(
-              <div key={r.uid} onClick={()=>setStep(i)} style={{padding:"12px 16px",borderRadius:12,cursor:"pointer",display:"flex",alignItems:"center",gap:12,border:"1px solid",borderColor:step===i?"var(--accent)":"var(--border)",background:step===i?"#FFF6F1":"#fff",boxShadow:step===i?"0 4px 12px rgba(234,88,12,0.1)":"none",transition:"all .2s"}}>
+              <div key={r.uid} onClick={()=>setStep(i)} style={{padding:"12px 16px",borderRadius:12,cursor:"pointer",display:"flex",alignItems:"center",gap:12,border:"1px solid",borderColor:step===i?"var(--accent)":"var(--border)",background:step===i?"var(--accent-light)":"var(--surface)",boxShadow:step===i?"0 4px 12px rgba(234,88,12,0.1)":"none",transition:"all .2s"}}>
                 <div style={{width:28,height:28,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:800,background:step===i?"var(--accent)":"var(--border)",color:step===i?"#fff":"var(--text3)"}}>{i+1}</div>
                 <div style={{flex:1}}>
                   <div style={{fontSize:14,fontWeight:step===i?700:500,color:step===i?"var(--text1)":"var(--text2)"}}>{r.name}</div>
@@ -1014,7 +1014,7 @@ export const BOQWizardScreen = () => {
               </div>
             ))}
             <div style={{marginTop:12}}>
-              <button onClick={() => setView('summary')} style={{width:"100%",padding:"14px",borderRadius:12,border:"1px solid #D1FAE5",background:"#ECFDF5",color:"#059669",fontSize:14,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",gap:8,cursor:"pointer"}}>
+              <button onClick={() => setView('summary')} style={{width:"100%",padding:"14px",borderRadius:12,border:"1px solid var(--success)",background:"rgba(16,185,129,0.1)",color:"var(--success)",fontSize:14,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",gap:8,cursor:"pointer"}}>
                 <Icon n="download" s={16}/> צפה ברשימת יבוא
               </button>
             </div>
@@ -1152,7 +1152,7 @@ export const BOQWizardScreen = () => {
                                 placeholder="הוסף תיאור (יצרן, דגם, גוון…)"
                                 onChange={e => handleLockedSpecChange(item.id, e.target.value)}
                                 rows={2}
-                                style={{width:"100%",resize:"vertical",fontFamily:"'Heebo',sans-serif",fontSize:13,padding:"6px 8px",border:"1px solid var(--border)",borderRadius:8,background:"#fff"}}
+                                style={{width:"100%",resize:"vertical",fontFamily:"'Heebo',sans-serif",fontSize:13,padding:"6px 8px",border:"1px solid var(--border)",borderRadius:8,background:"var(--surface)",color:"var(--text1)"}}
                               />
                               <div style={{fontSize:11,color:"var(--text3)",minHeight:13,marginTop:2}}>
                                 {item._specSaving ? 'שומר…' : ''}
@@ -1166,7 +1166,7 @@ export const BOQWizardScreen = () => {
                                 placeholder="הערות לפריט (יישמרו להמשך)"
                                 onChange={e => handleItemNotesChange(item.id, e.target.value)}
                                 rows={2}
-                                style={{width:"100%",resize:"vertical",fontFamily:"'Heebo',sans-serif",fontSize:13,padding:"6px 8px",border:"1px solid var(--border)",borderRadius:8,background:"#fff"}}
+                                style={{width:"100%",resize:"vertical",fontFamily:"'Heebo',sans-serif",fontSize:13,padding:"6px 8px",border:"1px solid var(--border)",borderRadius:8,background:"var(--surface)",color:"var(--text1)"}}
                               />
                               <div style={{fontSize:11,color:"var(--text3)",minHeight:13,marginTop:2}}>
                                 {item._notesSaving ? 'שומר הערות…' : ''}
@@ -1184,7 +1184,7 @@ export const BOQWizardScreen = () => {
                                 title={enabled ? 'בטל בחירה' : 'הוסף לכמויות'}
                                 style={{
                                   display:"flex",alignItems:"center",gap:6,
-                                  background: enabled ? 'var(--accent-light)' : 'var(--surface)',
+                                  background: enabled ? 'var(--accent-light)' : 'var(--bg)',
                                   color: enabled ? 'var(--accent)' : 'var(--text2)',
                                   border:`1px solid ${enabled ? 'var(--accent)' : 'var(--border)'}`,
                                   padding:"6px 10px",borderRadius:10,cursor:"pointer",fontSize:12,fontWeight:700,
@@ -1215,9 +1215,9 @@ export const BOQWizardScreen = () => {
                           ) : (
                             <>
                               <div style={{display:"flex",alignItems:"center",background:"var(--bg)",borderRadius:10,padding:4,border:"1px solid var(--border)"}}>
-                                <button onClick={()=>setQty(currentRoom.uid,item.id,item.userQty-1)} style={{width:32,height:32,borderRadius:8,border:"none",background:"#fff",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 1px 2px rgba(0,0,0,0.05)"}}><Icon n="minus" s={14}/></button>
+                                <button onClick={()=>setQty(currentRoom.uid,item.id,item.userQty-1)} style={{width:32,height:32,borderRadius:8,border:"none",background:"var(--surface-2)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"var(--shadow-xs)"}}><Icon n="minus" s={14}/></button>
                                 <input type="number" value={item.userQty} onChange={e=>setQty(currentRoom.uid,item.id,e.target.value)} style={{width:50,textAlign:"center",background:"transparent",border:"none",fontWeight:700,fontSize:16}}/>
-                                <button onClick={()=>setQty(currentRoom.uid,item.id,item.userQty+1)} style={{width:32,height:32,borderRadius:8,border:"none",background:"#fff",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 1px 2px rgba(0,0,0,0.05)"}}><Icon n="plus" s={14}/></button>
+                                <button onClick={()=>setQty(currentRoom.uid,item.id,item.userQty+1)} style={{width:32,height:32,borderRadius:8,border:"none",background:"var(--surface-2)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"var(--shadow-xs)"}}><Icon n="plus" s={14}/></button>
                               </div>
                               <span style={{fontSize:14,color:"var(--text3)",width:30}}>{item.unit}</span>
                               <button onClick={()=>removeItem(currentRoom.uid,item.id)} style={{background:"none",border:"none",cursor:"pointer",color:"#DDD",transition:"color .2s"}} onMouseEnter={e=>e.currentTarget.style.color="var(--danger)"} onMouseLeave={e=>e.currentTarget.style.color="#DDD"}><Icon n="x" s={18}/></button>

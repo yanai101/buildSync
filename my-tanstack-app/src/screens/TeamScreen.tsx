@@ -138,6 +138,22 @@ export const TeamScreen = () => {
   const [createdCode, setCreatedCode] = React.useState<{ code: string; expiresAt: number } | null>(null);
   const [submitting, setSubmitting] = React.useState(false);
 
+  // Styled confirmation dialog — replaces all window.confirm calls
+  const [confirmDialog, setConfirmDialog] = React.useState<{
+    open: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({ open: false, title: '', message: '', onConfirm: () => {} });
+
+  const openConfirmDialog = (title: string, message: string, onConfirm: () => void) => {
+    setConfirmDialog({ open: true, title, message, onConfirm });
+  };
+
+  const closeConfirmDialog = () => {
+    setConfirmDialog((prev) => ({ ...prev, open: false }));
+  };
+
   if (roleLoading) {
     return <div style={{ padding: 24, color: 'var(--text2)' }}>טוען...</div>;
   }
@@ -238,45 +254,63 @@ export const TeamScreen = () => {
     typeof window !== 'undefined' ? `${window.location.origin}/join/${code}` : `/join/${code}`;
 
   const handleRevoke = async (invitationId: Id<'projectInvitations'>) => {
-    if (!window.confirm('לבטל את ההזמנה?')) return;
-    try {
-      await revokeInvitation({ invitationId });
-      await notify({ title: 'ההזמנה בוטלה', kind: 'info' });
-    } catch (err) {
-      await notify({
-        title: 'ביטול נכשל',
-        body: err instanceof Error ? err.message : 'אירעה שגיאה',
-        kind: 'error',
-      });
-    }
+    openConfirmDialog(
+      'ביטול הזמנה',
+      'האם לבטל את ההזמנה? הקישור הקיים יפסיק לעבוד.',
+      async () => {
+        closeConfirmDialog();
+        try {
+          await revokeInvitation({ invitationId });
+          await notify({ title: 'ההזמנה בוטלה', kind: 'info' });
+        } catch (err) {
+          await notify({
+            title: 'ביטול נכשל',
+            body: err instanceof Error ? err.message : 'אירעה שגיאה',
+            kind: 'error',
+          });
+        }
+      }
+    );
   };
 
-  const handleRemoveMember = async (role: 'manager' | 'inspector', name: string) => {
-    if (!window.confirm(`להסיר את ${name} מהפרויקט?`)) return;
-    try {
-      await removeMember({ projectId, role });
-      await notify({ title: 'חבר הצוות הוסר', kind: 'info' });
-    } catch (err) {
-      await notify({
-        title: 'הסרה נכשלה',
-        body: err instanceof Error ? err.message : 'אירעה שגיאה',
-        kind: 'error',
-      });
-    }
+  const handleRemoveMember = (role: 'manager' | 'inspector', name: string) => {
+    openConfirmDialog(
+      'הסרת חבר צוות',
+      `להסיר את ${name} מהפרויקט? הם יאבדו גישה מידית.`,
+      async () => {
+        closeConfirmDialog();
+        try {
+          await removeMember({ projectId, role });
+          await notify({ title: 'חבר הצוות הוסר', kind: 'info' });
+        } catch (err) {
+          await notify({
+            title: 'הסרה נכשלה',
+            body: err instanceof Error ? err.message : 'אירעה שגיאה',
+            kind: 'error',
+          });
+        }
+      }
+    );
   };
 
-  const handleUnlinkContractor = async (contractorId: Id<'contractors'>, name: string) => {
-    if (!window.confirm(`לנתק את הכניסה של ${name}?`)) return;
-    try {
-      await unlinkContractor({ contractorId });
-      await notify({ title: 'הכניסה נותקה', kind: 'info' });
-    } catch (err) {
-      await notify({
-        title: 'הניתוק נכשל',
-        body: err instanceof Error ? err.message : 'אירעה שגיאה',
-        kind: 'error',
-      });
-    }
+  const handleUnlinkContractor = (contractorId: Id<'contractors'>, name: string) => {
+    openConfirmDialog(
+      'ניתוק כניסה',
+      `לנתק את הכניסה של ${name}? הם לא יוכלו להיכנס למערכת עד לקבלת הזמנה חדשה.`,
+      async () => {
+        closeConfirmDialog();
+        try {
+          await unlinkContractor({ contractorId });
+          await notify({ title: 'הכניסה נותקה', kind: 'info' });
+        } catch (err) {
+          await notify({
+            title: 'הניתוק נכשל',
+            body: err instanceof Error ? err.message : 'אירעה שגיאה',
+            kind: 'error',
+          });
+        }
+      }
+    );
   };
 
   const activeInvitations = (invitations ?? []).filter((inv) => inv.status === 'active');
@@ -318,7 +352,7 @@ export const TeamScreen = () => {
             }
             onRemove={
               members?.manager
-                ? () => void handleRemoveMember('manager', members.manager!.name)
+                ? () => handleRemoveMember('manager', members.manager!.name)
                 : undefined
             }
           />
@@ -340,7 +374,7 @@ export const TeamScreen = () => {
             }
             onRemove={
               members?.inspector
-                ? () => void handleRemoveMember('inspector', members.inspector!.name)
+                ? () => handleRemoveMember('inspector', members.inspector!.name)
                 : undefined
             }
           />
@@ -379,7 +413,7 @@ export const TeamScreen = () => {
                   border: '1px solid var(--border)',
                   borderRadius: 8,
                   padding: '8px 12px',
-                  background: '#fff',
+                  background: 'var(--surface)',
                 }}
               >
                 <div>
@@ -475,7 +509,7 @@ export const TeamScreen = () => {
                   border: '1px solid var(--border)',
                   borderRadius: 10,
                   padding: '12px 14px',
-                  background: '#fff',
+                  background: 'var(--surface)',
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -695,6 +729,33 @@ export const TeamScreen = () => {
           )}
         </Modal>
       )}
+
+      {/* Styled confirmation dialog — replaces native window.confirm */}
+      {confirmDialog.open && (
+        <Modal
+          title={confirmDialog.title}
+          onClose={closeConfirmDialog}
+          width={420}
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            <p style={{ fontSize: 14, color: 'var(--text1)', lineHeight: 1.6, margin: 0 }}>
+              {confirmDialog.message}
+            </p>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <Btn variant="ghost" onClick={closeConfirmDialog}>
+                ביטול
+              </Btn>
+              <Btn
+                variant="danger"
+                onClick={() => void confirmDialog.onConfirm()}
+                style={{ background: 'var(--danger)', color: '#fff' }}
+              >
+                אישור
+              </Btn>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 };
@@ -726,7 +787,7 @@ const MemberRow = ({
       border: '1px solid var(--border)',
       borderRadius: 8,
       padding: '10px 12px',
-      background: '#fff',
+      background: 'var(--surface)',
     }}
   >
     <div>

@@ -3,7 +3,7 @@
 import * as React from 'react'
 import { Link, useNavigate, useRouterState, Outlet } from '@tanstack/react-router'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Icon, Btn, Modal } from './Shared'
+import { Icon, Btn, Modal, DarkModeToggle, useDarkMode } from './Shared'
 import { WelcomeOnboardingModal } from './WelcomeOnboardingModal'
 import { useCurrentProject } from '~/hooks/useCurrentProject'
 import { useConvexAuth, useQuery, useMutation } from 'convex/react'
@@ -103,6 +103,18 @@ const LOADING_PHRASES = [
   "מזמינים בטון...",
   "מסדרים את הבלטות..."
 ];
+
+// Applies saved dark/light theme on every render to avoid flash
+const DarkModeInit = () => {
+  React.useEffect(() => {
+    const saved = localStorage.getItem('buildsync:theme');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const isDark = saved ? saved === 'dark' : prefersDark;
+    document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+    document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';
+  }, []);
+  return null;
+};
 
 const GearSVG = ({ size, teeth, duration, direction, color, style, isMain }: any) => {
   const baseR = 30 * (teeth / 16);
@@ -472,9 +484,17 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     setMenuOpen(false)
     try {
       if (typeof window !== 'undefined') {
+        // Clear ONLY per-user / per-session keys so the next user starts clean.
+        // Device-level keys (onboarding status, theme, PWA install, tour) are
+        // intentionally preserved — they should survive across user sessions.
+        const SESSION_PREFIXES = [
+          'buildsync:selected-project:',
+          'buildsync:last_viewed_daily_logs',
+          'buildsync:sub-change:', // SubscriptionChangePopup per-user cache
+        ]
         const keys = Object.keys(window.localStorage)
         for (const k of keys) {
-          if (k.startsWith('buildsync:selected-project:')) {
+          if (SESSION_PREFIXES.some((prefix) => k.startsWith(prefix))) {
             window.localStorage.removeItem(k)
           }
         }
@@ -484,6 +504,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       if (typeof window !== 'undefined') {
         window.location.replace('/login')
       }
+
     }
   }
 
@@ -692,6 +713,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       <main className="main">
         <UpgradeModalHost />
         <SubscriptionChangePopup />
+        <DarkModeInit />
         <div className="page-header">
           <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0, flex: 1 }}>
             <div style={{ minWidth: 0, display: "flex", flexDirection: "column" }}>
@@ -779,10 +801,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 <span className="desktop-only">שדרג ל-Pro</span>
               </button>
             )}
-            <div className="desktop-only" style={{ fontSize: 12, color: "var(--text3)", display: "flex", alignItems: "center", gap: 4 }}>
-              <Icon n="clock" s={12} c="var(--text3)" />
-              <span>עודכן: היום, 09:45</span>
-            </div>
+            <DarkModeToggle userId={identity?.userId} />
             <div className="desktop-only" style={{ width: 1, height: 16, background: "var(--border)", margin: "0 4px" }} />
             <div ref={menuRef} style={{ position: "relative" }}>
               <button
@@ -791,7 +810,16 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 onClick={() => setMenuOpen((v) => !v)}
                 aria-haspopup="menu"
                 aria-expanded={menuOpen}
-                style={{ width: 30, height: 30, borderRadius: "50%", background: "var(--accent-light)", color: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 13, cursor: "pointer", border: "none", padding: 0, position: "relative" }}
+                style={{
+                  width: 34, height: 34, borderRadius: "50%",
+                  background: "linear-gradient(135deg, var(--accent-light) 0%, var(--accent-glow-sm) 100%)",
+                  color: "var(--accent)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontWeight: 800, fontSize: 13.5, cursor: "pointer", border: "1.5px solid var(--accent-glow-sm)",
+                  padding: 0, position: "relative",
+                  boxShadow: "0 2px 8px var(--accent-glow-sm)",
+                  transition: "all 0.2s"
+                }}
               >
                 {(identity?.name?.[0] ?? identity?.email?.[0] ?? 'א').toUpperCase()}
                 {identity?.isSuperAdmin && supportTicketCount > 0 && (
@@ -1068,32 +1096,20 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <div className="bottom-nav-items">
           {currentBottomNav.map(n => {
             const hasUnreadNotes = n.id === '/notes' && unreadNotesCount > 0;
+            const isActive = currentPath === n.id;
             return (
               <Link 
                 key={n.id} 
                 to={n.id} 
-                className="bottom-nav-item"
-                activeProps={{ className: 'active' }}
+                className={`bottom-nav-item${isActive ? ' active' : ''}`}
+                activeProps={{ className: 'bottom-nav-item active' }}
                 activeOptions={{ exact: true }}
                 onClick={() => setMobileMenuOpen(false)}
               >
-                <div style={{ position: 'relative' }}>
-                  <Icon n={n.icon} s={20} />
+                <div className="nav-icon-wrap">
+                  <Icon n={n.icon} s={22} />
                   {hasUnreadNotes && (
-                    <span 
-                      style={{ 
-                        position: 'absolute', 
-                        top: -4, 
-                        right: -4, 
-                        width: 10, 
-                        height: 10, 
-                        borderRadius: '50%', 
-                        background: 'var(--accent)', 
-                        animation: 'pulse-dot 2s infinite ease-in-out',
-                        border: '2px solid var(--surface)',
-                        boxShadow: '0 0 8px rgba(224, 122, 56, 0.4)'
-                      }} 
-                    />
+                    <span className="bottom-nav-badge">!</span>
                   )}
                 </div>
                 <span>{n.label}</span>
@@ -1106,7 +1122,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             style={{ background: 'none', border: 'none', fontFamily: 'inherit' }}
             onClick={() => setMobileMenuOpen(v => !v)}
           >
-            <Icon n="menu" s={20} />
+            <div className="nav-icon-wrap">
+              <Icon n="menu" s={22} />
+            </div>
             <span>תפריט</span>
           </button>
         </div>
@@ -1138,12 +1156,12 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 left: 0,
                 right: 0,
                 background: 'var(--surface)',
-                borderTopLeftRadius: 24,
-                borderTopRightRadius: 24,
-                padding: '24px 20px 24px',
+                borderTopLeftRadius: 28,
+                borderTopRightRadius: 28,
+                padding: '20px 18px 24px',
                 maxHeight: 'calc(100vh - 80px - env(safe-area-inset-bottom) - 40px)',
                 overflowY: 'auto',
-                boxShadow: '0 -10px 40px rgba(0,0,0,0.1)'
+                boxShadow: 'var(--shadow-2xl)'
               }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>

@@ -398,7 +398,7 @@ const StageCreationGuide = ({
                   style={{
                     border:"1px solid",
                     borderColor:index===selected?"var(--accent)":"var(--border)",
-                    background:index===selected?"var(--accent-light)":"#fff",
+                    background:index===selected?"var(--accent-light)":"var(--surface)",
                     borderRadius:8,
                     padding:"10px 12px",
                     textAlign:"right",
@@ -466,14 +466,14 @@ const StageCreationGuide = ({
                   <input className="bp-input" type="date" value={current.endDate} onChange={e=>updateStage({endDate:e.target.value})}/>
                 </label>
               </div>
-              <div style={{marginTop:10,border:"1px solid var(--border)",borderRadius:8,padding:10,background:"#fff"}}>
+              <div style={{marginTop:10,border:"1px solid var(--border)",borderRadius:8,padding:10,background:"var(--surface-2)"}}>
                 <div style={{fontSize:11,color:"var(--text2)",fontWeight:700,marginBottom:8}}>קבלנים משתתפים בשלב</div>
                 <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
                   {contractorOptions.length ? contractorOptions.map(contractor => {
                     const id = contractorKey(contractor);
                     const checked = selectedContractorIds.includes(id);
                     return (
-                      <label key={id} style={{display:"flex",alignItems:"center",gap:6,border:"1px solid",borderColor:checked?"var(--accent)":"var(--border)",background:checked?"var(--accent-light)":"#fff",borderRadius:999,padding:"5px 9px",fontSize:12,cursor:"pointer"}}>
+                      <label key={id} style={{display:"flex",alignItems:"center",gap:6,border:"1px solid",borderColor:checked?"var(--accent)":"var(--border)",background:checked?"var(--accent-light)":"var(--surface-2)",borderRadius:999,padding:"5px 9px",fontSize:12,cursor:"pointer"}}>
                         <input type="checkbox" checked={checked} onChange={e=>toggleStageContractor(id, e.target.checked)} />
                         <span>{contractor.name}</span>
                       </label>
@@ -604,7 +604,7 @@ const StageCreationGuide = ({
               </div>
               <div style={{display:"flex",flexDirection:"column",gap:10}}>
                 {current.paymentAtEnd ? (
-                  <div style={{border:"1px solid #10B981",background:"#F0FDF4",borderRadius:8,padding:"10px 12px",display:"flex",justifyContent:"space-between",gap:12,alignItems:"center"}}>
+                  <div style={{border:"1px solid rgba(16,185,129,0.5)",background:"rgba(16,185,129,0.08)",borderRadius:8,padding:"10px 12px",display:"flex",justifyContent:"space-between",gap:12,alignItems:"center"}}>
                     <span style={{fontSize:13,fontWeight:700}}>תשלום גלובלי עבור סיום שלב: {current.name}</span>
                     <span style={{fontSize:13,color:"var(--success)",fontWeight:800}}>{fmtMoney(Number(current.amount) || 0)}</span>
                   </div>
@@ -1201,14 +1201,19 @@ export const StagesScreen = () => {
       onRetry={refetch}
     >
       <div className="page-content">
-        <div style={{display:"flex",flexWrap:"wrap",justifyContent:"space-between",alignItems:"flex-start",gap:16,marginBottom:24}}>
-          <div style={{display:"flex",alignItems:"center",gap:12,flex:"1 1 300px"}}>
-            <div style={{width:42,height:42,borderRadius:12,background:"var(--accent-light)",color:"var(--accent)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-              <Icon n="layers" s={22}/>
+        <div style={{display:'flex', flexWrap:'wrap', justifyContent:'space-between', alignItems:'flex-start', gap:16, marginBottom:24}}>
+          <div style={{display:'flex', alignItems:'center', gap:14, flex:'1 1 300px'}}>
+            <div style={{
+              width:48, height:48, borderRadius:14,
+              background:'linear-gradient(135deg, var(--accent-light) 0%, var(--accent-glow-sm) 100%)',
+              color:'var(--accent)', display:'flex', alignItems:'center', justifyContent:'center',
+              border:'1.5px solid var(--accent-glow-sm)', boxShadow:'0 4px 16px var(--accent-glow-sm)', flexShrink:0
+            }}>
+              <Icon n="layers" s={24}/>
             </div>
             <div>
-              <h1 style={{fontSize:22,fontWeight:800,margin:0}}>שלבי הפרויקט</h1>
-              <div style={{fontSize:13,color:"var(--text3)",marginTop:2}}>ניהול משימות, אישורים ותשלומים לפי שלבים</div>
+              <h1 style={{fontSize:22, fontWeight:800, margin:0, letterSpacing:'-0.4px'}}>שלבי הפרויקט</h1>
+              <div style={{fontSize:12.5, color:'var(--text3)', marginTop:3}}>ניהול משימות, אישורים ותשלומים לפי שלבים</div>
             </div>
           </div>
           {!isContractor && (
@@ -1277,13 +1282,28 @@ export const StagesScreen = () => {
         </div>
         )}
 
-        <div style={{display:"flex",flexDirection:"column",gap:16}}>
-          {visibleStages.map(s=>(
-            <div key={s.id} className="card" style={{border:expanded===s.id?"1px solid var(--accent)":"1px solid var(--border)",boxShadow:expanded===s.id?"var(--shadow-md)":"none"}}>
-              <div onClick={()=>toggleStage(s.id)} style={{padding:"16px 20px",display:"flex",alignItems:"center",gap:16,cursor:"pointer",flexWrap:"wrap"}}>
-                <div style={{width:24,textAlign:"center",fontSize:12,fontWeight:700,color:"var(--text3)"}}>{s.id}</div>
-                <div style={{flex:"1 1 200px"}}>
-                  <div style={{fontSize:15,fontWeight:700,display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+        <div style={{display:'flex', flexDirection:'column', gap:14}}>
+          {visibleStages.map(s => {
+            const statusColor = s.status === 'done' ? 'var(--success)' : s.status === 'active' ? 'var(--accent)' : s.status === 'pending' ? 'var(--warning)' : 'var(--border)';
+            return (
+            <div key={s.id} className="card" style={{
+              border: expanded===s.id ? `1.5px solid var(--accent)` : '1px solid var(--border)',
+              boxShadow: expanded===s.id ? 'var(--shadow-lg), 0 0 0 3px var(--accent-glow-sm)' : 'var(--shadow-sm)',
+              borderRight: `3px solid ${statusColor}`,
+              transition: 'all 0.2s'
+            }}>
+              <div onClick={()=>toggleStage(s.id)} style={{padding:'18px 22px', display:'flex', alignItems:'center', gap:14, cursor:'pointer', flexWrap:'wrap'}}>
+                <div style={{
+                  width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+                  background: `${statusColor}18`,
+                  color: statusColor,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 13, fontWeight: 800
+                }}>
+                  {s.icon ? <Icon n={s.icon as any} s={18}/> : <span>{s.id}</span>}
+                </div>
+                <div style={{flex:'1 1 200px'}}>
+                  <div style={{fontSize:15, fontWeight:800, display:'flex', alignItems:'center', gap:8, flexWrap:'wrap'}}>
                     {s.name}
                     <Badge type={s.status}/>
                   </div>
@@ -1299,13 +1319,15 @@ export const StagesScreen = () => {
                         }}
                         style={{
                           fontSize:11,
-                          color:"var(--text2)",
-                          background:"#fff",
-                          border:"1px solid var(--border)",
+                          color:'var(--accent)',
+                          background:'var(--accent-light)',
+                          border:'1px solid var(--accent-glow-sm)',
                           borderRadius:999,
-                          padding:"2px 7px",
-                          whiteSpace:"nowrap",
-                          cursor: (String(contractor.id) !== contractor.name && String(contractor.id)) ? "pointer" : "default"
+                          padding:'3px 9px',
+                          whiteSpace:'nowrap',
+                          cursor: (String(contractor.id) !== contractor.name && String(contractor.id)) ? 'pointer' : 'default',
+                          fontWeight: 600,
+                          transition: 'all 0.15s'
                         }}
                       >
                         {contractor.name}
@@ -1353,18 +1375,18 @@ export const StagesScreen = () => {
                 {expanded===s.id && (() => {
                   const stageHasContractor = ((s as any).contractorIds?.length ?? 0) > 0 || ((s as any).contractors?.length ?? 0) > 0;
                   return (
-                  <motion.div initial={{height:0,opacity:0}} animate={{height:"auto",opacity:1}} exit={{height:0,opacity:0}} style={{overflow:"hidden"}}>
-                    <div style={{padding:"0 20px 20px",borderTop:"1px solid var(--border)",background:"#FAFAF9"}}>
+                  <motion.div initial={{height:0, opacity:0}} animate={{height:'auto', opacity:1}} exit={{height:0, opacity:0}} style={{overflow:'hidden'}}>
+                    <div style={{padding:'0 22px 22px', borderTop:'1px solid var(--border)', background:'var(--surface-2)'}}>
                       {!stageHasContractor && (
-                        <div style={{marginTop:16,border:"1px solid #FCD34D",background:"#FFFBEB",color:"#92400E",borderRadius:8,padding:"10px 12px",fontSize:13,fontWeight:600,display:"flex",alignItems:"center",gap:8}}>
+                        <div style={{marginTop:16, border:'1px solid rgba(245,158,11,0.3)', background:'rgba(245,158,11,0.07)', color:'var(--warning-text, #92400E)', borderRadius:10, padding:'10px 14px', fontSize:13, fontWeight:600, display:'flex', alignItems:'center', gap:8}}>
                           <Icon n="alert" s={14} c="#92400E"/>
                           אין קבלן מקושר לשלב — אי אפשר לסמן משימות או לשלם. קשרו קבלן לשלב כדי להמשיך.
                         </div>
                       )}
-                      <div style={{display:"flex",flexWrap:"wrap",gap:20,marginTop:20}}>
+                      <div style={{display:'flex', flexWrap:'wrap', gap:20, marginTop:20}}>
                         <div style={{flex:"1 1 300px"}}>
                           <div style={{fontSize:13,fontWeight:700,color:"var(--text2)",marginBottom:12}}>משימות בשלב זה</div>
-                          <div className="card" style={{background:"#fff"}}>
+                          <div className="card" style={{background:"var(--surface)"}}>
                             {(s.tasks || []).map(t=>{
                               const taskPayment = s.payment?.milestones?.find(m => m.taskIds.includes(t.id));
                               const syncedPayment = s.contractorPayments?.flatMap(cp => cp.milestones).find(m => m.sourceTaskId === (t as any)._id);
@@ -1376,8 +1398,8 @@ export const StagesScreen = () => {
                                   onClick={taskDisabled ? undefined : ()=>toggleTask(s.id,t.id, (t as any)._id)}
                                   style={{display:"flex",alignItems:"center",gap:12,padding:"10px 16px",borderBottom:"1px solid var(--border)",cursor:taskDisabled?"not-allowed":"pointer",opacity:!stageHasContractor?0.55:1,flexWrap:"wrap"}}
                                   title={!stageHasContractor?"קשרו קבלן לשלב כדי לסמן משימות":isTaskPaid?"משימה שולמה וננעלה":undefined}
-                                  onMouseEnter={taskDisabled ? undefined : e=>e.currentTarget.style.background="#F9FAFB"}
-                                  onMouseLeave={taskDisabled ? undefined : e=>e.currentTarget.style.background="transparent"}
+                                  onMouseEnter={taskDisabled ? undefined : e=>(e.currentTarget as HTMLElement).style.background="var(--surface-2)"}
+                                  onMouseLeave={taskDisabled ? undefined : e=>(e.currentTarget as HTMLElement).style.background="transparent"}
                                 >
                                   {isTaskPaid ? (
                                     <div style={{width:18,height:18,display:"flex",alignItems:"center",justifyContent:"center",flex:"0 0 auto",color:"var(--success)"}}>
@@ -1394,7 +1416,7 @@ export const StagesScreen = () => {
                                       fontSize:11,
                                       fontWeight:700,
                                       color:isTaskPaid ? "var(--success)" : "var(--text2)",
-                                      background:isTaskPaid ? "#F0FDF4" : "#F9FAFB",
+                                      background:isTaskPaid ? "rgba(16,185,129,0.12)" : "var(--surface-2)",
                                       border:"1px solid var(--border)",
                                       borderRadius:999,
                                       padding:"3px 8px",
@@ -1428,7 +1450,7 @@ export const StagesScreen = () => {
                                 return (
                                   <div style={{display:"flex",flexDirection:"column",gap:16}}>
                                     {s.hasSyncedContractorPayments && (
-                                      <div className="card" style={{background:"#fff"}}>
+                                      <div className="card" style={{background:"var(--surface)"}}>
                                         <div className="card-body" style={{display:"flex",flexDirection:"column",gap:10}}>
                                           <div style={{fontSize:13,fontWeight:800}}>התשלום מסונכרן לקבלנים</div>
                                           <div style={{fontSize:12,color:"var(--text3)"}}>
@@ -1458,7 +1480,7 @@ export const StagesScreen = () => {
                                       </div>
                                     )}
                                     {customPaymentContractors.length > 0 && (
-                                      <div className="card" style={{background:"#fff"}}>
+                                      <div className="card" style={{background:"var(--surface)"}}>
                                         <div className="card-body" style={{display:"flex",flexDirection:"column",gap:10}}>
                                           <div style={{fontSize:13,fontWeight:800}}>התשלום מנוהל בחוזה הקבלן</div>
                                           <div style={{fontSize:12,color:"var(--text3)"}}>
@@ -1519,7 +1541,8 @@ export const StagesScreen = () => {
                 })()}
               </AnimatePresence>
             </div>
-          ))}
+          );
+          })}
         </div>
 
         {releaseFor && (
@@ -1551,14 +1574,14 @@ export const StagesScreen = () => {
               <input className="bp-input" value={editForm.name} onChange={e=>setEditForm(f=>({...f,name:e.target.value}))}/>
             </label>
           </div>
-          <div style={{flex:"1 1 100%",border:"1px solid var(--border)",borderRadius:8,padding:12,background:"#fff"}}>
+          <div style={{flex:"1 1 100%",border:"1px solid var(--border)",borderRadius:8,padding:12,background:"var(--surface-2)"}}>
             <div style={{fontSize:12,color:"var(--text2)",marginBottom:8,fontWeight:600}}>קבלנים משתתפים בשלב</div>
             <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
               {contractorOptions.length ? contractorOptions.map(contractor => {
                 const id = contractorKey(contractor);
                 const checked = editForm.contractorIds.includes(id);
                 return (
-                  <label key={id} style={{display:"flex",alignItems:"center",gap:6,border:"1px solid",borderColor:checked?"var(--accent)":"var(--border)",background:checked?"var(--accent-light)":"#fff",borderRadius:999,padding:"6px 10px",fontSize:12,cursor:"pointer"}}>
+                  <label key={id} style={{display:"flex",alignItems:"center",gap:6,border:"1px solid",borderColor:checked?"var(--accent)":"var(--border)",background:checked?"var(--accent-light)":"var(--surface-2)",borderRadius:999,padding:"6px 10px",fontSize:12,cursor:"pointer"}}>
                     <input type="checkbox" checked={checked} onChange={e=>toggleEditContractor(id, e.target.checked)} />
                     <span>{contractor.name}</span>
                   </label>
@@ -1576,9 +1599,9 @@ export const StagesScreen = () => {
             <div style={{
               flex:"1 1 100%",
               border:"1px solid",
-              borderColor:editPaymentAmountMismatch ? "#FCA5A5" : "#BBF7D0",
-              background:editPaymentAmountMismatch ? "#FEF2F2" : "#F0FDF4",
-              color:editPaymentAmountMismatch ? "#991B1B" : "#065F46",
+              borderColor:editPaymentAmountMismatch ? "var(--danger)" : "var(--success)",
+              background:editPaymentAmountMismatch ? "rgba(239,68,68,0.08)" : "rgba(16,185,129,0.08)",
+              color:editPaymentAmountMismatch ? "var(--danger)" : "var(--success)",
               borderRadius:8,
               padding:"8px 10px",
               fontSize:12,
@@ -1593,7 +1616,7 @@ export const StagesScreen = () => {
           {editContractorPaymentWarnings.length > 0 && (
             <div style={{flex:"1 1 100%",display:"flex",flexDirection:"column",gap:6}}>
               {editContractorPaymentWarnings.map(warning => (
-                <div key={warning.contractorName} style={{border:"1px solid #FCD34D",background:"#FFFBEB",color:"#92400E",borderRadius:8,padding:"8px 10px",fontSize:12,fontWeight:700,lineHeight:1.45}}>
+                <div key={warning.contractorName} style={{border:"1px solid rgba(245,158,11,0.5)",background:"rgba(245,158,11,0.08)",color:"var(--warning-text)",borderRadius:8,padding:"8px 10px",fontSize:12,fontWeight:700,lineHeight:1.45}}>
                   סכום השלבים של {warning.contractorName} ({fmtMoney(warning.stagePaymentTotal)}) לא תואם לסכום החוזה ({fmtMoney(warning.contractorBudget)}). אפשר לשמור, אבל כדאי לתקן לפני תשלום.
                 </div>
               ))}
@@ -1626,14 +1649,14 @@ export const StagesScreen = () => {
                 </label>
               </div>
               
-              <div className="card" style={{padding:16,marginBottom:14,background:"#FAFAFA"}}>
+              <div className="card" style={{padding:16,marginBottom:14,background:"var(--surface-2)"}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
                   <div style={{fontSize:13,fontWeight:800}}>משימות ותשלומים</div>
                   <Btn size="sm" variant="ghost" onClick={() => setEditForm(f=>({...f, tasks: [...f.tasks, { legacyId: Date.now(), name: 'משימה חדשה', assignee: contractorNamesFromIds(f.contractorIds, contractorOptions)[0] || f.contractorRole || 'לא הוגדר', required: true, paymentRequired: false, paymentAmount: 0 }]}))}><Icon n="plus" s={12}/> משימה</Btn>
                 </div>
                 <div style={{display:"flex",flexDirection:"column",gap:8}}>
                   {editForm.tasks.map((task, taskIndex) => (
-                    <div key={taskIndex} style={{display:"flex",flexWrap:"wrap",gap:8,alignItems:"center",background:"#fff",padding:8,borderRadius:8,border:"1px solid var(--border)"}}>
+                    <div key={taskIndex} style={{display:"flex",flexWrap:"wrap",gap:8,alignItems:"center",background:"var(--surface-2)",padding:8,borderRadius:8,border:"1px solid var(--border)"}}>
                       <input className="bp-input" value={task.name} onChange={e=>updateEditTask(taskIndex,{name:e.target.value})} style={{flex:"1 1 180px"}}/>
                       <select className="bp-input" value={task.assignee} onChange={e=>updateEditTask(taskIndex,{assignee:e.target.value})} style={{flex:"1 1 120px"}}>
                         <option value="">לא הוגדר</option>

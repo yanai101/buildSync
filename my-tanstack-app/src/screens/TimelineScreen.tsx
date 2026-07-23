@@ -468,40 +468,45 @@ export const TimelineScreen = () => {
         onRetry={() => setFeedbackError(null)}
       >
         <div className="page-content" style={{display:"flex",flexDirection:"column",minHeight:0}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:16,marginBottom:16,flexShrink:0}}>
-            <div style={{display:"flex",alignItems:"center",gap:12}}>
-              <div style={{width:42,height:42,borderRadius:12,background:"var(--accent-light)",color:"var(--accent)",display:"flex",alignItems:"center",justifyContent:"center"}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:12,marginBottom:16,flexShrink:0}}>
+            <div style={{display:"flex",alignItems:"center",gap:12,minWidth:0}}>
+              <div style={{width:42,height:42,borderRadius:12,background:"var(--accent-light)",color:"var(--accent)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
                 <Icon n="calendar" s={22}/>
               </div>
-              <div>
+              <div style={{minWidth:0}}>
                 <h1 style={{fontSize:22,fontWeight:800,margin:0}}>לוח זמנים</h1>
                 <div style={{fontSize:13,color:"var(--text3)",marginTop:2}}>
                   עריכת תאריכי השלבים לפי ציר זמן אינטראקטיבי
                 </div>
               </div>
             </div>
-            <div style={{display:"flex",alignItems:"center",gap:8}}>
-              <label style={{display:"flex",alignItems:"center",gap:6,fontSize:12,fontWeight:600,color:cascadeEnabled?"var(--accent)":"var(--text2)",cursor:"pointer",marginRight:16,border:"1px solid",borderColor:cascadeEnabled?"var(--accent)":"var(--border)",background:cascadeEnabled?"var(--accent-light)":"#fff",padding:"4px 10px",borderRadius:12,transition:"all .2s"}}>
+            {/* Controls — wrap on mobile */}
+            <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",flexShrink:0}}>
+              <label style={{display:"flex",alignItems:"center",gap:6,fontSize:12,fontWeight:600,color:cascadeEnabled?"var(--accent)":"var(--text2)",cursor:"pointer",border:"1px solid",borderColor:cascadeEnabled?"var(--accent)":"var(--border)",background:cascadeEnabled?"var(--accent-light)":"var(--surface-2)",padding:"4px 10px",borderRadius:12,transition:"all .2s",whiteSpace:"nowrap"}}>
                 <input type="checkbox" checked={cascadeEnabled} onChange={e=>setCascadeEnabled(e.target.checked)} style={{margin:0}}/>
-                תזוזת מפל (Gantt)
+                מפל (Gantt)
               </label>
               <Btn variant="ghost" size="sm" onClick={scrollToToday} disabled={validStages.length === 0}>
                 <Icon n="calendar" s={13}/> היום
               </Btn>
-              <Btn variant="ghost" size="sm" onClick={() => setZoom(value => Math.max(0.75, value - 0.25))}>
-                <Icon n="zoom-in" s={13}/> הקטן
-              </Btn>
-              <span style={{fontSize:12,color:"var(--text3)",fontWeight:700,minWidth:42,textAlign:"center"}}>
-                {Math.round(zoom * 100)}%
-              </span>
-              <Btn variant="ghost" size="sm" onClick={() => setZoom(value => Math.min(2.5, value + 0.25))}>
-                <Icon n="zoom-in" s={13}/> הגדל
-              </Btn>
+              {/* Zoom group */}
+              <div style={{display:"flex",alignItems:"center",gap:4,background:"var(--surface-2)",borderRadius:10,padding:"2px 4px",border:"1px solid var(--border)"}}>
+                <Btn variant="ghost" size="sm" onClick={() => setZoom(value => Math.max(0.75, value - 0.25))} style={{padding:"4px 8px"}}>
+                  <Icon n="zoom-in" s={13}/> −
+                </Btn>
+                <span style={{fontSize:12,color:"var(--text3)",fontWeight:700,minWidth:36,textAlign:"center"}}>
+                  {Math.round(zoom * 100)}%
+                </span>
+                <Btn variant="ghost" size="sm" onClick={() => setZoom(value => Math.min(2.5, value + 0.25))} style={{padding:"4px 8px"}}>
+                  <Icon n="zoom-in" s={13}/> +
+                </Btn>
+              </div>
             </div>
           </div>
 
+
           {feedbackError && (
-            <div style={{marginBottom:16,padding:"12px 14px",border:"1px solid var(--danger)",borderRadius:8,background:"#FEF2F2",color:"var(--danger)",fontSize:13,fontWeight:700}}>
+            <div style={{marginBottom:16,padding:"12px 14px",border:"1px solid var(--danger)",borderRadius:8,background:"rgba(239,68,68,0.08)",color:"var(--danger)",fontSize:13,fontWeight:700}}>
               {feedbackError}
             </div>
           )}
@@ -549,8 +554,8 @@ export const TimelineScreen = () => {
 
             <div ref={scrollContainerRef} style={{overflow:"auto",direction:"ltr",flex:"1 1 auto",minHeight:0}}>
               <div style={{width:timelineWidth + labelColWidth,direction:"ltr"}}>
-                <div style={{display:"flex",borderBottom:"1px solid var(--border)",background:"#FAFAF8",position:"sticky",top:0,zIndex:5}}>
-                  <div style={{width:labelColWidth,flexShrink:0,borderLeft:"1px solid var(--border)",padding:"8px 12px",fontSize:11,fontWeight:700,color:"var(--text3)",direction:"rtl",position:"sticky",left:0,zIndex:6,background:"#FAFAF8"}}>
+                <div style={{display:"flex",borderBottom:"1px solid var(--border)",background:"var(--surface-2)",position:"sticky",top:0,zIndex:5}}>
+                  <div style={{width:labelColWidth,flexShrink:0,borderLeft:"1px solid var(--border)",padding:"8px 12px",fontSize:11,fontWeight:700,color:"var(--text3)",direction:"rtl",position:"sticky",left:0,zIndex:6,background:"var(--surface-2)"}}>
                     שלב
                   </div>
                   <div data-timeline-track="true" style={{width:timelineWidth,position:"relative",height:38,flexShrink:0}}>
@@ -589,7 +594,7 @@ export const TimelineScreen = () => {
                       <button
                         type="button"
                         onClick={() => openEdit(stage)}
-                        style={{width:labelColWidth,flexShrink:0,border:"none",borderLeft:"1px solid var(--border)",padding:"8px 12px",fontSize:12,fontWeight:700,color:stage.status==="active"?"var(--accent)":stage.status==="done"?"var(--text2)":"var(--text3)",background:isHovered?"#FAFAF8":"var(--bg, #fff)",textAlign:"right",direction:"rtl",cursor:stage._id?"pointer":"default",fontFamily:"inherit",position:"sticky",left:0,zIndex:4}}
+                        style={{width:labelColWidth,flexShrink:0,border:"none",borderLeft:"1px solid var(--border)",padding:"8px 12px",fontSize:12,fontWeight:700,color:stage.status==="active"?"var(--accent)":stage.status==="done"?"var(--text2)":"var(--text3)",background:isHovered?"var(--surface-2)":"var(--surface)",textAlign:"right",direction:"rtl",cursor:stage._id?"pointer":"default",fontFamily:"inherit",position:"sticky",left:0,zIndex:4}}
                         disabled={!stage._id}
                       >
                         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}}>
@@ -685,7 +690,7 @@ export const TimelineScreen = () => {
               </div>
             </div>
 
-            <div style={{display:"flex",gap:16,padding:"12px 16px",fontSize:11,color:"var(--text2)",direction:"rtl",borderTop:"1px solid var(--border)",background:"#FAFAF8",position:"sticky",bottom:0,zIndex:8,boxShadow:"0 -6px 14px rgba(24,24,27,.04)"}}>
+            <div style={{display:"flex",gap:16,padding:"12px 16px",fontSize:11,color:"var(--text2)",direction:"rtl",borderTop:"1px solid var(--border)",background:"var(--surface-2)",position:"sticky",bottom:0,zIndex:8,boxShadow:"0 -6px 14px rgba(24,24,27,.04)"}}>
               {Object.entries(statusLabels).map(([key, label]) => (
                 <span key={key} style={{display:"flex",alignItems:"center",gap:5}}>
                   <span style={{width:16,height:8,background:statusColors[key],borderRadius:2,display:"inline-block"}}/>

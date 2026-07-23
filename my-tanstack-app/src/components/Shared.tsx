@@ -25,6 +25,7 @@ export const PATHS: Record<string, string[]> = {
   x:["M18 6L6 18","M6 6l12 12"],
   "chevron-down":["M6 9l6 6 6-6"],
   "chevron-right":["M9 18l6-6-6-6"],
+  "chevron-left":["M15 18l-6-6 6-6"],
   star:["M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"],
   phone:["M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"],
   send:["M22 2L11 13","M22 2L15 22l-4-9-9-4 20-7z"],
@@ -35,6 +36,7 @@ export const PATHS: Record<string, string[]> = {
   trash:["M3 6h18","M8 6V4h8v2","M19 6l-1 14H6L5 6"],
   "trash-2":["M3 6h18","M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6","M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2","M10 11v6","M14 11v6"],
   "arrow-right":["M5 12h14","M12 5l7 7-7 7"],
+  "arrow-left":["M19 12H5","M12 19l-7-7 7-7"],
   pen:["M17 3a2.828 2.828 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z"],
   square:["M3 3h18v18H3z"],
   "zoom-in":["M11 19a8 8 0 100-16 8 8 0 000 16z","M21 21l-4.35-4.35","M11 8v6","M8 11h6"],
@@ -79,9 +81,10 @@ const tagMeta: any = {
   "בדיקה":{cls:"badge-pending"},"אישור":{cls:"badge-done"},
 };
 
-export const Badge = ({type, children}: any) => {
+export const Badge = ({type, children, size}: any) => {
   const m = statusMeta[type] || {};
-  return <span className={`badge ${m.cls||'badge-pending'}`}>{children ?? m.label}</span>;
+  const sizeClass = size === 'sm' ? ' badge-sm' : size === 'lg' ? ' badge-lg' : '';
+  return <span className={`badge ${m.cls||'badge-pending'}${sizeClass}`}>{children ?? m.label}</span>;
 };
 
 export const TagBadge = ({tag}: any) => {
@@ -89,15 +92,52 @@ export const TagBadge = ({tag}: any) => {
   return <span className={`badge ${m.cls}`}>{tag}</span>;
 };
 
-export const ProgressBar = ({value, color, height=6}: any) => (
-  <div style={{height,background:"var(--border)",borderRadius:height/2,overflow:"hidden"}}>
-    <div style={{height:"100%",width:`${value}%`,background:color||"var(--accent)",borderRadius:height/2,transition:"width .4s"}}/>
+export const ProgressBar = ({value, color, height=6, noShimmer}: any) => (
+  <div style={{height,background:"var(--border)",borderRadius:height/2,overflow:"hidden",position:"relative"}}>
+    <div style={{
+      height:"100%",
+      width:`${Math.min(100,Math.max(0,value||0))}%`,
+      background: color
+        ? color
+        : `linear-gradient(90deg, var(--accent), var(--accent-dark))`,
+      borderRadius:height/2,
+      transition:"width 0.6s cubic-bezier(0.4,0,0.2,1)",
+      position:"relative",
+      overflow:"hidden"
+    }}>
+      {!noShimmer && (
+        <div style={{
+          position:"absolute",inset:0,
+          background:"linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.32) 50%, transparent 100%)",
+          animation:"shimmer 2.5s ease-in-out infinite"
+        }}/>
+      )}
+    </div>
   </div>
 );
 
-export const Avatar = ({letter, color="#E07A38", size=36}: any) => (
-  <div style={{width:size,height:size,borderRadius:"50%",background:`${color}22`,color,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:size*0.38,flexShrink:0}}>
-    {letter}
+export const Avatar = ({letter, color="#E07A38", size=36, status}: any) => (
+  <div style={{position:"relative",flexShrink:0,width:size,height:size}}>
+    <div style={{
+      width:size,height:size,borderRadius:"50%",
+      background:`linear-gradient(135deg, ${color}33 0%, ${color}18 100%)`,
+      color,display:"flex",alignItems:"center",justifyContent:"center",
+      fontWeight:800,fontSize:size*0.4,
+      border:`1.5px solid ${color}30`,
+      boxShadow:`0 2px 8px ${color}20`
+    }}>
+      {letter}
+    </div>
+    {status && (
+      <div style={{
+        position:"absolute",bottom:0,right:0,
+        width:size*0.28,height:size*0.28,
+        borderRadius:"50%",
+        background:status==="online"?"var(--success)":status==="busy"?"var(--warning)":"var(--border)",
+        border:`2px solid var(--surface)`,
+        boxShadow:status==="online"?"0 0 6px var(--success-glow)":"none"
+      }}/>
+    )}
   </div>
 );
 
@@ -125,24 +165,52 @@ export const Modal = ({onClose, title, children, width=660}: any) => (
   </AnimatePresence>
 );
 
-export const StatCard = ({label, value, sub, accent, icon}: any) => (
-  <motion.div whileHover={{y:-4,boxShadow:"var(--shadow-xl)"}} transition={{duration:0.2}} className="card" style={{padding:"24px 24px 20px",borderLeft:`4px solid ${accent||"var(--accent)"}`, height: '100%'}}>
-    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start", height: '100%'}}>
-      <div>
-        <div style={{fontSize:28,fontWeight:800,letterSpacing:"-1px",color:accent||"var(--text1)",lineHeight:1}}>{value}</div>
-        <div style={{fontSize:14,color:"var(--text2)",marginTop:8,fontWeight:600}}>{label}</div>
-        {sub && <div style={{fontSize:12,color:"var(--text3)",marginTop:6}}>{sub}</div>}
-      </div>
-      {icon && <div style={{color:accent||"var(--text3)",opacity:.8,background:"var(--bg)",padding:10,borderRadius:"50%"}}><Icon n={icon} s={24}/></div>}
-    </div>
-  </motion.div>
-);
+export const StatCard = ({label, value, sub, accent, icon, className}: any) => {
+  const color = accent || "var(--accent)";
+  const colorLight = accent ? `${accent}18` : "var(--accent-light)";
+  return (
+    <motion.div
+      whileHover={{y:-3,boxShadow:"var(--shadow-lg)"}}
+      transition={{duration:0.18,ease:[0.4,0,0.2,1]}}
+      className={`card-stat ${className||''}`}
+      style={{"--stat-color":color, "--stat-color-light":colorLight, height:"100%"} as any}
+    >
+      {icon && (
+        <div className="card-stat-icon">
+          <Icon n={icon} s={22}/>
+        </div>
+      )}
+      <div className="card-stat-value">{value}</div>
+      <div className="card-stat-label">{label}</div>
+      {sub && <div className="card-stat-sub">{sub}</div>}
+    </motion.div>
+  );
+};
 
-export const Btn = ({onClick, children, variant="primary", size="md", disabled, style:sx, type="button", ...rest}: any) => {
-  const base = {display:"inline-flex",alignItems:"center",gap:8,border:"none",borderRadius:10,cursor:disabled?"not-allowed":"pointer",fontFamily:"'Heebo',sans-serif",fontWeight:700,transition:"all .2s",opacity:disabled?.5:1,...sx};
-  const sizeS = size==="sm"?{padding:"6px 12px",fontSize:13}:{padding:"10px 20px",fontSize:14};
-  const variantS = variant==="ghost"?{background:"transparent",color:"var(--text2)",border:"1px solid var(--border)"}:{background:"linear-gradient(135deg, var(--accent) 0%, #c96b30 100%)",color:"#fff",boxShadow:"0 2px 8px rgba(224,122,56,0.3)"};
-  return <motion.button type={type} whileHover={disabled?{}:{scale:1.02,boxShadow:variant==="primary"?"0 4px 12px rgba(224,122,56,0.4)":"none"}} whileTap={disabled?{}:{scale:0.97}} onClick={onClick} style={{...base,...sizeS,...variantS,...sx}} disabled={disabled} {...rest}>{children}</motion.button>;
+export const Btn = ({onClick, children, variant="primary", size="md", disabled, style:sx, type="button", icon, ...rest}: any) => {
+  const variantClass = ({
+    primary: "btn-primary",
+    ghost: "btn-ghost",
+    secondary: "btn-secondary",
+    danger: "btn-danger",
+    success: "btn-success",
+  } as Record<string, string>)[variant] || "btn-primary";
+  const sizeClass = size==="sm"?"btn-sm":size==="lg"?"btn-lg":"";
+  return (
+    <motion.button
+      type={type}
+      whileHover={disabled?{}:{y:-1}}
+      whileTap={disabled?{}:{scale:0.97}}
+      onClick={onClick}
+      disabled={disabled}
+      className={`btn ${variantClass} ${sizeClass}`}
+      style={{opacity:disabled?.5:1,cursor:disabled?"not-allowed":"pointer",...sx}}
+      {...rest}
+    >
+      {icon && <Icon n={icon} s={size==="sm"?13:15}/>}
+      {children}
+    </motion.button>
+  );
 };
 
 export const Input = ({value, onChange, placeholder, type="text", style:sx}: any) => (
@@ -163,6 +231,89 @@ export const STAGE_ICONS = [
   "📋","📄","📑","📝","📅","📆","✅","✔️","💰","💵","💳","🔐","🔑","📦"
 ];
 
+// ─── Dark Mode Toggle ────────────────────────────────────────────────────────
+
+/**
+ * Returns the localStorage key for the current user's theme preference.
+ * Per-user when userId is provided, falls back to the legacy device-level key.
+ */
+const themeKey = (userId?: string | null) =>
+  userId ? `buildsync:theme:${userId}` : 'buildsync:theme';
+
+export const useDarkMode = (userId?: string | null) => {
+  const [dark, setDark] = React.useState(() => {
+    if (typeof window === 'undefined') return false;
+    // Try per-user key first, then legacy device-level key, then OS preference
+    const saved =
+      localStorage.getItem(themeKey(userId)) ??
+      localStorage.getItem('buildsync:theme');
+    if (saved) return saved === 'dark';
+    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+  });
+
+  // Apply theme to DOM whenever `dark` changes, and save to per-user key
+  React.useEffect(() => {
+    const root = document.documentElement;
+    if (dark) {
+      root.setAttribute('data-theme', 'dark');
+      root.style.colorScheme = 'dark';
+    } else {
+      root.setAttribute('data-theme', 'light');
+      root.style.colorScheme = 'light';
+    }
+    localStorage.setItem(themeKey(userId), dark ? 'dark' : 'light');
+  }, [dark, userId]);
+
+  // When userId becomes known for the first time, load that user's preference
+  // (or migrate the device-level setting to the new per-user key).
+  React.useEffect(() => {
+    if (!userId) return;
+    const perUserSaved = localStorage.getItem(themeKey(userId));
+    if (perUserSaved) {
+      // User has a stored preference — apply it
+      setDark(perUserSaved === 'dark');
+    } else {
+      // No per-user preference yet — migrate device-level pref if it exists
+      const deviceSaved = localStorage.getItem('buildsync:theme');
+      if (deviceSaved) {
+        localStorage.setItem(themeKey(userId), deviceSaved);
+        setDark(deviceSaved === 'dark');
+      }
+    }
+  }, [userId]);
+
+  // Apply on mount immediately (SSR-safe, runs once)
+  React.useEffect(() => {
+    const saved =
+      (userId ? localStorage.getItem(themeKey(userId)) : null) ??
+      localStorage.getItem('buildsync:theme');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const isDark = saved ? saved === 'dark' : prefersDark;
+    document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+    document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';
+    setDark(isDark);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return { dark, toggle: () => setDark(d => !d) };
+};
+
+export const DarkModeToggle = ({ userId }: { userId?: string | null }) => {
+  const { dark, toggle } = useDarkMode(userId);
+  return (
+    <button
+      onClick={toggle}
+      title={dark ? 'עבור למצב בהיר' : 'עבור למצב כהה'}
+      className={`dark-mode-toggle${dark ? ' on' : ''}`}
+      aria-label="toggle dark mode"
+    >
+      <div className="dark-mode-toggle-thumb">
+        {dark ? '🌙' : '☀️'}
+      </div>
+    </button>
+  );
+};
+
 export const IconPicker = ({ value, onChange }: { value?: string, onChange: (v: string) => void }) => {
   const [open, setOpen] = React.useState(false);
   const ref = React.useRef<HTMLDivElement>(null);
@@ -181,7 +332,7 @@ export const IconPicker = ({ value, onChange }: { value?: string, onChange: (v: 
     <div ref={ref} style={{ position: 'relative' }}>
        <div 
          onClick={() => setOpen(!open)}
-         style={{ width: '100%', height: 42, display: 'flex', alignItems: 'center', padding: '0 12px', border: '1px solid var(--border)', borderRadius: 8, background: '#fff', cursor: 'pointer', fontSize: 20 }}
+         style={{ width: '100%', height: 42, display: 'flex', alignItems: 'center', padding: '0 12px', border: '1.5px solid var(--border)', borderRadius: 8, background: 'var(--surface)', cursor: 'pointer', fontSize: 20, transition: 'border-color 0.2s' }}
        >
          {value || "📌"}
        </div>
@@ -189,10 +340,10 @@ export const IconPicker = ({ value, onChange }: { value?: string, onChange: (v: 
          <div style={{ 
            position: 'absolute', top: 50, right: 0, width: 220, 
            maxHeight: 280, overflowY: 'auto',
-           background: '#fff', border: '1px solid var(--border)', 
-           borderRadius: 8, padding: 8, display: 'grid', 
+           background: 'var(--surface)', border: '1px solid var(--border)', 
+           borderRadius: 12, padding: 8, display: 'grid', 
            gridTemplateColumns: 'repeat(5, 1fr)', gap: 4, 
-           zIndex: 100, boxShadow: 'var(--shadow-md)' 
+           zIndex: 100, boxShadow: 'var(--shadow-lg)' 
          }}>
            {STAGE_ICONS.map(ic => (
              <div 
@@ -414,8 +565,8 @@ export const PremiumLock = ({ isLocked, title = "פיצ'ר זה זמין ב-Pro"
       <div style={{ filter: 'blur(10px) grayscale(0.5)', opacity: 0.6, pointerEvents: 'none', userSelect: 'none', height: '100%' }}>
         {children}
       </div>
-      <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24, zIndex: 10, background: 'linear-gradient(180deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.9) 50%, rgba(255,255,255,0.95) 100%)' }}>
-        <motion.div initial={{ scale: 0.9, opacity: 0, y: 10 }} animate={{ scale: 1, opacity: 1, y: 0 }} transition={{ type: "spring", stiffness: 300, damping: 20 }} style={{ background: '#fff', borderRadius: 24, padding: 32, maxWidth: 400, textAlign: 'center', boxShadow: '0 20px 40px rgba(0,0,0,0.1)', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+      <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24, zIndex: 10, background: 'linear-gradient(180deg, transparent 0%, var(--surface) 55%, var(--surface) 100%)' }}>
+        <motion.div initial={{ scale: 0.9, opacity: 0, y: 10 }} animate={{ scale: 1, opacity: 1, y: 0 }} transition={{ type: "spring", stiffness: 300, damping: 20 }} style={{ background: 'var(--card, var(--surface))', borderRadius: 24, padding: 32, maxWidth: 400, textAlign: 'center', boxShadow: '0 20px 40px rgba(0,0,0,0.18)', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'linear-gradient(135deg, #FFD700 0%, #F59E0B 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', marginBottom: 20, boxShadow: '0 10px 20px rgba(245,158,11,0.3)' }}>
             <Icon n="lock" s={28} />
           </div>
@@ -440,7 +591,7 @@ export const SubscriptionLock = ({
 }: { title?: string; description?: string }) => (
   <div className="page-content">
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', padding: 24 }}>
-      <motion.div initial={{ scale: 0.95, opacity: 0, y: 10 }} animate={{ scale: 1, opacity: 1, y: 0 }} transition={{ type: 'spring', stiffness: 300, damping: 20 }} style={{ background: '#fff', borderRadius: 24, padding: 32, maxWidth: 420, textAlign: 'center', boxShadow: '0 20px 40px rgba(0,0,0,0.1)', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+      <motion.div initial={{ scale: 0.95, opacity: 0, y: 10 }} animate={{ scale: 1, opacity: 1, y: 0 }} transition={{ type: 'spring', stiffness: 300, damping: 20 }} style={{ background: 'var(--card, var(--surface))', borderRadius: 24, padding: 32, maxWidth: 420, textAlign: 'center', boxShadow: '0 20px 40px rgba(0,0,0,0.18)', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'linear-gradient(135deg, #FFD700 0%, #F59E0B 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', marginBottom: 20, boxShadow: '0 10px 20px rgba(245,158,11,0.3)' }}>
           <Icon n="lock" s={28} />
         </div>

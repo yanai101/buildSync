@@ -187,10 +187,10 @@ export function CreateProjectWizard({ onClose, onSave, saving }: CreateProjectWi
                       <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4 }}>מומלץ 15%</div>
                     </div>
                   </div>
-                  <div style={{ background: '#FEF3C7', padding: 16, borderRadius: 12, border: '1px solid #FCD34D' }}>
+                  <div style={{ background: 'rgba(245,158,11,0.1)', padding: 16, borderRadius: 12, border: '1px solid rgba(245,158,11,0.35)' }}>
                     <div style={{ display: 'flex', gap: 12 }}>
-                      <Icon n="alert" s={18} c="#B45309" />
-                      <div style={{ fontSize: 13, lineHeight: 1.5, color: '#78350F' }}>
+                      <Icon n="alert" s={18} c="var(--warning)" />
+                      <div style={{ fontSize: 13, lineHeight: 1.5, color: 'var(--warning)' }}>
                         <strong>שים לב:</strong> אחוז הפחת ייקבע פעם אחת ולא ניתן יהיה לשנותו לאחר יצירת הפרויקט. ערך זה משפיע על כל כמויות הריצוף בכל החדרים.
                       </div>
                     </div>
@@ -288,9 +288,7 @@ export function CreateProjectWizard({ onClose, onSave, saving }: CreateProjectWi
           >
             {saving ? 'יוצר...' : step === STEPS.length - 1 ? 'צור פרויקט' : 'המשך'}
             {!saving && step < STEPS.length - 1 && (
-              <span style={{ display: 'inline-flex', transform: 'rotate(180deg)' }}>
-                <Icon n="chevron-right" s={14} />
-              </span>
+              <Icon n="chevron-left" s={14} />
             )}
           </Btn>
         </div>

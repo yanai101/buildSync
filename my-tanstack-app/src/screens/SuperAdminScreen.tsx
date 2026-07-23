@@ -362,12 +362,12 @@ export function SuperAdminScreen() {
                   placeholder="חיפוש משתמש לפי שם, אימייל או טלפון..." 
                   value={searchQuery} 
                   onChange={e => setSearchQuery(e.target.value)}
-                  style={{ width: '100%', padding: '12px 40px 12px 12px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 14, background: 'var(--bg)' }}
+                  style={{ width: '100%', padding: '12px 40px 12px 12px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 14, background: 'var(--surface-2)' }}
                 />
               </div>
               
               <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', flex: '1 1 auto', justifyContent: 'flex-end' }}>
-                <select value={sortBy} onChange={e => setSortBy(e.target.value)} className="input" style={{ width: 'auto', padding: '10px 32px 10px 12px', background: 'var(--bg)', border: '1px solid var(--border)' }}>
+                <select value={sortBy} onChange={e => setSortBy(e.target.value)} className="input" style={{ width: 'auto', padding: '10px 32px 10px 12px', background: 'var(--surface-2)', border: '1px solid var(--border)' }}>
                   <option value="newest">מיין לפי: חדשים קודם</option>
                   <option value="oldest">מיין לפי: ותיקים קודם</option>
                   <option value="projects">מיין לפי: כמות פרויקטים</option>
@@ -378,7 +378,7 @@ export function SuperAdminScreen() {
                     setSearchQuery(''); setFilterTier('all'); setFilterStatus('all');
                     setFilterRole('all'); setFilterActivity('all'); setFilterLastActivity('all'); setFilterExpiration('all'); setFilterJoinDate('all'); setSortBy('newest');
                   }}
-                  style={{ padding: '10px 16px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg)', cursor: 'pointer', fontSize: 14, color: 'var(--danger)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}
+                  style={{ padding: '10px 16px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface-2)', cursor: 'pointer', fontSize: 14, color: 'var(--danger)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}
                 >
                   <Icon n="x-circle" s={16} />
                   נקה הכל
@@ -392,7 +392,7 @@ export function SuperAdminScreen() {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 16 }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text2)' }}>סוג מנוי</label>
-                <select value={filterTier} onChange={e => setFilterTier(e.target.value)} className="input" style={{ padding: '10px 12px', background: 'var(--bg)' }}>
+                <select value={filterTier} onChange={e => setFilterTier(e.target.value)} className="input" style={{ padding: '10px 12px', background: 'var(--surface-2)' }}>
                   <option value="all">הכל</option>
                   <option value="free">ללא מנוי (Free)</option>
                   <option value="pro">Pro</option>
@@ -402,7 +402,7 @@ export function SuperAdminScreen() {
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text2)' }}>סטטוס השעיה</label>
-                <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="input" style={{ padding: '10px 12px', background: 'var(--bg)' }}>
+                <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="input" style={{ padding: '10px 12px', background: 'var(--surface-2)' }}>
                   <option value="all">הכל</option>
                   <option value="active">פעיל</option>
                   <option value="suspended">מושעה</option>
@@ -411,7 +411,7 @@ export function SuperAdminScreen() {
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text2)' }}>תפקיד</label>
-                <select value={filterRole} onChange={e => setFilterRole(e.target.value)} className="input" style={{ padding: '10px 12px', background: 'var(--bg)' }}>
+                <select value={filterRole} onChange={e => setFilterRole(e.target.value)} className="input" style={{ padding: '10px 12px', background: 'var(--surface-2)' }}>
                   <option value="all">הכל</option>
                   <option value="superAdmin">מנהלי מערכת</option>
                   <option value="owner">מנהלי פרויקט</option>
@@ -423,7 +423,7 @@ export function SuperAdminScreen() {
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text2)' }}>פעילות פרויקטים</label>
-                <select value={filterActivity} onChange={e => setFilterActivity(e.target.value)} className="input" style={{ padding: '10px 12px', background: 'var(--bg)' }}>
+                <select value={filterActivity} onChange={e => setFilterActivity(e.target.value)} className="input" style={{ padding: '10px 12px', background: 'var(--surface-2)' }}>
                   <option value="all">הכל</option>
                   <option value="active">עם פרויקטים</option>
                   <option value="inactive">ללא פרויקטים</option>
@@ -432,7 +432,7 @@ export function SuperAdminScreen() {
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text2)' }}>פעילות אחרונה</label>
-                <select value={filterLastActivity} onChange={e => setFilterLastActivity(e.target.value)} className="input" style={{ padding: '10px 12px', background: 'var(--bg)' }}>
+                <select value={filterLastActivity} onChange={e => setFilterLastActivity(e.target.value)} className="input" style={{ padding: '10px 12px', background: 'var(--surface-2)' }}>
                   <option value="all">הכל</option>
                   <option value="week">פעיל/ה ב-7 ימים</option>
                   <option value="month">פעיל/ה ב-30 יום</option>
@@ -443,7 +443,7 @@ export function SuperAdminScreen() {
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text2)' }}>תוקף מנוי</label>
-                <select value={filterExpiration} onChange={e => setFilterExpiration(e.target.value)} className="input" style={{ padding: '10px 12px', background: 'var(--bg)' }}>
+                <select value={filterExpiration} onChange={e => setFilterExpiration(e.target.value)} className="input" style={{ padding: '10px 12px', background: 'var(--surface-2)' }}>
                   <option value="all">הכל</option>
                   <option value="expired">פג תוקף</option>
                   <option value="month1">יפוג החודש</option>
@@ -454,7 +454,7 @@ export function SuperAdminScreen() {
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text2)' }}>תאריך הצטרפות</label>
-                <select value={filterJoinDate} onChange={e => setFilterJoinDate(e.target.value)} className="input" style={{ padding: '10px 12px', background: 'var(--bg)' }}>
+                <select value={filterJoinDate} onChange={e => setFilterJoinDate(e.target.value)} className="input" style={{ padding: '10px 12px', background: 'var(--surface-2)' }}>
                   <option value="all">הכל</option>
                   <option value="today">היום</option>
                   <option value="week">בשבוע האחרון</option>
@@ -486,7 +486,7 @@ export function SuperAdminScreen() {
               </div>
             )}
 
-            <div ref={parentRef} style={{ height: '600px', overflowY: 'auto', background: 'var(--bg)' }}>
+            <div ref={parentRef} style={{ height: '600px', overflowY: 'auto', background: 'var(--surface-2)' }}>
               {filteredUsers.length === 0 ? (
                 <div style={{ padding: 40, textAlign: 'center', color: 'var(--text3)' }}>
                   לא נמצאו משתמשים התואמים לחיפוש.
@@ -499,14 +499,14 @@ export function SuperAdminScreen() {
                     const isExpanded = expandedUserId === u._id;
 
                     const tierBadge = u.subscriptionTier === 'premium'
-                      ? <span style={{ fontSize: 11, background: '#FEF9C3', color: '#A16207', fontWeight: 700, padding: '2px 8px', borderRadius: 10, whiteSpace: 'nowrap' }}>⭐ פרימיום</span>
+                      ? <span style={{ fontSize: 11, background: 'rgba(245,158,11,0.12)', color: 'var(--warning)', fontWeight: 700, padding: '2px 8px', borderRadius: 10, whiteSpace: 'nowrap' }}>⭐ פרימיום</span>
                       : u.subscriptionTier === 'pro'
                       ? <span style={{ fontSize: 11, background: 'var(--accent-light, #EFF6FF)', color: 'var(--accent)', fontWeight: 700, padding: '2px 8px', borderRadius: 10 }}>Pro</span>
                       : <span style={{ fontSize: 11, color: 'var(--text3)', padding: '2px 8px', borderRadius: 10, background: 'var(--surface)' }}>חינם</span>;
 
                     const statusBadge = u.isSuspended
-                      ? <span style={{ fontSize: 11, color: '#EF4444', fontWeight: 600 }}>● מושעה</span>
-                      : <span style={{ fontSize: 11, color: '#22C55E', fontWeight: 600 }}>● פעיל</span>;
+                      ? <span style={{ fontSize: 11, color: 'var(--danger)', fontWeight: 600 }}>● מושעה</span>
+                      : <span style={{ fontSize: 11, color: 'var(--success)', fontWeight: 600 }}>● פעיל</span>;
 
                     return (
                       <div
@@ -642,7 +642,7 @@ export function SuperAdminScreen() {
                               {u.subscriptionExpiresAt && (
                                 <div>
                                   <div style={{ fontSize: 11, color: 'var(--text3)', fontWeight: 600, marginBottom: 4 }}>תוקף מנוי</div>
-                                  <div style={{ color: u.subscriptionExpiresAt < Date.now() ? '#EF4444' : 'var(--text1)' }}>
+                                  <div style={{ color: u.subscriptionExpiresAt < Date.now() ? 'var(--danger)' : 'var(--text1)' }}>
                                     {new Date(u.subscriptionExpiresAt).toLocaleDateString('he-IL')}
                                   </div>
                                 </div>
@@ -676,14 +676,14 @@ export function SuperAdminScreen() {
                               if (lastDailyLog) score += 15;
                               score = Math.min(score, 100);
 
-                              const scoreColor = score >= 70 ? '#22C55E' : score >= 35 ? '#F59E0B' : '#EF4444';
+                              const scoreColor = score >= 70 ? 'var(--success)' : score >= 35 ? 'var(--warning)' : 'var(--danger)';
                               const scoreLabel = score >= 70 ? 'פעיל מאוד' : score >= 35 ? 'פעיל חלקית' : 'לא פעיל';
 
                               return (
                                 <div style={{
                                   marginBottom: 16,
                                   padding: '14px 16px',
-                                  background: '#fff',
+                                  background: 'var(--surface-2)',
                                   borderRadius: 10,
                                   border: '1px solid var(--border)',
                                   borderRight: `4px solid ${scoreColor}`,
@@ -730,7 +730,7 @@ export function SuperAdminScreen() {
                                     </div>
                                     <div>
                                       <div style={{ color: 'var(--text3)', marginBottom: 2 }}>📱 מכשירי Push</div>
-                                      <div style={{ fontWeight: 600, color: pushDevices > 0 ? '#22C55E' : 'var(--text3)' }}>
+                                      <div style={{ fontWeight: 600, color: pushDevices > 0 ? 'var(--success)' : 'var(--text3)' }}>
                                         {pushDevices > 0 ? `${pushDevices} מכשיר${pushDevices > 1 ? 'ים' : ''}` : 'לא מופעל'}
                                       </div>
                                     </div>
@@ -773,7 +773,7 @@ export function SuperAdminScreen() {
                                   >✏️ עריכה</button>
                                   <button
                                     onClick={(e) => { e.stopPropagation(); setResetPasswordUser(u); }}
-                                    style={{ border: 'none', background: '#FFFBEB', padding: '8px 16px', borderRadius: 8, cursor: 'pointer', color: '#F59E0B', fontWeight: 600, fontSize: 13 }}
+                                    style={{ border: 'none', background: 'rgba(245,158,11,0.12)', padding: '8px 16px', borderRadius: 8, cursor: 'pointer', color: 'var(--warning)', fontWeight: 600, fontSize: 13 }}
                                   >🔑 איפוס סיסמה</button>
                                   {import.meta.env.DEV && (
                                     <button
@@ -783,7 +783,7 @@ export function SuperAdminScreen() {
                                   )}
                                   <button
                                     onClick={(e) => { e.stopPropagation(); setShowConfirmDelete(u._id); }}
-                                    style={{ border: 'none', background: '#FEF2F2', padding: '8px 16px', borderRadius: 8, cursor: 'pointer', color: '#EF4444', fontWeight: 600, fontSize: 13 }}
+                                    style={{ border: 'none', background: 'rgba(239,68,68,0.1)', padding: '8px 16px', borderRadius: 8, cursor: 'pointer', color: 'var(--danger)', fontWeight: 600, fontSize: 13 }}
                                   >🗑 מחיקה</button>
                                 </>
                               )}
@@ -861,7 +861,7 @@ export function SuperAdminScreen() {
                       </td>
                       <td style={{ padding: 12 }}>{p.tier === 'premium' ? 'Premium' : 'Pro'}</td>
                       <td style={{ padding: 12 }}>{p.subscriptionDurationMonths} חודשים</td>
-                      <td style={{ padding: 12, color: isExpired && !isFullyUsed ? '#EF4444' : 'inherit' }}>
+                      <td style={{ padding: 12, color: isExpired && !isFullyUsed ? 'var(--danger)' : 'inherit' }}>
                         {new Date(p.expiresAt).toLocaleDateString('he-IL')}
                       </td>
                       <td style={{ padding: 12 }}>{p.currentUses} / {p.maxUses}</td>
@@ -869,9 +869,9 @@ export function SuperAdminScreen() {
                         {isFullyUsed ? (
                           <span style={{ color: 'var(--text3)' }}>נוצל במלואו</span>
                         ) : isExpired ? (
-                          <span style={{ color: '#EF4444' }}>פג תוקף</span>
+                          <span style={{ color: 'var(--danger)' }}>פג תוקף</span>
                         ) : (
-                          <span style={{ color: '#22C55E' }}>פעיל</span>
+                          <span style={{ color: 'var(--success)' }}>פעיל</span>
                         )}
                       </td>
                       <td style={{ padding: 12 }}>
@@ -883,11 +883,11 @@ export function SuperAdminScreen() {
                           }} 
                           style={{ 
                             border: 'none', 
-                            background: '#FEF2F2', 
+                            background: 'rgba(239,68,68,0.1)', 
                             padding: '6px 12px', 
                             borderRadius: 6, 
                             cursor: 'pointer', 
-                            color: '#EF4444',
+                            color: 'var(--danger)',
                             fontWeight: 500
                           }}
                         >
@@ -967,11 +967,11 @@ export function SuperAdminScreen() {
                           }} 
                           style={{ 
                             border: 'none', 
-                            background: '#FEF2F2', 
+                            background: 'rgba(239,68,68,0.1)', 
                             padding: '6px 12px', 
                             borderRadius: 6, 
                             cursor: 'pointer', 
-                            color: '#EF4444',
+                            color: 'var(--danger)',
                             fontWeight: 500
                           }}
                         >
@@ -1043,7 +1043,7 @@ export function SuperAdminScreen() {
                   onChange={(e) => setEditingUser({ ...editingUser, isSuspended: e.target.checked })}
                   id="suspend-checkbox"
                 />
-                <label htmlFor="suspend-checkbox" style={{ color: '#EF4444', fontWeight: 600 }}>השעה משתמש זה</label>
+                <label htmlFor="suspend-checkbox" style={{ color: 'var(--danger)', fontWeight: 600 }}>השעה משתמש זה</label>
               </div>
             </div>
 
@@ -1131,7 +1131,7 @@ export function SuperAdminScreen() {
                   }
                 }}
                 disabled={newPassword.length < 8}
-                style={{ flex: 1, justifyContent: 'center', background: '#F59E0B', borderColor: '#F59E0B' }}
+                style={{ flex: 1, justifyContent: 'center', background: 'var(--warning)', borderColor: 'var(--warning)' }}
               >
                 שנה סיסמה
               </Btn>
@@ -1160,7 +1160,7 @@ export function SuperAdminScreen() {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               {supportTickets.map((ticket: any) => (
-                <div key={ticket._id} style={{ border: '1px solid var(--border)', borderRadius: 12, padding: 16, background: 'var(--bg)' }}>
+                <div key={ticket._id} style={{ border: '1px solid var(--border)', borderRadius: 12, padding: 16, background: 'var(--surface-2)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
                     <div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
@@ -1185,7 +1185,7 @@ export function SuperAdminScreen() {
                           }
                         }
                       }}
-                      style={{ background: '#22C55E', borderColor: '#22C55E' }}
+                      style={{ background: 'rgba(34,197,94,0.12)', borderColor: 'var(--success)' }}
                     >
                       <Icon n="check" s={16} /> סמן כטופל
                     </Btn>
@@ -1229,7 +1229,7 @@ export function SuperAdminScreen() {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               {guides.map((guide: any) => (
-                <div key={guide._id} style={{ border: '1px solid var(--border)', borderRadius: 12, padding: 16, background: 'var(--bg)', display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <div key={guide._id} style={{ border: '1px solid var(--border)', borderRadius: 12, padding: 16, background: 'var(--surface-2)', display: 'flex', flexDirection: 'column', gap: 16 }}>
                   <div>
                     <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>{guide.title}</div>
                     <div style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 12, lineHeight: 1.5 }}>{guide.description}</div>
@@ -1260,7 +1260,7 @@ export function SuperAdminScreen() {
                       if (confirm('האם למחוק מדריך זה?')) {
                         await deleteGuide({ id: guide._id });
                       }
-                    }} style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, justifyContent: 'center', border: 'none', background: '#FEF2F2', padding: '8px 12px', borderRadius: 8, cursor: 'pointer', color: '#EF4444', fontWeight: 500 }}>
+                    }} style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, justifyContent: 'center', border: 'none', background: 'rgba(239,68,68,0.1)', padding: '8px 12px', borderRadius: 8, cursor: 'pointer', color: 'var(--danger)', fontWeight: 500 }}>
                       <Icon n="trash" s={16} /> מחיקה
                     </button>
                   </div>
@@ -1359,12 +1359,12 @@ export function SuperAdminScreen() {
 
       {!!showConfirmDelete && (
         <Modal onClose={() => setShowConfirmDelete(null)} title="מחיקת משתמש לצמיתות">
-          <div style={{ color: '#EF4444', marginBottom: 16 }}>
+          <div style={{ color: 'var(--danger)', marginBottom: 16 }}>
             <Icon n="alert-triangle" s={32} style={{ marginBottom: 12, display: 'block' }} />
             אזהרה: הפעולה תמחק את המשתמש, את כל הפרויקטים שלו, את התמונות, הקבצים וכל מידע אחר שקשור אליו באופן בלתי הפיך.
           </div>
           <div style={{ display: 'flex', gap: 12 }}>
-            <Btn variant="primary" onClick={handleDelete} style={{ flex: 1, justifyContent: 'center', background: '#EF4444', borderColor: '#EF4444' }}>
+            <Btn variant="primary" onClick={handleDelete} style={{ flex: 1, justifyContent: 'center', background: 'var(--danger)', borderColor: 'var(--danger)' }}>
               כן, מחק משתמש ופרויקטים
             </Btn>
             <Btn variant="outline" onClick={() => setShowConfirmDelete(null)} style={{ flex: 1, justifyContent: 'center' }}>
