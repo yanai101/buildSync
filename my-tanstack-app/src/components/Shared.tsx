@@ -262,7 +262,7 @@ export const AppDialog = ({
         }}>
           <Icon n={n} s={32} />
         </div>
-        <div style={{ fontSize: 16, color: "var(--text2)", lineHeight: 1.6, marginBottom: 24 }}>
+        <div style={{ fontSize: 16, color: "var(--text2)", lineHeight: 1.6, marginBottom: 24, whiteSpace: "pre-line" }}>
           {message}
         </div>
         <div style={{display:"flex",gap:10,flexDirection:secondaryText?"row":"column"}}>

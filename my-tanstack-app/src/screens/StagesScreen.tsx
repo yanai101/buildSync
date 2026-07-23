@@ -890,9 +890,13 @@ export const StagesScreen = () => {
         await mutate('toggleTask', { id: taskDbId, done: newDone });
       } catch (err) {
         setStages(previousStages);
+        const errMsg = err instanceof Error ? err.message : "";
+        const isNoContractor = errMsg.includes("לא קושר קבלן");
         setFeedback({
-          title: "שגיאה בעדכון משימה",
-          message: err instanceof Error ? err.message : "לא הצלחנו לעדכן את המשימה. השינוי בוטל.",
+          title: isNoContractor ? "לא קושר קבלן לשלב" : "שגיאה בעדכון משימה",
+          message: isNoContractor
+            ? "כדי לסמן משימה כהושלמה, יש לקשר קבלן לשלב זה תחילה.\nלחץ על \"ערוך\" בכרטיס השלב ← בחר קבלן ← שמור שינויים."
+            : errMsg || "לא הצלחנו לעדכן את המשימה. השינוי בוטל.",
           type: "error",
         });
       }
