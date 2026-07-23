@@ -17,7 +17,6 @@ import type * as _lib_projectAccess from "../_lib/projectAccess.js";
 import type * as _lib_projectDeletion from "../_lib/projectDeletion.js";
 import type * as _lib_stageSchedule from "../_lib/stageSchedule.js";
 import type * as accountMerge from "../accountMerge.js";
-import type * as adminLookup from "../adminLookup.js";
 import type * as auth from "../auth.js";
 import type * as budget from "../budget.js";
 import type * as checklists from "../checklists.js";
@@ -70,7 +69,6 @@ declare const fullApi: ApiFromModules<{
   "_lib/projectDeletion": typeof _lib_projectDeletion;
   "_lib/stageSchedule": typeof _lib_stageSchedule;
   accountMerge: typeof accountMerge;
-  adminLookup: typeof adminLookup;
   auth: typeof auth;
   budget: typeof budget;
   checklists: typeof checklists;

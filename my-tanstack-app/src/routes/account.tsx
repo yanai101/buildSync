@@ -2,7 +2,7 @@ import { createFileRoute, useSearch } from '@tanstack/react-router'
 import * as React from 'react'
 import { useAction, useMutation, useQuery } from 'convex/react'
 import { AnimatePresence } from 'framer-motion'
-import { Btn, Input, Icon } from '~/components/Shared'
+import { Btn, Input, Icon, DarkModeToggle, useDarkMode } from '~/components/Shared'
 import { api } from '../../convex/_generated/api'
 import { useSubscription } from '~/hooks/useSubscription'
 import { useAppNotify } from '~/hooks/useAppNotify'
@@ -439,6 +439,11 @@ function AccountPage() {
       </div>
 
       <div className="card" style={{ padding: 24 }}>
+        <SectionHeader title="מראה ותצוגה" subtitle="בחר את מצב התצוגה המועדף עליך" />
+        <ThemeSelector userId={user._id} />
+      </div>
+
+      <div className="card" style={{ padding: 24 }}>
         <SectionHeader title="תמיכה ויצירת קשר" subtitle="זקוק לעזרה? נשמח לסייע לך בכל שאלה, תקלה או הצעה לשיפור." />
         <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
           <p style={{ fontSize: 13, color: 'var(--text2)', lineHeight: 1.6 }}>
@@ -573,6 +578,79 @@ function AccountPage() {
       )}
     </div>
   )
+}
+
+function ThemeSelector({ userId }: { userId: any }) {
+  const { mode, setMode } = useDarkMode(userId);
+
+  const options = [
+    {
+      value: 'light' as const,
+      icon: '☀️',
+      label: 'מצב בהיר',
+      desc: 'המשק תמיד בהיר בלי קשר להגדרות המחשב',
+    },
+    {
+      value: 'dark' as const,
+      icon: '🌙',
+      label: 'מצב כהה',
+      desc: 'משק תמיד כהה, נוח לעיניים בתאורה חשוכה',
+    },
+    {
+      value: 'auto' as const,
+      icon: '💻',
+      label: 'אוטומטי',
+      desc: 'עוקב אחר הגדרות המחשב — בהיר ביום, כהה בלילה',
+    },
+  ];
+
+  return (
+    <div style={{ display: 'flex', gap: 12, marginTop: 16, flexWrap: 'wrap' }}>
+      {options.map(opt => {
+        const active = mode === opt.value;
+        return (
+          <button
+            key={opt.value}
+            type="button"
+            onClick={() => setMode(opt.value)}
+            style={{
+              flex: 1,
+              minWidth: 140,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: 10,
+              padding: '20px 16px',
+              borderRadius: 14,
+              border: `2px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
+              background: active ? 'var(--accent-light)' : 'var(--surface-2)',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              fontFamily: 'inherit',
+              outline: 'none',
+            }}
+          >
+            <span style={{ fontSize: 28 }}>{opt.icon}</span>
+            <span style={{ fontWeight: 700, fontSize: 14, color: active ? 'var(--accent)' : 'var(--text1)' }}>
+              {opt.label}
+            </span>
+            <span style={{ fontSize: 12, color: 'var(--text3)', lineHeight: 1.4, textAlign: 'center' }}>
+              {opt.desc}
+            </span>
+            {active && (
+              <span style={{
+                fontSize: 11, fontWeight: 700, color: 'var(--accent)',
+                background: 'var(--accent-light)', border: '1px solid var(--accent)',
+                borderRadius: 20, padding: '2px 10px'
+              }}>
+                פעיל
+              </span>
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
 }
 
 function SectionHeader({ title, subtitle }: { title: string; subtitle?: string }) {

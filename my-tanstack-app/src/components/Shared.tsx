@@ -240,77 +240,98 @@ export const STAGE_ICONS = [
 const themeKey = (userId?: string | null) =>
   userId ? `buildsync:theme:${userId}` : 'buildsync:theme';
 
+type ThemeMode = 'light' | 'dark' | 'auto';
+
+const getSystemDark = () =>
+  typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+const applyTheme = (mode: ThemeMode) => {
+  const dark = mode === 'dark' || (mode === 'auto' && getSystemDark());
+  document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+  document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
+};
+
 export const useDarkMode = (userId?: string | null) => {
-  const [dark, setDark] = React.useState(() => {
-    if (typeof window === 'undefined') return false;
-    // Try per-user key first, then legacy device-level key, then OS preference
+  const [mode, setModeState] = React.useState<ThemeMode>(() => {
+    if (typeof window === 'undefined') return 'auto';
     const saved =
       localStorage.getItem(themeKey(userId)) ??
       localStorage.getItem('buildsync:theme');
-    if (saved) return saved === 'dark';
-    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+    if (saved === 'light' || saved === 'dark' || saved === 'auto') return saved;
+    // Legacy: old keys stored 'true'/'false' as strings or just 'dark'/'light'
+    if (saved === 'true') return 'dark';
+    if (saved === 'false') return 'light';
+    return 'auto'; // default: follow OS
   });
 
-  // Apply theme to DOM whenever `dark` changes, and save to per-user key
+  // Apply theme + listen for OS changes when in auto mode
   React.useEffect(() => {
-    const root = document.documentElement;
-    if (dark) {
-      root.setAttribute('data-theme', 'dark');
-      root.style.colorScheme = 'dark';
-    } else {
-      root.setAttribute('data-theme', 'light');
-      root.style.colorScheme = 'light';
-    }
-    localStorage.setItem(themeKey(userId), dark ? 'dark' : 'light');
-  }, [dark, userId]);
+    applyTheme(mode);
+    // Always write to per-user key AND generic fallback key.
+    // The inline <script> in __root.tsx reads the generic key before React
+    // boots, so the loading screen always shows the correct theme.
+    localStorage.setItem(themeKey(userId), mode);
+    localStorage.setItem('buildsync:theme', mode);
 
-  // When userId becomes known for the first time, load that user's preference
-  // (or migrate the device-level setting to the new per-user key).
+    if (mode === 'auto') {
+      const mq = window.matchMedia('(prefers-color-scheme: dark)');
+      const onChange = () => applyTheme('auto');
+      mq.addEventListener('change', onChange);
+      return () => mq.removeEventListener('change', onChange);
+    }
+  }, [mode, userId]);
+
+  // When userId becomes known, load that user's saved preference
   React.useEffect(() => {
     if (!userId) return;
-    const perUserSaved = localStorage.getItem(themeKey(userId));
-    if (perUserSaved) {
-      // User has a stored preference — apply it
-      setDark(perUserSaved === 'dark');
+    const saved = localStorage.getItem(themeKey(userId));
+    if (saved === 'light' || saved === 'dark' || saved === 'auto') {
+      setModeState(saved);
     } else {
-      // No per-user preference yet — migrate device-level pref if it exists
-      const deviceSaved = localStorage.getItem('buildsync:theme');
-      if (deviceSaved) {
-        localStorage.setItem(themeKey(userId), deviceSaved);
-        setDark(deviceSaved === 'dark');
+      // Migrate device-level pref to per-user key
+      const device = localStorage.getItem('buildsync:theme');
+      if (device === 'light' || device === 'dark' || device === 'auto') {
+        localStorage.setItem(themeKey(userId), device);
+        setModeState(device as ThemeMode);
       }
     }
   }, [userId]);
 
-  // Apply on mount immediately (SSR-safe, runs once)
-  React.useEffect(() => {
-    const saved =
-      (userId ? localStorage.getItem(themeKey(userId)) : null) ??
-      localStorage.getItem('buildsync:theme');
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const isDark = saved ? saved === 'dark' : prefersDark;
-    document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
-    document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';
-    setDark(isDark);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const isDark = mode === 'dark' || (mode === 'auto' && getSystemDark());
 
-  return { dark, toggle: () => setDark(d => !d) };
+  return {
+    dark: isDark,
+    mode,
+    setMode: (m: ThemeMode) => setModeState(m),
+    // kept for back-compat
+    toggle: () => setModeState(d => d === 'dark' ? 'light' : 'dark'),
+  };
 };
 
 export const DarkModeToggle = ({ userId }: { userId?: string | null }) => {
-  const { dark, toggle } = useDarkMode(userId);
+  const { mode, setMode } = useDarkMode(userId);
+
+  const options: { value: ThemeMode; icon: string; title: string }[] = [
+    { value: 'light', icon: '☀️', title: 'מצב בהיר' },
+    { value: 'dark',  icon: '🌙', title: 'מצב כהה' },
+    { value: 'auto',  icon: '💻', title: 'אוטומטי (לפי המחשב)' },
+  ];
+
   return (
-    <button
-      onClick={toggle}
-      title={dark ? 'עבור למצב בהיר' : 'עבור למצב כהה'}
-      className={`dark-mode-toggle${dark ? ' on' : ''}`}
-      aria-label="toggle dark mode"
-    >
-      <div className="dark-mode-toggle-thumb">
-        {dark ? '🌙' : '☀️'}
-      </div>
-    </button>
+    <div className="theme-toggle-group" role="group" aria-label="בחר מצב תצוגה">
+      {options.map(opt => (
+        <button
+          key={opt.value}
+          onClick={() => setMode(opt.value)}
+          title={opt.title}
+          aria-label={opt.title}
+          aria-pressed={mode === opt.value}
+          className={`theme-toggle-btn${mode === opt.value ? ' active' : ''}`}
+        >
+          {opt.icon}
+        </button>
+      ))}
+    </div>
   );
 };
 

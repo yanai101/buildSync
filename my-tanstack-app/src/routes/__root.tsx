@@ -61,8 +61,20 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 
   return (
     <html lang="he" dir="rtl" suppressHydrationWarning={true}>
-      <head>
+      <head suppressHydrationWarning={true}>
         <HeadContent />
+        {/* Inline theme init — runs before React to prevent flash on loading screen */}
+        <script dangerouslySetInnerHTML={{ __html: `
+          (function() {
+            try {
+              var saved = localStorage.getItem('buildsync:theme');
+              var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+              var isDark = saved === 'dark' ? true : saved === 'light' ? false : prefersDark;
+              document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+              document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';
+            } catch(e) {}
+          })();
+        `}} />
         <script
           dangerouslySetInnerHTML={{
             __html: `

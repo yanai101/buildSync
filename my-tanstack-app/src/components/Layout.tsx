@@ -104,12 +104,15 @@ const LOADING_PHRASES = [
   "מסדרים את הבלטות..."
 ];
 
-// Applies saved dark/light theme on every render to avoid flash
+// Applies saved dark/light/auto theme on every render to avoid flash
 const DarkModeInit = () => {
   React.useEffect(() => {
     const saved = localStorage.getItem('buildsync:theme');
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const isDark = saved ? saved === 'dark' : prefersDark;
+    const isDark =
+      saved === 'dark' ? true :
+      saved === 'light' ? false :
+      prefersDark; // 'auto' or no saved value → follow OS
     document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
     document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';
   }, []);
@@ -801,8 +804,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 <span className="desktop-only">שדרג ל-Pro</span>
               </button>
             )}
-            <DarkModeToggle userId={identity?.userId} />
-            <div className="desktop-only" style={{ width: 1, height: 16, background: "var(--border)", margin: "0 4px" }} />
+
             <div ref={menuRef} style={{ position: "relative" }}>
               <button
                 id="tour-user-menu"
