@@ -87,7 +87,7 @@ const LockPaymentModal = ({
           
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {files.map((f, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 12, background: '#F9FAFB', padding: '6px 10px', borderRadius: 6 }}>
+              <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 12, background: 'var(--surface-2)', padding: '6px 10px', borderRadius: 6 }}>
                 <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: 200 }}>{f.file.name}</span>
                 {f.progress < 100 ? (
                   <span style={{ color: 'var(--text3)' }}>מעלה...</span>
@@ -312,7 +312,7 @@ const PartialPaymentModal = ({
           
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {files.map((f, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 12, background: '#F9FAFB', padding: '6px 10px', borderRadius: 6 }}>
+              <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 12, background: 'var(--surface-2)', padding: '6px 10px', borderRadius: 6 }}>
                 <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: 200 }}>{f.file.name}</span>
                 {f.progress < 100 ? (
                   <span style={{ color: 'var(--text3)' }}>מעלה...</span>
@@ -645,7 +645,7 @@ const DraggableMilestoneAccordion = ({ m, i, onDragEnd, renderAccordion }: Dragg
       dragControls={controls}
       onDragEnd={onDragEnd}
       style={{
-        background: (m.paid || m.isLocked) ? "#F0FDF4" : (!m.paid && (m as any).partialPayments?.length > 0) ? "#FFFBEB" : "#FFFFFF",
+        background: (m.paid || m.isLocked) ? 'rgba(16,185,129,0.08)' : (!m.paid && (m as any).partialPayments?.length > 0) ? 'rgba(245,158,11,0.08)' : 'var(--surface)',
         border: "1px solid var(--border)",
         borderRadius: 8,
         marginBottom: 8,
@@ -965,7 +965,7 @@ const PaymentSchedule = ({
                 {m.paid && m.vatAmount ? `+ ${fmtMoney(m.vatAmount)} מע"מ` : (!contractor.includesVat && !m.paid ? `+ מע"מ` : null)}
               </div>
               {isSyncedLocked && (
-                <div style={{fontSize:11,color:"#3730A3",fontWeight:700,background:"#EEF2FF",padding:"4px 8px",borderRadius:4}}>ממשימות השלב</div>
+                <div style={{fontSize:11,color:"#6366F1",fontWeight:700,background:"rgba(99,102,241,0.12)",padding:"4px 8px",borderRadius:4}}>ממשימות השלב</div>
               )}
             </div>
 
@@ -980,11 +980,11 @@ const PaymentSchedule = ({
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                       <span style={{ fontWeight: 600, color: 'var(--success)' }}>{fmtMoney(p.amount)}</span>
                       <span style={{ color: 'var(--text3)' }}>({p.date.split('-').reverse().join('/')})</span>
-                      {p.note && <span style={{ color: 'var(--text2)', fontSize: 11, background: '#F1F5F9', padding: '2px 6px', borderRadius: 4 }} title={p.note}>{p.note}</span>}
+                      {p.note && <span style={{ color: 'var(--text2)', fontSize: 11, background: 'var(--surface-2)', padding: '2px 6px', borderRadius: 4 }} title={p.note}>{p.note}</span>}
                       {p.files && p.files.length > 0 && (
                         <div style={{ display: 'flex', gap: 4 }}>
                           {p.files.map((f: any) => (
-                            <button key={f.id} onClick={() => onViewFile?.({ id: f.id as string, url: f.url, name: f.name, milestoneId: m.id as string })} title={f.name} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, background: '#EEF2FF', color: '#4F46E5', borderRadius: 4, border: 'none', cursor: 'pointer' }}>
+                            <button key={f.id} onClick={() => onViewFile?.({ id: f.id as string, url: f.url, name: f.name, milestoneId: m.id as string })} title={f.name} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, background: 'rgba(99,102,241,0.12)', color: '#6366F1', borderRadius: 4, border: 'none', cursor: 'pointer' }}>
                               <Icon n="file-text" s={12}/>
                             </button>
                           ))}
@@ -1009,7 +1009,7 @@ const PaymentSchedule = ({
               </button>
               <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                 {(m.files || []).map((f: any) => (
-                  <button key={f.id} onClick={() => onViewFile?.({ id: f.id as string, url: f.url, name: f.name, milestoneId: m.id as string })} title={f.name} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: '#EEF2FF', color: '#4F46E5', borderRadius: 4, border: 'none', padding: '4px 8px', fontSize: 11, cursor: 'pointer' }}>
+                  <button key={f.id} onClick={() => onViewFile?.({ id: f.id as string, url: f.url, name: f.name, milestoneId: m.id as string })} title={f.name} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(99,102,241,0.12)', color: '#6366F1', borderRadius: 4, border: 'none', padding: '4px 8px', fontSize: 11, cursor: 'pointer' }}>
                     <Icon n="file-text" s={12}/>
                     {f.name.length > 15 ? f.name.substring(0, 15) + "..." : f.name}
                   </button>
@@ -1079,20 +1079,20 @@ const PaymentSchedule = ({
           </div>
         </div>
         {locked && (
-          <div style={{background:"#EEF2FF",color:"#3730A3",borderRadius:8,padding:"6px 12px",fontSize:12,fontWeight:600,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+          <div style={{background:"rgba(99,102,241,0.12)",color:"#6366F1",borderRadius:8,padding:"6px 12px",fontSize:12,fontWeight:600,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
             <Icon n="lock" s={12}/> מסונכרן לפי משימות השלבים
           </div>
         )}
       </div>
 
       {scheduleOverBudget && !locked && (
-        <div style={{margin:"10px 18px 0",border:"1px solid #FCA5A5",background:"#FEF2F2",color:"#991B1B",borderRadius:8,padding:"8px 10px",fontSize:12,fontWeight:700}}>
+        <div style={{margin:"10px 18px 0",border:"1px solid var(--danger)",background:"rgba(239,68,68,0.08)",color:"var(--danger)",borderRadius:8,padding:"8px 10px",fontSize:12,fontWeight:700}}>
           סכום שלבי התשלום ({fmtMoney(totalAmount)}) גבוה מהסכום המוסכם עם הקבלן ({fmtMoney(contractor.budget)}). צריך להקטין אחוזים לפני שמירה.
         </div>
       )}
 
       {locked && totalAmount !== Math.round(contractor.budget) && (
-        <div style={{margin:"10px 18px 0",border:"1px solid #FCD34D",background:"#FFFBEB",color:"#92400E",borderRadius:8,padding:"10px 12px",fontSize:12,display:"flex",flexDirection:"column",gap:8}}>
+        <div style={{margin:'10px 18px 0',border:'1px solid rgba(245,158,11,0.35)',background:'rgba(245,158,11,0.08)',color:'var(--warning-text, #92400E)',borderRadius:8,padding:'10px 12px',fontSize:12,display:'flex',flexDirection:'column',gap:8}}>
           <div>
             <div style={{fontWeight:700,marginBottom:2}}>חוסר התאמה בתקציב</div>
             סכום השלבים המשויכים לקבלן ({fmtMoney(totalAmount)}) שונה מסכום החוזה המוגדר ({fmtMoney(contractor.budget)}).
@@ -1186,7 +1186,7 @@ const PaymentSchedule = ({
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {milestones.map((m, i) => (
               <div key={m.id} style={{
-                background: (m.paid || m.isLocked) ? "#F0FDF4" : (!m.paid && (m as any).partialPayments?.length > 0) ? "#FFFBEB" : "#FFFFFF",
+                background: (m.paid || m.isLocked) ? 'rgba(16,185,129,0.08)' : (!m.paid && (m as any).partialPayments?.length > 0) ? 'rgba(245,158,11,0.08)' : 'var(--surface)',
                 border: "1px solid var(--border)",
                 borderRadius: 8,
                 overflow: "hidden"
@@ -1205,7 +1205,7 @@ const PaymentSchedule = ({
         
         {/* Footer Summary */}
         <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 8 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#F9FAFB", padding: "12px 16px", borderRadius: 8, border: "1px solid var(--border)" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "var(--surface-2)", padding: "12px 16px", borderRadius: 8, border: "1px solid var(--border)" }}>
             <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text1)' }}>סה"כ</span>
             <div style={{ display: 'flex', gap: 24 }}>
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
@@ -1223,7 +1223,7 @@ const PaymentSchedule = ({
             </div>
           </div>
           {contractor.budget > totalAmount + 1 && (
-            <div style={{ background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 8, padding: "8px 14px", fontSize: 12, color: "#92400E", display: "flex", alignItems: "center", gap: 6 }}>
+            <div style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.35)', borderRadius: 8, padding: '8px 14px', fontSize: 12, color: 'var(--warning-text, #92400E)', display: 'flex', alignItems: 'center', gap: 6 }}>
               <Icon n="alert-triangle" s={13}/>
               <span>יש הפרש בלתי מתוכנן של <strong>{fmtMoney(contractor.budget - totalAmount)}</strong> — הוסף שלב תשלום כדי לכסות אותו</span>
             </div>
@@ -1660,7 +1660,7 @@ export const ContractorsScreen = () => {
             ))}
           </div>
           {form.role==="קבלן עד מפתח" && (
-            <div style={{fontSize:11,color:"#3730A3",background:"#EEF2FF",borderRadius:6,padding:"8px 12px",marginTop:4,lineHeight:1.5}}>
+            <div style={{fontSize:11,color:"#6366F1",background:"rgba(99,102,241,0.12)",borderRadius:6,padding:"8px 12px",marginTop:4,lineHeight:1.5}}>
               <strong>שים לב:</strong> לוח תשלומים של 9 שלבים יוגדר אוטומטית ויפרוס את ימי הפרויקט באופן יחסי כמפל. ניתן לערוך ולהזיז את השלבים בקלות תחת מסך <strong>"שלבי בנייה"</strong> מתי שתרצה!
             </div>
           )}
@@ -1833,7 +1833,7 @@ export const ContractorsScreen = () => {
                   </div>
                 )}
                 {c.stagePaymentMismatch && (
-                  <div style={{border:"1px solid #FCD34D",background:"#FFFBEB",color:"#92400E",borderRadius:8,padding:"8px 10px",fontSize:12,fontWeight:700,lineHeight:1.45}}>
+                  <div style={{border:'1px solid rgba(245,158,11,0.35)',background:'rgba(245,158,11,0.08)',color:'var(--warning-text, #92400E)',borderRadius:8,padding:'8px 10px',fontSize:12,fontWeight:700,lineHeight:1.45}}>
                     {c.stagePaymentMismatchReason || `סכום השלבים המשויכים לקבלן (${fmtMoney(c.stagePaymentTotal || 0)}) לא תואם לסכום החוזה (${fmtMoney(c.budget)}).`}
                   </div>
                 )}
@@ -1842,7 +1842,7 @@ export const ContractorsScreen = () => {
                     const id = stageDbId(stage);
                     const checked = (c.stages ?? []).some(linkedStage => stageDbId(linkedStage) === id);
                     return (
-                      <label key={id} style={{display:"flex",alignItems:"center",gap:8,border:"1px solid",borderColor:checked?"var(--accent)":"var(--border)",background:checked?"var(--accent-light)":"#fff",borderRadius:8,padding:"9px 10px",cursor:savingStageLinks?"wait":"pointer"}}>
+                      <label key={id} style={{display:'flex',alignItems:'center',gap:8,border:'1px solid',borderColor:checked?'var(--accent)':'var(--border)',background:checked?'var(--accent-light)':'var(--surface-2)',borderRadius:8,padding:'9px 10px',cursor:savingStageLinks?'wait':'pointer'}}>
                         <input
                           type="checkbox"
                           checked={checked}
@@ -1875,11 +1875,11 @@ export const ContractorsScreen = () => {
                 {(c.stages?.length ?? 0) > 0 && (
                   <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,borderTop:"1px solid var(--border)",paddingTop:12}}>
                     {c.role === 'קבלן עד מפתח' ? (
-                      <div style={{display:"flex", alignItems:"center", gap: 10, background:"#EEF2FF", padding:"10px 14px", borderRadius: 8, width:"100%"}}>
-                        <Icon n="info" color="#3730A3" s={16}/>
+                      <div style={{display:"flex", alignItems:"center", gap: 10, background:"rgba(99,102,241,0.12)", padding:"10px 14px", borderRadius: 8, width:"100%"}}>
+                        <Icon n="info" color="#6366F1" s={16}/>
                         <div>
-                          <div style={{fontSize:13,fontWeight:800, color:"#3730A3"}}>לוח תשלומים מסונכרן למסך שלבי עבודה</div>
-                          <div style={{fontSize:11,color:"#4F46E5", marginTop:2}}>
+                          <div style={{fontSize:13,fontWeight:800, color:"#6366F1"}}>לוח תשלומים מסונכרן למסך שלבי עבודה</div>
+                          <div style={{fontSize:11,color:"#818CF8", marginTop:2}}>
                             בקבלן מפתח לוח התשלומים מנהל את השלבים. כל הוספה, עריכה או שינוי של שלבים מתבצעים ישירות כאן.
                           </div>
                         </div>
@@ -1894,7 +1894,7 @@ export const ContractorsScreen = () => {
                               : "התשלומים נקבעים ומנוהלים באופן חופשי ועצמאי מהשלבים."}
                           </div>
                         </div>
-                        <div style={{display:"flex",gap:6,background:"#F4F4F5",borderRadius:8,padding:3}}>
+                        <div style={{display:"flex",gap:6,background:"var(--surface-2)",borderRadius:8,padding:3}}>
                           {[
                             {mode:'stage_synced' as const,label:'לפי משימות השלבים'},
                             {mode:'custom' as const,label:'לפי חוזה קבלן'},
@@ -1907,7 +1907,7 @@ export const ContractorsScreen = () => {
                                 type="button"
                                 disabled={isDisabled}
                                 onClick={()=>handlePaymentModeChange(c, option.mode)}
-                                style={{border:"none",borderRadius:6,padding:"6px 10px",fontFamily:"'Heebo',sans-serif",fontSize:12,fontWeight:700,cursor:savingPaymentMode?"wait":isDisabled?"default":"pointer",background:active?"#fff":"transparent",color:active?"var(--accent)":isDisabled&&!active?"var(--text3)":"var(--text2)",boxShadow:active?"var(--shadow-sm)":"none",opacity:isDisabled&&!active?0.6:1}}
+                                style={{border:'none',borderRadius:6,padding:'6px 10px',fontFamily:"'Heebo',sans-serif",fontSize:12,fontWeight:700,cursor:savingPaymentMode?'wait':isDisabled?'default':'pointer',background:active?'var(--surface)':'transparent',color:active?'var(--accent)':isDisabled&&!active?'var(--text3)':'var(--text2)',boxShadow:active?'var(--shadow-sm)':'none',opacity:isDisabled&&!active?0.6:1}}
                               >
                                 {option.label}
                               </button>
@@ -2056,14 +2056,14 @@ export const ContractorsScreen = () => {
                   wheel={{ step: 0.2 }}
                   pinch={{ step: 5 }}
                 >
-                  <TransformComponent wrapperStyle={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f5f5f5', borderRadius: 8 }} contentStyle={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <TransformComponent wrapperStyle={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--surface-2)', borderRadius: 8 }} contentStyle={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <img src={viewFile.url} draggable={false} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} alt="Preview" />
                   </TransformComponent>
                 </TransformWrapper>
               ) : (
                 <iframe 
                   src={viewFile.url} 
-                  style={{ width: '100%', height: '100%', border: 'none', borderRadius: 8, background: '#f5f5f5' }}
+                  style={{ width: '100%', height: '100%', border: 'none', borderRadius: 8, background: 'var(--surface-2)' }}
                   title={viewFile.name}
                 />
               )}
@@ -2144,8 +2144,8 @@ export const ContractorsScreen = () => {
 
         <>
             {contractors.some(c=>c.role==="קבלן עד מפתח") && (
-              <div style={{background:"#EEF2FF",border:"1px solid #C7D2FE",borderRadius:8,padding:"10px 14px",marginBottom:16,fontSize:13,color:"#3730A3",display:"flex",alignItems:"center",gap:8}}>
-                <Icon n="check-circle" s={14} c="#3730A3"/>
+              <div style={{background:"rgba(99,102,241,0.12)",border:"1px solid rgba(99,102,241,0.3)",borderRadius:8,padding:"10px 14px",marginBottom:16,fontSize:13,color:"#6366F1",display:"flex",alignItems:"center",gap:8}}>
+                <Icon n="check-circle" s={14} c="#6366F1"/>
                 יש בפרויקט קבלן עד מפתח — לוח התשלומים שלו מחובר לשלבי הבנייה
               </div>
             )}
@@ -2175,7 +2175,7 @@ export const ContractorsScreen = () => {
                           e.stopPropagation();
                           openEditModal(c);
                         }}
-                        style={{width:28,height:28,border:"1px solid var(--border)",borderRadius:6,background:"#fff",display:"flex",alignItems:"center",justifyContent:"center",cursor:mode!=='db'?"not-allowed":"pointer",color:"var(--text1)",opacity:mode!=='db'?0.55:1}}
+                        style={{width:28,height:28,border:'1px solid var(--border)',borderRadius:6,background:'var(--surface)',display:'flex',alignItems:'center',justifyContent:'center',cursor:mode!=='db'?'not-allowed':'pointer',color:'var(--text1)',opacity:mode!=='db'?0.55:1}}
                         title="ערוך קבלן"
                       >
                         <Icon n="edit" s={13}/>
@@ -2187,7 +2187,7 @@ export const ContractorsScreen = () => {
                           e.stopPropagation();
                           requestDeleteContractor(c);
                         }}
-                        style={{width:28,height:28,border:"1px solid var(--border)",borderRadius:6,background:"#fff",display:"flex",alignItems:"center",justifyContent:"center",cursor:deletingContractor||mode!=='db'?"not-allowed":"pointer",color:"var(--danger)",opacity:deletingContractor||mode!=='db'?0.55:1}}
+                        style={{width:28,height:28,border:'1px solid var(--border)',borderRadius:6,background:'var(--surface)',display:'flex',alignItems:'center',justifyContent:'center',cursor:deletingContractor||mode!=='db'?'not-allowed':'pointer',color:'var(--danger)',opacity:deletingContractor||mode!=='db'?0.55:1}}
                         title="מחק קבלן"
                       >
                         <Icon n="trash" s={13}/>
@@ -2195,7 +2195,7 @@ export const ContractorsScreen = () => {
                     </div>
                   </div>
                   {c.role==="קבלן עד מפתח" && (
-                    <div style={{fontSize:11,background:"#EEF2FF",color:"#3730A3",borderRadius:4,padding:"2px 6px",marginBottom:8,display:"inline-block",fontWeight:600}}>עד מפתח · 9 שלבים</div>
+                    <div style={{fontSize:11,background:"rgba(99,102,241,0.12)",color:"#6366F1",borderRadius:4,padding:"2px 6px",marginBottom:8,display:"inline-block",fontWeight:600}}>עד מפתח · 9 שלבים</div>
                   )}
                   <div style={{fontSize:12,color:"var(--text3)",marginBottom:10}}>{c.company}</div>
                   <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}>

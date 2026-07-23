@@ -10,7 +10,7 @@ import { getActiveTier } from '../../convex/_lib/entitlements';
 export function useSubscription() {
   const { user, project } = useCurrentProject();
 
-  const isLoaded = user !== undefined;
+  const isLoaded = user !== undefined && user !== null;
 
   // Retrieve current project owner's subscription status
   const ownerSubscription = useQuery(

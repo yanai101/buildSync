@@ -147,7 +147,7 @@ export const ContractorNotesAndDocs = ({ projectId, contractorId, contractorName
       </div>
       <div className="card-body" style={{display:"flex",flexDirection:"column",gap:18}}>
         {error && (
-          <div style={{border:"1px solid #FCA5A5",background:"#FEF2F2",color:"#991B1B",borderRadius:8,padding:"8px 10px",fontSize:12,fontWeight:600}}>
+          <div style={{border:"1px solid var(--danger)",background:"rgba(239,68,68,0.08)",color:"var(--danger)",borderRadius:8,padding:"8px 10px",fontSize:12,fontWeight:600}}>
             {error}
           </div>
         )}
@@ -178,7 +178,7 @@ export const ContractorNotesAndDocs = ({ projectId, contractorId, contractorName
           ) : (
             <div style={{display:"flex",flexDirection:"column",gap:8}}>
               {notes.map((note) => (
-                <div key={String(note.id)} style={{border:"1px solid var(--border)",borderRadius:8,padding:"10px 12px",background:"#fff"}}>
+                <div key={String(note.id)} style={{border:"1px solid var(--border)",borderRadius:8,padding:"10px 12px",background:"var(--surface)"}}>
                   <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:4,gap:8}}>
                     <div style={{display:"flex",alignItems:"center",gap:6,fontSize:12}}>
                       <span style={{fontWeight:700,color:"var(--text1)"}}>{note.authorName}</span>
@@ -240,7 +240,7 @@ export const ContractorNotesAndDocs = ({ projectId, contractorId, contractorName
           {files.length > 0 && (
             <div style={{display:"flex",flexDirection:"column",gap:6}}>
               {files.map((file) => (
-                <div key={String(file.id)} style={{display:"flex",alignItems:"center",gap:10,border:"1px solid var(--border)",borderRadius:8,padding:"8px 10px",background:"#fff"}}>
+                <div key={String(file.id)} style={{display:"flex",alignItems:"center",gap:10,border:"1px solid var(--border)",borderRadius:8,padding:"8px 10px",background:"var(--surface)"}}>
                   <Icon n={fileIconName(file.kind)} s={16} c="var(--text2)"/>
                   <div style={{flex:1,minWidth:0}}>
                     <div style={{fontSize:13,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>

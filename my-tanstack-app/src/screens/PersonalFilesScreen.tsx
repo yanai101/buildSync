@@ -432,7 +432,7 @@ export const PersonalFilesScreen = () => {
         key={key}
         style={{
           border: '1px solid var(--border)', borderRadius: 10, padding: '12px 14px',
-          background: '#fff', display: 'flex', flexDirection: 'column', gap: 10,
+          background: 'var(--surface)', display: 'flex', flexDirection: 'column', gap: 10,
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -509,7 +509,7 @@ export const PersonalFilesScreen = () => {
       <div
         key={key}
         style={{
-          border: '1px solid var(--border)', borderRadius: 10, padding: '16px', background: '#fff',
+          border: '1px solid var(--border)', borderRadius: 10, padding: '16px', background: 'var(--surface)',
           display: 'flex', flexDirection: 'column', gap: 12,
         }}
       >

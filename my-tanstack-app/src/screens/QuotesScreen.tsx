@@ -418,7 +418,7 @@ export const QuotesScreen = () => {
                           position: "relative",
                         }}>
                         {isCheapest && !isApproved && (
-                          <div style={{ position: "absolute", top: 50, left: 10, background: "var(--success-light)", color: "#065F46", border: "1px solid rgba(16,185,129,.25)", borderRadius: 999, fontSize: 10.5, fontWeight: 700, padding: "3px 9px", letterSpacing: 0.2 }}>הזולה ביותר</div>
+                          <div style={{ position: "absolute", top: 50, left: 10, background: "rgba(16,185,129,0.15)", color: "var(--success)", border: "1.5px solid rgba(16,185,129,0.6)", borderRadius: 999, fontSize: 12, fontWeight: 800, padding: "4px 12px", letterSpacing: 0.3, boxShadow: "0 0 8px rgba(16,185,129,0.25)" }}>הזולה ביותר</div>
                         )}
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
                           <div style={{ minWidth: 0, flex: 1 }}>
@@ -611,7 +611,7 @@ export const QuotesScreen = () => {
                       <tr key={q.id} style={{ background: isApproved ? "rgba(16,185,129,.08)" : isCheapest ? "rgba(16,185,129,.04)" : "transparent" }}>
                         <td style={{ fontWeight: 600 }}>
                           {q.supplier}
-                          {isCheapest && <span className="badge badge-done" style={{ marginRight: 8, fontSize: 10 }}>הזולה</span>}
+                          {isCheapest && <span style={{ marginRight: 8, fontSize: 11, fontWeight: 800, color: "var(--success)", background: "rgba(16,185,129,0.15)", border: "1.5px solid rgba(16,185,129,0.55)", borderRadius: 999, padding: "2px 8px" }}>הזולה</span>}
                         </td>
                         <td style={{ fontSize: 13, color: "var(--text2)" }}>{q.contact || "—"}</td>
                         <td style={{ fontSize: 13, color: "var(--text2)" }}>{q.phone || "—"}</td>

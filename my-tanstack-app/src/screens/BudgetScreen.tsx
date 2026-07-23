@@ -249,24 +249,40 @@ export const BudgetScreen = () => {
       onRetry={refetch}
     >
       <div className="page-content">
-        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24}}>
-          <h1 style={{fontSize: 24, fontWeight: 800, margin: 0}}>ניהול תקציב</h1>
-          <Btn onClick={() => setAddCatOpen(true)} variant="secondary">
-            <Icon n="plus" s={16} />
+        <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:24, gap:16, flexWrap:'wrap'}}>
+          <div style={{display:'flex', alignItems:'center', gap:14}}>
+            <div style={{
+              width:48, height:48, borderRadius:14,
+              background:'linear-gradient(135deg, var(--accent-light) 0%, var(--accent-glow-sm) 100%)',
+              color:'var(--accent)', display:'flex', alignItems:'center', justifyContent:'center',
+              border:'1.5px solid var(--accent-glow-sm)', boxShadow:'0 4px 16px var(--accent-glow-sm)', flexShrink:0
+            }}>
+              <Icon n="chart" s={22}/>
+            </div>
+            <div>
+              <h1 style={{fontSize:22, fontWeight:800, margin:0, letterSpacing:'-0.4px'}}>ניהול תקציב</h1>
+              <div style={{fontSize:12.5, color:'var(--text3)', marginTop:3}}>מעקב הוצאות וקטגוריות תקציב</div>
+            </div>
+          </div>
+          <Btn onClick={() => setAddCatOpen(true)} variant="secondary" icon="plus">
             הוסף קטגוריה
           </Btn>
         </div>
 
-        <div className="card" style={{padding:20,marginBottom:20,display:"flex",justifyContent:"space-between",alignItems:"flex-end",gap:16,flexWrap:"wrap"}}>
+        <div className="card" style={{padding:'20px 24px', marginBottom:20, display:'flex', justifyContent:'space-between', alignItems:'center', gap:16, flexWrap:'wrap', borderRight:'3px solid var(--accent)', position:'relative', overflow:'hidden'}}>
+          <div style={{position:'absolute', top:0, left:0, right:0, height:2, background:'linear-gradient(90deg, var(--accent), transparent)', borderRadius:'var(--radius) var(--radius) 0 0'}} />
           <div>
-            <div style={{fontSize:14,fontWeight:800,color:"var(--text1)",marginBottom:4}}>תקציב פרויקט כולל</div>
-            <div style={{fontSize:12,color:"var(--text3)"}}>
+            <div style={{fontSize:14, fontWeight:800, color:'var(--text1)', marginBottom:4, display:'flex', alignItems:'center', gap:8}}>
+              <Icon n="clipboard" s={16} c="var(--accent)"/>
+              תקציב פרויקט כולל
+            </div>
+            <div style={{fontSize:12, color:'var(--text3)'}}>
               {summary.isProjectBudgetDefined
                 ? "זהו מקור התקציב הראשי שמסנכרן את עמוד התקציב ולוח הבקרה."
                 : "לא הוגדר תקציב בפרויקט. הגדירו כאן תקציב כולל כדי לסנכרן את כל הסיכומים."}
             </div>
           </div>
-          <div style={{display:"flex",gap:10,alignItems:"center"}}>
+          <div style={{display:'flex', gap:10, alignItems:'center'}}>
             <input
               className="bp-input"
               type="number"
@@ -274,7 +290,7 @@ export const BudgetScreen = () => {
               value={budgetDraft}
               onChange={e=>setBudgetDraft(e.target.value)}
               placeholder="0"
-              style={{width:180,fontWeight:700}}
+              style={{width:180, fontWeight:700, fontSize:16}}
               disabled={!isOwner}
             />
             {isOwner && (
@@ -287,17 +303,36 @@ export const BudgetScreen = () => {
 
         <BudgetSummaryCards summary={summary} style={{marginBottom:24}} />
 
-        {/* Budget bar */}
-        <div className="card" style={{marginBottom:20,padding:20}}>
-          <div style={{fontWeight:600,fontSize:14,marginBottom:12}}>ניצול תקציב</div>
-          <div style={{height:18,background:"var(--bg)",borderRadius:99,overflow:"hidden",display:"flex",marginBottom:12,border:"1px solid var(--border)"}}>
-            <div style={{width:`${spentPct}%`,background:"linear-gradient(90deg, var(--accent) 0%, #c96b30 100%)",transition:"width .6s cubic-bezier(.4,0,.2,1)",borderRadius:"99px 0 0 99px"}}/>
-            <div style={{width:`${committedPct}%`,background:"#FDE68A"}}/>
+        {/* Budget utilization bar */}
+        <div className="card" style={{marginBottom:24, padding:'18px 22px'}}>
+          <div style={{fontWeight:700, fontSize:14, marginBottom:14, display:'flex', alignItems:'center', justifyContent:'space-between'}}>
+            <span style={{display:'flex', alignItems:'center', gap:8}}>
+              <Icon n="chart" s={15} c="var(--accent)"/>
+              ניצול תקציב
+            </span>
+            <span style={{fontSize:12.5, color:'var(--text2)', fontWeight:600, background:'var(--surface-2)', padding:'4px 10px', borderRadius:20}}>
+              נותר: {fmtMoney(remainingBudget)} ({remainingPct}%)
+            </span>
           </div>
-          <div style={{display:"flex", flexWrap:"wrap", gap:16, fontSize:12.5}}>
-            <span style={{display:"flex",alignItems:"center",gap:6}}><span style={{width:11,height:11,borderRadius:3,background:"var(--accent)",display:"inline-block"}}/> הוצא: <strong>{fmtMoney(totalSpent)}</strong> ({totalBudget ? Math.round(totalSpent/totalBudget*100) : 0}%)</span>
-            <span style={{display:"flex",alignItems:"center",gap:6}}><span style={{width:11,height:11,borderRadius:3,background:"#F59E0B",display:"inline-block"}}/> מחויב: <strong>{fmtMoney(committed)}</strong> ({totalBudget ? Math.round(committed/totalBudget*100) : 0}%)</span>
-            <span style={{display:"flex",alignItems:"center",gap:6}}><span style={{width:11,height:11,borderRadius:3,background:"#D1D5DB",display:"inline-block"}}/> נותר: <strong>{fmtMoney(remainingBudget)}</strong> ({remainingPct}%)</span>
+          <div style={{height:14, background:'var(--bg-2,var(--border))', borderRadius:99, overflow:'hidden', display:'flex', marginBottom:14, border:'1px solid var(--border)', position:'relative'}}>
+            <div style={{width:`${spentPct}%`, background:'linear-gradient(90deg, var(--accent) 0%, var(--accent-dark) 100%)', transition:'width .6s cubic-bezier(.4,0,.2,1)', position:'relative', overflow:'hidden'}}>
+              <div style={{position:'absolute', inset:0, background:'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.25) 50%, transparent 100%)', animation:'shimmer 2.5s ease-in-out infinite'}}/>
+            </div>
+            <div style={{width:`${committedPct}%`, background:'linear-gradient(90deg, #F59E0B, #FDE68A)'}}/>
+          </div>
+          <div style={{display:'flex', flexWrap:'wrap', gap:16, fontSize:12.5}}>
+            <span style={{display:'flex', alignItems:'center', gap:6}}>
+              <span style={{width:12, height:12, borderRadius:3, background:'var(--accent)', display:'inline-block'}}/>
+              הוצא: <strong>{fmtMoney(totalSpent)}</strong> ({totalBudget ? Math.round(totalSpent/totalBudget*100) : 0}%)
+            </span>
+            <span style={{display:'flex', alignItems:'center', gap:6}}>
+              <span style={{width:12, height:12, borderRadius:3, background:'#F59E0B', display:'inline-block'}}/>
+              מחויב: <strong>{fmtMoney(committed)}</strong> ({totalBudget ? Math.round(committed/totalBudget*100) : 0}%)
+            </span>
+            <span style={{display:'flex', alignItems:'center', gap:6}}>
+              <span style={{width:12, height:12, borderRadius:3, background:'var(--border)', display:'inline-block', border:'1px solid var(--border-strong)'}}/>
+              נותר: <strong>{fmtMoney(remainingBudget)}</strong> ({remainingPct}%)
+            </span>
           </div>
         </div>
 
@@ -308,9 +343,9 @@ export const BudgetScreen = () => {
               const pct=c.budget?Math.round(c.spent/c.budget*100):0;
               const over=c.spent>c.budget;
               return (
-                <div key={i} className="card" style={{padding:20}}>
+                <div key={i} className="card card-hover" style={{padding:0, overflow:'hidden', borderRight:`3px solid ${c.color||'var(--accent)'}`, transition:'all 0.2s'}}>
                   {editingCatId === c._id ? (
-                    <div style={{display: 'flex', flexDirection: 'column', gap: 12}}>
+                    <div style={{display: 'flex', flexDirection: 'column', gap: 12, padding:'18px 20px'}}>
                       <input className="bp-input" value={editCatState.name} onChange={e=>setEditCatState({...editCatState, name: e.target.value})} placeholder="שם קטגוריה" style={{width: '100%'}}/>
                       <input className="bp-input" type="number" value={editCatState.budget} onChange={e=>setEditCatState({...editCatState, budget: e.target.value})} placeholder="תקציב" style={{width: '100%'}}/>
                       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -319,44 +354,58 @@ export const BudgetScreen = () => {
                             key={color} 
                             onClick={() => setEditCatState({...editCatState, color})}
                             style={{
-                              width: 20, height: 20, borderRadius: 4, background: color, cursor: 'pointer',
-                              border: editCatState.color === color ? '2px solid #000' : 'none'
+                              width: 22, height: 22, borderRadius: 6, background: color, cursor: 'pointer',
+                              border: editCatState.color === color ? '2.5px solid var(--text1)' : '2px solid transparent',
+                              boxShadow: editCatState.color === color ? '0 0 0 2px var(--bg)' : 'none'
                             }}
                           />
                         ))}
                       </div>
                       <div style={{display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 4}}>
-                        <Btn onClick={() => setEditingCatId(null)} variant="secondary">ביטול</Btn>
-                        <Btn onClick={() => handleUpdateCategory(c._id)} disabled={saving}>שמור</Btn>
+                        <Btn onClick={() => setEditingCatId(null)} variant="secondary" size="sm">ביטול</Btn>
+                        <Btn onClick={() => handleUpdateCategory(c._id)} disabled={saving} size="sm">שמור</Btn>
                       </div>
                     </div>
                   ) : (
-                    <>
-                      <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:8}}>
-                        <div style={{display:"flex",alignItems:"center",gap:8,fontSize:13}}>
-                          <span style={{width:8,height:8,borderRadius:2,background:c.color,display:"inline-block",flexShrink:0}}/>
-                          <span style={{fontWeight: 700}}>{c.name}</span>
+                    <div style={{padding:'18px 20px'}}>
+                      <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14}}>
+                        <div style={{display:'flex', alignItems:'center', gap:10}}>
+                          <div style={{
+                            width:36, height:36, borderRadius:10,
+                            background:`${c.color||'var(--accent)'}18`,
+                            color:c.color||'var(--accent)',
+                            display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0
+                          }}>
+                            <Icon n="chart" s={18}/>
+                          </div>
+                          <span style={{fontWeight:800, fontSize:14, color:'var(--text1)'}}>{c.name}</span>
                         </div>
                         <div style={{display: 'flex', gap: 4}}>
                           <button onClick={() => {
                             setEditingCatId(c._id);
                             setEditCatState({ name: c.name, budget: String(c.budget), color: c.color });
-                          }} style={{background:'none',border:'none',cursor:'pointer',color:'var(--text3)'}} title="ערוך">
+                          }} className="icon-btn icon-btn-accent" title="ערוך">
                             <Icon n="edit" s={14}/>
                           </button>
-                          <button onClick={() => setDeleteConfirmId(c._id)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--danger)'}} title="מחק">
+                          <button onClick={() => setDeleteConfirmId(c._id)} className="icon-btn icon-btn-danger" title="מחק">
                             <Icon n="trash" s={14}/>
                           </button>
                         </div>
                       </div>
-                      <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}>
-                          <span style={{fontSize:13}}>{fmtMoney(c.budget)}</span>
-                          <span style={{fontSize:13,color:over?"var(--danger)":"var(--text2)",fontWeight:over?700:400}}>
-                            {fmtMoney(c.spent)} <span style={{fontSize:11, fontWeight:400}}>({pct}%)</span>
-                          </span>
+                      <div style={{display:'flex', justifyContent:'space-between', marginBottom:10, fontSize:13}}>
+                        <span style={{color:'var(--text3)', fontWeight:600}}>תקציב: {fmtMoney(c.budget)}</span>
+                        <span style={{color:over?'var(--danger)':'var(--text1)', fontWeight:700}}>
+                          {fmtMoney(c.spent)} <span style={{fontSize:11, color:over?'var(--danger)':'var(--text3)', fontWeight:400}}>({pct}%)</span>
+                        </span>
                       </div>
-                      <ProgressBar value={Math.min(pct,100)} color={over?"var(--danger)":c.color} height={5}/>
-                    </>
+                      <ProgressBar value={Math.min(pct,100)} color={over?'var(--danger)':c.color} height={7}/>
+                      {over && (
+                        <div style={{marginTop:8, fontSize:11.5, color:'var(--danger)', fontWeight:700, display:'flex', alignItems:'center', gap:4}}>
+                          <Icon n="alert" s={12}/>
+                          חריגה: +{fmtMoney(c.spent - c.budget)}
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
               );

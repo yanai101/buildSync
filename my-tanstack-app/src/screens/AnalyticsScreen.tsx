@@ -102,55 +102,68 @@ export const AnalyticsScreen = () => {
       </div>
       
       <div className="page-content">
-        {canViewBudget && summary && <BudgetSummaryCards summary={summary} style={{ marginBottom: 32 }} />}
+        <div style={{display:'flex', alignItems:'center', gap:14, marginBottom:28}}>
+          <div style={{
+            width:48, height:48, borderRadius:14,
+            background:'linear-gradient(135deg, var(--accent-light) 0%, var(--accent-glow-sm) 100%)',
+            color:'var(--accent)', display:'flex', alignItems:'center', justifyContent:'center',
+            border:'1.5px solid var(--accent-glow-sm)', boxShadow:'0 4px 16px var(--accent-glow-sm)', flexShrink:0
+          }}>
+            <Icon n="chart" s={22}/>
+          </div>
+          <div>
+            <h1 style={{fontSize:22, fontWeight:800, margin:0, letterSpacing:'-0.4px'}}>דוחות וסטטיסטיקות</h1>
+            <div style={{fontSize:12.5, color:'var(--text3)', marginTop:3}}>אנליזת נתוני תקציב, התקדמות וסטטוס פרויקט</div>
+          </div>
+        </div>
+        {canViewBudget && summary && <BudgetSummaryCards summary={summary} style={{ marginBottom: 28 }} />}
 
         <div className="grid-2">
           {/* Budget Distribution */}
           {canViewBudget && (
-            <div className="card" style={{ padding: 24, minHeight: 380 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>התפלגות הוצאות לפי קטגוריה</h2>
-                <button onClick={() => setExpandedChart('budgetDistribution')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)' }}>
-                  <Icon n="maximize-2" s={16} />
+            <div className="card" style={{ minHeight: 380, overflow:'hidden' }}>
+              <div className="card-header" style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                <span style={{ display:'flex', alignItems:'center', gap:8 }}>
+                  <Icon n="chart" s={15} c="var(--accent)"/>
+                  התפלגות הוצאות לפי קטגוריה
+                </span>
+                <button onClick={() => setExpandedChart('budgetDistribution')} className="icon-btn" title="הגדל">
+                  <Icon n="maximize-2" s={14}/>
                 </button>
               </div>
+              <div style={{ padding:'16px 8px 16px' }}>
               {categoryData.length > 0 ? (
                 <ResponsiveContainer width="100%" height={300}>
                   <PieChart>
-                    <Pie
-                      data={categoryData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={70}
-                      outerRadius={100}
-                      paddingAngle={5}
-                      dataKey="value"
-                    >
+                    <Pie data={categoryData} cx="50%" cy="50%" innerRadius={70} outerRadius={100} paddingAngle={5} dataKey="value">
                       {categoryData.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.color || COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>
-                    <Tooltip formatter={(value: any) => `₪${Number(value).toLocaleString()}`} />
+                    <Tooltip formatter={(value: any) => `₪${Number(value).toLocaleString()}`} contentStyle={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:10, fontSize:13 }}/>
                     <Legend verticalAlign="bottom" height={36} />
                   </PieChart>
                 </ResponsiveContainer>
               ) : (
-                <div style={{ height: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text3)' }}>
-                  אין מספיק נתונים להצגה
-                </div>
+                <div style={{ height: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text3)', fontSize:13 }}>אין מספיק נתונים להצגה</div>
               )}
+              </div>
             </div>
           )}
 
           {/* Expenses over time */}
           {canViewBudget && (
-            <div className="card" style={{ padding: 24, minHeight: 380 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>מגמת הוצאות (חודשי)</h2>
-                <button onClick={() => setExpandedChart('expensesOverTime')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)' }}>
-                  <Icon n="maximize-2" s={16} />
+            <div className="card" style={{ minHeight: 380, overflow:'hidden' }}>
+              <div className="card-header" style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                <span style={{ display:'flex', alignItems:'center', gap:8 }}>
+                  <Icon n="chart" s={15} c="var(--accent)"/>
+                  מגמת הוצאות (חודשי)
+                </span>
+                <button onClick={() => setExpandedChart('expensesOverTime')} className="icon-btn" title="הגדל">
+                  <Icon n="maximize-2" s={14}/>
                 </button>
               </div>
+              <div style={{ padding:'16px 8px 16px' }}>
               {expensesOverTime.length > 0 ? (
                 <ResponsiveContainer width="100%" height={300}>
                   <AreaChart data={expensesOverTime}>
@@ -163,15 +176,14 @@ export const AnalyticsScreen = () => {
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
                     <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'var(--text2)' }} />
                     <YAxis orientation="right" tickFormatter={(val) => `₪${(val/1000)}k`} axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'var(--text2)' }} width={60} />
-                    <Tooltip formatter={(value: any) => `₪${Number(value).toLocaleString()}`} />
+                    <Tooltip formatter={(value: any) => `₪${Number(value).toLocaleString()}`} contentStyle={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:10, fontSize:13 }}/>
                     <Area type="monotone" dataKey="total" name="סה״כ הוצאות" stroke="var(--accent)" strokeWidth={3} fillOpacity={1} fill="url(#colorTotal)" />
                   </AreaChart>
                 </ResponsiveContainer>
               ) : (
-                <div style={{ height: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text3)' }}>
-                  אין מספיק נתונים להצגה
-                </div>
+                <div style={{ height: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text3)', fontSize:13 }}>אין מספיק נתונים להצגה</div>
               )}
+              </div>
             </div>
           )}
 

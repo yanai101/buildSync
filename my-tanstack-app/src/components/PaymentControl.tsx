@@ -33,13 +33,13 @@ export const PAYMENT_STATUS = {
 
 // ── Simple states — what the user actually sees ──────────────────────────────
 const SIMPLE: Record<string, { label: string, bg: string, fg: string, dot: string }> = {
-  not_started: { label: 'לא התחיל',     bg: '#F1F5F9', fg: '#64748B', dot: '#94A3B8' },
-  working:     { label: 'עדיין לא מוכן', bg: '#F3F4F6', fg: '#4B5563', dot: '#9CA3AF' },
-  ready:       { label: 'מוכן לתשלום',   bg: '#D1FAE5', fg: '#065F46', dot: '#10B981' },
-  paid:        { label: 'שולם',          bg: '#065F46', fg: '#FFFFFF', dot: '#10B981' },
-  issue:       { label: 'מחלוקת',        bg: '#FEE2E2', fg: '#991B1B', dot: '#EF4444' },
-  locked:      { label: 'בהמשך',         bg: '#F9FAFB', fg: '#9CA3AF', dot: '#D1D5DB' },
-  waiting_payment: { label: 'ממתין לתשלום', bg: '#FFFBEB', fg: '#92400E', dot: '#F59E0B' },
+  not_started: { label: 'לא התחיל',     bg: 'var(--surface-2)',             fg: 'var(--text2)',     dot: 'var(--text3)' },
+  working:     { label: 'עדיין לא מוכן', bg: 'var(--surface-2)',             fg: 'var(--text2)',     dot: 'var(--text3)' },
+  ready:       { label: 'מוכן לתשלום',   bg: 'rgba(16,185,129,0.15)',        fg: 'var(--success)',   dot: '#10B981' },
+  paid:        { label: 'שולם',          bg: 'var(--success)',               fg: '#FFFFFF',          dot: '#10B981' },
+  issue:       { label: 'מחלוקת',        bg: 'rgba(239,68,68,0.12)',         fg: 'var(--danger)',    dot: 'var(--danger)' },
+  locked:      { label: 'בהמשך',         bg: 'var(--surface-2)',             fg: 'var(--text3)',     dot: 'var(--border)' },
+  waiting_payment: { label: 'ממתין לתשלום', bg: 'rgba(245,158,11,0.12)',     fg: '#F59E0B',          dot: '#F59E0B' },
 };
 
 const toSimple = (status: string) => {
@@ -276,7 +276,7 @@ export const PaymentGatesPanel = ({
   return (
     <div style={{
       marginTop: 16,
-      background: '#fff',
+      background: 'var(--surface)',
       border: '1px solid var(--border)',
       borderRadius: 10,
       padding: 14,
@@ -292,9 +292,9 @@ export const PaymentGatesPanel = ({
       {stage.paymentAmountMismatch && (
         <div style={{
           marginBottom: 10,
-          border: '1px solid #FCA5A5',
-          background: '#FEF2F2',
-          color: '#991B1B',
+          border: '1px solid var(--danger)',
+          background: 'rgba(239,68,68,0.08)',
+          color: 'var(--danger)',
           borderRadius: 8,
           padding: '8px 10px',
           fontSize: 12,
@@ -313,7 +313,7 @@ export const PaymentGatesPanel = ({
           {stage.payment?.receipts && stage.payment.receipts.length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 4 }}>
               {stage.payment.receipts.map((receipt, idx) => (
-                <a key={idx} href={`#${receipt}`} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#10B981', background: '#ECFDF5', padding: '6px 10px', borderRadius: 6, alignSelf: 'flex-start', textDecoration: 'none' }}>
+                <a key={idx} href={`#${receipt}`} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--success)', background: 'rgba(16,185,129,0.1)', padding: '6px 10px', borderRadius: 6, alignSelf: 'flex-start', textDecoration: 'none' }}>
                   <Icon n="file-text" s={14} /> אסמכתא {idx + 1}: {receipt}
                 </a>
               ))}
@@ -339,7 +339,7 @@ export const PaymentGatesPanel = ({
               <>
                 <div style={{
                   fontSize: 15, fontWeight: 600,
-                  color: stage.paymentAmountMismatch ? '#991B1B' : ready ? '#065F46' : 'var(--text1)',
+                  color: stage.paymentAmountMismatch ? 'var(--danger)' : ready ? 'var(--success)' : 'var(--text1)',
                   marginBottom: 12,
                 }}>
                   {headline}
@@ -370,7 +370,7 @@ const MilestoneItem = ({
       <div style={{
         display: 'flex', flexDirection: 'column', gap: 6,
         padding: '8px 12px',
-        background: '#F9FAFB',
+        background: 'var(--surface-2)',
         border: '1px solid var(--border)',
         borderRadius: 8,
       }}>
@@ -402,7 +402,7 @@ const MilestoneItem = ({
         {milestone.receipts && milestone.receipts.length > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginLeft: 24 }}>
             {milestone.receipts.map((receipt, idx) => (
-              <a key={idx} href={`#${receipt}`} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#10B981', background: '#ECFDF5', padding: '4px 8px', borderRadius: 4, alignSelf: 'flex-start', textDecoration: 'none' }}>
+              <a key={idx} href={`#${receipt}`} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--success)', background: 'rgba(16,185,129,0.1)', padding: '4px 8px', borderRadius: 4, alignSelf: 'flex-start', textDecoration: 'none' }}>
                 <Icon n="file-text" s={12} /> אסמכתא {idx + 1}: {receipt}
               </a>
             ))}
@@ -417,7 +417,7 @@ const MilestoneItem = ({
       <div style={{
         display: 'flex', alignItems: 'center', gap: 10,
         padding: '8px 12px',
-        background: '#F9FAFB',
+        background: 'var(--surface-2)',
         border: '1px dashed var(--border)',
         borderRadius: 8,
         fontSize: 13,
@@ -440,8 +440,8 @@ const MilestoneItem = ({
 
   return (
     <div style={{
-      border: `1px solid ${ready ? '#A7F3D0' : 'var(--border)'}`,
-      background: ready ? '#F0FDF4' : '#fff',
+      border: `1px solid ${ready ? 'rgba(16,185,129,0.4)' : 'var(--border)'}`,
+      background: ready ? 'rgba(16,185,129,0.06)' : 'var(--surface)',
       borderRadius: 10,
       padding: 14,
       boxShadow: isNext ? '0 1px 3px rgba(0,0,0,.04)' : 'none',
@@ -459,7 +459,7 @@ const MilestoneItem = ({
       </div>
       <div style={{
         fontSize: 14, fontWeight: 600,
-        color: stage.paymentAmountMismatch ? '#991B1B' : ready ? '#065F46' : 'var(--text1)',
+        color: stage.paymentAmountMismatch ? 'var(--danger)' : ready ? 'var(--success)' : 'var(--text1)',
         marginBottom: 12,
       }}>
         {headline}
@@ -506,7 +506,7 @@ export const MilestonesPanel = ({
   return (
     <div style={{
       marginTop: 16,
-      background: '#fff',
+      background: 'var(--surface)',
       border: '1px solid var(--border)',
       borderRadius: 10,
       padding: 14,
@@ -514,9 +514,9 @@ export const MilestonesPanel = ({
       {stage.paymentAmountMismatch && (
         <div style={{
           marginBottom: 12,
-          border: '1px solid #FCA5A5',
-          background: '#FEF2F2',
-          color: '#991B1B',
+          border: '1px solid var(--danger)',
+          background: 'rgba(239,68,68,0.08)',
+          color: 'var(--danger)',
           borderRadius: 8,
           padding: '8px 10px',
           fontSize: 12,
@@ -582,8 +582,8 @@ export const MilestonesPanel = ({
       ) : paid.length === ms.length ? (
         <div style={{
           padding: 14, textAlign: 'center',
-          background: '#F0FDF4', border: '1px solid #BBF7D0',
-          borderRadius: 10, fontSize: 13, color: '#065F46', fontWeight: 600,
+          background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.3)',
+          borderRadius: 10, fontSize: 13, color: 'var(--success)', fontWeight: 600,
         }}>
           כל התשלומים הושלמו 🎉
         </div>
@@ -637,7 +637,7 @@ export const ReleasePaymentModal = ({ stage, milestoneName, amount, gates, onClo
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <label style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: '16px', background: '#F9FAFB', borderRadius: 8, border: '1px dashed var(--border)', cursor: selectedFiles.length >= 3 ? 'not-allowed' : 'pointer', transition: '0.2s', opacity: selectedFiles.length >= 3 ? 0.6 : 1 }}>
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: '16px', background: 'var(--surface-2)', borderRadius: 8, border: '1px dashed var(--border)', cursor: selectedFiles.length >= 3 ? 'not-allowed' : 'pointer', transition: '0.2s', opacity: selectedFiles.length >= 3 ? 0.6 : 1 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 600, color: 'var(--text1)' }}>
               <Icon n="upload-cloud" s={16} c="var(--text2)" /> 
               צירוף קבלה / אסמכתא (עד 3 קבצים)
@@ -667,8 +667,8 @@ export const ReleasePaymentModal = ({ stage, milestoneName, amount, gates, onClo
           {selectedFiles.length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {selectedFiles.map((f, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: '#ECFDF5', border: '1px solid #10B981', borderRadius: 8 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#065F46', fontWeight: 500 }}>
+                <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.4)', borderRadius: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--success)', fontWeight: 500 }}>
                     <Icon n="file-text" s={14} /> {f.name}
                   </div>
                   <button onClick={() => setSelectedFiles(prev => prev.filter((_, idx) => idx !== i))} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>

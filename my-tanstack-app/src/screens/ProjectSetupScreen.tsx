@@ -247,8 +247,8 @@ export const ProjectSetupScreen = () => {
           <React.Fragment key={i}>
             <div onClick={()=>setStep(i)} style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",flexShrink:0}}>
               <div style={{width:28,height:28,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700,
-                background:step===i?"var(--accent)":i<step?"var(--success)":"var(--border)",
-                color:step===i||i<step?"#fff":"var(--text3)",transition:"all .2s"}}>
+                background:step===i?'var(--accent)':i<step?'var(--success)':'var(--surface-2)',
+                color:step===i||i<step?'#fff':'var(--text2)',transition:'all .2s'}}>
                 {i<step?<Icon n="check" s={13} c="#fff"/>:i+1}
               </div>
               <span style={{fontSize:13,fontWeight:step===i?600:400,color:step===i?"var(--text1)":"var(--text3)",whiteSpace:"nowrap"}}>{s}</span>
@@ -413,7 +413,7 @@ export const ProjectSetupScreen = () => {
                 </div>
               </div>
             ))}
-            <div style={{padding:"10px 18px",background:"#FAFAF8",borderRadius:"0 0 10px 10px",display:"flex",flexWrap:"wrap",gap:20,fontSize:12,color:"var(--text2)"}}>
+            <div style={{padding:'10px 18px',background:'var(--surface-2)',borderRadius:'0 0 10px 10px',display:'flex',flexWrap:'wrap',gap:20,fontSize:12,color:'var(--text2)'}}>
               <span>סה"כ חדרים: <strong>{(cfg.rooms || []).length}</strong></span>
               <span>שטח מוגדר: <strong>{totalRoomArea} מ"ר</strong></span>
               <span>ממוצע לחדר: <strong>{(cfg.rooms || []).length?Math.round(totalRoomArea/(cfg.rooms || []).length):0} מ"ר</strong></span>
@@ -476,10 +476,10 @@ export const ProjectSetupScreen = () => {
       {/* Navigation */}
       <div style={{display:"flex",justifyContent:"space-between"}}>
         <Btn variant="ghost" onClick={()=>setStep(s=>Math.max(0,s-1))} style={{visibility:step===0?"hidden":"visible"}}>
-          <Icon n="arrow-right" s={14}/> הקודם
+          <Icon n="chevron-right" s={14}/> הקודם
         </Btn>
         {step<STEPS.length-1
-          ? <Btn onClick={()=>setStep(s=>s+1)}>הבא <Icon n="chevron-right" s={14}/></Btn>
+          ? <Btn onClick={()=>setStep(s=>s+1)}>הבא <Icon n="chevron-left" s={14}/></Btn>
           : <Btn onClick={handleSave} disabled={saving}>
               <Icon n={saving ? "refresh" : "check"} s={14}/> {saving ? "שומר..." : "שמור הגדרות"}
             </Btn>

@@ -132,7 +132,7 @@ export const GuidesScreen = () => {
           .guides-tabs {
             display: flex;
             border-bottom: 1px solid var(--border);
-            background: rgba(249,250,251,0.5);
+            background: var(--surface-2);
           }
           .guides-tab-btn {
             flex: 1;
@@ -144,8 +144,21 @@ export const GuidesScreen = () => {
             border: none;
             cursor: pointer;
             font-family: inherit;
+            font-size: 13.5px;
+            font-weight: 600;
+            color: var(--text3);
+            background: transparent;
             transition: all 0.2s;
             position: relative;
+          }
+          .guides-tab-btn:hover {
+            color: var(--text1);
+            background: var(--surface-elevated);
+          }
+          .guides-tab-btn.active {
+            color: var(--accent);
+            background: var(--surface);
+            border-bottom: 2px solid var(--accent);
           }
           .guides-playlist {
             display: flex;
@@ -186,13 +199,18 @@ export const GuidesScreen = () => {
         {/* Header Grid */}
         <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28, gap: 16 }}>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div style={{ width: 40, height: 40, borderRadius: 12, background: 'var(--accent-light)', color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Icon n="video" s={20} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+              <div style={{
+                width: 48, height: 48, borderRadius: 14,
+                background: 'linear-gradient(135deg, var(--accent-light) 0%, var(--accent-glow-sm) 100%)',
+                color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                border: '1.5px solid var(--accent-glow-sm)', boxShadow: '0 4px 16px var(--accent-glow-sm)', flexShrink: 0
+              }}>
+                <Icon n="video" s={22} />
               </div>
               <div>
-                <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0 }}>מרכז הדרכה דיגיטלי</h1>
-                <div style={{ fontSize: 13, color: 'var(--text3)', marginTop: 2 }}>
+                <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0, letterSpacing: '-0.4px' }}>מרכז הדרכה דיגיטלי</h1>
+                <div style={{ fontSize: 12.5, color: 'var(--text3)', marginTop: 3 }}>
                   כל הכלים והסרטונים שיעזרו לכם לנהל את הבנייה שלכם בראש שקט
                 </div>
               </div>
@@ -200,7 +218,7 @@ export const GuidesScreen = () => {
           </div>
 
           {/* Quick Progress Badge */}
-          <div className="card" style={{ padding: '12px 20px', display: 'flex', alignItems: 'center', gap: 16, background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)' }}>
+          <div className="card" style={{ padding: '12px 20px', display: 'flex', alignItems: 'center', gap: 16 }}>
             <div>
               <div style={{ fontSize: 11, color: 'var(--text3)', fontWeight: 600 }}>השלמת הדרכות</div>
               <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--text1)', marginTop: 2 }}>

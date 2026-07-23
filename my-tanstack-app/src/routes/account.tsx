@@ -352,7 +352,7 @@ function AccountPage() {
                   href={checkoutUrl('monthly', user._id)}
                   style={{ textDecoration: 'none' }}
                 >
-                  <Btn variant="ghost" style={{ padding: '8px 16px', background: '#fff', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', color: 'var(--text1)' }}>שדרג למנוי חודשי</Btn>
+                  <Btn variant="ghost" style={{ padding: '8px 16px', background: 'var(--surface-elevated)', border: '1px solid var(--border-strong)', boxShadow: 'var(--shadow-sm)', color: 'var(--text1)' }}>שדרג למנוי חודשי</Btn>
                 </a>
                 <a
                   href={checkoutUrl('annual', user._id)}
@@ -369,7 +369,7 @@ function AccountPage() {
                 variant="ghost"
                 onClick={handleOpenPortal}
                 disabled={portalLoading}
-                style={{ padding: '8px 16px', background: '#fff', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', color: 'var(--text1)' }}
+                style={{ padding: '8px 16px', background: 'var(--surface-elevated)', border: '1px solid var(--border-strong)', boxShadow: 'var(--shadow-sm)', color: 'var(--text1)' }}
               >
                 <Icon n="credit-card" s={14} /> {portalLoading ? 'פותח...' : 'נהל מנוי וחשבוניות'}
               </Btn>
@@ -494,7 +494,7 @@ function AccountPage() {
         </div>
       </div>
 
-      <div className="card" style={{ padding: 24, background: '#FFF7ED', borderColor: '#FDBA74' }}>
+      <div className="card" style={{ padding: 24, background: 'rgba(245,158,11,0.07)', borderColor: 'rgba(245,158,11,0.3)' }}>
         <SectionHeader
           title="פעולות נוספות (בקרוב)"
           subtitle="פעולות אלו עדיין לא זמינות — כאן יופיעו בהמשך"
@@ -631,9 +631,9 @@ function Banner({ kind, text }: { kind: 'ok' | 'err'; text: string }) {
     <div
       style={{
         fontSize: 13,
-        color: ok ? '#065F46' : 'var(--danger)',
-        background: ok ? '#D1FAE5' : '#FEE2E2',
-        border: `1px solid ${ok ? '#6EE7B7' : '#FCA5A5'}`,
+        color: ok ? 'var(--success)' : 'var(--danger)',
+        background: ok ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)',
+        border: `1px solid ${ok ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'}`,
         borderRadius: 8,
         padding: '8px 12px',
       }}
