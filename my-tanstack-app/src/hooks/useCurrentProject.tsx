@@ -141,9 +141,9 @@ export function useCurrentProject() {
   // While loading (including during account switch), never return a stale project
   const project = isLoading
     ? null
-    : (selectedProjectId
-        ? projects.find((candidate: any) => candidate._id === selectedProjectId) ?? null
-        : null) ?? projects[0] ?? null;
+    : selectedProjectId
+      ? (projects.find((candidate: any) => candidate._id === selectedProjectId) ?? projects[0] ?? null)
+      : projects[0] ?? null;
 
   const setCurrentProject = React.useCallback((projectId: string) => {
     setSelectedProjectId(projectId);

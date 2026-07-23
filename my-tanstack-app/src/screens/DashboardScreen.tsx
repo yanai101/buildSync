@@ -21,7 +21,7 @@ const containerVariants = {
 };
 const itemVariants = {
   hidden: { opacity: 0, y: 16 },
-  show: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 300, damping: 28 } },
+  show: { opacity: 1, y: 0, transition: { type: 'spring' as const, stiffness: 300, damping: 28 } },
 };
 
 export const DashboardScreen = () => {
