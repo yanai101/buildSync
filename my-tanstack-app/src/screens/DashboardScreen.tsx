@@ -16,6 +16,7 @@ import { openUpgradeModal } from '../components/UpgradeModalHost';
 
 export const DashboardScreen = () => {
   const { role } = useRequireRole(['owner', 'manager', 'inspector', 'contractor']);
+  const { projects, isLoading: projectLoading, setCurrentProject } = useCurrentProject();
   const [showAllStages, setShowAllStages] = React.useState(false);
   const [showAllAlerts, setShowAllAlerts] = React.useState(false);
   const identity = useQuery(api.users.currentIdentity);
@@ -35,6 +36,17 @@ export const DashboardScreen = () => {
     try { localStorage.setItem(DISMISS_KEY, String(Date.now())); } catch {}
     setRetentionDismissed(true);
   };
+
+  // Handle push-notification deep links: ?project=<id>
+  // We read URLSearchParams directly to avoid making 'search' required on
+  // all existing navigations to /dashboard.
+  React.useEffect(() => {
+    const urlProject = new URLSearchParams(window.location.search).get('project');
+    if (!urlProject) return;
+    // Wait until projects are loaded before switching
+    setCurrentProject(urlProject);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // run once on mount — the URL won't change after the initial navigation
 
   const isFreeTier = identity !== undefined &&
     !identity?.isSuperAdmin &&
@@ -58,7 +70,6 @@ export const DashboardScreen = () => {
 
   const [viewFile, setViewFile] = React.useState<{ url: string; name: string } | null>(null);
 
-  const { projects, isLoading: projectLoading } = useCurrentProject();
 
 
   if (!projectLoading && projects.length === 0) {

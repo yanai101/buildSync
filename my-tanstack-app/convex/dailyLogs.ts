@@ -3,6 +3,7 @@ import { v } from 'convex/values';
 import { getAuthUserId } from '@convex-dev/auth/server';
 import { insertActivity } from './_lib/activity';
 import { requireProjectFeature } from './_lib/projectAccess';
+import { scheduleUserNotifications } from './notifications';
 
 export const getLogsByDate = query({
   args: { projectId: v.id('projects'), date: v.string() },
@@ -135,7 +136,28 @@ export const saveLog = mutation({
       await insertActivity(ctx, {
         projectId: args.projectId,
         text: `הוסיף/ה יומן עבודה חדש לתאריך ${args.date}`,
+        notifyOwner: false, // We send a targeted push below instead
       });
+
+      // Send a direct deep-link push to the project owner and manager
+      // (excluding the creator so they don't notify themselves)
+      const project = await ctx.db.get(args.projectId);
+      if (project) {
+        const recipients = [
+          project.ownerUserId,
+          project.managerUserId,
+        ].filter((id): id is typeof userId & string => !!id && id !== userId);
+
+        if (recipients.length > 0) {
+          await scheduleUserNotifications(ctx, {
+            userIds: recipients,
+            title: `יומן עבודה חדש — ${args.date}`,
+            body: `${user.name ?? user.email ?? 'משתמש'} הוסיף יומן עבודה לתאריך ${args.date}`,
+            url: `/daily-logs?project=${args.projectId}&date=${args.date}`,
+            tag: `daily-log-${args.projectId}-${args.date}`,
+          });
+        }
+      }
 
       return newId;
     }

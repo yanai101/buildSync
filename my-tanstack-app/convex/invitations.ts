@@ -429,7 +429,7 @@ export const redeemInvitationExistingUser = mutation({
         userIds: [project.ownerUserId],
         title: `${joinerName} הצטרף לפרויקט`,
         body: `${joinerName} קיבל את ההזמנה והצטרף כ${roleLabel[inv.role] ?? inv.role} לפרויקט "${project.name ?? ''}"`,
-        url: '/dashboard',
+        url: `/dashboard?project=${inv.projectId}`,
         tag: `join-${inv.projectId}`,
       });
     }

@@ -45,7 +45,7 @@ export async function insertActivity(
       userIds: [project.ownerUserId],
       title: `פעולה חדשה בפרויקט ${project.name ?? ''}`.trim(),
       body: `${actorName}: ${args.text}`,
-      url: '/dashboard',
+      url: `/dashboard?project=${args.projectId}`,
     });
   }
 

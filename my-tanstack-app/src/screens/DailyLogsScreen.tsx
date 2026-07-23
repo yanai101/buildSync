@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useCurrentProject } from '../hooks/useCurrentProject';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
+import { useSearch } from '@tanstack/react-router';
 import { ScreenBoundary } from '../components/ScreenBoundary';
 import { PageBackground, EmptyState, Btn, Icon, ConfirmDialog, FeedbackModal, PremiumLock, Modal } from '../components/Shared';
 import { ImageGalleryViewer } from '../components/ImageGalleryViewer';
@@ -13,8 +14,9 @@ import type { Id } from '../../convex/_generated/dataModel';
 
 export const DailyLogsScreen = () => {
   const { role, allowed, loading: roleLoading } = useRequireRole(['owner', 'manager', 'inspector', 'contractor']);
-  const { projectId } = useCurrentProject();
+  const { projectId, projects, setCurrentProject } = useCurrentProject();
   const { isProOrPremium } = useSubscription();
+  const search = useSearch({ from: '/daily-logs', shouldThrow: false }) as { project?: string; date?: string } | undefined;
   const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [activeTab, setActiveTab] = useState<'log' | 'history'>('log');
   const [selectedLogId, setSelectedLogId] = useState<string | null>(null);
@@ -51,6 +53,17 @@ export const DailyLogsScreen = () => {
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   const lastLoadedLogId = React.useRef<string | null>(null);
+
+  // Handle push-notification deep links: ?project=<id>&date=<date>
+  React.useEffect(() => {
+    if (!search?.project) return;
+    if (search.project !== projectId && projects.some((p: any) => p._id === search.project)) {
+      setCurrentProject(search.project);
+    }
+    if (search.date) {
+      setSelectedDate(search.date);
+    }
+  }, [search?.project, search?.date, projectId, projects, setCurrentProject]);
 
   // Local state for the form so we can edit before saving
   const [form, setForm] = useState({
