@@ -588,13 +588,13 @@ function ThemeSelector({ userId }: { userId: any }) {
       value: 'light' as const,
       icon: '☀️',
       label: 'מצב בהיר',
-      desc: 'המשק תמיד בהיר בלי קשר להגדרות המחשב',
+      desc: 'הממשק תמיד בהיר בלי קשר להגדרות המחשב',
     },
     {
       value: 'dark' as const,
       icon: '🌙',
       label: 'מצב כהה',
-      desc: 'משק תמיד כהה, נוח לעיניים בתאורה חשוכה',
+      desc: 'הממשק תמיד כהה, נוח לעיניים בתאורה חשוכה',
     },
     {
       value: 'auto' as const,
