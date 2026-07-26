@@ -8,6 +8,7 @@ import { CreateProjectWizard } from '~/components/CreateProjectWizard';
 import { useSubscription } from '~/hooks/useSubscription';
 import { openUpgradeModal } from '~/components/UpgradeModalHost';
 import { PROJECT_LIMIT_ERROR } from '../../convex/_lib/entitlements';
+import { ProjectExportModal } from '~/components/ProjectExportModal';
 
 const PROJECT_LIMIT_UPGRADE = {
   title: 'שדרג ל-Pro',
@@ -29,6 +30,7 @@ function ProjectsRoute() {
   const [deleteTargetId, setDeleteTargetId] = React.useState<string | null>(null);
   const [isSaving, setIsSaving] = React.useState(false);
   const [feedback, setFeedback] = React.useState<{ title: string; message: string; type: 'success' | 'error' | 'info' } | null>(null);
+  const [exportProjectId, setExportProjectId] = React.useState<{ id: string; name: string } | null>(null);
 
   const handleOpenWizard = () => {
     const ownedProjects = projects.filter((p: any) => p.ownerUserId === user?._id);
@@ -235,6 +237,22 @@ function ProjectsRoute() {
                     </button>
                   )}
 
+                  {user?._id === project.ownerUserId && isSelfProOrPremium && (
+                    <button
+                      onClick={() => setExportProjectId({ id: project._id, name: project.name })}
+                      title="ייצא ארכיון"
+                      style={{
+                        background: 'none', border: '1px solid var(--border)',
+                        borderRadius: 8, color: 'var(--text2)', cursor: 'pointer',
+                        padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 4,
+                        fontSize: 13, fontFamily: 'inherit', transition: 'all 0.15s',
+                      }}
+                    >
+                      <Icon n="archive" s={15} />
+                      <span className="desktop-only">ארכיון</span>
+                    </button>
+                  )}
+
                   <Btn
                     disabled={isActive}
                     variant={isActive ? 'ghost' : 'primary'}
@@ -279,6 +297,14 @@ function ProjectsRoute() {
           message={feedback.message} 
           type={feedback.type} 
           onClose={() => setFeedback(null)} 
+        />
+      )}
+
+      {exportProjectId && (
+        <ProjectExportModal
+          projectId={exportProjectId.id as any}
+          projectName={exportProjectId.name}
+          onClose={() => setExportProjectId(null)}
         />
       )}
     </div>

@@ -15,6 +15,15 @@ export default defineConfig({
   resolve: {
     tsconfigPaths: true,
   },
+  // html2pdf.js is browser-only (uses `self`, `window`) — must never be
+  // bundled or evaluated on the server side.
+  optimizeDeps: {
+    exclude: ['html2pdf.js'],
+  },
+  ssr: {
+    noExternal: [],
+    external: ['html2pdf.js'],
+  },
   plugins: [
     tailwindcss(),
     tanstackStart({

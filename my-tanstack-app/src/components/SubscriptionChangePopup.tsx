@@ -4,6 +4,7 @@ import { Icon, Btn } from './Shared'
 import { useCurrentProject } from '../hooks/useCurrentProject'
 import { getActiveTier, type Tier } from '../../convex/_lib/entitlements'
 import { openUpgradeModal } from './UpgradeModalHost'
+import { ProjectExportModal } from './ProjectExportModal'
 
 const TIER_LABELS: Record<Tier, string> = {
   free: 'חינמי (Free)',
@@ -104,6 +105,7 @@ export function SubscriptionChangePopup() {
   const renewalCanceled = !upgraded && !downgraded && !planChanged && change.autoRenewChanged && change.autoRenew === false
   const renewalResumed = !upgraded && !downgraded && !planChanged && change.autoRenewChanged && change.autoRenew === true
   const close = () => setChange(null)
+  const [showExport, setShowExport] = React.useState(false)
 
   const header = upgraded
     ? { bg: 'linear-gradient(135deg, #10B981 0%, #059669 100%)', icon: 'star', title: 'המנוי שודרג! 🎉' }
@@ -230,15 +232,33 @@ export function SubscriptionChangePopup() {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4 }}>
               {downgraded ? (
-                <Btn
-                  onClick={() => {
-                    close()
-                    openUpgradeModal({ title: 'חידוש מנוי', reason: 'חדש את המנוי כדי להמשיך ליהנות מכל יכולות Pro.' })
-                  }}
-                  style={{ width: '100%', justifyContent: 'center' }}
-                >
-                  <Icon n="star" s={14} /> חידוש המנוי
-                </Btn>
+                <>
+                  <Btn
+                    onClick={() => {
+                      close()
+                      openUpgradeModal({ title: 'חידוש מנוי', reason: 'חדש את המנוי כדי להמשיך ליהנות מכל יכולות Pro.' })
+                    }}
+                    style={{ width: '100%', justifyContent: 'center' }}
+                  >
+                    <Icon n="star" s={14} /> חידוש המנוי
+                  </Btn>
+                  <button
+                    type="button"
+                    onClick={() => setShowExport(true)}
+                    style={{
+                      width: '100%', display: 'flex', alignItems: 'center',
+                      justifyContent: 'center', gap: 8,
+                      background: 'none',
+                      border: '1.5px solid var(--border-strong)',
+                      borderRadius: 10, padding: '10px 0',
+                      fontSize: 13, fontWeight: 700,
+                      color: 'var(--text2)', cursor: 'pointer',
+                      fontFamily: 'inherit',
+                    }}
+                  >
+                    <Icon n="archive" s={14} /> הורד ארכיון לפני הסיום
+                  </button>
+                </>
               ) : (
                 <Btn onClick={close} style={{ width: '100%', justifyContent: 'center' }}>
                   הבנתי, תודה
@@ -248,6 +268,14 @@ export function SubscriptionChangePopup() {
           </div>
         </motion.div>
       </motion.div>
+
+      {showExport && user?.projectId && (
+        <ProjectExportModal
+          projectId={(user as any).projectId}
+          projectName={(user as any).projectName ?? 'פרויקט'}
+          onClose={() => setShowExport(false)}
+        />
+      )}
     </AnimatePresence>
   )
 }
