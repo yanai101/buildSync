@@ -71,6 +71,36 @@ describe('projectExport.generateExportManifest authorization', () => {
     expect(manifest.stages).toEqual([]);
   });
 
+  test('includes photo metadata and user-written photo notes in the manifest', async () => {
+    const t = convexTest(schema, modules);
+    const { ownerId, projectId } = await setupExportProject(t);
+    const photoId = await t.run((ctx) => ctx.db.insert('photos', {
+      projectId,
+      takenOn: '2026-07-27',
+      location: 'סלון',
+      tag: 'בעיה',
+      label: 'סדק בקיר',
+    }));
+    await t.run((ctx) => ctx.db.insert('photoNotes', {
+      photoId,
+      authorName: 'בעל הפרויקט',
+      role: 'owner',
+      text: 'לטפל לפני הצבע',
+    }));
+
+    const manifest = await t.withIdentity({ subject: ownerId }).query(
+      api.projectExport.generateExportManifest,
+      { projectId, sections: { ...emptySections, photos: true } },
+    );
+
+    expect(manifest.photos).toHaveLength(1);
+    expect(manifest.photos[0]).toMatchObject({
+      label: 'סדק בקיר',
+      location: 'סלון',
+      notes: [expect.objectContaining({ text: 'לטפל לפני הצבע' })],
+    });
+  });
+
   test.each([
     ['manager', 'manager'],
     ['inspector', 'inspector'],

@@ -59,6 +59,47 @@ export function originalArchiveFilename(originalName?: string): string {
   return safe(originalName ?? 'file');
 }
 
+export function photoArchiveMetadata(photos: any[]) {
+  const photoRows: Record<string, any>[] = [];
+  const noteRows: Record<string, any>[] = [];
+
+  for (const photo of photos) {
+    const folder = safe(photo.label ?? photo._id?.slice(-8) ?? 'photo');
+    const originalFilename = originalArchiveFilename(photo.originalFileName ?? 'original.jpg');
+    const versionById = new Map((photo.versions ?? []).map((version: any) => [
+      version._id,
+      version.versionNumber,
+    ]));
+
+    photoRows.push({
+      כותרת: photo.label ?? '',
+      'קובץ מקורי': photo.originalUrl ? `תמונות/${folder}/${originalFilename}` : '',
+      תאריך: photo.takenOn ?? '',
+      מיקום: photo.location ?? '',
+      שלב: photo.stageLabel ?? '',
+      תג: photo.tag ?? '',
+      'סטטוס ליקוי': photo.defectStatus ?? '',
+      עדיפות: photo.priority ?? '',
+      'תאריך יעד': photo.dueDate ?? '',
+      'מספר גרסאות': (photo.versions ?? []).length,
+      'מספר הערות': (photo.notes ?? []).length,
+    });
+
+    for (const note of photo.notes ?? []) {
+      const version = note.versionId ? versionById.get(note.versionId) : null;
+      noteRows.push({
+        כותרת_תמונה: photo.label ?? '',
+        קובץ: version ? `גרסה ${version}` : 'מקור',
+        כותב: note.authorName ?? '',
+        תפקיד: note.role ?? '',
+        הערה: note.text ?? '',
+      });
+    }
+  }
+
+  return { photoRows, noteRows };
+}
+
 /** Build a UTF-8 BOM CSV blob (opens correctly in Excel with Hebrew). */
 function toCsv(rows: Record<string, any>[], columns: string[]): Uint8Array {
   const header = columns.join(',');
@@ -449,12 +490,25 @@ export async function buildProjectZip(
   // Photos
   if (manifest.photos?.length) {
     const photosFolder = root.folder('תמונות')!;
+    const { photoRows, noteRows } = photoArchiveMetadata(manifest.photos);
+    photosFolder.file('00_אינדקס_תמונות.csv', toCsv(photoRows,
+      ['כותרת', 'קובץ מקורי', 'תאריך', 'מיקום', 'שלב', 'תג', 'סטטוס ליקוי', 'עדיפות', 'תאריך יעד', 'מספר גרסאות', 'מספר הערות']));
+    if (noteRows.length) {
+      photosFolder.file('01_הערות_לתמונות.csv', toCsv(noteRows,
+        ['כותרת_תמונה', 'קובץ', 'כותב', 'תפקיד', 'הערה']));
+    }
+
     for (const photo of manifest.photos) {
       const photoLabel = safe(photo.label ?? photo._id?.slice(-8) ?? 'photo');
       const photoFolder = photosFolder.folder(photoLabel)!;
 
       if (photo.originalUrl) {
-        tasks.push({ url: photo.originalUrl, folder: photoFolder, filename: 'original.jpg', label: `תמונה: ${photo.label}` });
+        tasks.push({
+          url: photo.originalUrl,
+          folder: photoFolder,
+          filename: originalArchiveFilename(photo.originalFileName ?? 'original.jpg'),
+          label: `תמונה: ${photo.label}`,
+        });
       }
       for (const version of photo.versions ?? []) {
         if (version.url) {

@@ -158,10 +158,12 @@ export const generateExportManifest = query({
 
           // Get the original source file URL
           let originalUrl: string | null = null;
+          let originalFileName: string | null = null;
           if (photo.projectFileId) {
             const sourceFile = await ctx.db.get(photo.projectFileId as any);
             if (sourceFile) {
               originalUrl = await ctx.storage.getUrl((sourceFile as any).storageId);
+              originalFileName = (sourceFile as any).originalName ?? null;
             }
           }
 
@@ -173,11 +175,18 @@ export const generateExportManifest = query({
                 url: annotatedFile
                   ? await ctx.storage.getUrl((annotatedFile as any).storageId)
                   : null,
+                fileName: annotatedFile ? (annotatedFile as any).originalName ?? null : null,
               };
             }),
           );
 
-          return { ...photo, originalUrl, versions: versionsWithUrls, notes };
+          return {
+            ...photo,
+            originalUrl,
+            originalFileName,
+            versions: versionsWithUrls,
+            notes,
+          };
         }),
       );
     }
