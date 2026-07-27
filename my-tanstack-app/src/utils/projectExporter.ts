@@ -54,18 +54,9 @@ function dateStr(ms: number): string {
   return new Date(ms).toISOString().slice(0, 10);
 }
 
-/** Infer file extension from mime type or original name. */
-function fileExt(mime: string, originalName?: string): string {
-  if (originalName) {
-    const m = originalName.match(/\.([a-zA-Z0-9]+)$/);
-    if (m) return `.${m[1].toLowerCase()}`;
-  }
-  const MAP: Record<string, string> = {
-    'image/jpeg': '.jpg', 'image/png': '.png',
-    'image/webp': '.webp', 'image/gif': '.gif',
-    'application/pdf': '.pdf',
-  };
-  return MAP[mime] ?? '';
+/** Preserve an uploaded filename (including its extension) exactly once. */
+export function originalArchiveFilename(originalName?: string): string {
+  return safe(originalName ?? 'file');
 }
 
 /** Build a UTF-8 BOM CSV blob (opens correctly in Excel with Hebrew). */
@@ -490,7 +481,7 @@ export async function buildProjectZip(
     const docsFolder = root.folder('מסמכים_מקוריים')!;
     for (const doc of manifest.documents) {
       if (doc.url) {
-        tasks.push({ url: doc.url, folder: docsFolder, filename: safe(doc.originalName) + fileExt(doc.storedMimeType, doc.originalName), label: `מסמך: ${doc.originalName}` });
+        tasks.push({ url: doc.url, folder: docsFolder, filename: originalArchiveFilename(doc.originalName), label: `מסמך: ${doc.originalName}` });
       }
     }
   }
@@ -540,7 +531,7 @@ export async function buildProjectZip(
       const contractorFolder = root.folder(`מסמכים_מקוריים/קבלנים/${safe(c.name ?? 'contractor')}`)!;
       for (const f of c.files ?? []) {
         if (f.url) {
-          tasks.push({ url: f.url, folder: contractorFolder, filename: safe(f.originalName) + fileExt(f.storedMimeType, f.originalName), label: `${c.name}: ${f.originalName}` });
+          tasks.push({ url: f.url, folder: contractorFolder, filename: originalArchiveFilename(f.originalName), label: `${c.name}: ${f.originalName}` });
         }
       }
     }
