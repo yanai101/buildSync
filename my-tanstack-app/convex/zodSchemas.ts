@@ -341,6 +341,9 @@ export const zProjectInvitation = {
 
 export const zPersonalFile = {
   ownerUserId: zid('users'),
+  // Optional during the one-time transition from the old global personal
+  // archive. New files always receive a projectId.
+  projectId: zid('projects').optional(),
   storageId: zid('_storage'),
   originalName: z.string(),
   storedName: z.string(),

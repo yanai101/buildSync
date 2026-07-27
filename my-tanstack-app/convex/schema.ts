@@ -116,6 +116,7 @@ export default defineSchema({
 
   personalFiles: defineTable(zodToConvexFields(s.zPersonalFile))
     .index('by_owner', ['ownerUserId'])
+    .index('by_owner_and_project', ['ownerUserId', 'projectId'])
     .index('by_storage', ['storageId']),
 
   projectInvitations: defineTable(zodToConvexFields(s.zProjectInvitation))

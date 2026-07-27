@@ -12,6 +12,7 @@ import { AccessDenied, AccessLoading } from '../components/AccessDenied';
 import { useSubscription } from '../hooks/useSubscription';
 import { PremiumLock, Modal, ConfirmDialog } from '../components/Shared';
 import { ImageGalleryViewer } from '../components/ImageGalleryViewer';
+import { useCurrentProject } from '../hooks/useCurrentProject';
 
 const MAX_FILES = 30;
 
@@ -38,17 +39,18 @@ const decompress = (bytes: Uint8Array): Promise<Uint8Array> =>
 
 export const PersonalFilesScreen = () => {
   const { allowed, loading: roleLoading } = useRequireRole(['owner']);
+  const { project, projectId, isLoading: projectLoading } = useCurrentProject();
   const identity = useQuery(api.users.currentIdentity, {});
   const { isProOrPremium } = useSubscription();
 
   const files = useQuery(
     api.personalFiles.listMyPersonalFiles,
-    allowed ? {} : 'skip',
+    allowed && projectId ? { projectId } : 'skip',
   );
   const updateNote = useMutation(api.personalFiles.updatePersonalFileNote);
   const updateFilesNote = useMutation(api.personalFiles.updatePersonalFilesNote);
   const deleteFile = useMutation(api.personalFiles.deletePersonalFile);
-  const uploadFile = usePersonalFileUploader();
+  const uploadFile = usePersonalFileUploader(projectId);
   const { notify, permission, requestPermission, messages, dismiss } = useAppNotify();
 
   const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -418,8 +420,9 @@ export const PersonalFilesScreen = () => {
     }
   };
 
-  if (identity === undefined || roleLoading) return <AccessLoading />;
+  if (identity === undefined || roleLoading || projectLoading) return <AccessLoading />;
   if (!allowed) return <AccessDenied message="המסמכים האישיים זמינים ליזם הפרויקט בלבד." />;
+  if (!projectId) return <AccessDenied message="יש לבחור פרויקט פעיל לפני ניהול ארכיון הפרויקט." />;
 
   const renderDocCard = (file: NonNullable<typeof files>[number]) => {
     const key = String(file.id);
@@ -656,7 +659,7 @@ export const PersonalFilesScreen = () => {
 
         <div style={{ padding: '0 4px', marginBottom: 8 }}>
           <p style={{ margin: 0, fontSize: 15, color: 'var(--text2)', lineHeight: 1.6 }}>
-            זהו האזור האישי שלך לשמירת תיעוד קריטי לאורך תהליך הבנייה. מומלץ לשמור כאן צילומים של תשתיות (כמו צנרת וחשמל לפני טיח או ריצוף), מסמכים אישיים חשובים, וכל מידע שתרצה לגשת אליו בקלות בשלבים מתקדמים יותר של הפרויקט.
+            ארכיון הפרויקט של {project?.name ?? 'הפרויקט הפעיל'}: מומלץ לשמור כאן צילומים של תשתיות, מסמכים חשובים וכל מידע שתרצה לגשת אליו בשלבים מתקדמים יותר. הקבצים נשמרים רק בפרויקט הזה.
           </p>
         </div>
 
@@ -678,12 +681,7 @@ export const PersonalFilesScreen = () => {
           <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
             {uploading && <div style={{ textAlign: 'center', padding: 12, color: 'var(--text2)' }}>מעלה קובץ, אנא המתן...</div>}
             
-            {fileList.length === 0 && !uploading && emptySections.length === 0 ? (
-              <div style={{ fontSize: 13, color: 'var(--text3)', border: '1px dashed var(--border)', borderRadius: 8, padding: 24, textAlign: 'center' }}>
-                עדיין לא הועלו קבצים. תוכל להעלות מסמכים או לצלם תמונות לתיעוד (כגון תשתיות לפני חיפוי).
-              </div>
-            ) : (
-              <div>
+            <div>
                 <div style={{ display: 'flex', gap: 16, marginBottom: 24, borderBottom: '1px solid var(--border)', overflowX: 'auto', whiteSpace: 'nowrap' }}>
                   <button 
                     onClick={() => setActiveTab('images')}
@@ -743,8 +741,7 @@ export const PersonalFilesScreen = () => {
                     <div style={{ textAlign: 'center', padding: 24, color: 'var(--text3)' }}>אין מסמכים בכספת.</div>
                   )
                 )}
-              </div>
-            )}
+            </div>
           </div>
         </div>
 

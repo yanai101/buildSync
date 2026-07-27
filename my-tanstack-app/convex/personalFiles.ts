@@ -1,7 +1,9 @@
 import { mutation, query } from './_generated/server';
 import { v } from 'convex/values';
 import { getAuthUserId } from '@convex-dev/auth/server';
+import type { Id } from './_generated/dataModel';
 import type { MutationCtx, QueryCtx } from './_generated/server';
+import { requireProjectOwner } from './_lib/projectAccess';
 
 const MAX_FILES_PER_OWNER = 30;
 
@@ -25,16 +27,28 @@ const requireOwner = async (ctx: QueryCtx | MutationCtx) => {
   return { userId, user };
 };
 
+const requirePersonalFilesProjectOwner = async (
+  ctx: QueryCtx | MutationCtx,
+  projectId: Id<'projects'>,
+) => {
+  const { userId, project } = await requireProjectOwner(ctx, projectId);
+  if (project.ownerUserId !== userId) {
+    throw new Error('Only the project owner can access this project archive');
+  }
+  return { userId, project };
+};
+
 export const generateUploadUrl = mutation({
-  args: {},
-  handler: async (ctx) => {
-    await requireOwner(ctx);
+  args: { projectId: v.id('projects') },
+  handler: async (ctx, args) => {
+    await requirePersonalFilesProjectOwner(ctx, args.projectId);
     return await ctx.storage.generateUploadUrl();
   },
 });
 
 export const createPersonalFile = mutation({
   args: {
+    projectId: v.id('projects'),
     storageId: v.id('_storage'),
     originalName: v.string(),
     storedName: v.string(),
@@ -45,11 +59,13 @@ export const createPersonalFile = mutation({
     note: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const { userId } = await requireOwner(ctx);
+    const { userId } = await requirePersonalFilesProjectOwner(ctx, args.projectId);
 
     const existing = await ctx.db
       .query('personalFiles')
-      .withIndex('by_owner', (q) => q.eq('ownerUserId', userId))
+      .withIndex('by_owner_and_project', (q) =>
+        q.eq('ownerUserId', userId).eq('projectId', args.projectId),
+      )
       .take(MAX_FILES_PER_OWNER);
 
     if (existing.length >= MAX_FILES_PER_OWNER) {
@@ -64,6 +80,7 @@ export const createPersonalFile = mutation({
 
     return await ctx.db.insert('personalFiles', {
       ownerUserId: userId,
+      projectId: args.projectId,
       storageId: args.storageId,
       originalName: args.originalName,
       storedName: args.storedName,
@@ -78,13 +95,15 @@ export const createPersonalFile = mutation({
 });
 
 export const listMyPersonalFiles = query({
-  args: {},
-  handler: async (ctx) => {
-    const { userId } = await requireOwner(ctx);
+  args: { projectId: v.id('projects') },
+  handler: async (ctx, args) => {
+    const { userId } = await requirePersonalFilesProjectOwner(ctx, args.projectId);
 
     const files = await ctx.db
       .query('personalFiles')
-      .withIndex('by_owner', (q) => q.eq('ownerUserId', userId))
+      .withIndex('by_owner_and_project', (q) =>
+        q.eq('ownerUserId', userId).eq('projectId', args.projectId),
+      )
       .order('desc')
       .take(MAX_FILES_PER_OWNER);
 

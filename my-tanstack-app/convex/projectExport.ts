@@ -191,18 +191,21 @@ export const generateExportManifest = query({
       );
     }
 
-    // ── Documents (non-photo project files) ─────────────────────────────────
-    let documentsData: any[] = [];
+    // ── Project archive (files saved in /personal-files) ────────────────────
+    // The UI keeps the historical `documents` section key, but its contents
+    // are deliberately project-scoped personal archive files — not a second
+    // copy of photos, daily-log attachments, or quote files.
+    let personalFilesData: any[] = [];
     if (args.sections.documents) {
-      const allFiles = await ctx.db
-        .query('projectFiles')
-        .withIndex('by_project', (q) => q.eq('projectId', projectId))
+      const personalFiles = await ctx.db
+        .query('personalFiles')
+        .withIndex('by_owner_and_project', (q) =>
+          q.eq('ownerUserId', userId).eq('projectId', projectId),
+        )
         .collect();
 
-      const docFiles = allFiles; // include ALL usage types: photo, receipt, quote, document, daily_log
-
-      documentsData = await Promise.all(
-        docFiles.map(async (f) => ({
+      personalFilesData = await Promise.all(
+        personalFiles.map(async (f) => ({
           ...f,
           url: await ctx.storage.getUrl(f.storageId),
         })),
@@ -344,7 +347,7 @@ export const generateExportManifest = query({
       contractors: contractorsData,
       dailyLogs: dailyLogsData,
       photos: photosData,
-      documents: documentsData,
+      personalFiles: personalFilesData,
       permits: permitsData,
       budget: budgetData,
       boq: boqData,

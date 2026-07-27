@@ -1,4 +1,5 @@
 import JSZip from 'jszip';
+import { gunzipSync } from 'fflate';
 import {
   buildSummaryHtml,
   buildPermitsHtml,
@@ -484,6 +485,7 @@ export async function buildProjectZip(
     folder: JSZip;
     filename: string;
     label: string;
+    compressed?: boolean;
   };
   const tasks: DownloadTask[] = [];
 
@@ -530,12 +532,28 @@ export async function buildProjectZip(
     }
   }
 
-  // Uploaded documents
-  if (manifest.documents?.length) {
-    const docsFolder = root.folder('מסמכים_מקוריים')!;
-    for (const doc of manifest.documents) {
-      if (doc.url) {
-        tasks.push({ url: doc.url, folder: docsFolder, filename: originalArchiveFilename(doc.originalName), label: `מסמך: ${doc.originalName}` });
+  // Project archive files are uploaded gzipped by /personal-files. They are
+  // decompressed before adding them to the ZIP, so the downloaded archive
+  // contains the original usable file rather than a .gz payload.
+  if (manifest.personalFiles?.length) {
+    const archiveFolder = root.folder('ארכיון_הפרויקט')!;
+    const archiveRows = manifest.personalFiles.map((file: any) => ({
+      קובץ: originalArchiveFilename(file.originalName),
+      הערה: file.note ?? '',
+      'תאריך שמירה': file.uploadedAt ? new Date(file.uploadedAt).toLocaleString('he-IL') : '',
+      'גודל מקורי': file.originalSize ?? '',
+    }));
+    archiveFolder.file('00_אינדקס_ארכיון.csv', toCsv(archiveRows,
+      ['קובץ', 'הערה', 'תאריך שמירה', 'גודל מקורי']));
+    for (const file of manifest.personalFiles) {
+      if (file.url) {
+        tasks.push({
+          url: file.url,
+          folder: archiveFolder,
+          filename: originalArchiveFilename(file.originalName),
+          label: `ארכיון פרויקט: ${file.originalName}`,
+          compressed: true,
+        });
       }
     }
   }
@@ -596,7 +614,10 @@ export async function buildProjectZip(
     const task = tasks[i];
     onProgress({ phase: 'downloading', current: i, total: tasks.length, label: task.label });
     const buffer = await fetchBinary(task.url);
-    if (buffer) task.folder.file(task.filename, buffer);
+    if (buffer) {
+      const contents = task.compressed ? gunzipSync(new Uint8Array(buffer)) : buffer;
+      task.folder.file(task.filename, contents);
+    }
   }
 
   // ─────────────────────────────────────────────────────────────────────────

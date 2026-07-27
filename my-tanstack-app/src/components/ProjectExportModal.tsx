@@ -56,10 +56,10 @@ const SECTIONS: SectionDef[] = [
   },
   {
     key: 'documents',
-    label: 'מסמכים וקבצים',
-    icon: 'file-text',
-    countFn: (m) => m?.documents?.length ?? null,
-    hintFn: (m) => m?.documents?.length ? `${m.documents.length} קבצים` : '',
+    label: 'ארכיון הפרויקט',
+    icon: 'archive',
+    countFn: (m) => m?.personalFiles?.length ?? null,
+    hintFn: (m) => m?.personalFiles?.length ? `${m.personalFiles.length} קבצים ששמרת בפרויקט` : '',
   },
   {
     key: 'budget',

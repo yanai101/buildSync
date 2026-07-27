@@ -15,11 +15,12 @@ const compressFile = (bytes: Uint8Array): Promise<Uint8Array> =>
     });
   });
 
-export function usePersonalFileUploader() {
+export function usePersonalFileUploader(projectId: Id<'projects'> | null) {
   const generateUploadUrl = useMutation(api.personalFiles.generateUploadUrl);
   const createPersonalFile = useMutation(api.personalFiles.createPersonalFile);
 
   return React.useCallback(async (file: File, sectionId?: string, note?: string) => {
+    if (!projectId) throw new Error('יש לבחור פרויקט פעיל לפני העלאת קובץ');
     let finalFileToUpload: File | Blob = file;
     let finalMimeType = file.type || 'application/octet-stream';
     let originalName = file.name;
@@ -35,7 +36,7 @@ export function usePersonalFileUploader() {
     const compressed = await compressFile(buffer);
     const blob = new Blob([compressed.buffer as ArrayBuffer], { type: 'application/gzip' });
 
-    const uploadUrl = await generateUploadUrl({});
+    const uploadUrl = await generateUploadUrl({ projectId });
     const uploadResponse = await fetch(uploadUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/gzip' },
@@ -48,6 +49,7 @@ export function usePersonalFileUploader() {
 
     const { storageId } = (await uploadResponse.json()) as { storageId: Id<'_storage'> };
     const fileId = await createPersonalFile({
+      projectId,
       storageId,
       originalName: originalName,
       storedName: `${originalName}.gz`,
@@ -63,5 +65,5 @@ export function usePersonalFileUploader() {
       originalSize: file.size,
       storedSize: blob.size,
     };
-  }, [createPersonalFile, generateUploadUrl]);
+  }, [createPersonalFile, generateUploadUrl, projectId]);
 }
