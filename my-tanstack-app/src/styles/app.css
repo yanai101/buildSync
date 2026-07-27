@@ -365,20 +365,70 @@ body {
   width: 100%;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 22px 20px 6px;
-  font-size: 10px;
-  font-weight: 700;
-  color: rgba(255,255,255,.2);
-  text-transform: uppercase;
-  letter-spacing: 1.5px;
+  gap: 10px;
+  padding: 20px 16px 8px;
+  font-size: 11px;
+  font-weight: 800;
+  color: rgba(255,255,255,.58);
+  letter-spacing: .08em;
   background: transparent;
   border: none;
   cursor: pointer;
   font-family: inherit;
-  transition: color var(--transition-fast);
+  text-align: inherit;
+  transition: color var(--transition-fast), background var(--transition-fast);
 }
-.nav-section:hover { color: rgba(255,255,255,.45); }
+.nav-section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+  white-space: nowrap;
+}
+.nav-section-rule {
+  display: block;
+  height: 1px;
+  flex: 1;
+  background: rgba(255,255,255,.12);
+  transition: background var(--transition-fast);
+}
+.nav-section-toggle {
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255,255,255,.68);
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 7px;
+  background: rgba(255,255,255,.045);
+  transition: color var(--transition-fast), border-color var(--transition-fast), background var(--transition-fast);
+}
+.nav-section:hover,
+.nav-section:focus-visible {
+  color: #fff;
+}
+.nav-section:hover .nav-section-rule,
+.nav-section:focus-visible .nav-section-rule { background: rgba(255,255,255,.25); }
+.nav-section:hover .nav-section-toggle,
+.nav-section:focus-visible .nav-section-toggle {
+  color: var(--accent);
+  border-color: var(--accent-glow);
+  background: var(--accent-light);
+}
+.nav-section:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -3px;
+  border-radius: 10px;
+}
+.nav-section.is-expanded { color: rgba(255,255,255,.76); }
+.nav-section.is-expanded .nav-section-toggle {
+  color: var(--accent);
+  border-color: var(--accent-glow-sm);
+  background: var(--accent-light);
+}
 
 .nav-item {
   position: relative;

@@ -635,27 +635,37 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             if (items.length === 0) return null
             const hasActive = items.some(n => n.id === currentPath)
             const collapsed = collapsedSections.has(sec)
+            const sectionContentId = `sidebar-section-${sec}`
             return (
               <div key={sec}>
                 <button
                   type="button"
-                  className="nav-section"
+                  className={`nav-section ${collapsed ? 'is-collapsed' : 'is-expanded'}`}
                   onClick={() => toggleSection(sec)}
                   aria-expanded={!collapsed}
+                  aria-controls={sectionContentId}
+                  aria-label={`${sec} — ${collapsed ? 'פתח קבוצה' : 'סגור קבוצה'}`}
                 >
-                  <span>{sec}</span>
-                  <motion.span
-                    animate={{ rotate: collapsed ? 0 : 90 }}
-                    transition={{ duration: 0.2 }}
-                    style={{ display: 'inline-flex' }}
-                  >
-                    <Icon n="chevron-right" s={12} c="rgba(255,255,255,.35)" />
-                  </motion.span>
+                  <span className="nav-section-title">
+                    <span className="nav-section-rule" aria-hidden="true" />
+                    <span>{sec}</span>
+                    <span className="nav-section-rule" aria-hidden="true" />
+                  </span>
+                  <span className="nav-section-toggle" aria-hidden="true">
+                    <motion.span
+                      animate={{ rotate: collapsed ? 0 : 90 }}
+                      transition={{ duration: 0.2 }}
+                      style={{ display: 'inline-flex' }}
+                    >
+                      <Icon n="chevron-right" s={13} />
+                    </motion.span>
+                  </span>
                 </button>
                 <AnimatePresence initial={false}>
                   {!collapsed && (
                     <motion.div
                       key="content"
+                      id={sectionContentId}
                       initial={{ height: 0, opacity: 0 }}
                       animate={{ height: 'auto', opacity: 1 }}
                       exit={{ height: 0, opacity: 0 }}
