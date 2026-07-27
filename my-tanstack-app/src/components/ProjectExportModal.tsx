@@ -1,6 +1,5 @@
 import React from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { useQuery, useMutation } from 'convex/react';
+import { useConvex, useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import type { Id } from '../../convex/_generated/dataModel';
 import { Icon, Btn } from './Shared';
@@ -22,21 +21,21 @@ type SectionDef = {
 const SECTIONS: SectionDef[] = [
   {
     key: 'stages',
-    label: 'שלבי בנייה ומשימות',
+    label: 'שלבי בנייה ומשימות (CSV)',
     icon: 'layers',
     countFn: (m) => m?.stages?.length ?? null,
     hintFn: (m) => m?.stages?.length ? `${m.stages.length} שלבים` : '',
   },
   {
     key: 'contractors',
-    label: 'קבלנים ותשלומים',
+    label: 'קבלנים ותשלומים (CSV)',
     icon: 'hard-hat',
     countFn: (m) => m?.contractors?.length ?? null,
     hintFn: (m) => m?.contractors?.length ? `${m.contractors.length} קבלנים` : '',
   },
   {
     key: 'dailyLogs',
-    label: 'יומני עבודה',
+    label: 'יומני עבודה וקבצים (CSV)',
     icon: 'clipboard-list',
     countFn: (m) => m?.dailyLogs?.length ?? null,
     hintFn: (m) => m?.dailyLogs?.length ? `${m.dailyLogs.length} יומנים` : '',
@@ -66,14 +65,14 @@ const SECTIONS: SectionDef[] = [
     key: 'budget',
     label: 'תקציב והוצאות',
     icon: 'wallet',
-    hintFn: (m) => m?.budget ? 'תקציב + הוצאות (JSON + CSV)' : '',
+    hintFn: (m) => m?.budget ? 'תקציב + הוצאות (CSV)' : '',
   },
   {
     key: 'boq',
-    label: 'BOQ — כמויות ועבודות',
-    icon: 'table',
+    label: 'כתב כמויות (BOQ)',
+    icon: 'clipboard-list',
     countFn: (m) => m?.boq?.length ?? null,
-    hintFn: (m) => m?.boq?.length ? `${m.boq.length} פריטים (JSON + CSV)` : '',
+    hintFn: (m) => m?.boq?.length ? `${m.boq.length} פריטים (CSV)` : '',
   },
   {
     key: 'orders',
@@ -84,7 +83,7 @@ const SECTIONS: SectionDef[] = [
   },
   {
     key: 'checklists',
-    label: "צ'קליסטים",
+    label: "צ'קליסטים (CSV)",
     icon: 'check-square',
     countFn: (m) => m?.checklists?.length ?? null,
     hintFn: (m) => m?.checklists?.length ? `${m.checklists.length} רשימות` : '',
@@ -97,7 +96,7 @@ const SECTIONS: SectionDef[] = [
   },
   {
     key: 'activityFeed',
-    label: 'יומן פעילות',
+    label: 'יומן פעילות (CSV)',
     icon: 'activity',
     countFn: (m) => m?.activityFeed?.length ?? null,
     hintFn: (m) => m?.activityFeed?.length ? `${m.activityFeed.length} רשומות` : '',
@@ -111,9 +110,11 @@ const SECTIONS: SectionDef[] = [
   },
 ];
 
-const ALL_SELECTED: ExportSections = Object.fromEntries(
-  SECTIONS.map((s) => [s.key, true]),
+const onlySection = (key: SectionKey): ExportSections => Object.fromEntries(
+  SECTIONS.map((section) => [section.key, section.key === key]),
 ) as ExportSections;
+
+const safeFilename = (value: string) => value.replace(/[^a-zA-Z0-9_-]/g, '_');
 
 // ── Component ──────────────────────────────────────────────────────────────
 
@@ -127,78 +128,59 @@ type Props = {
 
 export function ProjectExportModal({ projectId, projectName, onClose }: Props) {
   const { notify } = useAppNotify();
+  const convex = useConvex();
   const [step, setStep] = React.useState<Step>('select');
-  const [selected, setSelected] = React.useState<ExportSections>({ ...ALL_SELECTED });
+  const [exportingSection, setExportingSection] = React.useState<SectionDef | null>(null);
   const [progress, setProgress] = React.useState<ExportProgress>({
     phase: 'preparing',
     current: 0,
     total: 0,
     label: 'מכין נתונים...',
   });
+  const [downloadedFilename, setDownloadedFilename] = React.useState<string | null>(null);
   const [downloadedBlob, setDownloadedBlob] = React.useState<Blob | null>(null);
+  const [sectionDownloads, setSectionDownloads] = React.useState<Partial<Record<SectionKey, true>>>({});
+  const [deleteAfterExport, setDeleteAfterExport] = React.useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
   const [deleting, setDeleting] = React.useState(false);
-
   const deleteProject = useMutation(api.projects.deleteProject);
-
-  // Fetch manifest — only after user clicks Download
-  const [shouldFetch, setShouldFetch] = React.useState(false);
-  const manifest = useQuery(
-    api.projectExport.generateExportManifest,
-    shouldFetch ? { projectId, sections: selected } : 'skip',
-  );
-
-  // Toggle section
-  const toggle = (key: SectionKey) =>
-    setSelected((prev) => ({ ...prev, [key]: !prev[key] }));
-
-  const allOn = SECTIONS.every((s) => selected[s.key]);
-  const toggleAll = () => {
-    const next = !allOn;
-    setSelected(Object.fromEntries(SECTIONS.map((s) => [s.key, next])) as ExportSections);
-  };
-
-  // When manifest arrives, build ZIP
-  React.useEffect(() => {
-    if (!manifest || step !== 'downloading') return;
-    let cancelled = false;
-
-    (async () => {
-      try {
-        const blob = await buildProjectZip(manifest, (p) => {
-          if (!cancelled) setProgress(p);
-        });
-        if (!cancelled) {
-          setDownloadedBlob(blob);
-          const filename = `BuildPro_${projectName.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.zip`;
-          triggerDownload(blob, filename);
-          setStep('done');
-        }
-      } catch (err) {
-        if (!cancelled) {
-          setProgress({ phase: 'error', current: 0, total: 0, label: 'שגיאה ביצירת הארכיון' });
-          notify({ title: 'שגיאה ביצוא', body: 'לא ניתן היה ליצור את הארכיון. נסה שוב.', kind: 'error' });
-        }
-      }
-    })();
-
-    return () => { cancelled = true; };
-  }, [manifest, step, projectName, notify]);
-
-  const handleStartDownload = () => {
+  const handleStartDownload = async (section: SectionDef) => {
+    const filename = `BuildPro_${projectName.replace(/\s+/g, '_')}_${safeFilename(section.key)}_${new Date().toISOString().slice(0, 10)}.zip`;
+    setExportingSection(section);
     setStep('downloading');
     setProgress({ phase: 'preparing', current: 0, total: 0, label: 'מביא נתונים מהשרת...' });
-    setShouldFetch(true);
+    try {
+      const manifest = await convex.query(api.projectExport.generateExportManifest, {
+        projectId,
+        sections: onlySection(section.key),
+      });
+      const blob = await buildProjectZip(manifest, setProgress);
+      triggerDownload(blob, filename);
+      setDownloadedBlob(blob);
+      setSectionDownloads((previous) => ({
+        ...previous,
+        [section.key]: true,
+      }));
+      setDownloadedFilename(filename);
+      setStep('done');
+    } catch (err) {
+      console.error('[ProjectExport] Archive build failed:', err);
+      setProgress({ phase: 'error', current: 0, total: 0, label: 'שגיאה ביצירת הארכיון' });
+      notify({ title: 'שגיאה ביצוא', body: 'לא ניתן היה ליצור את הארכיון. נסה שוב.', kind: 'error' });
+      setStep('select');
+      setExportingSection(null);
+    }
   };
 
   const handleDeleteProject = async () => {
     setDeleting(true);
     try {
       await deleteProject({ projectId });
-      notify({ title: 'הפרויקט נמחק', body: `"${projectName}" נמחק בהצלחה.`, kind: 'success' });
+      notify({ title: 'הפרויקט נמחק', body: `"${projectName}" וכל תוכנו נמחקו לצמיתות.`, kind: 'success' });
       onClose();
     } catch (err) {
-      notify({ title: 'שגיאה', body: 'מחיקת הפרויקט נכשלה. נסה שוב.', kind: 'error' });
+      console.error('[ProjectExport] Project deletion failed:', err);
+      notify({ title: 'שגיאה במחיקה', body: 'לא ניתן היה למחוק את הפרויקט. נסה שוב.', kind: 'error' });
     } finally {
       setDeleting(false);
     }
@@ -211,11 +193,7 @@ export function ProjectExportModal({ projectId, projectName, onClose }: Props) {
       : 0;
 
   return (
-    <AnimatePresence>
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
+    <div
         onClick={step === 'downloading' ? undefined : onClose}
         style={{
           position: 'fixed', inset: 0,
@@ -226,10 +204,7 @@ export function ProjectExportModal({ projectId, projectName, onClose }: Props) {
           padding: 20,
         }}
       >
-        <motion.div
-          initial={{ scale: 0.93, opacity: 0, y: 16 }}
-          animate={{ scale: 1, opacity: 1, y: 0 }}
-          transition={{ type: 'spring', damping: 26, stiffness: 320 }}
+        <div
           onClick={(e) => e.stopPropagation()}
           style={{
             background: 'var(--surface)',
@@ -280,7 +255,7 @@ export function ProjectExportModal({ projectId, projectName, onClose }: Props) {
               {step === 'done' && '✅ הארכיון מוכן!'}
             </h2>
             <p style={{ margin: '4px 0 0', fontSize: 13, opacity: 0.88 }}>
-              {step === 'select' && `${projectName} — בחר מה לכלול בקובץ ה-ZIP`}
+              {step === 'select' && `${projectName} — בחר נושא להורדה`}
               {step === 'downloading' && progress.label}
               {step === 'done' && 'הקובץ הורד למחשב שלך'}
             </p>
@@ -306,76 +281,56 @@ export function ProjectExportModal({ projectId, projectName, onClose }: Props) {
                   </span>
                 </div>
 
-                {/* Select all toggle */}
-                <button
-                  type="button"
-                  onClick={toggleAll}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 8,
-                    background: 'none', border: '1px solid var(--border)',
-                    borderRadius: 8, padding: '7px 12px', cursor: 'pointer',
-                    fontSize: 13, fontWeight: 600, color: 'var(--text1)',
-                    fontFamily: 'inherit', marginBottom: 4,
-                  }}
-                >
-                  <div style={{
-                    width: 18, height: 18, borderRadius: 5,
-                    background: allOn ? 'var(--accent)' : 'var(--surface-2)',
-                    border: `2px solid ${allOn ? 'var(--accent)' : 'var(--border-strong)'}`,
-                    display: 'grid', placeItems: 'center', flexShrink: 0,
-                    transition: 'all 0.15s',
-                  }}>
-                    {allOn && <Icon n="check" s={11} c="#fff" />}
-                  </div>
-                  {allOn ? 'בטל בחירת הכל' : 'בחר הכל'}
-                </button>
+                <p style={{ margin: '2px 0 6px', fontSize: 12, color: 'var(--text3)' }}>
+                  כל קישור יוצר ZIP נפרד רק עבור הנושא שבחרת.
+                </p>
 
-                {/* Section checkboxes */}
+                {/* Individual, on-demand archives */}
                 {SECTIONS.map((section) => {
-                  const isOn = selected[section.key];
+                  const downloadStatus = sectionDownloads[section.key];
                   return (
-                    <button
+                    <div
                       key={section.key}
-                      type="button"
-                      onClick={() => toggle(section.key)}
                       style={{
                         display: 'flex', alignItems: 'center', gap: 12,
                         padding: '10px 14px',
-                        background: isOn ? 'rgba(224,122,56,0.06)' : 'var(--surface-2)',
-                        border: `1.5px solid ${isOn ? 'rgba(224,122,56,0.3)' : 'var(--border)'}`,
-                        borderRadius: 10, cursor: 'pointer',
-                        fontFamily: 'inherit',
-                        transition: 'all 0.15s',
+                        background: 'var(--surface-2)',
+                        border: '1.5px solid var(--border)',
+                        borderRadius: 10,
                         textAlign: 'right',
                       }}
                     >
-                      {/* Checkbox */}
-                      <div style={{
-                        width: 18, height: 18, borderRadius: 5, flexShrink: 0,
-                        background: isOn ? 'var(--accent)' : 'var(--surface)',
-                        border: `2px solid ${isOn ? 'var(--accent)' : 'var(--border-strong)'}`,
-                        display: 'grid', placeItems: 'center',
-                        transition: 'all 0.15s',
-                      }}>
-                        {isOn && <Icon n="check" s={11} c="#fff" />}
-                      </div>
-
-                      {/* Icon */}
                       <div style={{
                         width: 32, height: 32, borderRadius: 8, flexShrink: 0,
-                        background: isOn ? 'rgba(224,122,56,0.12)' : 'var(--surface)',
+                        background: 'rgba(224,122,56,0.12)',
                         display: 'grid', placeItems: 'center',
                       }}>
-                        <Icon n={section.icon} s={16} c={isOn ? 'var(--accent)' : 'var(--text3)'} />
+                        <Icon n={section.icon} s={16} c="var(--accent)" />
                       </div>
 
-                      {/* Label + hint */}
                       <div style={{ flex: 1, textAlign: 'right' }}>
                         <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text1)' }}>
                           {section.label}
                         </div>
+                        {downloadStatus && (
+                          <div style={{ fontSize: 11, marginTop: 3, color: '#059669' }}>
+                            ✓ ההורדה התחילה
+                          </div>
+                        )}
                       </div>
-                    </button>
+                      <button
+                        type="button"
+                        onClick={() => void handleStartDownload(section)}
+                        style={{
+                          background: 'var(--accent)', border: 'none', borderRadius: 7,
+                          color: '#fff', cursor: 'pointer', padding: '7px 10px',
+                          fontFamily: 'inherit', fontSize: 12, fontWeight: 800,
+                          display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0,
+                        }}
+                      >
+                        <Icon n="download" s={13} /> {downloadStatus ? 'הורד שוב' : 'הורד'}
+                      </button>
+                    </div>
                   );
                 })}
               </div>
@@ -408,7 +363,7 @@ export function ProjectExportModal({ projectId, projectName, onClose }: Props) {
                           }
                         </div>
                         <span style={{ fontSize: 11, color: isActive ? 'var(--accent)' : isDone ? 'var(--text2)' : 'var(--text3)', fontWeight: isActive ? 700 : 400 }}>
-                          {phase === 'preparing' ? 'יצירת PDFs' : phase === 'downloading' ? 'הורדת קבצים' : 'אריזה'}
+                          {phase === 'preparing' ? 'איסוף נתונים' : phase === 'downloading' ? 'איסוף קבצים' : 'אריזה'}
                         </span>
                       </div>
                     );
@@ -421,13 +376,13 @@ export function ProjectExportModal({ projectId, projectName, onClose }: Props) {
                     background: 'var(--surface-2)',
                     borderRadius: 8, height: 8, overflow: 'hidden',
                   }}>
-                    <motion.div
-                      animate={{ width: `${pct}%` }}
-                      transition={{ ease: 'easeOut', duration: 0.3 }}
+                    <div
                       style={{
                         height: '100%',
                         background: 'linear-gradient(90deg, var(--accent), #f97316)',
                         borderRadius: 8,
+                        width: `${pct}%`,
+                        transition: 'width 0.2s ease-out',
                       }}
                     />
                   </div>
@@ -445,7 +400,7 @@ export function ProjectExportModal({ projectId, projectName, onClose }: Props) {
                 )}
 
                 <p style={{ margin: 0, fontSize: 12, color: 'var(--text3)', textAlign: 'center' }}>
-                  אל תסגור את החלון עד שההורדה תסתיים
+                  אפשר לסגור את החלון רק אחרי שהקובץ נשמר
                 </p>
               </div>
             )}
@@ -470,105 +425,39 @@ export function ProjectExportModal({ projectId, projectName, onClose }: Props) {
                   </div>
                   <div>
                     <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--text1)' }}>
-                      הארכיון הורד בהצלחה!
+                      ההורדה של {exportingSection?.label ?? 'הארכיון'} התחילה
                     </div>
                     <div style={{ fontSize: 13, color: 'var(--text2)', marginTop: 4 }}>
-                      {`BuildPro_${projectName.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.zip`}
+                      {downloadedFilename}
                     </div>
                   </div>
                 </div>
 
-                {/* Re-download */}
-                {downloadedBlob && (
+                {downloadedBlob && downloadedFilename && (
                   <Btn
                     variant="ghost"
-                    onClick={() => {
-                      triggerDownload(
-                        downloadedBlob,
-                        `BuildPro_${projectName.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.zip`,
-                      );
-                    }}
+                    onClick={() => triggerDownload(downloadedBlob, downloadedFilename)}
                     style={{ width: '100%', justifyContent: 'center' }}
                   >
-                    <Icon n="download" s={14} /> הורד שוב
+                    <Icon n="download" s={14} /> ההורדה לא התחילה? הורד שוב
                   </Btn>
                 )}
 
-                {/* Delete section */}
-                {!showDeleteConfirm ? (
-                  <div style={{
-                    padding: '14px 16px',
-                    background: 'rgba(239,68,68,0.06)',
-                    border: '1px solid rgba(239,68,68,0.2)',
-                    borderRadius: 12,
-                  }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text1)', marginBottom: 6 }}>
-                      רוצה למחוק את הפרויקט?
-                    </div>
-                    <div style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 12, lineHeight: 1.6 }}>
-                      הנתונים הורדו בהצלחה. ניתן למחוק את הפרויקט מהמערכת — הפעולה אינה הפיכה.
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setShowDeleteConfirm(true)}
-                      style={{
-                        background: 'none',
-                        border: '1.5px solid rgba(239,68,68,0.4)',
-                        borderRadius: 8, padding: '7px 14px',
-                        color: '#EF4444', fontSize: 13, fontWeight: 700,
-                        cursor: 'pointer', fontFamily: 'inherit',
-                        display: 'flex', alignItems: 'center', gap: 6,
-                      }}
-                    >
-                      <Icon n="trash-2" s={14} c="#EF4444" /> מחק פרויקט
-                    </button>
-                  </div>
-                ) : (
-                  <div style={{
-                    padding: '14px 16px',
-                    background: 'rgba(239,68,68,0.1)',
-                    border: '1.5px solid rgba(239,68,68,0.35)',
-                    borderRadius: 12,
-                  }}>
-                    <div style={{ fontSize: 14, fontWeight: 800, color: '#EF4444', marginBottom: 8 }}>
-                      ⚠️ אישור מחיקה
-                    </div>
-                    <div style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 14, lineHeight: 1.6 }}>
-                      אתה עומד למחוק את <strong>"{projectName}"</strong> לצמיתות. פעולה זו אינה ניתנת לביטול.
-                    </div>
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      <button
-                        type="button"
-                        onClick={handleDeleteProject}
-                        disabled={deleting}
-                        style={{
-                          flex: 1,
-                          background: '#EF4444', border: 'none',
-                          borderRadius: 8, padding: '9px 14px',
-                          color: '#fff', fontSize: 13, fontWeight: 800,
-                          cursor: deleting ? 'not-allowed' : 'pointer',
-                          fontFamily: 'inherit', opacity: deleting ? 0.7 : 1,
-                        }}
-                      >
-                        {deleting ? 'מוחק...' : 'כן, מחק לצמיתות'}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setShowDeleteConfirm(false)}
-                        style={{
-                          flex: 1,
-                          background: 'var(--surface-2)',
-                          border: '1px solid var(--border)',
-                          borderRadius: 8, padding: '9px 14px',
-                          color: 'var(--text1)', fontSize: 13, fontWeight: 600,
-                          cursor: 'pointer', fontFamily: 'inherit',
-                        }}
-                      >
-                        ביטול
-                      </button>
-                    </div>
-                  </div>
-                )}
+                <label style={{
+                  display: 'flex', alignItems: 'flex-start', gap: 9, padding: '12px 14px',
+                  borderRadius: 10, background: 'rgba(239,68,68,0.06)',
+                  border: '1px solid rgba(239,68,68,0.2)', cursor: 'pointer',
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={deleteAfterExport}
+                    onChange={(event) => setDeleteAfterExport(event.target.checked)}
+                    style={{ marginTop: 3, accentColor: '#DC2626' }}
+                  />
+                  <span style={{ fontSize: 12, color: 'var(--text2)', lineHeight: 1.55 }}>
+                    הורדתי את כל הקבצים שאני צריך ואני רוצה למחוק את הפרויקט לצמיתות, כולל תמונות, מסמכים וכל הנתונים.
+                  </span>
+                </label>
               </div>
             )}
           </div>
@@ -582,33 +471,75 @@ export function ProjectExportModal({ projectId, projectName, onClose }: Props) {
               background: 'var(--surface)',
             }}>
               {step === 'select' && (
+                <Btn variant="ghost" onClick={onClose} style={{ flex: 1, justifyContent: 'center', padding: '11px 0' }}>
+                  סגור
+                </Btn>
+              )}
+              {step === 'done' && (
                 <>
                   <Btn
-                    onClick={handleStartDownload}
-                    disabled={!SECTIONS.some((s) => selected[s.key])}
+                    variant="ghost"
+                    onClick={() => {
+                      setStep('select');
+                      setExportingSection(null);
+                      setDownloadedFilename(null);
+                      setDownloadedBlob(null);
+                    }}
                     style={{ flex: 1, justifyContent: 'center', padding: '11px 0' }}
                   >
-                    <Icon n="download" s={15} />
-                    הורד ארכיון ZIP
+                    הורד נושא נוסף
                   </Btn>
-                  <Btn
-                    variant="ghost"
-                    onClick={onClose}
-                    style={{ padding: '11px 20px' }}
-                  >
-                    ביטול
+                  <Btn onClick={() => deleteAfterExport ? setShowDeleteConfirm(true) : onClose()} style={{ flex: 1, justifyContent: 'center', padding: '11px 0' }}>
+                    {deleteAfterExport ? 'המשך למחיקה' : 'סיום'}
                   </Btn>
                 </>
               )}
-              {step === 'done' && (
-                <Btn onClick={onClose} style={{ flex: 1, justifyContent: 'center', padding: '11px 0' }}>
-                  סיום
-                </Btn>
-              )}
             </div>
           )}
-        </motion.div>
-      </motion.div>
-    </AnimatePresence>
+
+          {showDeleteConfirm && (
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="delete-project-title"
+              style={{
+                position: 'absolute', inset: 0, zIndex: 1, display: 'grid', placeItems: 'center',
+                background: 'rgba(15, 23, 42, 0.62)', padding: 24,
+              }}
+              onClick={(event) => {
+                event.stopPropagation();
+                if (!deleting) setShowDeleteConfirm(false);
+              }}
+            >
+              <div
+                onClick={(event) => event.stopPropagation()}
+                style={{ background: 'var(--surface)', borderRadius: 14, padding: 22, maxWidth: 390, width: '100%', boxShadow: '0 20px 50px rgba(0,0,0,0.28)' }}
+              >
+                <h3 id="delete-project-title" style={{ margin: 0, fontSize: 17, color: '#DC2626' }}>למחוק את הפרויקט לצמיתות?</h3>
+                <p style={{ margin: '10px 0 18px', fontSize: 13, lineHeight: 1.65, color: 'var(--text2)' }}>
+                  הפעולה תמחק את “{projectName}” ואת כל התמונות, המסמכים, יומני העבודה והנתונים הכספיים. לא ניתן לשחזר אותם.
+                </p>
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <Btn variant="ghost" disabled={deleting} onClick={() => setShowDeleteConfirm(false)} style={{ flex: 1, justifyContent: 'center' }}>
+                    ביטול
+                  </Btn>
+                  <button
+                    type="button"
+                    disabled={deleting}
+                    onClick={() => void handleDeleteProject()}
+                    style={{
+                      flex: 1, border: 'none', borderRadius: 8, padding: '9px 12px',
+                      background: '#DC2626', color: '#fff', fontFamily: 'inherit', fontWeight: 800,
+                      cursor: deleting ? 'wait' : 'pointer', opacity: deleting ? 0.7 : 1,
+                    }}
+                  >
+                    {deleting ? 'מוחק...' : 'כן, מחק לצמיתות'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
   );
 }

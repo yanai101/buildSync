@@ -1,12 +1,7 @@
 import JSZip from 'jszip';
 import {
   buildSummaryHtml,
-  buildStagesHtml,
-  buildContractorsHtml,
-  buildDailyLogsHtml,
   buildPermitsHtml,
-  buildChecklistsHtml,
-  buildActivityHtml,
 } from '../components/print-templates/pdfTemplates';
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -129,15 +124,17 @@ export function triggerDownload(blob: Blob, filename: string) {
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  // Revoking in the same task can cancel the browser's navigation before it
+  // starts, especially for a large ZIP. Keep the object URL alive briefly.
+  window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
 // ── Main export function ───────────────────────────────────────────────────
 
 /**
  * Builds a ZIP archive from the export manifest returned by Convex.
- * PDFs are generated via html2pdf.js (same as BOQ export).
- * Tabular data is exported as UTF-8 CSV (opens in Excel).
+ * PDFs are kept for concise document-style content. Operational data is
+ * exported as UTF-8 CSV (opens in Excel), avoiding huge browser-generated PDFs.
  * Binary files (photos, documents) are downloaded directly.
  */
 export async function buildProjectZip(
@@ -151,7 +148,7 @@ export async function buildProjectZip(
   const root = zip.folder(`BuildPro_${projectName}_${exportDate}`)!;
 
   // ─────────────────────────────────────────────────────────────────────────
-  // Phase 1: Generate PDFs
+  // Phase 1: Generate concise PDFs
   // ─────────────────────────────────────────────────────────────────────────
   const pdfSteps: Array<{ name: string; htmlFn: () => string; file: string }> = [
     {
@@ -159,35 +156,10 @@ export async function buildProjectZip(
       file: '00_סיכום_פרויקט.pdf',
       htmlFn: () => buildSummaryHtml(project, project.rooms ?? []),
     },
-    ...(manifest.stages?.length ? [{
-      name: 'שלבי בנייה ומשימות',
-      file: '01_שלבי_בנייה.pdf',
-      htmlFn: () => buildStagesHtml(manifest.stages, project),
-    }] : []),
-    ...(manifest.contractors?.length ? [{
-      name: 'קבלנים ותשלומים',
-      file: '02_קבלנים.pdf',
-      htmlFn: () => buildContractorsHtml(manifest.contractors, project),
-    }] : []),
-    ...(manifest.dailyLogs?.length ? [{
-      name: 'יומני עבודה',
-      file: '03_יומני_עבודה.pdf',
-      htmlFn: () => buildDailyLogsHtml(manifest.dailyLogs, project),
-    }] : []),
     ...(manifest.permits?.length ? [{
       name: 'היתרים ורישוי',
-      file: '04_היתרים_ורישוי.pdf',
+      file: '01_היתרים_ורישוי.pdf',
       htmlFn: () => buildPermitsHtml(manifest.permits, project),
-    }] : []),
-    ...(manifest.checklists?.length ? [{
-      name: "צ'קליסטים",
-      file: '05_צ\'קליסטים.pdf',
-      htmlFn: () => buildChecklistsHtml(manifest.checklists, project),
-    }] : []),
-    ...(manifest.activityFeed?.length ? [{
-      name: 'יומן פעילות',
-      file: '06_יומן_פעילות.pdf',
-      htmlFn: () => buildActivityHtml(manifest.activityFeed, project),
     }] : []),
   ];
 
@@ -211,23 +183,138 @@ export async function buildProjectZip(
 
   // Contractors payments CSV
   if (manifest.contractors?.length) {
+    const contractorsFolder = root.folder('קבלנים')!;
+    const contractorRows = manifest.contractors.map((c: any) => ({
+      קבלן: c.name ?? '',
+      חברה: c.company ?? '',
+      תפקיד: c.role ?? '',
+      טלפון: c.phone ?? '',
+      אימייל: c.email ?? '',
+      סטטוס: c.status === 'completed' ? 'הושלם' : c.status === 'active' ? 'פעיל' : 'ממתין',
+      דירוג: c.rating ?? '',
+      'תקציב (₪)': c.budget ?? 0,
+      'שולם (₪)': c.paid ?? 0,
+      'כולל מע״מ': c.includesVat ? 'כן' : 'לא',
+    }));
+    contractorsFolder.file('00_קבלנים.csv', toCsv(contractorRows,
+      ['קבלן', 'חברה', 'תפקיד', 'טלפון', 'אימייל', 'סטטוס', 'דירוג', 'תקציב (₪)', 'שולם (₪)', 'כולל מע״מ']));
+
     const rows: Record<string, any>[] = [];
+    const notesRows: Record<string, any>[] = [];
     for (const c of manifest.contractors) {
+      for (const note of c.notes ?? []) {
+        notesRows.push({
+          קבלן: c.name ?? '',
+          הערה: note.text ?? '',
+          כותב: note.authorName ?? '',
+          תפקיד: note.authorRole ?? '',
+          'תאריך יצירה': note.createdAt ? new Date(note.createdAt).toLocaleString('he-IL') : '',
+        });
+      }
       for (const m of c.paymentMilestones ?? []) {
+        const partialPaid = (m.partialPayments ?? []).reduce(
+          (sum: number, payment: any) => sum + (Number(payment.amount) || 0),
+          0,
+        );
+        const isPaid = m.paid === true;
+        const paidAmount = isPaid
+          ? (Number(m.amount) || 0) + (Number(m.vatAmount) || 0)
+          : partialPaid;
         rows.push({
           קבלן: c.name ?? '',
           תפקיד: c.role ?? '',
-          'שלב / אבן דרך': m.name ?? m.description ?? '',
-          'סכום (₪)': m.amount ?? 0,
-          סטטוס: m.isPaid ? 'שולם' : 'ממתין',
+          'אבן דרך / תשלום': m.name ?? '',
+          תנאי_תשלום: m.triggerText ?? '',
+          'סכום לתשלום (₪)': m.amount ?? 0,
+          'מע״מ (₪)': m.vatAmount ?? 0,
+          'שולם בפועל (₪)': paidAmount,
+          'יתרה (₪)': Math.max(0, (Number(m.amount) || 0) - partialPaid),
+          סטטוס: isPaid ? 'שולם' : partialPaid > 0 ? 'שולם חלקית' : 'ממתין',
           'תאריך תשלום': m.paidAt ? new Date(m.paidAt).toLocaleDateString('he-IL') : '',
         });
       }
     }
     if (rows.length) {
-      root.file('07_תשלומים_קבלנים.csv',
-        toCsv(rows, ['קבלן', 'תפקיד', 'שלב / אבן דרך', 'סכום (₪)', 'סטטוס', 'תאריך תשלום']));
+      contractorsFolder.file('01_תשלומים.csv',
+        toCsv(rows, ['קבלן', 'תפקיד', 'אבן דרך / תשלום', 'תנאי_תשלום', 'סכום לתשלום (₪)', 'מע״מ (₪)', 'שולם בפועל (₪)', 'יתרה (₪)', 'סטטוס', 'תאריך תשלום']));
     }
+    if (notesRows.length) {
+      contractorsFolder.file('02_הערות.csv', toCsv(notesRows,
+        ['קבלן', 'הערה', 'כותב', 'תפקיד', 'תאריך יצירה']));
+    }
+  }
+
+  // Stages, tasks, and milestones can grow significantly, so keep each table
+  // independently usable in Excel rather than generating a long PDF.
+  if (manifest.stages?.length) {
+    const stagesFolder = root.folder('שלבי_בנייה')!;
+    const stageRows: Record<string, any>[] = [];
+    const taskRows: Record<string, any>[] = [];
+    const milestoneRows: Record<string, any>[] = [];
+    for (const stage of manifest.stages) {
+      stageRows.push({
+        שלב: stage.name ?? '',
+        'תפקיד קבלן': stage.contractorRole ?? '',
+        'תאריך התחלה': stage.startDate ?? '',
+        'תאריך סיום': stage.endDate ?? '',
+        התקדמות: `${stage.progressPct ?? 0}%`,
+        סטטוס: stage.status === 'done' ? 'הושלם' : stage.status === 'active' ? 'פעיל' : 'ממתין',
+        'תשלום שלב (₪)': stage.payment?.amount ?? 0,
+        'סטטוס תשלום': stage.payment?.status ?? '',
+        'תאריך תשלום': stage.payment?.paidAt ?? '',
+      });
+      for (const task of stage.tasks ?? []) {
+        taskRows.push({
+          שלב: stage.name ?? '', משימה: task.name ?? '', אחראי: task.assignee ?? '',
+          חובה: task.required ? 'כן' : 'לא',
+          סטטוס: task.done ? 'הושלמה' : 'פתוחה', סדר: task.sortOrder ?? '',
+        });
+      }
+      for (const milestone of stage.milestones ?? []) {
+        milestoneRows.push({
+          שלב: stage.name ?? '', 'אבן דרך': milestone.name ?? '', אחוז: `${milestone.pct ?? 0}%`,
+          'סכום (₪)': milestone.amount ?? 0, סטטוס: milestone.status ?? '',
+          'תאריך תשלום': milestone.paidAt ?? '', סדר: milestone.sortOrder ?? '',
+        });
+      }
+    }
+    stagesFolder.file('00_שלבים.csv', toCsv(stageRows,
+      ['שלב', 'תפקיד קבלן', 'תאריך התחלה', 'תאריך סיום', 'התקדמות', 'סטטוס', 'תשלום שלב (₪)', 'סטטוס תשלום', 'תאריך תשלום']));
+    if (taskRows.length) stagesFolder.file('01_משימות.csv', toCsv(taskRows, ['שלב', 'משימה', 'אחראי', 'חובה', 'סטטוס', 'סדר']));
+    if (milestoneRows.length) stagesFolder.file('02_אבני_דרך.csv', toCsv(milestoneRows, ['שלב', 'אבן דרך', 'אחוז', 'סכום (₪)', 'סטטוס', 'תאריך תשלום', 'סדר']));
+  }
+
+  // Daily logs are intentionally a date-organized CSV export: they can have
+  // hundreds of entries and multiple attached files per day.
+  if (manifest.dailyLogs?.length) {
+    const logsFolder = root.folder('יומני_עבודה')!;
+    const logsRows: Record<string, any>[] = [];
+    const workforceRows: Record<string, any>[] = [];
+    const activityRows: Record<string, any>[] = [];
+    const deliveryRows: Record<string, any>[] = [];
+    const issueRows: Record<string, any>[] = [];
+    const instructionRows: Record<string, any>[] = [];
+    for (const log of manifest.dailyLogs) {
+      logsRows.push({
+        תאריך: log.date ?? '', מזג_אוויר: log.weather ?? '', טמפרטורה: log.temperature ?? '',
+        סטטוס: log.status === 'locked' ? 'נעול' : 'טיוטה', 'מספר צוותים': (log.workforce ?? []).length,
+        פעילויות: (log.activities ?? []).length, אספקות: (log.deliveries ?? []).length,
+        בעיות: (log.issues ?? []).length, הנחיות: (log.instructions ?? []).length,
+        קבצים: (log.images ?? []).length,
+        'עדכון אחרון': log.updatedAt ? new Date(log.updatedAt).toLocaleString('he-IL') : '',
+      });
+      for (const item of log.workforce ?? []) workforceRows.push({ תאריך: log.date ?? '', קבלן: item.contractorName ?? '', עובדים: item.workersCount ?? 0, הערות: item.notes ?? '' });
+      for (const item of log.activities ?? []) activityRows.push({ תאריך: log.date ?? '', פעילות: item.description ?? '', סטטוס: item.status ?? '', קבלן: item.contractorId ?? '' });
+      for (const item of log.deliveries ?? []) deliveryRows.push({ תאריך: log.date ?? '', סוג: item.type === 'equipment' ? 'ציוד' : 'חומר', תיאור: item.description ?? '' });
+      for (const item of log.issues ?? []) issueRows.push({ תאריך: log.date ?? '', סוג: item.type ?? '', תיאור: item.description ?? '', 'השפעה כספית': item.financialImpact ? 'כן' : 'לא', 'גורם אחראי': item.responsiblePartyId ?? '' });
+      for (const item of log.instructions ?? []) instructionRows.push({ תאריך: log.date ?? '', הנחיה: item.text ?? '', 'ניתנה ל־': item.givenToId ?? '' });
+    }
+    logsFolder.file('00_יומנים.csv', toCsv(logsRows, ['תאריך', 'מזג_אוויר', 'טמפרטורה', 'סטטוס', 'מספר צוותים', 'פעילויות', 'אספקות', 'בעיות', 'הנחיות', 'קבצים', 'עדכון אחרון']));
+    if (workforceRows.length) logsFolder.file('01_כוח_אדם.csv', toCsv(workforceRows, ['תאריך', 'קבלן', 'עובדים', 'הערות']));
+    if (activityRows.length) logsFolder.file('02_פעילויות.csv', toCsv(activityRows, ['תאריך', 'פעילות', 'סטטוס', 'קבלן']));
+    if (deliveryRows.length) logsFolder.file('03_אספקות.csv', toCsv(deliveryRows, ['תאריך', 'סוג', 'תיאור']));
+    if (issueRows.length) logsFolder.file('04_בעיות.csv', toCsv(issueRows, ['תאריך', 'סוג', 'תיאור', 'השפעה כספית', 'גורם אחראי']));
+    if (instructionRows.length) logsFolder.file('05_הנחיות.csv', toCsv(instructionRows, ['תאריך', 'הנחיה', 'ניתנה ל־']));
   }
 
   // Budget & expenses CSV
@@ -262,58 +349,98 @@ export async function buildProjectZip(
   // BOQ CSV
   if (manifest.boq?.length) {
     const rows = manifest.boq.map((item: any) => ({
-      תיאור: item.name ?? item.description ?? '',
-      קטגוריה: item.category ?? item.cat ?? '',
+      פריט: item.name ?? '',
+      קטגוריה: item.category ?? '',
       יחידה: item.unit ?? '',
-      כמות: item.qty ?? item.quantity ?? '',
+      כמות: item.userQty ?? item.qty ?? '',
       'מחיר יחידה (₪)': item.unitPrice ?? '',
-      'סה"כ (₪)': ((item.qty ?? item.quantity ?? 0) * (item.unitPrice ?? 0)) || '',
+      'סה"כ (₪)': (item.userQty ?? item.qty ?? 0) * (item.unitPrice ?? 0),
       ספק: item.supplier ?? '',
-      סטטוס: item.status ?? '',
+      מפרט: item.spec ?? '',
+      הערות: item.notes ?? '',
+      סטטוס: item.status === 'approved' ? 'מאושר' : 'ממתין',
+      'סטטוס תשלום': item.paid ? 'שולם' : 'ממתין',
+      'תאריך תשלום': item.paidAt ?? '',
     }));
     root.file('09_BOQ_כמויות.csv',
-      toCsv(rows, ['תיאור', 'קטגוריה', 'יחידה', 'כמות', 'מחיר יחידה (₪)', 'סה"כ (₪)', 'ספק', 'סטטוס']));
+      toCsv(rows, ['פריט', 'קטגוריה', 'יחידה', 'כמות', 'מחיר יחידה (₪)', 'סה"כ (₪)', 'ספק', 'מפרט', 'הערות', 'סטטוס', 'סטטוס תשלום', 'תאריך תשלום']));
   }
 
   // Orders CSV
   if (manifest.orders?.length) {
     const rows = manifest.orders.map((o: any) => ({
-      תיאור: o.description ?? o.title ?? '',
-      כמות: o.quantity ?? '',
-      ספק: o.supplier ?? o.vendor ?? '',
+      הזמנה: o.title ?? '',
+      'כמות שהוזמנה': o.orderedQuantity ?? 0,
+      'כמות שהתקבלה': o.receivedQuantity ?? 0,
+      יחידה: o.unit ?? '',
+      ספק: o.supplier ?? '',
       סטטוס: o.status ?? '',
-      תאריך: o.orderDate ? new Date(o.orderDate).toLocaleDateString('he-IL') : '',
+      'תאריך הזמנה': o.orderDate ?? '',
+      'תאריך אספקה צפוי': o.expectedDeliveryDate ?? '',
       הערות: o.notes ?? '',
     }));
     root.file('10_הזמנות_חומרים.csv',
-      toCsv(rows, ['תיאור', 'כמות', 'ספק', 'סטטוס', 'תאריך', 'הערות']));
+      toCsv(rows, ['הזמנה', 'כמות שהוזמנה', 'כמות שהתקבלה', 'יחידה', 'ספק', 'סטטוס', 'תאריך הזמנה', 'תאריך אספקה צפוי', 'הערות']));
   }
 
   // Timeline CSV
   if (manifest.timeline?.length) {
     const rows = manifest.timeline.map((t: any) => ({
-      שם: t.title ?? t.label ?? '',
-      'תחילה מתוכנן': t.plannedStart ? new Date(t.plannedStart).toLocaleDateString('he-IL') : '',
-      'סיום מתוכנן': t.plannedEnd ? new Date(t.plannedEnd).toLocaleDateString('he-IL') : '',
-      'תחילה בפועל': t.actualStart ? new Date(t.actualStart).toLocaleDateString('he-IL') : '',
-      'סיום בפועל': t.actualEnd ? new Date(t.actualEnd).toLocaleDateString('he-IL') : '',
+      שם: t.name ?? '',
+      'שבוע התחלה': t.colWeek ?? '',
+      'משך (שבועות)': t.spanWeeks ?? '',
+      שורה: t.rowIndex ?? '',
+      סטטוס: t.status === 'done' ? 'הושלם' : t.status === 'active' ? 'פעיל' : 'ממתין',
     }));
     root.file('11_ציר_זמן.csv',
-      toCsv(rows, ['שם', 'תחילה מתוכנן', 'סיום מתוכנן', 'תחילה בפועל', 'סיום בפועל']));
+      toCsv(rows, ['שם', 'שבוע התחלה', 'משך (שבועות)', 'שורה', 'סטטוס']));
   }
 
   // Price quotes CSV
   if (manifest.priceQuotes?.length) {
     const rows = manifest.priceQuotes.map((q: any) => ({
-      נושא: q.topicKey ?? '',
-      תיאור: q.description ?? '',
-      'מחיר מינימום': q.priceMin ?? '',
-      'מחיר מקסימום': q.priceMax ?? '',
-      'מחיר ממוצע': q.priceAvg ?? '',
-      יחידה: q.unit ?? '',
+      נושא: q.topicName ?? q.topicKey ?? '',
+      ספק: q.supplier ?? '',
+      'איש קשר': q.contact ?? '',
+      טלפון: q.phone ?? '',
+      אימייל: q.email ?? '',
+      'סכום כולל (₪)': q.total ?? 0,
+      'תוקף ההצעה': q.validity ?? '',
+      סטטוס: q.status === 'approved' ? 'נבחרה' : q.status === 'rejected' ? 'נדחתה' : 'ממתינה',
+      הערות: q.notes ?? '',
+      'תאריך יצירה': q.createdAt ?? '',
+      'קובץ מצורף': q.fileName ?? (q.fileUrl ? 'קובץ מצורף' : ''),
     }));
     root.file('12_הצעות_מחיר.csv',
-      toCsv(rows, ['נושא', 'תיאור', 'מחיר מינימום', 'מחיר מקסימום', 'מחיר ממוצע', 'יחידה']));
+      toCsv(rows, ['נושא', 'ספק', 'איש קשר', 'טלפון', 'אימייל', 'סכום כולל (₪)', 'תוקף ההצעה', 'סטטוס', 'הערות', 'תאריך יצירה', 'קובץ מצורף']));
+  }
+
+  if (manifest.checklists?.length) {
+    const checklistsFolder = root.folder("צ'קליסטים")!;
+    const checklistRows: Record<string, any>[] = [];
+    const itemRows: Record<string, any>[] = [];
+    for (const checklist of manifest.checklists) {
+      checklistRows.push({
+        "צ'קליסט": checklist.title ?? '', תיאור: checklist.description ?? '', קטגוריה: checklist.category ?? '',
+        סטטוס: checklist.status === 'done' ? 'הושלם' : checklist.status === 'in_progress' ? 'בתהליך' : 'ממתין',
+        'תאריך יצירה': checklist.createdAt ? new Date(checklist.createdAt).toLocaleString('he-IL') : '',
+      });
+      for (const item of checklist.items ?? []) {
+        itemRows.push({ "צ'קליסט": checklist.title ?? '', פריט: item.text ?? '', סטטוס: item.isCompleted ? 'הושלם' : 'פתוח', סדר: item.sortOrder ?? '' });
+      }
+    }
+    checklistsFolder.file("00_צ'קליסטים.csv", toCsv(checklistRows, ["צ'קליסט", 'תיאור', 'קטגוריה', 'סטטוס', 'תאריך יצירה']));
+    if (itemRows.length) checklistsFolder.file('01_פריטים.csv', toCsv(itemRows, ["צ'קליסט", 'פריט', 'סטטוס', 'סדר']));
+  }
+
+  if (manifest.activityFeed?.length) {
+    const rows = manifest.activityFeed.map((item: any) => ({
+      'תאריך ושעה': item.createdAt ? new Date(item.createdAt).toLocaleString('he-IL') : '',
+      משתמש: item.actorName ?? '', תפקיד: item.role ?? '', פעילות: item.text ?? '',
+      סוג: item.eventType ?? '', ישות: item.entityRef?.table ?? '', 'מזהה ישות': item.entityRef?.id ?? '',
+    }));
+    root.folder('יומן_פעילות')!.file('00_פעילות.csv', toCsv(rows,
+      ['תאריך ושעה', 'משתמש', 'תפקיד', 'פעילות', 'סוג', 'ישות', 'מזהה ישות']));
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -346,13 +473,13 @@ export async function buildProjectZip(
     }
   }
 
-  // Daily log images
+  // Daily-log files are kept beside their CSVs, organized by log date.
   if (manifest.dailyLogs?.length) {
-    const logsImgFolder = root.folder('תמונות_יומני_עבודה')!;
+    const logsFilesFolder = root.folder('יומני_עבודה/קבצים')!;
     for (const log of manifest.dailyLogs) {
       for (const img of log.images ?? []) {
         if (img.url) {
-          tasks.push({ url: img.url, folder: logsImgFolder.folder(log.date ?? 'unknown')!, filename: `image_${img.storageId?.slice(-6) ?? Date.now()}.jpg`, label: `יומן ${log.date}` });
+          tasks.push({ url: img.url, folder: logsFilesFolder.folder(log.date ?? 'unknown')!, filename: `image_${img.storageId?.slice(-6) ?? Date.now()}.jpg`, label: `יומן ${log.date}` });
         }
       }
     }
@@ -374,6 +501,35 @@ export async function buildProjectZip(
     for (const permit of manifest.permits) {
       if (permit.url) {
         tasks.push({ url: permit.url, folder: permitsFolder, filename: `${safe(permit.title)}.pdf`, label: `היתר: ${permit.title}` });
+      }
+    }
+  }
+
+  // Quote attachments
+  if (manifest.priceQuotes?.length) {
+    const quotesFolder = root.folder('הצעות_מחיר')!;
+    for (const quote of manifest.priceQuotes) {
+      if (quote.fileUrl) {
+        const filename = safe(quote.fileName ?? `הצעה_${quote.supplier ?? quote._id}`);
+        tasks.push({ url: quote.fileUrl, folder: quotesFolder, filename, label: `הצעת מחיר: ${quote.supplier ?? quote.topicName ?? ''}` });
+      }
+    }
+  }
+
+  // Delivery documents are stored directly on an order, rather than as a
+  // projectFile, so they must be collected separately.
+  if (manifest.orders?.length) {
+    const ordersFolder = root.folder('הזמנות_חומרים/מסמכי_אספקה')!;
+    for (const order of manifest.orders) {
+      for (const document of order.deliveryDocuments ?? []) {
+        if (document.url) {
+          tasks.push({
+            url: document.url,
+            folder: ordersFolder,
+            filename: safe(document.name ?? `מסמך_${document.storageId}`),
+            label: `מסמך אספקה: ${order.title ?? ''}`,
+          });
+        }
       }
     }
   }

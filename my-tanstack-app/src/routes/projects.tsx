@@ -6,6 +6,7 @@ import { Btn, Icon, FeedbackModal, ConfirmDialog } from '~/components/Shared';
 import { useDataMutation } from '~/hooks/useDataMutation';
 import { CreateProjectWizard } from '~/components/CreateProjectWizard';
 import { useSubscription } from '~/hooks/useSubscription';
+import { useRequireRole } from '~/hooks/useRequireRole';
 import { openUpgradeModal } from '~/components/UpgradeModalHost';
 import { PROJECT_LIMIT_ERROR } from '../../convex/_lib/entitlements';
 import { ProjectExportModal } from '~/components/ProjectExportModal';
@@ -13,6 +14,11 @@ import { ProjectExportModal } from '~/components/ProjectExportModal';
 const PROJECT_LIMIT_UPGRADE = {
   title: 'שדרג ל-Pro',
   reason: 'במסלול החינמי ניתן לנהל פרויקט אחד בלבד. שדרג ל-Pro כדי לפתוח פרויקטים ללא הגבלה.',
+};
+
+const EXPORT_UPGRADE = {
+  title: 'ייצוא ארכיון פרויקט הוא יכולת Pro',
+  reason: 'שדרג ל-Pro כדי לשמור עותק ZIP מלא של נתוני הפרויקט והקבצים שלו.',
 };
 
 export const Route = createFileRoute('/projects')({
@@ -24,6 +30,7 @@ function ProjectsRoute() {
   const { user, projects, projectId, setCurrentProject, isMock } = useCurrentProject();
   const { mutate } = useDataMutation('project');
   const { isSelfProOrPremium } = useSubscription();
+  const { role: currentRole } = useRequireRole(['owner', 'manager', 'inspector', 'contractor']);
   
   const [isWizardOpen, setIsWizardOpen] = React.useState(false);
   const [isDeleting, setIsDeleting] = React.useState<string | null>(null);
@@ -237,10 +244,14 @@ function ProjectsRoute() {
                     </button>
                   )}
 
-                  {user?._id === project.ownerUserId && isSelfProOrPremium && (
+                  {currentRole === 'owner' && user?._id === project.ownerUserId && (
                     <button
-                      onClick={() => setExportProjectId({ id: project._id, name: project.name })}
-                      title="ייצא ארכיון"
+                      type="button"
+                      onClick={() => {
+                        if (isSelfProOrPremium) setExportProjectId({ id: project._id, name: project.name });
+                        else openUpgradeModal(EXPORT_UPGRADE);
+                      }}
+                      title={isSelfProOrPremium ? 'ייצא ארכיון' : 'ייצוא ארכיון דורש מנוי Pro'}
                       style={{
                         background: 'none', border: '1px solid var(--border)',
                         borderRadius: 8, color: 'var(--text2)', cursor: 'pointer',
@@ -248,8 +259,8 @@ function ProjectsRoute() {
                         fontSize: 13, fontFamily: 'inherit', transition: 'all 0.15s',
                       }}
                     >
-                      <Icon n="archive" s={15} />
-                      <span className="desktop-only">ארכיון</span>
+                      <Icon n={isSelfProOrPremium ? 'archive' : 'lock'} s={15} />
+                      <span className="desktop-only">{isSelfProOrPremium ? 'ארכיון' : 'ייצוא — Pro'}</span>
                     </button>
                   )}
 

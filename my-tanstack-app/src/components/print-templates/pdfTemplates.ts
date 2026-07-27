@@ -302,7 +302,7 @@ export function buildStagesHtml(stages: any[], project: any): string {
         <td>${s.contractorRole ?? '—'}</td>
         <td>${fmtDate(s.startDate)}</td>
         <td>${fmtDate(s.endDate)}</td>
-        <td>${s.amount ? `₪${fmt(s.amount)}` : '—'}</td>
+        <td>${s.payment?.amount != null ? `₪${fmt(s.payment.amount)}` : '—'}</td>
         <td>${progressBar}</td>
         <td>${tasks}</td>
       </tr>`;
@@ -323,15 +323,20 @@ export function buildContractorsHtml(contractors: any[], project: any): string {
   const sections = contractors.map((c: any) => {
     const milestones = c.paymentMilestones ?? [];
     const total = milestones.reduce((a: number, m: any) => a + (m.amount ?? 0), 0);
-    const paid = milestones.filter((m: any) => m.isPaid).reduce((a: number, m: any) => a + (m.amount ?? 0), 0);
+    const paid = milestones.reduce((sum: number, milestone: any) => {
+      if (milestone.paid) return sum + (milestone.amount ?? 0) + (milestone.vatAmount ?? 0);
+      return sum + (milestone.partialPayments ?? []).reduce((partialSum: number, payment: any) => partialSum + (payment.amount ?? 0), 0);
+    }, 0);
 
     const rows = milestones.map((m: any) => `
       <tr>
         <td style="color:#1A1A1A!important">${m.name ?? m.description ?? '—'}</td>
         <td style="color:#1A1A1A!important">₪${fmt(m.amount ?? 0)}</td>
-        <td>${m.isPaid
+        <td>${m.paid
           ? `<span class="badge-green">שולם${m.paidAt ? ' ' + fmtDate(m.paidAt) : ''}</span>`
-          : '<span class="badge-yellow">ממתין</span>'}</td>
+          : (m.partialPayments ?? []).length
+            ? `<span class="badge-blue">שולם חלקית (₪${fmt((m.partialPayments ?? []).reduce((sum: number, payment: any) => sum + (payment.amount ?? 0), 0))})</span>`
+            : '<span class="badge-yellow">ממתין</span>'}</td>
       </tr>`).join('');
 
     return `
@@ -379,6 +384,13 @@ export function buildDailyLogsHtml(logs: any[], project: any): string {
          </ul>`
       : '';
 
+    const deliveries = log.deliveries?.length
+      ? log.deliveries.map((delivery: any) => delivery.description ?? '').filter(Boolean).join(' | ')
+      : '';
+    const instructions = log.instructions?.length
+      ? log.instructions.map((instruction: any) => instruction.text ?? '').filter(Boolean).join(' | ')
+      : '';
+
     return `
       <div class="log-card">
         <div style="display:flex!important;justify-content:space-between!important;margin-bottom:7px!important">
@@ -401,6 +413,14 @@ export function buildDailyLogsHtml(logs: any[], project: any): string {
             <div style="font-weight:700!important;color:#DC2626!important;margin-bottom:3px!important">בעיות</div>
             ${issues}
           </div>` : ''}
+          ${deliveries ? `<div style="grid-column:1/-1!important">
+            <div style="font-weight:700!important;color:#374151!important;margin-bottom:3px!important">אספקות</div>
+            <span style="color:#1A1A1A!important">${deliveries}</span>
+          </div>` : ''}
+          ${instructions ? `<div style="grid-column:1/-1!important">
+            <div style="font-weight:700!important;color:#374151!important;margin-bottom:3px!important">הנחיות</div>
+            <span style="color:#1A1A1A!important">${instructions}</span>
+          </div>` : ''}
         </div>
         ${log.status === 'locked' ? '<div style="margin-top:6px!important;font-size:9px!important;color:#6B7280!important">🔒 יומן מאושר ונעול</div>' : ''}
       </div>`;
@@ -415,8 +435,8 @@ export function buildPermitsHtml(permits: any[], project: any): string {
   if (!permits?.length) return pageWrap('היתרים ורישוי', project?.name ?? '', '<p style="color:#6B7280!important">אין היתרים.</p>');
 
   const statusBadge = (status: string) => {
-    const map: Record<string, string> = { approved: 'badge-green', active: 'badge-green', pending: 'badge-yellow', expired: 'badge-red', rejected: 'badge-red' };
-    const label: Record<string, string> = { approved: 'מאושר', active: 'פעיל', pending: 'ממתין', expired: 'פג תוקף', rejected: 'נדחה' };
+    const map: Record<string, string> = { approved: 'badge-green', active: 'badge-green', in_progress: 'badge-blue', not_started: 'badge-yellow', pending: 'badge-yellow', expired: 'badge-red', rejected: 'badge-red' };
+    const label: Record<string, string> = { approved: 'מאושר', active: 'פעיל', in_progress: 'בטיפול', not_started: 'טרם התחיל', pending: 'ממתין', expired: 'פג תוקף', rejected: 'נדחה' };
     return `<span class="${map[status] ?? 'badge-blue'}">${label[status] ?? status}</span>`;
   };
 
@@ -444,9 +464,9 @@ export function buildChecklistsHtml(checklists: any[], project: any): string {
 
   const sections = checklists.map((cl: any) => {
     const total = cl.items?.length ?? 0;
-    const done = cl.items?.filter((i: any) => i.isDone || i.checked).length ?? 0;
+    const done = cl.items?.filter((i: any) => i.isCompleted || i.isDone || i.checked).length ?? 0;
     const items = (cl.items ?? []).map((item: any) => {
-      const checked = item.isDone || item.checked;
+      const checked = item.isCompleted || item.isDone || item.checked;
       return `
         <div style="display:flex!important;align-items:flex-start!important;gap:6px!important;margin:4px 0!important">
           <span class="check-box ${checked ? 'done' : ''}">${checked ? '✓' : ''}</span>
@@ -472,7 +492,7 @@ export function buildActivityHtml(feed: any[], project: any): string {
     <tr>
       <td style="color:#6B7280!important;font-size:10px!important;white-space:nowrap!important">${fmtDate(item._creationTime ?? item.createdAt)}</td>
       <td style="color:#1A1A1A!important">${item.text ?? item.message ?? '—'}</td>
-      <td style="color:#6B7280!important;font-size:10px!important">${item.authorName ?? ''}</td>
+      <td style="color:#6B7280!important;font-size:10px!important">${item.actorName ?? item.authorName ?? ''}</td>
     </tr>`).join('');
 
   return pageWrap('יומן פעילות', `${project?.name ?? ''} | ${feed.length} רשומות`, `

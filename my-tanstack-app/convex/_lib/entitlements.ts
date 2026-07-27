@@ -14,6 +14,8 @@ export interface Capabilities {
   dailyLogs: boolean;
   orders: boolean;
   aiAssistant: boolean;
+  /** Download a complete archive of an owned project. */
+  projectExport: boolean;
 }
 
 export const TIER_CAPABILITIES: Record<Tier, Capabilities> = {
@@ -25,6 +27,7 @@ export const TIER_CAPABILITIES: Record<Tier, Capabilities> = {
     dailyLogs: false,
     orders: false,
     aiAssistant: false,
+    projectExport: false,
   },
   pro: {
     maxOwnedProjects: Number.POSITIVE_INFINITY,
@@ -34,6 +37,7 @@ export const TIER_CAPABILITIES: Record<Tier, Capabilities> = {
     dailyLogs: true,
     orders: true,
     aiAssistant: false,
+    projectExport: true,
   },
   premium: {
     maxOwnedProjects: Number.POSITIVE_INFINITY,
@@ -43,6 +47,7 @@ export const TIER_CAPABILITIES: Record<Tier, Capabilities> = {
     dailyLogs: true,
     orders: true,
     aiAssistant: true,
+    projectExport: true,
   },
 };
 

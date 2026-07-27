@@ -1,11 +1,11 @@
 import { query } from './_generated/server';
 import { v } from 'convex/values';
-import { requireProjectOwner } from './_lib/projectAccess';
+import { requireProjectFeature, requireProjectOwner } from './_lib/projectAccess';
 
 /**
  * Aggregates ALL project data into a single export manifest.
  * Returns structured JSON + signed storage URLs for every file.
- * Only the project owner (or super admin) may call this.
+ * Only the project owner with an active paid subscription may call this.
  */
 export const generateExportManifest = query({
   args: {
@@ -27,7 +27,15 @@ export const generateExportManifest = query({
     }),
   },
   handler: async (ctx, args) => {
-    const { project } = await requireProjectOwner(ctx, args.projectId);
+    const { project, userId, user } = await requireProjectOwner(ctx, args.projectId);
+
+    // Exports are intentionally stricter than the shared owner helper: a
+    // super-admin may support a project, but must not download its contents.
+    if (project.ownerUserId !== userId || (user?.role && user.role !== 'owner')) {
+      throw new Error('Only the project owner can export this project');
+    }
+    await requireProjectFeature(ctx, args.projectId, 'projectExport');
+
     const projectId = args.projectId;
 
     // ── Project & rooms (always included) ───────────────────────────────────
@@ -87,7 +95,7 @@ export const generateExportManifest = query({
             ctx.db
               .query('projectFiles')
               .withIndex('by_contractor', (q) => q.eq('contractorId', contractor._id))
-              .take(200),
+              .collect(),
           ]);
 
           const filesWithUrls = await Promise.all(
@@ -109,7 +117,7 @@ export const generateExportManifest = query({
         .query('dailyLogs')
         .withIndex('by_project', (q) => q.eq('projectId', projectId))
         .order('desc')
-        .take(500);
+        .collect();
 
       dailyLogsData = await Promise.all(
         logs.map(async (log) => {
@@ -132,7 +140,7 @@ export const generateExportManifest = query({
       const photos = await ctx.db
         .query('photos')
         .withIndex('by_project', (q) => q.eq('projectId', projectId))
-        .take(500);
+        .collect();
 
       photosData = await Promise.all(
         photos.map(async (photo) => {
@@ -141,11 +149,11 @@ export const generateExportManifest = query({
               .query('photoFileVersions')
               .withIndex('by_photo', (q) => q.eq('photoId', photo._id))
               .order('asc')
-              .take(25),
+              .collect(),
             ctx.db
               .query('photoNotes')
               .withIndex('by_photo', (q) => q.eq('photoId', photo._id))
-              .take(100),
+              .collect(),
           ]);
 
           // Get the original source file URL
@@ -180,11 +188,9 @@ export const generateExportManifest = query({
       const allFiles = await ctx.db
         .query('projectFiles')
         .withIndex('by_project', (q) => q.eq('projectId', projectId))
-        .take(300);
+        .collect();
 
-      const docFiles = allFiles.filter((f) =>
-        ['receipt', 'quote', 'document'].includes(f.usage),
-      );
+      const docFiles = allFiles; // include ALL usage types: photo, receipt, quote, document, daily_log
 
       documentsData = await Promise.all(
         docFiles.map(async (f) => ({
@@ -239,10 +245,21 @@ export const generateExportManifest = query({
     // ── Orders ──────────────────────────────────────────────────────────────
     let ordersData: any[] = [];
     if (args.sections.orders) {
-      ordersData = await ctx.db
+      const orders = await ctx.db
         .query('orders')
         .withIndex('by_project', (q) => q.eq('projectId', projectId))
         .collect();
+      ordersData = await Promise.all(
+        orders.map(async (order) => ({
+          ...order,
+          deliveryDocuments: await Promise.all(
+            (order.deliveryDocuments ?? []).map(async (document) => ({
+              ...document,
+              url: await ctx.storage.getUrl(document.storageId),
+            })),
+          ),
+        })),
+      );
     }
 
     // ── Checklists ──────────────────────────────────────────────────────────
@@ -280,19 +297,37 @@ export const generateExportManifest = query({
         .query('activityFeed')
         .withIndex('by_project', (q) => q.eq('projectId', projectId))
         .order('desc')
-        .take(1000);
+        .collect();
     }
 
     // ── Price quotes ─────────────────────────────────────────────────────────
     let priceQuotesData: any[] = [];
     if (args.sections.priceQuotes) {
-      priceQuotesData = await ctx.db
-        .query('priceQuotes')
-        .withIndex('by_project', (q) => q.eq('projectId', projectId))
-        .collect();
+      const [quotes, topics] = await Promise.all([
+        ctx.db
+          .query('priceQuotes')
+          .withIndex('by_project', (q) => q.eq('projectId', projectId))
+          .collect(),
+        ctx.db.query('quoteTopics').collect(),
+      ]);
+      const topicNameByKey = new Map(
+        topics
+          .filter((topic) => topic.isBuiltin || topic.projectId === projectId)
+          .map((topic) => [topic.key, topic.name]),
+      );
+
+      priceQuotesData = await Promise.all(
+        quotes.map(async (quote) => {
+          const file = quote.projectFileId ? await ctx.db.get(quote.projectFileId) : null;
+          return {
+            ...quote,
+            topicName: topicNameByKey.get(quote.topicKey) ?? quote.topicKey,
+            fileUrl: file ? await ctx.storage.getUrl(file.storageId) : quote.fileUrl ?? null,
+          };
+        }),
+      );
     }
 
-    // ── Assemble manifest ────────────────────────────────────────────────────
     return {
       exportedAt: new Date().toISOString(),
       project: { ...project, rooms },
