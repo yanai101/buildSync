@@ -6,12 +6,19 @@ import { Btn, Icon, FeedbackModal, ConfirmDialog } from '~/components/Shared';
 import { useDataMutation } from '~/hooks/useDataMutation';
 import { CreateProjectWizard } from '~/components/CreateProjectWizard';
 import { useSubscription } from '~/hooks/useSubscription';
+import { useRequireRole } from '~/hooks/useRequireRole';
 import { openUpgradeModal } from '~/components/UpgradeModalHost';
 import { PROJECT_LIMIT_ERROR } from '../../convex/_lib/entitlements';
+import { ProjectExportModal } from '~/components/ProjectExportModal';
 
 const PROJECT_LIMIT_UPGRADE = {
   title: 'שדרג ל-Pro',
   reason: 'במסלול החינמי ניתן לנהל פרויקט אחד בלבד. שדרג ל-Pro כדי לפתוח פרויקטים ללא הגבלה.',
+};
+
+const EXPORT_UPGRADE = {
+  title: 'ייצוא ארכיון פרויקט הוא יכולת Pro',
+  reason: 'שדרג ל-Pro כדי לשמור עותק ZIP מלא של נתוני הפרויקט והקבצים שלו.',
 };
 
 export const Route = createFileRoute('/projects')({
@@ -23,12 +30,14 @@ function ProjectsRoute() {
   const { user, projects, projectId, setCurrentProject, isMock } = useCurrentProject();
   const { mutate } = useDataMutation('project');
   const { isSelfProOrPremium } = useSubscription();
+  const { role: currentRole } = useRequireRole(['owner', 'manager', 'inspector', 'contractor']);
   
   const [isWizardOpen, setIsWizardOpen] = React.useState(false);
   const [isDeleting, setIsDeleting] = React.useState<string | null>(null);
   const [deleteTargetId, setDeleteTargetId] = React.useState<string | null>(null);
   const [isSaving, setIsSaving] = React.useState(false);
   const [feedback, setFeedback] = React.useState<{ title: string; message: string; type: 'success' | 'error' | 'info' } | null>(null);
+  const [exportProjectId, setExportProjectId] = React.useState<{ id: string; name: string } | null>(null);
 
   const handleOpenWizard = () => {
     const ownedProjects = projects.filter((p: any) => p.ownerUserId === user?._id);
@@ -235,6 +244,26 @@ function ProjectsRoute() {
                     </button>
                   )}
 
+                  {currentRole === 'owner' && user?._id === project.ownerUserId && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (isSelfProOrPremium) setExportProjectId({ id: project._id, name: project.name });
+                        else openUpgradeModal(EXPORT_UPGRADE);
+                      }}
+                      title={isSelfProOrPremium ? 'ייצא ארכיון' : 'ייצוא ארכיון דורש מנוי Pro'}
+                      style={{
+                        background: 'none', border: '1px solid var(--border)',
+                        borderRadius: 8, color: 'var(--text2)', cursor: 'pointer',
+                        padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 4,
+                        fontSize: 13, fontFamily: 'inherit', transition: 'all 0.15s',
+                      }}
+                    >
+                      <Icon n={isSelfProOrPremium ? 'archive' : 'lock'} s={15} />
+                      <span className="desktop-only">{isSelfProOrPremium ? 'ארכיון' : 'ייצוא — Pro'}</span>
+                    </button>
+                  )}
+
                   <Btn
                     disabled={isActive}
                     variant={isActive ? 'ghost' : 'primary'}
@@ -279,6 +308,14 @@ function ProjectsRoute() {
           message={feedback.message} 
           type={feedback.type} 
           onClose={() => setFeedback(null)} 
+        />
+      )}
+
+      {exportProjectId && (
+        <ProjectExportModal
+          projectId={exportProjectId.id as any}
+          projectName={exportProjectId.name}
+          onClose={() => setExportProjectId(null)}
         />
       )}
     </div>

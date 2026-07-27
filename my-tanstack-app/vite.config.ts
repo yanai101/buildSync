@@ -15,6 +15,14 @@ export default defineConfig({
   resolve: {
     tsconfigPaths: true,
   },
+  // html2pdf.js is browser-only (uses `self`, `window`).
+  // We keep it external in SSR so Node never requires it.
+  // Do NOT exclude from optimizeDeps — Vite must pre-bundle it so
+  // the browser dynamic import resolves correctly.
+  ssr: {
+    noExternal: [],
+    external: ['html2pdf.js'],
+  },
   plugins: [
     tailwindcss(),
     tanstackStart({

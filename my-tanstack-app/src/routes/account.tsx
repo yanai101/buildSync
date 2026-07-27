@@ -13,6 +13,9 @@ import { BottomNavCustomizer } from '~/components/BottomNavCustomizer'
 import { useBottomNavShortcuts } from '~/hooks/useBottomNavShortcuts'
 import { NAV } from '~/components/Layout'
 import { useRequireRole } from '~/hooks/useRequireRole'
+import { ProjectExportModal } from '~/components/ProjectExportModal'
+import { useCurrentProject } from '~/hooks/useCurrentProject'
+import { openUpgradeModal } from '~/components/UpgradeModalHost'
 
 export const Route = createFileRoute('/account')({
   component: AccountPage,
@@ -41,6 +44,11 @@ const ROLE_LABELS: Record<string, string> = {
   contractor: 'קבלן',
 }
 
+const EXPORT_UPGRADE = {
+  title: 'ייצוא ארכיון פרויקט הוא יכולת Pro',
+  reason: 'שדרג ל-Pro כדי לשמור עותק ZIP מלא של נתוני הפרויקט והקבצים שלו.',
+}
+
 function AccountPage() {
   const { success } = Route.useSearch()
   const { notify } = useAppNotify()
@@ -48,6 +56,8 @@ function AccountPage() {
   const [showCustomizer, setShowCustomizer] = React.useState(false)
   const [isMobile, setIsMobile] = React.useState(false)
   const [shortcuts] = useBottomNavShortcuts()
+  const [showExportModal, setShowExportModal] = React.useState(false)
+  const { projectId, project } = useCurrentProject()
 
   React.useEffect(() => {
     const check = () => setIsMobile(window.innerWidth <= 768)
@@ -438,6 +448,37 @@ function AccountPage() {
         </div>
       </div>
 
+      {/* Archive Export Card */}
+      {userRole === 'owner' && projectId && project?.ownerUserId === user?._id && (
+        <div className="card" style={{ padding: 24, background: 'rgba(224,122,56,0.04)', border: '1px solid rgba(224,122,56,0.2)' }}>
+          <SectionHeader
+            title="ייצוא ארכיון פרויקט"
+            subtitle="הורד את כל נתוני הפרויקט כקובץ ZIP — יומנים, תמונות, תשלומים, היתרים ועוד"
+          />
+          <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <p style={{ fontSize: 13, color: 'var(--text2)', lineHeight: 1.7 }}>
+              בסיום הבנייה או לפני ביטול המנוי — צור ארכיון מסודר של כל נתוני הפרויקט. תוכל לבחור בדיוק מה להוריד ולשמור את הכל כקובץ ZIP מכווץ.
+            </p>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <Btn
+                onClick={() => {
+                  if (isProOrPremium) setShowExportModal(true)
+                  else openUpgradeModal(EXPORT_UPGRADE)
+                }}
+                style={{ padding: '10px 20px' }}
+              >
+                <Icon n={isProOrPremium ? 'archive' : 'lock'} s={16} />
+                {isProOrPremium ? 'ייצא ארכיון' : 'ייצוא ארכיון — שדרוג נדרש'}
+              </Btn>
+              <div style={{ fontSize: 12, color: 'var(--text3)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Icon n="info" s={13} />
+                הפרויקט הפעיל: <strong style={{ color: 'var(--text2)' }}>{(project as any)?.name ?? 'אין פרויקט פעיל'}</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="card" style={{ padding: 24 }}>
         <SectionHeader title="מראה ותצוגה" subtitle="בחר את מצב התצוגה המועדף עליך" />
         <ThemeSelector userId={user._id} />
@@ -575,6 +616,14 @@ function AccountPage() {
 
       {showSupportModal && (
         <SupportModal onClose={() => setShowSupportModal(false)} />
+      )}
+
+      {showExportModal && projectId && (
+        <ProjectExportModal
+          projectId={projectId as any}
+          projectName={(project as any)?.name ?? 'פרויקט'}
+          onClose={() => setShowExportModal(false)}
+        />
       )}
     </div>
   )

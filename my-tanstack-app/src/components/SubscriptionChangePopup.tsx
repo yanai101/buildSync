@@ -230,15 +230,17 @@ export function SubscriptionChangePopup() {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4 }}>
               {downgraded ? (
-                <Btn
-                  onClick={() => {
-                    close()
-                    openUpgradeModal({ title: 'חידוש מנוי', reason: 'חדש את המנוי כדי להמשיך ליהנות מכל יכולות Pro.' })
-                  }}
-                  style={{ width: '100%', justifyContent: 'center' }}
-                >
-                  <Icon n="star" s={14} /> חידוש המנוי
-                </Btn>
+                <>
+                  <Btn
+                    onClick={() => {
+                      close()
+                      openUpgradeModal({ title: 'חידוש מנוי', reason: 'חדש את המנוי כדי להמשיך ליהנות מכל יכולות Pro.' })
+                    }}
+                    style={{ width: '100%', justifyContent: 'center' }}
+                  >
+                    <Icon n="star" s={14} /> חידוש המנוי
+                  </Btn>
+                </>
               ) : (
                 <Btn onClick={close} style={{ width: '100%', justifyContent: 'center' }}>
                   הבנתי, תודה
