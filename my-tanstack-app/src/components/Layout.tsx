@@ -1000,29 +1000,41 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                                 transition: "all 0.2s"
                               }}
                             >
-                              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
-                                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                                  <span style={{ fontSize: 12 }}>{badgeConfig.icon}</span>
-                                  <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text1)" }}>{ann.title}</span>
+                              <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
+                                    <div style={{ display: "flex", alignItems: "center", gap: 6, overflow: 'hidden' }}>
+                                      <span style={{ fontSize: 12 }}>{badgeConfig.icon}</span>
+                                      <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text1)", whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{ann.title}</span>
+                                    </div>
+                                    {!isRead && (
+                                      <span style={{ fontSize: 10, fontWeight: 800, color: "var(--accent)", background: "rgba(217,119,6,0.15)", padding: "2px 6px", borderRadius: 6, flexShrink: 0 }}>
+                                        חדש
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div style={{
+                                    fontSize: 12,
+                                    color: "var(--text2)",
+                                    marginTop: 4,
+                                    lineHeight: 1.4,
+                                    display: isExpanded ? "block" : "-webkit-box",
+                                    WebkitLineClamp: isExpanded ? "unset" : 2,
+                                    WebkitBoxOrient: "vertical",
+                                    overflow: "hidden",
+                                    whiteSpace: "pre-wrap"
+                                  }}>
+                                    {ann.body}
+                                    {isExpanded && ann.imageUrl && (
+                                      <div style={{ marginTop: 8 }}>
+                                        <img src={ann.imageUrl} alt={ann.title} style={{ width: '100%', borderRadius: 6, maxHeight: 120, objectFit: 'cover' }} />
+                                      </div>
+                                    )}
+                                  </div>
                                 </div>
-                                {!isRead && (
-                                  <span style={{ fontSize: 10, fontWeight: 800, color: "var(--accent)", background: "rgba(217,119,6,0.15)", padding: "2px 6px", borderRadius: 6 }}>
-                                    חדש
-                                  </span>
+                                {!isExpanded && ann.imageUrl && (
+                                  <img src={ann.imageUrl} alt="" style={{ width: 44, height: 44, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} />
                                 )}
-                              </div>
-                              <div style={{
-                                fontSize: 12,
-                                color: "var(--text2)",
-                                marginTop: 4,
-                                lineHeight: 1.4,
-                                display: isExpanded ? "block" : "-webkit-box",
-                                WebkitLineClamp: isExpanded ? "unset" : 2,
-                                WebkitBoxOrient: "vertical",
-                                overflow: "hidden",
-                                whiteSpace: "pre-wrap"
-                              }}>
-                                {ann.body}
                               </div>
                             </div>
                           );

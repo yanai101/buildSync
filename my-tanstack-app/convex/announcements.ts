@@ -13,6 +13,14 @@ async function checkSuperAdmin(ctx: any) {
   return user;
 }
 
+export const generateUploadUrl = mutation({
+  args: {},
+  handler: async (ctx) => {
+    await checkSuperAdmin(ctx);
+    return await ctx.storage.generateUploadUrl();
+  },
+});
+
 export const getAllAnnouncements = query({
   args: {},
   handler: async (ctx) => {
@@ -33,6 +41,7 @@ export const getActiveAnnouncements = query({
 
     const now = Date.now();
     const userTier = user.subscriptionTier || 'free';
+    const userRole = user.role;
 
     // Get all published announcements
     const published = await ctx.db
@@ -56,6 +65,10 @@ export const getActiveAnnouncements = query({
           return item.userIds.includes(userId);
         }
 
+        if (item.audienceType === 'roles' && item.roles && userRole) {
+          return item.roles.includes(userRole as any);
+        }
+
         return false;
       })
       .sort((a, b) => b.publishAt - a.publishAt);
@@ -67,6 +80,7 @@ export const createAnnouncement = mutation({
     title: v.string(),
     body: v.string(),
     imageUrl: v.optional(v.string()),
+    storageId: v.optional(v.id('_storage')),
     type: v.union(
       v.literal('feature'),
       v.literal('info'),
@@ -78,8 +92,10 @@ export const createAnnouncement = mutation({
       v.literal('all'),
       v.literal('plan'),
       v.literal('users'),
+      v.literal('roles'),
     ),
     plans: v.optional(v.array(v.union(v.literal('pro'), v.literal('premium')))),
+    roles: v.optional(v.array(v.union(v.literal('owner'), v.literal('manager'), v.literal('inspector'), v.literal('contractor')))),
     userIds: v.optional(v.array(v.string())),
     status: v.union(
       v.literal('draft'),
@@ -93,14 +109,24 @@ export const createAnnouncement = mutation({
     const admin = await checkSuperAdmin(ctx);
 
     const publishAt = args.publishAt ?? Date.now();
+    let finalImageUrl = args.imageUrl;
+
+    if (args.storageId) {
+      const url = await ctx.storage.getUrl(args.storageId);
+      if (url) {
+        finalImageUrl = url;
+      }
+    }
 
     const id = await ctx.db.insert('announcements', {
       title: args.title,
       body: args.body,
-      imageUrl: args.imageUrl,
+      imageUrl: finalImageUrl,
+      storageId: args.storageId,
       type: args.type,
       audienceType: args.audienceType,
       plans: args.plans,
+      roles: args.roles,
       userIds: args.userIds,
       status: args.status,
       publishAt,
@@ -118,6 +144,7 @@ export const updateAnnouncement = mutation({
     title: v.optional(v.string()),
     body: v.optional(v.string()),
     imageUrl: v.optional(v.string()),
+    storageId: v.optional(v.union(v.id('_storage'), v.null())),
     type: v.optional(
       v.union(
         v.literal('feature'),
@@ -128,9 +155,10 @@ export const updateAnnouncement = mutation({
       ),
     ),
     audienceType: v.optional(
-      v.union(v.literal('all'), v.literal('plan'), v.literal('users')),
+      v.union(v.literal('all'), v.literal('plan'), v.literal('users'), v.literal('roles')),
     ),
     plans: v.optional(v.array(v.union(v.literal('pro'), v.literal('premium')))),
+    roles: v.optional(v.array(v.union(v.literal('owner'), v.literal('manager'), v.literal('inspector'), v.literal('contractor')))),
     userIds: v.optional(v.array(v.string())),
     status: v.optional(
       v.union(
@@ -145,14 +173,28 @@ export const updateAnnouncement = mutation({
   handler: async (ctx, args) => {
     await checkSuperAdmin(ctx);
 
-    const { id, ...updates } = args;
+    const { id, storageId, ...updates } = args;
     const existing = await ctx.db.get(id);
     if (!existing) throw new Error('Announcement not found');
 
-    const patch: any = {};
-    for (const [key, val] of Object.entries(updates)) {
-      if (val !== undefined) {
-        patch[key] = val;
+    const patch: any = { ...updates };
+
+    if (storageId !== undefined) {
+      if (storageId === null) {
+        patch.storageId = undefined;
+        patch.imageUrl = undefined;
+        if (existing.storageId) {
+          await ctx.storage.delete(existing.storageId);
+        }
+      } else {
+        const url = await ctx.storage.getUrl(storageId);
+        patch.storageId = storageId;
+        if (url) {
+          patch.imageUrl = url;
+        }
+        if (existing.storageId && existing.storageId !== storageId) {
+          await ctx.storage.delete(existing.storageId);
+        }
       }
     }
 
@@ -186,6 +228,10 @@ export const deleteAnnouncement = mutation({
     await checkSuperAdmin(ctx);
     const existing = await ctx.db.get(args.id);
     if (!existing) throw new Error('Announcement not found');
+
+    if (existing.storageId) {
+      await ctx.storage.delete(existing.storageId);
+    }
 
     await ctx.db.delete(args.id);
   },

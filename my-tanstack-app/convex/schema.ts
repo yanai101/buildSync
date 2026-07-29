@@ -211,6 +211,7 @@ export default defineSchema({
     title: v.string(),
     body: v.string(),
     imageUrl: v.optional(v.string()),
+    storageId: v.optional(v.id('_storage')),
     type: v.union(
       v.literal('feature'),
       v.literal('info'),
@@ -222,10 +223,17 @@ export default defineSchema({
       v.literal('all'),
       v.literal('plan'),
       v.literal('users'),
+      v.literal('roles'),
     ),
     plans: v.optional(v.array(v.union(
       v.literal('pro'),
       v.literal('premium'),
+    ))),
+    roles: v.optional(v.array(v.union(
+      v.literal('owner'),
+      v.literal('manager'),
+      v.literal('inspector'),
+      v.literal('contractor'),
     ))),
     userIds: v.optional(v.array(v.string())),
     status: v.union(

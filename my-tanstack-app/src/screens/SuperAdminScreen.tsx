@@ -4,6 +4,7 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import { api } from '../../convex/_generated/api';
 import { Id } from '../../convex/_generated/dataModel';
 import { Icon, Btn, Modal } from '../components/Shared';
+import { optimizeImageFile } from '../hooks/useProjectFileUploader';
 
 function formatTimeAgo(timestamp: number) {
   const days = Math.floor((Date.now() - timestamp) / (1000 * 60 * 60 * 24));
@@ -37,13 +38,27 @@ export function SuperAdminScreen() {
   const setAnnouncementStatus = useMutation(api.announcements.setAnnouncementStatus);
   const deleteAnnouncement = useMutation(api.announcements.deleteAnnouncement);
 
+  const generateUploadUrl = useMutation(api.announcements.generateUploadUrl);
+
   const [annTitle, setAnnTitle] = useState('');
   const [annBody, setAnnBody] = useState('');
   const [annType, setAnnType] = useState<'feature' | 'info' | 'warning' | 'error' | 'success'>('feature');
-  const [annAudience, setAnnAudience] = useState<'all' | 'plan' | 'users'>('all');
+  const [annAudience, setAnnAudience] = useState<'all' | 'plan' | 'users' | 'roles'>('all');
   const [annPlans, setAnnPlans] = useState<('pro' | 'premium')[]>(['pro', 'premium']);
+  const [annRoles, setAnnRoles] = useState<('owner' | 'manager' | 'inspector' | 'contractor')[]>(['owner']);
   const [annUserIds, setAnnUserIds] = useState<string[]>([]);
+  const [annUserSearch, setAnnUserSearch] = useState('');
   const [annStatus, setAnnStatus] = useState<'draft' | 'published' | 'archived'>('published');
+  
+  const [annIsScheduled, setAnnIsScheduled] = useState(false);
+  const [annScheduledDate, setAnnScheduledDate] = useState('');
+  
+  const [annImageFile, setAnnImageFile] = useState<File | null>(null);
+  const [annImageUrl, setAnnImageUrl] = useState<string>(''); 
+  const [annStorageId, setAnnStorageId] = useState<Id<'_storage'> | null>(null);
+  const [annIsUploading, setAnnIsUploading] = useState(false);
+  const [annUploadStats, setAnnUploadStats] = useState(''); 
+
   const [editingAnnId, setEditingAnnId] = useState<Id<'announcements'> | null>(null);
 
   const cleanupCandidates = useQuery(api.cleanup.getCleanupCandidates, isSuperAdmin && activeTab === 'cleanup' ? {} : 'skip');
@@ -1374,6 +1389,7 @@ export function SuperAdminScreen() {
                   >
                     <option value="all">👥 כולם (כל המשתמשים)</option>
                     <option value="plan">⭐ לפי תוכנית מנוי</option>
+                    <option value="roles">👔 לפי תפקידים</option>
                     <option value="users">👤 משתמשים ספציפיים</option>
                   </select>
                 </div>
@@ -1403,11 +1419,42 @@ export function SuperAdminScreen() {
                   </div>
                 )}
 
+                {annAudience === 'roles' && (
+                  <div style={{ display: 'flex', gap: 16, alignItems: 'center', background: 'var(--bg)', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border)' }}>
+                    {[
+                      { id: 'owner', label: 'בעל נכס' },
+                      { id: 'manager', label: 'מנהל פרויקט' },
+                      { id: 'inspector', label: 'מפקח' },
+                      { id: 'contractor', label: 'קבלן' }
+                    ].map(role => (
+                      <label key={role.id} style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', color: 'var(--text1)' }}>
+                        <input
+                          type="checkbox"
+                          checked={annRoles.includes(role.id as any)}
+                          onChange={(e) => {
+                            setAnnRoles(e.target.checked ? [...annRoles, role.id as any] : annRoles.filter(r => r !== role.id));
+                          }}
+                        />
+                        {role.label}
+                      </label>
+                    ))}
+                  </div>
+                )}
+
                 {annAudience === 'users' && users && (
                   <div>
-                    <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: 'var(--text2)', marginBottom: 6 }}>בחר משתמשים ({annUserIds.length} נבחרו)</label>
+                    <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13, fontWeight: 700, color: 'var(--text2)', marginBottom: 6 }}>
+                      בחר משתמשים ({annUserIds.length} נבחרו)
+                      <input
+                        type="text"
+                        placeholder="חיפוש משתמש..."
+                        value={annUserSearch}
+                        onChange={(e) => setAnnUserSearch(e.target.value)}
+                        style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', fontSize: 12, color: 'var(--text1)' }}
+                      />
+                    </label>
                     <div style={{ maxHeight: 120, overflowY: 'auto', background: 'var(--bg)', padding: 8, borderRadius: 8, border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 4 }}>
-                      {users.map((u) => (
+                      {users.filter(u => !annUserSearch || (u.name?.includes(annUserSearch) || u.email?.includes(annUserSearch))).map((u) => (
                         <label key={u._id} style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', color: 'var(--text1)' }}>
                           <input
                             type="checkbox"
@@ -1434,20 +1481,74 @@ export function SuperAdminScreen() {
                   />
                 </div>
 
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: 'var(--text2)', marginBottom: 6 }}>תמונה (אופציונלי)</label>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) {
+                            setAnnImageFile(null);
+                            setAnnUploadStats('');
+                            return;
+                          }
+                          setAnnUploadStats('מחשב דחיסה...');
+                          const optimized = await optimizeImageFile(file);
+                          setAnnImageFile(new File([optimized.blob], optimized.storedName, { type: optimized.storedMimeType }) as any);
+                          setAnnUploadStats(`כווץ: ${(file.size / 1024).toFixed(0)}KB ➡️ ${(optimized.blob.size / 1024).toFixed(0)}KB`);
+                        }}
+                        style={{ fontSize: 12 }}
+                      />
+                      {annUploadStats && <span style={{ fontSize: 11, color: 'var(--success)' }}>{annUploadStats}</span>}
+                      {annImageUrl && !annImageFile && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <img src={annImageUrl} alt="Current" style={{ height: 40, borderRadius: 4, border: '1px solid var(--border)' }} />
+                          <button onClick={() => { setAnnImageUrl(''); setAnnStorageId(null); }} style={{ background: 'none', border: 'none', color: 'var(--danger)', fontSize: 11, cursor: 'pointer' }}>הסר תמונה</button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700, color: 'var(--text2)', marginBottom: 6 }}>
+                      <input type="checkbox" checked={annIsScheduled} onChange={(e) => setAnnIsScheduled(e.target.checked)} />
+                      תזמן פרסום עתידי
+                    </label>
+                    {annIsScheduled && (
+                      <input
+                        type="datetime-local"
+                        value={annScheduledDate}
+                        onChange={(e) => setAnnScheduledDate(e.target.value)}
+                        style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text1)', fontSize: 13, boxSizing: 'border-box' }}
+                      />
+                    )}
+                  </div>
+                </div>
+
                 {/* Live Preview Box */}
                 <div>
                   <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text3)', marginBottom: 6 }}>👀 תצוגה מקדימה (כך תופיע ההודעה בתפריט המשתמש):</div>
                   <div style={{ padding: 12, borderRadius: 10, background: 'var(--bg)', border: '1px solid var(--border)' }}>
                     <div style={{ padding: "8px 10px", borderRadius: 8, background: "var(--accent-light, rgba(217,119,6,0.08))", border: "1px solid var(--accent-glow-sm)" }}>
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                          <span>{annType === 'feature' ? '⭐' : annType === 'info' ? 'ℹ️' : annType === 'warning' ? '🔧' : annType === 'error' ? '🚨' : '✅'}</span>
-                          <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text1)" }}>{annTitle || 'כותרת לדוגמה'}</span>
+                      <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 6, overflow: 'hidden' }}>
+                              <span>{annType === 'feature' ? '⭐' : annType === 'info' ? 'ℹ️' : annType === 'warning' ? '🔧' : annType === 'error' ? '🚨' : '✅'}</span>
+                              <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text1)", whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{annTitle || 'כותרת לדוגמה'}</span>
+                            </div>
+                            <span style={{ fontSize: 10, fontWeight: 800, color: "var(--accent)", background: "rgba(217,119,6,0.15)", padding: "1px 5px", borderRadius: 4, flexShrink: 0 }}>חדש</span>
+                          </div>
+                          <div style={{ fontSize: 12, color: "var(--text2)", marginTop: 4, lineHeight: 1.4, whiteSpace: "pre-wrap", WebkitLineClamp: 2, display: "-webkit-box", WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                            {annBody || 'תוכן ההודעה יופיע כאן בצורה ברורה וקריאה...'}
+                          </div>
                         </div>
-                        <span style={{ fontSize: 10, fontWeight: 800, color: "var(--accent)", background: "rgba(217,119,6,0.15)", padding: "1px 5px", borderRadius: 4 }}>חדש</span>
-                      </div>
-                      <div style={{ fontSize: 12, color: "var(--text2)", marginTop: 4, lineHeight: 1.4, whiteSpace: "pre-wrap" }}>
-                        {annBody || 'תוכן ההודעה יופיע כאן בצורה ברורה וקריאה...'}
+                        {(annImageFile || annImageUrl) && (
+                          <img src={annImageFile ? URL.createObjectURL(annImageFile) : annImageUrl} alt="preview" style={{ width: 44, height: 44, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} />
+                        )}
                       </div>
                     </div>
                   </div>
@@ -1459,6 +1560,26 @@ export function SuperAdminScreen() {
                     disabled={!annTitle.trim() || !annBody.trim()}
                     onClick={async () => {
                       try {
+                        let finalStorageId = annStorageId;
+                        if (annImageFile) {
+                          setAnnIsUploading(true);
+                          try {
+                            const uploadUrl = await generateUploadUrl();
+                            const uploadResponse = await fetch(uploadUrl, {
+                              method: 'POST',
+                              headers: { 'Content-Type': annImageFile.type },
+                              body: annImageFile,
+                            });
+                            if (!uploadResponse.ok) throw new Error('File upload failed');
+                            const { storageId } = await uploadResponse.json();
+                            finalStorageId = storageId;
+                          } finally {
+                            setAnnIsUploading(false);
+                          }
+                        }
+
+                        const publishAt = annIsScheduled && annScheduledDate ? new Date(annScheduledDate).getTime() : undefined;
+
                         if (editingAnnId) {
                           await updateAnnouncement({
                             id: editingAnnId,
@@ -1467,8 +1588,11 @@ export function SuperAdminScreen() {
                             type: annType,
                             audienceType: annAudience,
                             plans: annAudience === 'plan' ? annPlans : undefined,
+                            roles: annAudience === 'roles' ? annRoles : undefined,
                             userIds: annAudience === 'users' ? annUserIds : undefined,
                             status: annStatus,
+                            publishAt,
+                            storageId: finalStorageId === null ? null : finalStorageId,
                           });
                           alert('ההודעה עודכנה בהצלחה!');
                         } else {
@@ -1478,21 +1602,30 @@ export function SuperAdminScreen() {
                             type: annType,
                             audienceType: annAudience,
                             plans: annAudience === 'plan' ? annPlans : undefined,
+                            roles: annAudience === 'roles' ? annRoles : undefined,
                             userIds: annAudience === 'users' ? annUserIds : undefined,
                             status: annStatus,
+                            publishAt,
+                            storageId: finalStorageId === null ? undefined : finalStorageId,
                           });
                           alert('ההודעה נשמרה/פורסמה בהצלחה!');
                         }
                         setAnnTitle('');
                         setAnnBody('');
+                        setAnnImageFile(null);
+                        setAnnImageUrl('');
+                        setAnnStorageId(null);
+                        setAnnUploadStats('');
                         setEditingAnnId(null);
+                        setAnnIsScheduled(false);
+                        setAnnScheduledDate('');
                       } catch (e: any) {
                         alert('שגיאה בשמירת ההודעה: ' + e.message);
                       }
                     }}
                     style={{ flex: 1, justifyContent: 'center' }}
                   >
-                    <Icon n="check" s={16} /> {editingAnnId ? 'עדכן הודעה' : 'שמור / פרסם הודעה'}
+                    <Icon n="check" s={16} /> {annIsUploading ? 'מעלה תמונה...' : editingAnnId ? 'עדכן הודעה' : 'שמור / פרסם הודעה'}
                   </Btn>
                   {editingAnnId && (
                     <Btn

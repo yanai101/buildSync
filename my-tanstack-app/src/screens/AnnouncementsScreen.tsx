@@ -81,6 +81,11 @@ export function AnnouncementsScreen() {
                   whiteSpace: "pre-wrap"
                 }}>
                   {ann.body}
+                  {ann.imageUrl && (
+                    <div style={{ marginTop: 12 }}>
+                      <img src={ann.imageUrl} alt={ann.title} style={{ maxWidth: '100%', borderRadius: 8, border: '1px solid var(--border)' }} />
+                    </div>
+                  )}
                 </div>
                 <div style={{ fontSize: 11, color: "var(--text3)", marginTop: 12 }}>
                   פורסם בתאריך: {new Date(ann.publishAt).toLocaleDateString('he-IL')}
