@@ -22,6 +22,7 @@ import type * as budget from "../budget.js";
 import type * as checklists from "../checklists.js";
 import type * as cleanup from "../cleanup.js";
 import type * as contractorNotes from "../contractorNotes.js";
+import type * as contractorRecommendations from "../contractorRecommendations.js";
 import type * as crons from "../crons.js";
 import type * as dailyLogs from "../dailyLogs.js";
 import type * as dashboard from "../dashboard.js";
@@ -75,6 +76,7 @@ declare const fullApi: ApiFromModules<{
   checklists: typeof checklists;
   cleanup: typeof cleanup;
   contractorNotes: typeof contractorNotes;
+  contractorRecommendations: typeof contractorRecommendations;
   crons: typeof crons;
   dailyLogs: typeof dailyLogs;
   dashboard: typeof dashboard;

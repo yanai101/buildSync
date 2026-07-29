@@ -61,6 +61,7 @@ export const PAGE_TITLES: Record<string, string> = {
   "/setup": "הגדרות בית",
   "/stages": "שלבי ביצוע",
   "/contractors": "כרטסת קבלנים",
+  "/contractor-recommendations": "המלצות קבלנים",
   "/orders": "מעקב הזמנות",
   "/boq": "ניהול עלויות רכש",
   "/boqwizard": "אשף כמויות",
@@ -446,6 +447,20 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   }, []);
 
   const supportTicketCount = useQuery(api.support.getOpenTicketCount, identity?.isSuperAdmin ? {} : 'skip') || 0;
+  const initializeModerationStats = useMutation(api.contractorRecommendations.initializeModerationStats);
+  const pendingReviewCount = useQuery(api.contractorRecommendations.getPendingReviewCount, identity?.isSuperAdmin ? {} : 'skip') || 0;
+  const openReviewReportCount = useQuery(api.contractorRecommendations.getOpenReviewReportCount, identity?.isSuperAdmin ? {} : 'skip') || 0;
+  const superAdminNotificationCount = supportTicketCount + pendingReviewCount + openReviewReportCount;
+  const superAdminNotificationText = [
+    supportTicketCount > 0 ? `${supportTicketCount} פניות תמיכה` : null,
+    pendingReviewCount > 0 ? `${pendingReviewCount} ביקורות ממתינות לאישור` : null,
+    openReviewReportCount > 0 ? `${openReviewReportCount} דיווחים על ביקורות` : null,
+  ].filter(Boolean).join(', ');
+
+  React.useEffect(() => {
+    if (!identity?.isSuperAdmin) return;
+    void initializeModerationStats({});
+  }, [identity?.isSuperAdmin, initializeModerationStats]);
 
   const COLLAPSED_KEY = 'buildsync:sidebar-collapsed-sections'
   const [collapsedSections, setCollapsedSections] = React.useState<Set<string>>(new Set())
@@ -746,6 +761,27 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             </div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+            <Link
+              to="/contractor-recommendations"
+              aria-label="מאגר קבלנים"
+              style={{
+                textDecoration: 'none',
+                border: currentPath === '/contractor-recommendations' ? '1px solid var(--accent-glow)' : '1px solid var(--border)',
+                borderRadius: 10,
+                padding: '8px 12px',
+                fontSize: 13,
+                fontWeight: 700,
+                color: currentPath === '/contractor-recommendations' ? 'var(--accent)' : 'var(--text2)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 7,
+                background: currentPath === '/contractor-recommendations' ? 'var(--accent-light)' : 'var(--surface)',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              <Icon n="search" s={15} />
+              <span className="desktop-only">מאגר קבלנים</span>
+            </Link>
             {hasMultipleProjects ? (
               <Link
                 to="/projects"
@@ -794,6 +830,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             {!isProOrPremium && (
               <button
                 type="button"
+                className="mobile-hide-upgrade"
                 onClick={() => openUpgradeModal({ title: 'שדרג ל-Pro', reason: 'פתח פרויקטים ללא הגבלה, ניהול צוות, יומני עבודה ודוחות מתקדמים.' })}
                 style={{
                   border: "none",
@@ -822,6 +859,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 onClick={() => setMenuOpen((v) => !v)}
                 aria-haspopup="menu"
                 aria-expanded={menuOpen}
+                aria-label={superAdminNotificationText ? `תפריט משתמש, ${superAdminNotificationText}` : 'תפריט משתמש'}
                 style={{
                   width: 34, height: 34, borderRadius: "50%",
                   background: "linear-gradient(135deg, var(--accent-light) 0%, var(--accent-glow-sm) 100%)",
@@ -834,7 +872,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 }}
               >
                 {(identity?.name?.[0] ?? identity?.email?.[0] ?? 'א').toUpperCase()}
-                {identity?.isSuperAdmin && supportTicketCount > 0 && (
+                {identity?.isSuperAdmin && superAdminNotificationCount > 0 && (
                   <span style={{
                     position: "absolute",
                     top: -4,
@@ -851,7 +889,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                     borderRadius: "50%",
                     border: "2px solid var(--surface)"
                   }}>
-                    {supportTicketCount}
+                    {superAdminNotificationCount > 99 ? '99+' : superAdminNotificationCount}
                   </span>
                 )}
               </button>

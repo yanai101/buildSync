@@ -95,7 +95,42 @@ export default defineSchema({
     .index('by_task', ['taskId']),
 
   contractors: defineTable(zodToConvexFields(s.zContractor))
-    .index('by_project', ['projectId']),
+    .index('by_project', ['projectId'])
+    .index('by_contractorProfileId', ['contractorProfileId']),
+
+  contractorProfiles: defineTable(zodToConvexFields(s.zContractorProfile))
+    .index('by_normalizedPhone', ['normalizedPhone'])
+    .index('by_claimedUserId', ['claimedUserId']),
+
+  contractorReviews: defineTable(zodToConvexFields(s.zContractorReview))
+    .index('by_contractorProfileId_and_status', ['contractorProfileId', 'status'])
+    .index('by_projectId_and_authorUserId', ['projectId', 'authorUserId'])
+    .index('by_projectId_and_status_and_createdAt', ['projectId', 'status', 'createdAt'])
+    .index('by_contractorId_and_authorUserId', ['contractorId', 'authorUserId'])
+    .index('by_status_and_createdAt', ['status', 'createdAt']),
+
+  contractorReviewResponses: defineTable(zodToConvexFields(s.zContractorReviewResponse))
+    .index('by_reviewId', ['reviewId'])
+    .index('by_contractorProfileId', ['contractorProfileId']),
+
+  contractorProfileImageSubmissions: defineTable(zodToConvexFields(s.zContractorProfileImageSubmission))
+    .index('by_reviewId', ['reviewId'])
+    .index('by_profileId_and_status', ['contractorProfileId', 'status']),
+
+  contractorReviewReports: defineTable(zodToConvexFields(s.zContractorReviewReport))
+    .index('by_reviewId', ['reviewId'])
+    .index('by_status', ['status'])
+    .index('by_reviewId_and_reporterUserId', ['reviewId', 'reporterUserId']),
+
+  contractorRecommendationModerationStats: defineTable(zodToConvexFields(s.zContractorRecommendationModerationStats))
+    .index('by_key', ['key']),
+
+  contractorReviewModerationEvents: defineTable(zodToConvexFields(s.zContractorReviewModerationEvent))
+    .index('by_reviewId_and_createdAt', ['reviewId', 'createdAt'])
+    .index('by_createdAt', ['createdAt']),
+
+  contractorRecommendationRateLimits: defineTable(zodToConvexFields(s.zContractorRecommendationRateLimit))
+    .index('by_userId_and_scope_and_windowStart', ['userId', 'scope', 'windowStart']),
 
   contractorPaymentMilestones: defineTable(
     zodToConvexFields(s.zContractorPaymentMilestone),

@@ -167,7 +167,7 @@ export const Modal = ({onClose, title, children, width=660}: any) => (
   <AnimatePresence>
     <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} className="modal-overlay" onClick={(e: any)=>e.target===e.currentTarget&&onClose()}>
       <motion.div initial={{scale:0.95,opacity:0,y:10}} animate={{scale:1,opacity:1,y:0}} exit={{scale:0.95,opacity:0,y:10}} transition={{type:"spring",stiffness:300,damping:30}} className="modal-box" style={{maxWidth:width}}>
-        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"20px 24px",borderBottom:"1px solid var(--border)"}}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"20px 24px",borderBottom:"1px solid var(--border)",position:"sticky",top:0,zIndex:3,background:"var(--surface)"}}>
           <span style={{fontWeight:800,fontSize:18}}>{title}</span>
           <motion.button whileHover={{scale:1.1}} whileTap={{scale:0.9}} onClick={onClose} style={{background:"var(--bg)",border:"none",borderRadius:"50%",cursor:"pointer",color:"var(--text2)",padding:6,display:"flex"}}><Icon n="x" s={18}/></motion.button>
         </div>

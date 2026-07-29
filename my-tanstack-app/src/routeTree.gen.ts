@@ -29,6 +29,7 @@ import { Route as GuidesRouteImport } from './routes/guides'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as DailyLogsRouteImport } from './routes/daily-logs'
 import { Route as ContractorsRouteImport } from './routes/contractors'
+import { Route as ContractorRecommendationsRouteImport } from './routes/contractor-recommendations'
 import { Route as ChecklistsRouteImport } from './routes/checklists'
 import { Route as BudgetRouteImport } from './routes/budget'
 import { Route as BoqwizardRouteImport } from './routes/boqwizard'
@@ -141,6 +142,12 @@ const ContractorsRoute = ContractorsRouteImport.update({
   path: '/contractors',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ContractorRecommendationsRoute =
+  ContractorRecommendationsRouteImport.update({
+    id: '/contractor-recommendations',
+    path: '/contractor-recommendations',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ChecklistsRoute = ChecklistsRouteImport.update({
   id: '/checklists',
   path: '/checklists',
@@ -205,6 +212,7 @@ export interface FileRoutesByFullPath {
   '/boqwizard': typeof BoqwizardRoute
   '/budget': typeof BudgetRoute
   '/checklists': typeof ChecklistsRoute
+  '/contractor-recommendations': typeof ContractorRecommendationsRoute
   '/contractors': typeof ContractorsRoute
   '/daily-logs': typeof DailyLogsRoute
   '/dashboard': typeof DashboardRoute
@@ -238,6 +246,7 @@ export interface FileRoutesByTo {
   '/boqwizard': typeof BoqwizardRoute
   '/budget': typeof BudgetRoute
   '/checklists': typeof ChecklistsRoute
+  '/contractor-recommendations': typeof ContractorRecommendationsRoute
   '/contractors': typeof ContractorsRoute
   '/daily-logs': typeof DailyLogsRoute
   '/dashboard': typeof DashboardRoute
@@ -272,6 +281,7 @@ export interface FileRoutesById {
   '/boqwizard': typeof BoqwizardRoute
   '/budget': typeof BudgetRoute
   '/checklists': typeof ChecklistsRoute
+  '/contractor-recommendations': typeof ContractorRecommendationsRoute
   '/contractors': typeof ContractorsRoute
   '/daily-logs': typeof DailyLogsRoute
   '/dashboard': typeof DashboardRoute
@@ -307,6 +317,7 @@ export interface FileRouteTypes {
     | '/boqwizard'
     | '/budget'
     | '/checklists'
+    | '/contractor-recommendations'
     | '/contractors'
     | '/daily-logs'
     | '/dashboard'
@@ -340,6 +351,7 @@ export interface FileRouteTypes {
     | '/boqwizard'
     | '/budget'
     | '/checklists'
+    | '/contractor-recommendations'
     | '/contractors'
     | '/daily-logs'
     | '/dashboard'
@@ -373,6 +385,7 @@ export interface FileRouteTypes {
     | '/boqwizard'
     | '/budget'
     | '/checklists'
+    | '/contractor-recommendations'
     | '/contractors'
     | '/daily-logs'
     | '/dashboard'
@@ -407,6 +420,7 @@ export interface RootRouteChildren {
   BoqwizardRoute: typeof BoqwizardRoute
   BudgetRoute: typeof BudgetRoute
   ChecklistsRoute: typeof ChecklistsRoute
+  ContractorRecommendationsRoute: typeof ContractorRecommendationsRoute
   ContractorsRoute: typeof ContractorsRoute
   DailyLogsRoute: typeof DailyLogsRoute
   DashboardRoute: typeof DashboardRoute
@@ -575,6 +589,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ContractorsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/contractor-recommendations': {
+      id: '/contractor-recommendations'
+      path: '/contractor-recommendations'
+      fullPath: '/contractor-recommendations'
+      preLoaderRoute: typeof ContractorRecommendationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/checklists': {
       id: '/checklists'
       path: '/checklists'
@@ -663,6 +684,7 @@ const rootRouteChildren: RootRouteChildren = {
   BoqwizardRoute: BoqwizardRoute,
   BudgetRoute: BudgetRoute,
   ChecklistsRoute: ChecklistsRoute,
+  ContractorRecommendationsRoute: ContractorRecommendationsRoute,
   ContractorsRoute: ContractorsRoute,
   DailyLogsRoute: DailyLogsRoute,
   DashboardRoute: DashboardRoute,

@@ -15,6 +15,16 @@ export type OptimizedFile = {
   height?: number;
 };
 
+/**
+ * Keeps the default project-file behaviour intact, while allowing callers
+ * that render a small image (such as a contractor avatar) to require a
+ * compact generated file instead of falling back to the original upload.
+ */
+export type ImageOptimizationOptions = {
+  maxEdge?: number;
+  forceOutput?: boolean;
+};
+
 const MAX_IMAGE_EDGE = 2000;
 
 const extensionForMime = (mimeType: string) => {
@@ -51,8 +61,14 @@ const loadImage = async (file: File) => {
   }
 };
 
-export const optimizeImageFile = async (file: File): Promise<OptimizedFile> => {
+export const optimizeImageFile = async (
+  file: File,
+  { maxEdge = MAX_IMAGE_EDGE, forceOutput = false }: ImageOptimizationOptions = {},
+): Promise<OptimizedFile> => {
   if (!file.type.startsWith('image/')) {
+    if (forceOutput) {
+      throw new Error('A profile image must be a supported image file');
+    }
     return {
       blob: file,
       storedName: file.name,
@@ -64,6 +80,9 @@ export const optimizeImageFile = async (file: File): Promise<OptimizedFile> => {
   try {
     image = await loadImage(file);
   } catch {
+    if (forceOutput) {
+      throw new Error('Could not process the selected image');
+    }
     return {
       blob: file,
       storedName: file.name,
@@ -73,6 +92,9 @@ export const optimizeImageFile = async (file: File): Promise<OptimizedFile> => {
   const originalWidth = image.naturalWidth || image.width;
   const originalHeight = image.naturalHeight || image.height;
   if (!originalWidth || !originalHeight) {
+    if (forceOutput) {
+      throw new Error('Could not determine the selected image dimensions');
+    }
     return {
       blob: file,
       storedName: file.name,
@@ -80,7 +102,7 @@ export const optimizeImageFile = async (file: File): Promise<OptimizedFile> => {
     };
   }
 
-  const scale = Math.min(1, MAX_IMAGE_EDGE / Math.max(originalWidth, originalHeight));
+  const scale = Math.min(1, maxEdge / Math.max(originalWidth, originalHeight));
   const width = Math.max(1, Math.round(originalWidth * scale));
   const height = Math.max(1, Math.round(originalHeight * scale));
   const canvas = document.createElement('canvas');
@@ -88,6 +110,9 @@ export const optimizeImageFile = async (file: File): Promise<OptimizedFile> => {
   canvas.height = height;
   const ctx = canvas.getContext('2d');
   if (!ctx) {
+    if (forceOutput) {
+      throw new Error('Image compression is not available in this browser');
+    }
     return {
       blob: file,
       storedName: file.name,
@@ -107,7 +132,7 @@ export const optimizeImageFile = async (file: File): Promise<OptimizedFile> => {
 
   for (const candidate of candidates) {
     const blob = await canvasToBlob(canvas, candidate.mimeType, candidate.quality);
-    if (blob && blob.size > 0 && blob.size < file.size) {
+    if (blob && blob.size > 0 && (forceOutput || blob.size < file.size)) {
       return {
         blob,
         storedName: replaceExtension(file.name, candidate.mimeType),
@@ -116,6 +141,10 @@ export const optimizeImageFile = async (file: File): Promise<OptimizedFile> => {
         height,
       };
     }
+  }
+
+  if (forceOutput) {
+    throw new Error('Could not compress the selected image');
   }
 
   return {

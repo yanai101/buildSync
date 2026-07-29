@@ -858,6 +858,97 @@ body {
   animation: fade-in-up 0.25s var(--transition-spring) both;
 }
 
+/* Keeps the contractor identity visible while the long review form scrolls,
+   without letting the underlying fields visually collide with it. */
+.review-contractor-sticky {
+  background: rgba(255, 255, 255, .76);
+  border: 1px solid rgba(0, 0, 0, .08);
+  box-shadow: 0 9px 18px rgba(20, 20, 28, .1);
+  backdrop-filter: blur(10px) saturate(1.1);
+  -webkit-backdrop-filter: blur(10px) saturate(1.1);
+}
+[data-theme="dark"] .review-contractor-sticky {
+  background: rgba(26, 26, 30, .7);
+  border-color: rgba(255, 255, 255, .1);
+  box-shadow: 0 9px 18px rgba(0, 0, 0, .26);
+}
+
+/* ─── Contractor recommendations ─────────────────────────────────────────── */
+.recommendations-list-viewport { height: min(68vh, 680px); overflow-y: auto; overscroll-behavior: contain; }
+.recommendations-list-page-scroll { height: auto !important; overflow: visible !important; }
+.recommendation-card-summary { display: flex; align-items: flex-start; width: 100%; min-width: 0; gap: 12px; padding: 0; border: 0; background: transparent; color: inherit; text-align: inherit; cursor: pointer; }
+.recommendation-card-summary:hover strong { color: var(--accent-dark); }
+.recommendation-card-summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 10px; }
+.recommendation-pro-lock { display: inline-flex; align-items: center; gap: 4px; border: 1px solid rgba(224,122,56,.38); background: rgba(224,122,56,.08); color: var(--accent); padding: 3px 7px; border-radius: 999px; font-weight: 800; font-size: 11px; }
+.recommendation-area-chip { font-size: 11px; padding: 3px 7px; border-radius: 999px; background: var(--accent-light); color: var(--accent-dark); font-weight: 700; }
+.recommendation-expand-icon { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 32px; height: 32px; border: 1px solid var(--border); border-radius: 9px; transition: transform .2s ease, border-color .2s ease, background .2s ease; }
+.recommendation-card.is-expanded .recommendation-expand-icon { transform: rotate(180deg); border-color: rgba(224,122,56,.42); background: var(--accent-light); }
+.recommendation-card-details { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .24s ease; }
+.recommendation-card-details-inner { min-height: 0; overflow: hidden; padding: 0 64px 2px; opacity: 0; transform: translateY(-4px); transition: opacity .16s ease, transform .24s ease; }
+.recommendation-card.is-expanded .recommendation-card-details { grid-template-rows: 1fr; }
+.recommendation-card.is-expanded .recommendation-card-details-inner { opacity: 1; transform: translateY(0); }
+.recommendations-filter-toggle { display: none; }
+.recommendations-filter-advanced { display: contents; }
+.recommendations-results-count { flex: 1 0 100%; margin-top: -2px; color: var(--text3); font-size: 13px; text-align: end; }
+.recommendations-trust-title { display: flex; align-items: center; gap: 7px; }
+.recommendations-trust-list { display: grid; gap: 12px; margin-top: 14px; }
+.recommendations-trust-item { display: flex; align-items: flex-start; gap: 8px; color: var(--text2); font-size: 13px; line-height: 1.45; }
+.recommendations-trust-item svg { flex-shrink: 0; margin-top: 1px; }
+.recommendations-empty-state { display: flex; flex-direction: column; align-items: center; padding: 44px 24px; text-align: center; }
+.recommendations-empty-state > strong { font-size: 17px; }
+.recommendations-empty-state > p { max-width: 430px; margin: 8px 0 16px; color: var(--text2); line-height: 1.55; }
+.recommendations-empty-icon { display: grid; width: 48px; height: 48px; margin-bottom: 12px; place-items: center; border-radius: 14px; background: var(--accent-light); }
+.recommendations-empty-note { color: var(--text3); font-size: 13px; }
+.contractor-recommendations-promo { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin: -4px 0 16px; padding: 11px 13px; border: 1px solid rgba(224,122,56,.25); border-radius: 12px; background: var(--accent-light); }
+@media(min-width:769px) {
+  .recommendations-title-block { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+  .recommendations-page-subtitle { margin: 0 !important; }
+  .recommendation-card-content { display: flex; flex-direction: column; min-width: 0; }
+  .recommendation-tags { gap: 5px !important; }
+  .recommendation-card-footer { margin-top: 8px !important; }
+  .recommendations-list-viewport { height: min(64vh, 560px); }
+}
+@media(max-width:768px) {
+  .mobile-hide-upgrade { display: none !important; }
+  .contractor-recommendations-page { padding-bottom: 124px; }
+  .recommendations-page-heading h1 { font-size: 23px !important; }
+  .recommendations-page-heading p { font-size: 13px; }
+  .recommendations-layout { display: flex !important; flex-direction: column; gap: 14px !important; }
+  .recommendations-trust-panel { order: -1; width: 100%; padding: 14px !important; }
+  .recommendations-trust-list { gap: 8px; margin-top: 10px; }
+  .recommendations-trust-item { font-size: 12px; line-height: 1.4; }
+  .recommendations-empty-state { padding: 32px 18px; }
+  .recommendations-filters { display: grid !important; grid-template-columns: 1fr 1fr; gap: 6px !important; }
+  .recommendations-filters > label { grid-column: 1 / -1; min-width: 0; }
+  .recommendations-filter-toggle { display: inline-flex; grid-column: 1 / -1; align-items: center; justify-content: center; min-height: 42px; gap: 7px; padding: 9px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); color: var(--text1); font: inherit; font-size: 13px; font-weight: 750; cursor: pointer; }
+  .recommendations-filter-toggle.is-open { border-color: rgba(224,122,56,.45); background: var(--accent-light); color: var(--accent-dark); }
+  .recommendations-filter-indicator { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+  .recommendations-filter-advanced { display: none; grid-column: 1 / -1; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .recommendations-filter-advanced.is-open { display: grid; }
+  .recommendations-filter-select { width: 100% !important; min-width: 0; }
+  .recommendations-rating-filter { grid-column: 1 / -1; }
+  .recommendations-filter-advanced > .btn { grid-column: 1 / -1; justify-content: center; }
+  .recommendations-results-count { grid-column: 1 / -1; margin-top: 3px; text-align: center; }
+  .recommendation-card { padding: 12px !important; }
+  .recommendation-card-summary { gap: 9px; }
+  .recommendation-card-header { gap: 8px !important; }
+  .recommendation-meta { gap: 4px !important; margin-top: 3px !important; }
+  .recommendation-review-body { margin: 8px 0 !important; line-height: 1.5 !important; }
+  .recommendation-card-details-inner { padding: 0 0 2px; }
+  .recommendation-expand-icon { flex-basis: 30px; height: 30px; }
+  .recommendation-card-footer { margin-top: 8px !important; }
+  .recommendation-card-footer { align-items: stretch !important; flex-direction: column; }
+  .recommendation-card-footer .btn { justify-content: center; width: 100%; }
+  .contractor-recommendations-promo { align-items: stretch; flex-direction: column; }
+  .contractor-recommendations-promo > a { width: 100%; }
+  .contractor-recommendations-promo .btn { justify-content: center; width: 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .recommendation-card-details,
+  .recommendation-card-details-inner,
+  .recommendation-expand-icon { transition: none; }
+}
+
 /* ─── Inputs ─────────────────────────────────────────────────────────────────── */
 .bp-input {
   width: 100%; padding: 10px 14px;
@@ -1155,7 +1246,36 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
 
 /* ─── Contractor Layout ──────────────────────────────────────────────────────── */
 .contractor-detail-layout { display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: 20px; }
-@media(max-width:768px){ .contractor-detail-layout { display: flex; flex-direction: column; gap: 16px; } }
+@media(max-width:768px){
+  .contractor-detail-layout { display: flex; flex-direction: column; gap: 16px; }
+  .contractor-detail-actions-bar {
+    align-items: stretch !important;
+    flex-direction: column;
+    gap: 12px !important;
+  }
+  .contractor-back-button { align-self: flex-start; min-height: 36px; }
+  .contractor-detail-actions {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 44px;
+    align-items: stretch !important;
+    gap: 8px !important;
+    width: 100%;
+  }
+  .contractor-detail-actions .mobile-only {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+  .contractor-detail-actions .btn {
+    justify-content: center;
+    min-width: 0;
+    min-height: 44px;
+    padding-inline: 10px;
+  }
+  .contractor-detail-actions .btn:last-child {
+    padding-inline: 0;
+  }
+  .contractor-delete-label { display: none; }
+}
 
 /* ─── Image Gallery Viewer ───────────────────────────────────────────────────── */
 .gallery-overlay { position: fixed; inset: 0; background: rgba(6,6,8,.96); z-index: 9999; display: flex; flex-direction: column; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }

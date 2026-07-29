@@ -569,6 +569,10 @@ export const listContractors = query({
       const stagePaymentMismatchReason = stagePaymentMismatch
         ? `סכום השלבים המשויכים לקבלן (${stagePaymentTotal.toLocaleString('he-IL')} ₪) לא תואם לסכום החוזה (${contractor.budget.toLocaleString('he-IL')} ₪)`
         : null;
+      const profile = contractor.contractorProfileId ? await ctx.db.get(contractor.contractorProfileId) : null;
+      const profileImageUrl = profile?.originalImageStorageId
+        ? await ctx.storage.getUrl(profile.originalImageStorageId as Id<'_storage'>)
+        : null;
 
       return {
         ...contractor,
@@ -578,6 +582,7 @@ export const listContractors = query({
         company: contractor.company ?? '',
         phone: contractor.phone ?? '',
         email: contractor.email ?? '',
+        profileImageUrl,
         paymentMode,
         stageProgressPct,
         stagePaymentTotal,

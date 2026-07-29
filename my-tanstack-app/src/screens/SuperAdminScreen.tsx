@@ -1,9 +1,13 @@
 import React, { useState, useMemo, useRef } from 'react';
-import { useQuery, useMutation, useAction } from 'convex/react';
+import { useSearch } from '@tanstack/react-router';
+import { useQuery, useMutation, useAction, usePaginatedQuery } from 'convex/react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { api } from '../../convex/_generated/api';
 import { Id } from '../../convex/_generated/dataModel';
 import { Icon, Btn, Modal } from '../components/Shared';
+
+type SuperAdminTab = 'users' | 'promo' | 'cleanup' | 'support' | 'guides' | 'reviews';
+const isSuperAdminTab = (value: string | undefined): value is SuperAdminTab => ['users', 'promo', 'cleanup', 'support', 'guides', 'reviews'].includes(value ?? '');
 
 function formatTimeAgo(timestamp: number) {
   const days = Math.floor((Date.now() - timestamp) / (1000 * 60 * 60 * 24));
@@ -17,6 +21,7 @@ function formatTimeAgo(timestamp: number) {
 }
 
 export function SuperAdminScreen() {
+  const search = useSearch({ from: '/super-admin', shouldThrow: false }) as { tab?: string } | undefined;
   const identity = useQuery(api.users.currentIdentity);
   const isSuperAdmin = identity?.isSuperAdmin;
   const users = useQuery(api.superAdmin.getAllUsers, isSuperAdmin ? {} : 'skip');
@@ -29,7 +34,11 @@ export function SuperAdminScreen() {
   const promoCodes = useQuery(api.superAdmin.getPromoCodes, isSuperAdmin ? {} : 'skip');
   const generatePromoCode = useMutation(api.superAdmin.generatePromoCode);
   const deletePromoCode = useMutation(api.superAdmin.deletePromoCode);
-  const [activeTab, setActiveTab] = useState<'users' | 'promo' | 'cleanup' | 'support' | 'guides'>('users');
+  const [activeTab, setActiveTab] = useState<SuperAdminTab>(() => isSuperAdminTab(search?.tab) ? search.tab : 'users');
+
+  React.useEffect(() => {
+    if (isSuperAdminTab(search?.tab)) setActiveTab(search.tab);
+  }, [search?.tab]);
 
   const cleanupCandidates = useQuery(api.cleanup.getCleanupCandidates, isSuperAdmin && activeTab === 'cleanup' ? {} : 'skip');
   const deleteProject = useMutation(api.cleanup.manualDeleteProject);
@@ -38,6 +47,38 @@ export function SuperAdminScreen() {
   const supportTickets = useQuery(api.support.getOpenTickets, isSuperAdmin && activeTab === 'support' ? {} : 'skip');
   const supportTicketCount = useQuery(api.support.getOpenTicketCount, isSuperAdmin ? {} : 'skip') || 0;
   const resolveTicket = useMutation(api.support.resolveTicket);
+  const pendingContractorReviews = useQuery(api.contractorRecommendations.listPendingReviews, isSuperAdmin ? {} : 'skip') || [];
+  const openReviewReportCount = useQuery(api.contractorRecommendations.getOpenReviewReportCount, isSuperAdmin ? {} : 'skip') || 0;
+  const initializeModerationStats = useMutation(api.contractorRecommendations.initializeModerationStats);
+  const { results: moderationReviews, status: moderationReviewsStatus, loadMore: loadMoreModerationReviews } = usePaginatedQuery(
+    api.contractorRecommendations.listModerationReviews,
+    isSuperAdmin && activeTab === 'reviews' ? {} : 'skip',
+    { initialNumItems: 30 },
+  );
+  const moderateContractorReview = useMutation(api.contractorRecommendations.moderateReview);
+  const resolveReportedReview = useMutation(api.contractorRecommendations.resolveReportedReview);
+  const republishReview = useMutation(api.contractorRecommendations.republishReview);
+  const updateModerationReview = useMutation(api.contractorRecommendations.updateModerationReview);
+  const deleteModerationReview = useMutation(api.contractorRecommendations.deleteModerationReview);
+  const [moderatingReviewId, setModeratingReviewId] = useState<Id<'contractorReviews'> | null>(null);
+  const [reviewModerationError, setReviewModerationError] = useState<string | null>(null);
+  const [reviewStatusFilter, setReviewStatusFilter] = useState<'all' | 'pending' | 'published' | 'rejected' | 'reported' | 'hidden'>('pending');
+  const [reviewSearch, setReviewSearch] = useState('');
+  const [editingModerationReview, setEditingModerationReview] = useState<any | null>(null);
+  const [deleteModerationReviewTarget, setDeleteModerationReviewTarget] = useState<any | null>(null);
+  const [deleteProfileImage, setDeleteProfileImage] = useState(false);
+  const [rejectingReview, setRejectingReview] = useState<any | null>(null);
+  const [rejectionNote, setRejectionNote] = useState('');
+  const [auditReview, setAuditReview] = useState<any | null>(null);
+  const reviewModerationEvents = useQuery(
+    api.contractorRecommendations.listReviewModerationEvents,
+    isSuperAdmin && auditReview ? { reviewId: auditReview.id } : 'skip',
+  );
+
+  React.useEffect(() => {
+    if (!isSuperAdmin) return;
+    void initializeModerationStats({});
+  }, [initializeModerationStats, isSuperAdmin]);
 
   const [editingUser, setEditingUser] = useState<any | null>(null);
   const [showConfirmDelete, setShowConfirmDelete] = useState<Id<'users'> | null>(null);
@@ -163,6 +204,19 @@ export function SuperAdminScreen() {
 
     return result;
   }, [users, searchQuery, filterTier, filterStatus, filterRole, filterActivity, filterLastActivity, filterExpiration, filterJoinDate, sortBy]);
+
+  const filteredModerationReviews = moderationReviews.filter((review: any) => {
+    const search = reviewSearch.trim().toLocaleLowerCase('he');
+    const matchesStatus = reviewStatusFilter === 'all'
+      || (reviewStatusFilter === 'reported' ? review.reports?.some((report: any) => report.status !== 'resolved') : review.status === reviewStatusFilter);
+    if (!matchesStatus) return false;
+    if (!search) return true;
+    return [review.contractorName, review.contractorCompany, review.projectName, review.authorName, review.body]
+      .filter(Boolean)
+      .join(' ')
+      .toLocaleLowerCase('he')
+      .includes(search);
+  });
 
   // Virtualizer setup — dynamic height via measureElement
   const parentRef = useRef<HTMLDivElement>(null);
@@ -338,6 +392,23 @@ export function SuperAdminScreen() {
         >
           <Icon n="play-circle" s={20} />
           ניהול הדרכות וידאו
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('reviews')}
+          style={{
+            background: activeTab === 'reviews' ? 'var(--surface)' : 'transparent',
+            border: 'none',
+            borderBottom: activeTab === 'reviews' ? '2px solid var(--accent)' : '2px solid transparent',
+            padding: '12px 24px', fontSize: 16, fontWeight: activeTab === 'reviews' ? 600 : 400,
+            color: activeTab === 'reviews' ? 'var(--text1)' : 'var(--text2)', cursor: 'pointer', display: 'flex',
+            alignItems: 'center', gap: 8, position: 'relative', whiteSpace: 'nowrap', flexShrink: 0,
+          }}
+        >
+          <Icon n="star" s={20} />
+          אישור ביקורות
+          {pendingContractorReviews.length > 0 && <span style={{ background: 'var(--accent)', color: 'white', fontSize: 11, fontWeight: 800, padding: '2px 6px', borderRadius: 10, marginLeft: 4 }}>{pendingContractorReviews.length}</span>}
+          {openReviewReportCount > 0 && <span aria-label={`${openReviewReportCount} דיווחים פתוחים`} title={`${openReviewReportCount} דיווחים פתוחים`} style={{ background: 'var(--danger)', color: 'white', fontSize: 11, fontWeight: 800, padding: '2px 6px', borderRadius: 10, marginLeft: 2 }}>{openReviewReportCount > 99 ? '99+' : openReviewReportCount}</span>}
         </button>
       </div>
 
@@ -1269,6 +1340,85 @@ export function SuperAdminScreen() {
             </div>
           )}
         </div>
+      )}
+
+      {activeTab === 'reviews' && (
+        <div className="card" style={{ padding: 24, marginBottom: 24 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', flexWrap: 'wrap', marginBottom: 8 }}><h2 style={{ fontSize: 24, margin: 0, display: 'flex', alignItems: 'center', gap: 12 }}><Icon n="shield" s={28} c="var(--accent)" />אישור ביקורות קבלנים</h2>{openReviewReportCount > 0 && <button type="button" onClick={() => setReviewStatusFilter('reported')} style={{ border: '1px solid color-mix(in srgb, var(--danger) 35%, var(--border))', background: 'color-mix(in srgb, var(--danger) 9%, var(--surface))', color: 'var(--danger)', padding: '7px 10px', borderRadius: 999, fontWeight: 800, cursor: 'pointer' }}><Icon n="alert" s={15} /> {openReviewReportCount} דיווחים ממתינים</button>}</div>
+          <p style={{ color: 'var(--text2)', margin: '0 0 20px', lineHeight: 1.55 }}>ביקורות ותמונות חדשות אינן נחשפות במאגר עד לאישור שלך. כאן אפשר גם לאתר, לערוך או למחוק ביקורות שכבר טופלו.</p>
+          {reviewModerationError && <div style={{ marginBottom: 14, padding: 11, color: 'var(--danger)', borderRadius: 8, background: 'color-mix(in srgb, var(--danger) 10%, transparent)' }}>{reviewModerationError}</div>}
+          <div style={{ display: 'flex', gap: 10, marginBottom: 18, flexWrap: 'wrap' }}>
+            <input aria-label="חיפוש ביקורות" className="input" value={reviewSearch} onChange={(event) => setReviewSearch(event.target.value)} placeholder="חיפוש קבלן, פרויקט או כותב…" style={{ minWidth: 220, flex: '1 1 260px' }} />
+            <select aria-label="סינון ביקורות לפי סטטוס" className="input" value={reviewStatusFilter} onChange={(event) => setReviewStatusFilter(event.target.value as typeof reviewStatusFilter)} style={{ minWidth: 170 }}>
+              <option value="all">כל הסטטוסים</option><option value="pending">ממתינות לאישור</option><option value="published">פורסמו</option><option value="rejected">נדחו</option><option value="reported">דיווחים פתוחים</option><option value="hidden">מוסתרות</option>
+            </select>
+            <span style={{ alignSelf: 'center', color: 'var(--text3)', fontSize: 13 }}>{filteredModerationReviews.length} ביקורות נטענו</span>
+          </div>
+          {moderationReviewsStatus === 'LoadingFirstPage' ? <div style={{ padding: 36, textAlign: 'center', color: 'var(--text3)' }}>טוען ביקורות…</div> : filteredModerationReviews.length === 0 ? <div style={{ padding: 36, textAlign: 'center', color: 'var(--text3)' }}><Icon n={pendingContractorReviews.length === 0 ? 'check-circle' : 'search'} s={36} c={pendingContractorReviews.length === 0 ? 'var(--success)' : 'var(--text3)'} style={{ display: 'block', margin: '0 auto 10px' }} />{reviewStatusFilter === 'pending' && !reviewSearch && pendingContractorReviews.length === 0 ? 'אין ביקורות ממתינות לאישור.' : 'לא נמצאו ביקורות התואמות לסינון.'}</div> : <div style={{ display: 'grid', gap: 12 }}>
+            {filteredModerationReviews.map((review: any) => <article key={review.id} style={{ border: '1px solid var(--border)', borderRadius: 12, padding: 16, background: 'var(--surface-2)' }}>
+              <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                {review.pendingImageUrl || review.imageUrl ? <img src={review.pendingImageUrl || review.imageUrl} alt={`תמונת ${review.contractorName}`} style={{ width: 58, height: 58, flexShrink: 0, objectFit: 'cover', borderRadius: 10, border: '1px solid var(--border)' }} /> : <div style={{ width: 58, height: 58, flexShrink: 0, display: 'grid', placeItems: 'center', borderRadius: 10, background: 'var(--surface)', border: '1px solid var(--border)' }}><Icon n="users" s={22} c="var(--text3)" /></div>}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}><strong>{review.contractorName}</strong><span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span style={{ color: 'var(--text2)', border: '1px solid var(--border)', borderRadius: 999, padding: '3px 8px', fontSize: 11 }}>{({ pending: 'ממתינה', published: 'פורסמה', rejected: 'נדחתה', reported: 'דווחה', hidden: 'מוסתרת' } as Record<string, string>)[review.status] ?? review.status}</span><span style={{ color: 'var(--accent)', fontWeight: 800 }}>{review.overallRating.toFixed(1)} <Icon n="star" s={14} /></span></span></div>
+                  <div style={{ marginTop: 4, color: 'var(--text3)', fontSize: 12 }}>{review.contractorCompany ?? 'ללא שם חברה'} · {review.projectName} · נשלח על ידי {review.authorName} ({review.authorRole}) · {formatTimeAgo(review.createdAt)}</div>
+                  <p style={{ margin: '10px 0', color: 'var(--text2)', lineHeight: 1.55, whiteSpace: 'pre-wrap' }}>{review.body}</p>
+                  {review.tags.length > 0 && <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>{review.tags.map((tag: string) => <span key={tag} style={{ padding: '3px 7px', borderRadius: 999, fontSize: 11, background: 'var(--surface)', color: 'var(--text2)' }}>{tag}</span>)}</div>}
+                  {(() => { const openReports = review.reports?.filter((report: any) => report.status !== 'resolved') ?? []; return openReports.length > 0 ? <div style={{ marginTop: 12, padding: 10, borderRadius: 9, border: '1px solid color-mix(in srgb, var(--danger) 30%, var(--border))', background: 'color-mix(in srgb, var(--danger) 7%, var(--surface))' }}><strong style={{ display: 'block', color: 'var(--danger)', fontSize: 13, marginBottom: 5 }}>{openReports.length} דיווחים פתוחים על ביקורת זו</strong>{openReports.map((report: any) => <div key={report.id} style={{ fontSize: 12, color: 'var(--text2)', lineHeight: 1.5 }}>{report.reporterName}: {report.reason}</div>)}</div> : null; })()}
+                  <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 14 }}>
+                    {review.status === 'pending' && <><Btn size="sm" variant="ghost" disabled={moderatingReviewId === review.id} onClick={() => { setRejectingReview(review); setRejectionNote(''); }}>דחה</Btn><Btn size="sm" disabled={moderatingReviewId === review.id} onClick={async () => { setModeratingReviewId(review.id); setReviewModerationError(null); try { await moderateContractorReview({ reviewId: review.id, decision: 'published' }); } catch (error) { setReviewModerationError(error instanceof Error ? error.message : 'לא הצלחנו לאשר את הביקורת.'); } finally { setModeratingReviewId(null); } }}>{moderatingReviewId === review.id ? 'שומר…' : 'אשר ופרסם'}</Btn></>}
+                    {review.reports?.some((report: any) => report.status !== 'resolved') && <><Btn size="sm" variant="ghost" disabled={moderatingReviewId === review.id} onClick={async () => { setModeratingReviewId(review.id); setReviewModerationError(null); try { await resolveReportedReview({ reviewId: review.id, decision: 'hidden' }); } catch (error) { setReviewModerationError(error instanceof Error ? error.message : 'לא הצלחנו להסתיר את הביקורת.'); } finally { setModeratingReviewId(null); } }}>הסתר ביקורת</Btn><Btn size="sm" disabled={moderatingReviewId === review.id} onClick={async () => { setModeratingReviewId(review.id); setReviewModerationError(null); try { await resolveReportedReview({ reviewId: review.id, decision: 'published' }); } catch (error) { setReviewModerationError(error instanceof Error ? error.message : 'לא הצלחנו לסגור את הדיווח.'); } finally { setModeratingReviewId(null); } }}>{moderatingReviewId === review.id ? 'שומר…' : 'השאר מפורסמת'}</Btn></>}
+                    {review.status === 'hidden' && <Btn size="sm" disabled={moderatingReviewId === review.id} onClick={async () => { setModeratingReviewId(review.id); setReviewModerationError(null); try { await republishReview({ reviewId: review.id }); } catch (error) { setReviewModerationError(error instanceof Error ? error.message : 'לא הצלחנו לפרסם מחדש את הביקורת.'); } finally { setModeratingReviewId(null); } }}>{moderatingReviewId === review.id ? 'מפרסם…' : 'פרסום מחדש'}</Btn>}
+                    <Btn size="sm" variant="ghost" onClick={() => setAuditReview(review)}><Icon n="clock" s={15} />היסטוריית פעולות</Btn>
+                    <Btn size="sm" variant="ghost" onClick={() => setEditingModerationReview({ ...review })}><Icon n="edit" s={15} />עריכה</Btn>
+                    <Btn size="sm" variant="ghost" onClick={() => { setDeleteModerationReviewTarget(review); setDeleteProfileImage(false); }} style={{ color: 'var(--danger)' }}><Icon n="trash" s={15} />מחיקה</Btn>
+                  </div>
+                </div>
+              </div>
+            </article>)}
+          </div>}
+          {moderationReviewsStatus === 'CanLoadMore' && <div style={{ display: 'flex', justifyContent: 'center', marginTop: 16 }}><Btn variant="outline" onClick={() => loadMoreModerationReviews(30)}>טען ביקורות נוספות</Btn></div>}
+        </div>
+      )}
+
+      {auditReview && (
+        <Modal onClose={() => setAuditReview(null)} title="היסטוריית טיפול בביקורת">
+          <div style={{ display: 'grid', gap: 10 }}>
+            <p style={{ margin: 0, color: 'var(--text2)' }}>הביקורת של <strong>{auditReview.contractorName}</strong>.</p>
+            {!reviewModerationEvents ? <div style={{ color: 'var(--text3)' }}>טוען היסטוריה…</div> : reviewModerationEvents.length === 0 ? <div style={{ color: 'var(--text3)' }}>אין עדיין פעולות מתועדות עבור ביקורת זו.</div> : reviewModerationEvents.map((event: any) => <div key={event.id} style={{ border: '1px solid var(--border)', borderRadius: 10, padding: 10 }}><strong>{({ submitted: 'נשלחה לאישור', resubmitted: 'נשלחה מחדש לאישור', approved: 'אושרה ופורסמה', rejected: 'נדחתה', report_received: 'התקבל דיווח', report_kept_visible: 'הדיווח נסגר — נשארה מפורסמת', report_hidden: 'הדיווח טופל — הוסתרה', republished: 'פורסמה מחדש', edited: 'נערכה על ידי מנהל', deleted: 'נמחקה' } as Record<string, string>)[event.action] ?? event.action}</strong><div style={{ color: 'var(--text3)', fontSize: 12, marginTop: 3 }}>{event.actorName} · {formatTimeAgo(event.createdAt)}</div>{event.note && <div style={{ color: 'var(--text2)', marginTop: 6, fontSize: 13 }}>{event.note}</div>}</div>)}
+          </div>
+        </Modal>
+      )}
+
+      {rejectingReview && (
+        <Modal onClose={() => setRejectingReview(null)} title="דחיית חוות דעת">
+          <div style={{ display: 'grid', gap: 16 }}>
+            <p style={{ margin: 0, color: 'var(--text2)', lineHeight: 1.55 }}>חוות הדעת על <strong>{rejectingReview.contractorName}</strong> לא תופיע במאגר. אפשר לצרף סיבה כדי שהכותב יבין מה נדרש לתקן לפני שליחה חדשה.</p>
+            <label style={{ display: 'grid', gap: 6 }}><span>סיבת הדחייה <span style={{ color: 'var(--text3)', fontWeight: 400 }}>(אופציונלי)</span></span><textarea className="input" value={rejectionNote} onChange={(event) => setRejectionNote(event.target.value)} maxLength={500} rows={4} placeholder="לדוגמה: יש להסיר פרטי קשר מהטקסט." /></label>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}><Btn variant="ghost" onClick={() => setRejectingReview(null)}>ביטול</Btn><Btn disabled={moderatingReviewId === rejectingReview.id} onClick={async () => { setModeratingReviewId(rejectingReview.id); setReviewModerationError(null); try { await moderateContractorReview({ reviewId: rejectingReview.id, decision: 'rejected', note: rejectionNote.trim() || undefined }); setRejectingReview(null); } catch (error) { setReviewModerationError(error instanceof Error ? error.message : 'לא הצלחנו לדחות את הביקורת.'); } finally { setModeratingReviewId(null); } }} style={{ background: 'var(--danger)', borderColor: 'var(--danger)' }}>{moderatingReviewId === rejectingReview.id ? 'דוחה…' : 'דחה ושלח עדכון'}</Btn></div>
+          </div>
+        </Modal>
+      )}
+
+      {editingModerationReview && (
+        <Modal onClose={() => setEditingModerationReview(null)} title="עריכת ביקורת">
+          <div style={{ display: 'grid', gap: 16 }}>
+            <div style={{ color: 'var(--text2)', fontSize: 14 }}>הביקורת של <strong>{editingModerationReview.contractorName}</strong> בפרויקט {editingModerationReview.projectName}.</div>
+            <label style={{ display: 'grid', gap: 6 }}><span>דירוג כללי</span><input className="input" type="number" min="1" max="5" step="0.5" value={editingModerationReview.overallRating} onChange={(event) => setEditingModerationReview((current: any) => ({ ...current, overallRating: Number(event.target.value) }))} /></label>
+            <label style={{ display: 'grid', gap: 6 }}><span>חוות הדעת</span><textarea className="input" style={{ minHeight: 140 }} value={editingModerationReview.body} onChange={(event) => setEditingModerationReview((current: any) => ({ ...current, body: event.target.value }))} /></label>
+            <label style={{ display: 'grid', gap: 6 }}><span>תגיות (מופרדות בפסיקים)</span><input className="input" value={editingModerationReview.tags.join(', ')} onChange={(event) => setEditingModerationReview((current: any) => ({ ...current, tags: event.target.value.split(',').map((tag) => tag.trim()).filter(Boolean) }))} /></label>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}><Btn variant="ghost" onClick={() => setEditingModerationReview(null)}>ביטול</Btn><Btn disabled={moderatingReviewId === editingModerationReview.id} onClick={async () => { setModeratingReviewId(editingModerationReview.id); setReviewModerationError(null); try { await updateModerationReview({ reviewId: editingModerationReview.id, overallRating: editingModerationReview.overallRating, body: editingModerationReview.body, tags: editingModerationReview.tags }); setEditingModerationReview(null); } catch (error) { setReviewModerationError(error instanceof Error ? error.message : 'לא הצלחנו לעדכן את הביקורת.'); } finally { setModeratingReviewId(null); } }}>{moderatingReviewId === editingModerationReview.id ? 'שומר…' : 'שמור שינויים'}</Btn></div>
+          </div>
+        </Modal>
+      )}
+
+      {deleteModerationReviewTarget && (
+        <Modal onClose={() => setDeleteModerationReviewTarget(null)} title="מחיקת ביקורת">
+          <div style={{ display: 'grid', gap: 16 }}>
+            <p style={{ margin: 0, color: 'var(--text2)', lineHeight: 1.55 }}>למחוק את הביקורת של <strong>{deleteModerationReviewTarget.contractorName}</strong>? פעולה זו תמחק גם תגובות ודיווחים המשויכים אליה ולא ניתן לשחזר אותה.</p>
+            {(deleteModerationReviewTarget.imageUrl || deleteModerationReviewTarget.pendingImageUrl) && <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: 12, border: '1px solid var(--border)', borderRadius: 10, cursor: 'pointer' }}><input type="checkbox" checked={deleteProfileImage} onChange={(event) => setDeleteProfileImage(event.target.checked)} /><span><strong>מחק גם את תמונת הקבלן</strong><br /><span style={{ color: 'var(--text3)', fontSize: 13 }}>התמונה תימחק מהפרופיל ומכל הופעה שלה במאגר, לא רק מביקורת זו.</span></span></label>}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}><Btn variant="ghost" onClick={() => setDeleteModerationReviewTarget(null)}>ביטול</Btn><Btn disabled={moderatingReviewId === deleteModerationReviewTarget.id} onClick={async () => { setModeratingReviewId(deleteModerationReviewTarget.id); setReviewModerationError(null); try { await deleteModerationReview({ reviewId: deleteModerationReviewTarget.id, deleteProfileImage }); setDeleteModerationReviewTarget(null); } catch (error) { setReviewModerationError(error instanceof Error ? error.message : 'לא הצלחנו למחוק את הביקורת.'); } finally { setModeratingReviewId(null); } }} style={{ background: 'var(--danger)', borderColor: 'var(--danger)' }}>{moderatingReviewId === deleteModerationReviewTarget.id ? 'מוחק…' : 'מחק ביקורת'}</Btn></div>
+          </div>
+        </Modal>
       )}
 
       {(isAddingGuide || editingGuide) && (

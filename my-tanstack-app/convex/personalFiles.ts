@@ -31,11 +31,9 @@ const requirePersonalFilesProjectOwner = async (
   ctx: QueryCtx | MutationCtx,
   projectId: Id<'projects'>,
 ) => {
-  const { userId, project } = await requireProjectOwner(ctx, projectId);
-  if (project.ownerUserId !== userId) {
-    throw new Error('Only the project owner can access this project archive');
-  }
-  return { userId, project };
+  const { userId, user, project } = await requireProjectOwner(ctx, projectId);
+  // requireProjectOwner already enforces owner-or-superAdmin; no need to re-check.
+  return { userId, user, project };
 };
 
 export const generateUploadUrl = mutation({
@@ -97,21 +95,27 @@ export const createPersonalFile = mutation({
 export const listMyPersonalFiles = query({
   args: { projectId: v.id('projects') },
   handler: async (ctx, args) => {
-    const { userId } = await requirePersonalFilesProjectOwner(ctx, args.projectId);
+    const { project } = await requirePersonalFilesProjectOwner(ctx, args.projectId);
+    const ownerUserId = project.ownerUserId;
+    if (!ownerUserId) throw new Error('Project has no owner');
 
     const files = await ctx.db
       .query('personalFiles')
       .withIndex('by_owner_and_project', (q) =>
-        q.eq('ownerUserId', userId).eq('projectId', args.projectId),
+        q.eq('ownerUserId', ownerUserId).eq('projectId', args.projectId),
       )
       .order('desc')
       .take(MAX_FILES_PER_OWNER);
 
-    return await Promise.all(files.map(async (file) => ({
-      ...file,
-      id: file._id,
-      url: await ctx.storage.getUrl(file.storageId),
-    })));
+    return await Promise.all(files.map(async (file) => {
+      let url: string | null = null;
+      try {
+        url = await ctx.storage.getUrl(file.storageId);
+      } catch {
+        // storageId may be invalid or orphaned (e.g. from old global-archive migration)
+      }
+      return { ...file, id: file._id, url };
+    }));
   },
 });
 

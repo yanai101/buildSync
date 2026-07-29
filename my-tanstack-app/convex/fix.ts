@@ -1,6 +1,7 @@
 import { mutation } from "./_generated/server";
 
 export const fixCorruptedNames = mutation({
+
   args: {},
   handler: async (ctx) => {
     // 1. Fix Stages

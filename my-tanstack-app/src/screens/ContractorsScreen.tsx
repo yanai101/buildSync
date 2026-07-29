@@ -10,7 +10,7 @@ import { useCurrentProject } from '../hooks/useCurrentProject';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import type { Id } from '../../convex/_generated/dataModel';
-import { useProjectFileUploader } from '../hooks/useProjectFileUploader';
+import { optimizeImageFile, useProjectFileUploader } from '../hooks/useProjectFileUploader';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
 
 const LockPaymentModal = ({
@@ -437,6 +437,11 @@ const DEFAULT_PAYMENT_SCHEDULES: Record<string, typeof DEFAULT_SCHEDULE> = {
 const ContractorRoles = [
   "קבלן עד מפתח","קבלן שלד","קבלן עפר","קבלן טיח","חשמלאי ראשי",
   "אינסטלטור","קבלן מיזוג","קבלן ריצוף","קבלן גג","קבלן גבס","קבלן נגרות","צבעי","קבלן גינה","אחר"
+];
+
+const IsraelServiceAreas = [
+  'צפון', 'חיפה והקריות', 'השרון', 'תל אביב והמרכז',
+  'השפלה', 'ירושלים והסביבה', 'יהודה ושומרון', 'דרום', 'כל הארץ',
 ];
 
 const COLORS = ["#7B9B8A","#8B7B5A","#7B8FA1","#E07A38","#6B8B6B","#8B5A5A","#5A5A8B"];
@@ -1270,7 +1275,7 @@ const PaymentSchedule = ({
   );
 };
 
-import { useSearch } from '@tanstack/react-router';
+import { Link, useSearch } from '@tanstack/react-router';
 
 export const ContractorsScreen = () => {
   const { projectId, project } = useCurrentProject();
@@ -1294,12 +1299,43 @@ export const ContractorsScreen = () => {
   const setContractorStages = useMutation(api.stages.setContractorStages);
   const setContractorPaymentMode = useMutation(api.stages.setContractorPaymentMode);
   const [selectedId, setSelectedId] = React.useState<string | null>(search?.contractorId ?? null);
+  const myContractorReviews = useQuery(api.contractorRecommendations.listMyProjectReviews, projectId ? { projectId } : 'skip') ?? [];
+  const ensureRecommendationProfile = useMutation(api.contractorRecommendations.ensureProfileForProjectContractor);
+  const createContractorReview = useMutation(api.contractorRecommendations.createReview);
+  const updateMyContractorReview = useMutation(api.contractorRecommendations.updateMyReview);
+  const updateRecommendationProfile = useMutation(api.contractorRecommendations.updateProfileDetails);
+  const generateProfileImageUploadUrl = useMutation(api.contractorRecommendations.generateProfileImageUploadUrl);
+  const saveProfileImage = useMutation(api.contractorRecommendations.saveProfileImage);
+  const [reviewModalOpen, setReviewModalOpen] = React.useState(false);
+  const [reviewRating, setReviewRating] = React.useState(5);
+  const [reviewText, setReviewText] = React.useState('');
+  const [reviewSaving, setReviewSaving] = React.useState(false);
+  const [reviewImage, setReviewImage] = React.useState<File | null>(null);
+  const [reviewImagePreviewUrl, setReviewImagePreviewUrl] = React.useState<string | null>(null);
+  const [reviewContractorRole, setReviewContractorRole] = React.useState('קבלן עד מפתח');
+  const [reviewServiceAreas, setReviewServiceAreas] = React.useState<string[]>([]);
+  const [reviewCustomServiceArea, setReviewCustomServiceArea] = React.useState('');
+  const [reviewNudgeDismissed, setReviewNudgeDismissed] = React.useState(false);
+  const contractorRecommendationSummary = useQuery(
+    api.contractorRecommendations.getContractorSummary,
+    projectId && selectedId ? { projectId, contractorId: selectedId as Id<'contractors'> } : 'skip',
+  );
   const [adding, setAdding] = React.useState(false);
   const [editingContractor, setEditingContractor] = React.useState<Contractor | null>(null);
   const [savingContractor, setSavingContractor] = React.useState(false);
   const [deleteTarget, setDeleteTarget] = React.useState<Contractor | null>(null);
   const [deletingContractor, setDeletingContractor] = React.useState(false);
   const [confirmPaymentMode, setConfirmPaymentMode] = React.useState<{ contractor: Contractor, mode: 'stage_synced' | 'custom' } | null>(null);
+
+  React.useEffect(() => {
+    if (!reviewImage) {
+      setReviewImagePreviewUrl(null);
+      return undefined;
+    }
+    const previewUrl = URL.createObjectURL(reviewImage);
+    setReviewImagePreviewUrl(previewUrl);
+    return () => URL.revokeObjectURL(previewUrl);
+  }, [reviewImage]);
 
   const [savingPayment, setSavingPayment] = React.useState(false);
   const [pendingPayment, setPendingPayment] = React.useState<{ contractor: Contractor; milestone: Milestone; paid: boolean } | null>(null);
@@ -1627,6 +1663,75 @@ export const ContractorsScreen = () => {
   };
 
   const c = selected;
+  const myReviewForSelected = myContractorReviews.find((review) => String(review.contractorId) === String(selectedId)) ?? null;
+  const reviewTextLength = reviewText.trim().length;
+  const reviewTextIsValid = reviewTextLength >= 20;
+  React.useEffect(() => {
+    if (!projectId || !selectedId) return;
+    const until = Number(localStorage.getItem(`buildsync:review-nudge:${projectId}:${selectedId}`) ?? 0);
+    setReviewNudgeDismissed(until > Date.now());
+  }, [projectId, selectedId]);
+  const dismissReviewNudge = () => {
+    if (!projectId || !selectedId) return;
+    localStorage.setItem(`buildsync:review-nudge:${projectId}:${selectedId}`, String(Date.now() + 3 * 24 * 60 * 60 * 1000));
+    setReviewNudgeDismissed(true);
+  };
+  const openReviewModal = () => {
+    setReviewRating(myReviewForSelected?.overallRating ?? 5);
+    setReviewText(myReviewForSelected?.body ?? '');
+    setReviewImage(null);
+    setReviewContractorRole(contractorRecommendationSummary?.profileRole ?? c?.role ?? 'אחר');
+    setReviewServiceAreas(contractorRecommendationSummary?.serviceAreas ?? []);
+    setReviewCustomServiceArea('');
+    setReviewModalOpen(true);
+  };
+  const addCustomReviewServiceArea = () => {
+    const area = reviewCustomServiceArea.trim();
+    if (!area || reviewServiceAreas.includes(area) || reviewServiceAreas.length >= 12) return;
+    setReviewServiceAreas((areas) => [...areas, area]);
+    setReviewCustomServiceArea('');
+  };
+  const saveContractorReview = async () => {
+    if (!projectId || !selectedId || reviewText.trim().length < 20) {
+      setFeedback({ title: 'חוות הדעת קצרה מדי', message: 'נא לכתוב לפחות 20 תווים.', type: 'error' });
+      return;
+    }
+    setReviewSaving(true);
+    try {
+      const contractorId = selectedId as Id<'contractors'>;
+      const contractorProfileId = await updateRecommendationProfile({
+        projectId,
+        contractorId,
+        role: reviewContractorRole,
+        serviceAreas: reviewServiceAreas,
+      });
+      let reviewId: Id<'contractorReviews'>;
+      if (myReviewForSelected) {
+        await updateMyContractorReview({ reviewId: myReviewForSelected.id, overallRating: reviewRating, professionalismRating: reviewRating, timelinessRating: reviewRating, communicationRating: reviewRating, tags: myReviewForSelected.tags, body: reviewText.trim(), workMonth: myReviewForSelected.workMonth ?? undefined });
+        reviewId = myReviewForSelected.id;
+      } else {
+        await ensureRecommendationProfile({ projectId, contractorId });
+        reviewId = await createContractorReview({ projectId, contractorId, contractorProfileId, overallRating: reviewRating, professionalismRating: reviewRating, timelinessRating: reviewRating, communicationRating: reviewRating, tags: [], body: reviewText.trim(), workMonth: new Date().toISOString().slice(0, 7) });
+      }
+      if (reviewImage) {
+        const optimizedImage = await optimizeImageFile(reviewImage, {
+          // A profile avatar is displayed at a tiny size. It must never keep
+          // the camera original just because the encoder cannot beat its size.
+          maxEdge: 512,
+          forceOutput: true,
+        });
+        const uploadUrl = await generateProfileImageUploadUrl({ projectId });
+        const response = await fetch(uploadUrl, { method: 'POST', headers: { 'Content-Type': optimizedImage.storedMimeType }, body: optimizedImage.blob });
+        if (!response.ok) throw new Error('העלאת התמונה נכשלה');
+        const { storageId } = await response.json();
+        await saveProfileImage({ projectId, contractorId: selectedId as Id<'contractors'>, reviewId, storageId });
+      }
+      setReviewModalOpen(false);
+      setFeedback({ title: 'נשלח לאישור', message: 'חוות הדעת והתמונה, אם צורפה, יופיעו במאגר רק לאחר אישור מנהל מערכת.', type: 'success' });
+    } catch (err) {
+      setFeedback({ title: 'לא הצלחנו לשמור', message: err instanceof Error ? err.message : 'נא לנסות שוב.', type: 'error' });
+    } finally { setReviewSaving(false); }
+  };
   const selectedPaymentStarted = c
     ? c.paid > 0 || normalizeMilestones(c).some(milestone => Boolean(milestone.paid))
     : false;
@@ -1716,11 +1821,11 @@ export const ContractorsScreen = () => {
     <>
       <ScreenBoundary loading={loading} error={error} onRetry={refetch}>
         <div className="page-content">
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,gap:12}}>
-            <button onClick={()=>setSelectedId(null)} style={{display:"flex",alignItems:"center",gap:6,background:"none",border:"none",cursor:"pointer",color:"var(--text2)",fontSize:13,padding:0}}>
+          <div className="contractor-detail-actions-bar" style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,gap:12}}>
+            <button className="contractor-back-button" onClick={()=>setSelectedId(null)} style={{display:"flex",alignItems:"center",gap:6,background:"none",border:"none",cursor:"pointer",color:"var(--text2)",fontSize:13,padding:0}}>
               <Icon n="arrow-right" s={14}/> חזרה לרשימה
             </button>
-            <div style={{display:"flex",gap:8,alignItems:"center"}}>
+            <div className="contractor-detail-actions" style={{display:"flex",gap:8,alignItems:"center"}}>
               <button onClick={() => document.getElementById('mobile-notes-section')?.scrollIntoView({ behavior: 'smooth' })} className="mobile-only" style={{border:"none",cursor:"pointer",fontSize:12,color:"var(--accent)",display:"flex",alignItems:"center",gap:4,textDecoration:"none",background:"var(--accent-light)",padding:"4px 8px",borderRadius:999,fontWeight:600}}>
                 <Icon n="arrow-down" s={12}/> הערות
               </button>
@@ -1732,25 +1837,48 @@ export const ContractorsScreen = () => {
               >
                 <Icon n="edit" s={13}/> עריכה
               </Btn>
+              <Btn size="sm" variant="outline" onClick={openReviewModal}><Icon n="star" s={13}/> {myReviewForSelected ? 'עדכן דירוג' : 'דרג'}</Btn>
               <Btn
                 size="sm"
                 variant="ghost"
                 onClick={()=>requestDeleteContractor(c)}
                 disabled={deletingContractor || mode !== 'db'}
                 style={{color:"var(--danger)"}}
+                aria-label="מחק קבלן"
+                title="מחק קבלן"
               >
-                <Icon n="trash" s={13}/> מחק
+                <Icon n="trash" s={13}/><span className="contractor-delete-label"> מחק</span>
               </Btn>
             </div>
           </div>
         <div className="contractor-detail-layout">
           <div style={{display:"flex",flexDirection:"column",gap:16}}>
             <div className="card" style={{padding:20,textAlign:"center"}}>
-              <Avatar letter={c.avatar || c.name[0]} color={c.color} size={64} />
+              {contractorRecommendationSummary?.imageUrl ? (
+                <img src={contractorRecommendationSummary.imageUrl} alt={`לוגו ${c.name}`} style={{ width: 64, height: 64, borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--border)' }} />
+              ) : <Avatar letter={c.avatar || c.name[0]} color={c.color} size={64} />}
               <div style={{fontWeight:700,fontSize:17,marginTop:12}}>{c.name}</div>
               <div style={{fontSize:13,color:"var(--text2)",marginTop:2}}>{c.company}</div>
-              <div style={{marginTop:8}}><Badge type={c.status}/></div>
-              <div style={{marginTop:8}}><Stars rating={c.rating}/></div>
+              <div style={{ marginTop: 10 }}>
+                {contractorRecommendationSummary?.averageRating ? (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, borderRadius: 999, padding: '5px 9px', background: 'rgba(45,190,140,.12)', border: '1px solid rgba(45,190,140,.32)', color: 'var(--success)', fontSize: 12, fontWeight: 800 }}><Icon n="check-circle" s={13} /> מדורג · {contractorRecommendationSummary.averageRating.toFixed(1)} <Icon n="star" s={12} /></span>
+                ) : (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, borderRadius: 999, padding: '5px 9px', background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text3)', fontSize: 12, fontWeight: 700 }}><Icon n="clock" s={13} /> טרם דורג</span>
+                )}
+              </div>
+              <div style={{ marginTop: 18, paddingTop: 16, borderTop: '1px solid var(--border)', textAlign: 'right' }}>
+                {myReviewForSelected?.status === 'pending' && <div style={{ marginBottom: 12, padding: 10, borderRadius: 9, background: 'var(--accent-light)', color: 'var(--accent-dark)', fontSize: 12, fontWeight: 700 }}>חוות הדעת שלך ממתינה לאישור מנהל מערכת.</div>}
+                {!myReviewForSelected && !reviewNudgeDismissed && <div style={{ marginBottom: 14, padding: 11, borderRadius: 10, background: 'var(--accent-light)', fontSize: 12, color: 'var(--text2)', lineHeight: 1.5 }}><div><strong style={{ color: 'var(--accent-dark)' }}>עבדתם עם הקבלן?</strong> דרגו אותו ועזרו לבעלי פרויקטים אחרים לבחור נכון.</div><div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 7 }}><button type="button" onClick={openReviewModal} style={{ border: 0, background: 'none', padding: 0, color: 'var(--accent)', fontWeight: 800, cursor: 'pointer' }}>דרגו עכשיו</button><button type="button" onClick={dismissReviewNudge} style={{ border: 0, background: 'none', padding: 0, color: 'var(--text3)', cursor: 'pointer' }}>לא עכשיו</button></div></div>}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700 }}>המלצות ודירוג</div>
+                  {contractorRecommendationSummary?.averageRating ? <Stars rating={contractorRecommendationSummary.averageRating} /> : <span style={{ fontSize: 12, color: 'var(--text3)' }}>אין חוות דעת עדיין</span>}
+                </div>
+              {contractorRecommendationSummary?.reviewCount ? <>
+                <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 6 }}>{contractorRecommendationSummary.reviewCount} חוות דעת מאומתות</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 10 }}>{contractorRecommendationSummary.topTags.map(tag => <span key={tag} style={{ fontSize: 11, padding: '3px 7px', borderRadius: 999, background: 'var(--accent-light)', color: 'var(--accent-dark)' }}>{tag}</span>)}</div>
+              </> : <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 6 }}>היו הראשונים לדרג את הקבלן.</div>}
+              <Link to="/contractor-recommendations" search={{ contractorId: contractorDbId(c) as string }} style={{ display: 'block', marginTop: 12, color: 'var(--accent)', fontSize: 12, fontWeight: 700, textDecoration: 'none' }}>לחוות דעת והמלצות <Icon n="arrow-left" s={12} /></Link>
+              </div>
             </div>
             <div className="card card-body">
               <div style={{display:"flex",alignItems:"center",gap:8,padding:"6px 0",borderBottom:"1px solid var(--border)",fontSize:13}}>
@@ -1828,8 +1956,9 @@ export const ContractorsScreen = () => {
                   <div style={{fontSize:11,color:"var(--text3)",marginTop:5,textAlign:"left"}}>התקדמות ממוצעת לפי השלבים המשויכים</div>
                 </div>
                 {c.role === 'קבלן עד מפתח' && (
-                  <div style={{fontSize:12,color:"#475569",background:"#F1F5F9",padding:"8px 12px",borderRadius:8}}>
-                    💡 השלבים פרסו את ימי הפרויקט באופן יחסי כמפל (Gantt). ניתן לערוך את תאריכי השלבים דרך מסך <strong>"שלבי בנייה"</strong> - עדכון תאריך סיום ישפיע אוטומטית על השלבים הבאים!
+                  <div role="note" style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 12, color: 'var(--text2)', background: 'var(--accent-light)', border: '1px solid rgba(224,122,56,.25)', padding: '10px 12px', borderRadius: 9, lineHeight: 1.55 }}>
+                    <Icon n="info" s={16} c="var(--accent)" />
+                    <span>השלבים פרסו את ימי הפרויקט באופן יחסי כמפל (Gantt). ניתן לערוך את תאריכי השלבים דרך מסך <strong>"שלבי בנייה"</strong> — עדכון תאריך סיום ישפיע אוטומטית על השלבים הבאים.</span>
                   </div>
                 )}
                 {c.stagePaymentMismatch && (
@@ -2017,6 +2146,84 @@ export const ContractorsScreen = () => {
           onClose={() => deletingPartial ? undefined : setDeletePartialTarget(null)}
         />
       )}
+      {reviewModalOpen && (
+        <Modal title={myReviewForSelected ? 'עדכון חוות הדעת שלך' : 'דירוג הקבלן'} onClose={() => !reviewSaving && setReviewModalOpen(false)} width={560}>
+          <div style={{ display: 'grid', gap: 16 }}>
+            <div className="review-contractor-sticky" style={{ position: 'sticky', top: 70, zIndex: 2, display: 'flex', alignItems: 'center', gap: 10, padding: '9px 10px 11px', minHeight: 64, borderRadius: 12 }}>
+              {reviewImagePreviewUrl || contractorRecommendationSummary?.imageUrl ? (
+                <img src={reviewImagePreviewUrl ?? contractorRecommendationSummary?.imageUrl ?? ''} alt={`לוגו ${c?.name ?? 'הקבלן'}`} style={{ width: 54, height: 54, borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--border)' }} />
+              ) : (
+                <Avatar letter={c?.avatar || c?.name?.[0] || 'ק'} color={c?.color || '#7B9B8A'} size={54} />
+              )}
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontWeight: 800, fontSize: 15 }}>{c?.name ?? 'הקבלן הנבחר'}</div>
+                <div style={{ color: 'var(--text3)', fontSize: 12, marginTop: 2 }}>{c?.company || reviewContractorRole}</div>
+              </div>
+            </div>
+            <div style={{ color: 'var(--text2)', fontSize: 14 }}>חוות הדעת מקושרת לפרויקט הנוכחי ומאומתת על ידו. היא תפורסם רק לאחר אישור מנהל מערכת.</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 12 }}>
+              <label>
+                <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 7 }}>סוג הקבלן</div>
+                <select className="bp-input" value={reviewContractorRole} onChange={(event) => setReviewContractorRole(event.target.value)} style={{ width: '100%' }}>
+                  {ContractorRoles.map((role) => <option key={role} value={role}>{role}</option>)}
+                </select>
+              </label>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 7 }}>אזורי פעילות</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
+                  {IsraelServiceAreas.map((area) => {
+                    const selected = reviewServiceAreas.includes(area);
+                    return <button key={area} type="button" aria-pressed={selected} onClick={() => setReviewServiceAreas((areas) => selected ? areas.filter((item) => item !== area) : [...areas, area])} style={{ border: `1px solid ${selected ? 'var(--accent)' : 'var(--border)'}`, background: selected ? 'var(--accent-light)' : 'var(--surface)', color: selected ? 'var(--accent-dark)' : 'var(--text2)', borderRadius: 999, padding: '6px 10px', cursor: 'pointer', fontSize: 12, fontWeight: selected ? 700 : 500 }}>
+                      {area}
+                    </button>;
+                  })}
+                  {reviewServiceAreas.filter((area) => !IsraelServiceAreas.includes(area)).map((area) => (
+                    <button key={area} type="button" onClick={() => setReviewServiceAreas((areas) => areas.filter((item) => item !== area))} aria-label={`הסר את ${area}`} title="הסר אזור" style={{ border: '1px solid var(--accent)', background: 'var(--accent-light)', color: 'var(--accent-dark)', borderRadius: 999, padding: '6px 10px', cursor: 'pointer', fontSize: 12, fontWeight: 700 }}>
+                      {area} ×
+                    </button>
+                  ))}
+                </div>
+                <div style={{ display: 'flex', gap: 8, marginTop: 9 }}>
+                  <input className="bp-input" value={reviewCustomServiceArea} onChange={(event) => setReviewCustomServiceArea(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); addCustomReviewServiceArea(); } }} placeholder="אזור שלא מופיע ברשימה" maxLength={80} style={{ minWidth: 0, flex: 1 }} />
+                  <Btn type="button" variant="outline" size="sm" onClick={addCustomReviewServiceArea} disabled={!reviewCustomServiceArea.trim() || reviewServiceAreas.length >= 12}>הוספה</Btn>
+                </div>
+              </div>
+            </div>
+            <label><div style={{ fontWeight: 700, fontSize: 13, marginBottom: 7 }}>דירוג כללי: {reviewRating}/5</div><input type="range" min="1" max="5" value={reviewRating} onChange={(event) => setReviewRating(Number(event.target.value))} style={{ width: '100%', accentColor: 'var(--accent)' }} /></label>
+            <label>
+              <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 7 }}>חוות הדעת שלך</div>
+              <textarea className="bp-input" rows={5} value={reviewText} onChange={(event) => setReviewText(event.target.value)} placeholder="שתפו מה הייתה חוויית העבודה בפועל." maxLength={2000} aria-describedby="review-text-length" style={{ width: '100%', resize: 'vertical' }} />
+              <div id="review-text-length" aria-live="polite" style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginTop: 6, fontSize: 12, color: reviewTextIsValid ? 'var(--success)' : 'var(--text3)' }}>
+                <span>{reviewTextLength}/20 תווים מינימום</span>
+                <span style={{ fontWeight: 700 }}>{reviewTextIsValid ? '✓ אפשר לפרסם' : `חסרים עוד ${20 - reviewTextLength} תווים`}</span>
+              </div>
+            </label>
+            <div style={{ borderTop: '1px solid var(--border)', paddingTop: 14 }}>
+              <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>לוגו או תמונת קבלן <span style={{ color: 'var(--text3)', fontWeight: 400 }}>(רשות)</span></div>
+              <div style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 8 }}>תישלח לאישור מנהל מערכת ותופיע במאגר רק לאחר אישור.</div>
+              <style>{`.contractor-camera-upload{display:none!important}@media (pointer:coarse){.contractor-camera-upload{display:inline-flex!important}}`}</style>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <label className="contractor-camera-upload" style={{ alignItems: 'center', gap: 6, cursor: 'pointer', color: 'var(--accent)', fontWeight: 700, fontSize: 13 }}>
+                  <Icon n="camera" s={15}/> צלם תמונה
+                  <input type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={(event) => setReviewImage(event.target.files?.[0] ?? null)} />
+                </label>
+                <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', color: 'var(--accent)', fontWeight: 700, fontSize: 13 }}>
+                  <Icon n="folder" s={15}/> בחר מהגלריה
+                  <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(event) => setReviewImage(event.target.files?.[0] ?? null)} />
+                </label>
+              </div>
+              {reviewImage && reviewImagePreviewUrl && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10, padding: 8, borderRadius: 10, background: 'var(--surface2)' }}>
+                  <img src={reviewImagePreviewUrl} alt="תצוגה מקדימה של תמונת הקבלן" style={{ width: 52, height: 52, borderRadius: 8, objectFit: 'cover', border: '1px solid var(--border)' }} />
+                  <div style={{ flex: 1, minWidth: 0, fontSize: 12, color: 'var(--text2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{reviewImage.name}</div>
+                  <button type="button" onClick={() => setReviewImage(null)} aria-label="הסר תמונה" title="הסר תמונה" style={{ border: 0, background: 'none', color: 'var(--danger)', cursor: 'pointer', padding: 5 }}><Icon n="trash" s={15} /></button>
+                </div>
+              )}
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}><Btn variant="ghost" onClick={() => setReviewModalOpen(false)} disabled={reviewSaving}>ביטול</Btn><Btn onClick={saveContractorReview} disabled={reviewSaving || !reviewTextIsValid}>{reviewSaving ? 'שומר…' : myReviewForSelected ? 'עדכן ושלח לאישור' : 'שלח לאישור'}</Btn></div>
+          </div>
+        </Modal>
+      )}
       {viewFile && (() => {
         let currentMilestoneFiles: any[] = [];
         for (const c of contractors) {
@@ -2139,7 +2346,17 @@ export const ContractorsScreen = () => {
         <div className="page-content">
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
           <div style={{fontSize:13,color:"var(--text2)"}}>{contractors.length} קבלנים בפרויקט</div>
-          <Btn size="sm" onClick={()=>setAdding(true)} disabled={!projectId || mode !== 'db'}><Icon n="plus" s={14}/> קבלן חדש</Btn>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Btn size="sm" onClick={()=>setAdding(true)} disabled={!projectId || mode !== 'db'}><Icon n="plus" s={14}/> קבלן חדש</Btn>
+          </div>
+        </div>
+
+        <div className="contractor-recommendations-promo">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+            <span style={{ display: 'grid', placeItems: 'center', width: 34, height: 34, flexShrink: 0, borderRadius: 10, background: 'var(--accent-light)', color: 'var(--accent)' }}><Icon n="search" s={17} /></span>
+            <div><div style={{ fontSize: 14, fontWeight: 800 }}>מחפשים קבלן?</div><div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2 }}>בדקו חוות דעת מאומתות במאגר ההמלצות שלנו.</div></div>
+          </div>
+          <Link to="/contractor-recommendations" search={{ contractorId: undefined }} style={{ textDecoration: 'none', flexShrink: 0 }}><Btn size="sm" variant="outline">למאגר ההמלצות <Icon n="arrow-left" s={13} /></Btn></Link>
         </div>
 
         <>
@@ -2161,7 +2378,11 @@ export const ContractorsScreen = () => {
                   onClick={()=>setSelectedId(String(c.id))}
                 >
                   <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:16}}>
-                    <Avatar letter={c.avatar || c.name[0]} color={c.color} size={44}/>
+                  {(c as any).profileImageUrl ? (
+                    <img src={(c as any).profileImageUrl} alt="" style={{ width: 44, height: 44, borderRadius: '50%', objectFit: 'cover' }} />
+                  ) : (
+                    <Avatar letter={c.avatar || c.name[0]} color={c.color} size={44} />
+                  )}
                     <div style={{flex:1,minWidth:0}}>
                       <div style={{fontWeight:700,fontSize:15,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.name}</div>
                       <div style={{fontSize:12.5,color:"var(--text2)",marginTop:2}}>{c.role}</div>

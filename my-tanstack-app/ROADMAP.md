@@ -298,6 +298,42 @@ Standard CRUD. Plus a query `listExpiringSoon({ projectId, days })` for the dash
 
 ---
 
+## Phase 7 — Verified contractor recommendations
+
+**Status:** 🔨 In progress — branch `codex/contractor-recommendations`.
+**Why:** Turn verified project experience into a trusted contractor-discovery layer, while keeping contractor identity and contact details exclusive to Pro projects.
+**Roles:** All authenticated project members may read masked recommendations. Only owner, manager, and inspector may review contractors that exist in their current project. Contractors may respond only through a linked contractor account; they can never review.
+**Effort:** Large.
+
+### Product rules
+
+- Free members see recommendation content, scores, broad area, specialty, and a privacy-safe image preview; contractor identity and contact are masked.
+- Pro/Premium access is inherited from the current project's owner. It unlocks the contractor name, business details, original logo/photo, and contact request.
+- The directory is authenticated-only: no public routes, SEO pages, raw storage URLs, or external search index for contractor identity.
+- One review per reviewer × contractor × project. Reviews can be edited by their author, reported, and hidden by a super-admin.
+
+### Planned schema and backend
+
+- `contractorProfiles` — cross-project canonical contractor profile, including Pro-only identity/contact and source + blurred preview images.
+- Optional `contractorProfileId` on existing `contractors` rows; new contractors are linked on write, and legacy rows remain valid during the transition.
+- `contractorReviews`, `contractorReviewResponses`, and `contractorReviewReports` with role, subscription, and project-membership checks at every public Convex function.
+- New `contractorReviews` entitlement in the shared `TIER_CAPABILITIES` map.
+
+### Frontend
+
+- New `/contractor-recommendations` page in the authenticated application shell, linked from `/contractors` and the sidebar.
+- Editorial recommendation feed, filters, profile detail, masked Free state, Pro upgrade path, review form, contractor response, and moderation state.
+- A single contractor image upload creates both the protected original and a privacy-safe blurred preview; a specialty-specific generic illustration is used when no image is provided.
+
+### Verification
+
+- Free API responses never include name, business, contact, original image storage id/URL, or searchable identifiers.
+- Owner/manager/inspector in a Pro project can review only contractors attached to that project; contractor mutation attempts fail.
+- A linked contractor can add one response to a published review; unrelated users cannot.
+- Tests cover tier inheritance, image masking, duplicate-review prevention, and report/moderation behavior.
+
+---
+
 ## Cross-cutting quick wins (each <1 day)
 
 These don't justify a full phase but are listed so the next session can pick them up between phases.

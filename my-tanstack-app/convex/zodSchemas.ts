@@ -219,9 +219,116 @@ export const zContractor = {
   avatarLetter: z.string().optional(),
   avatarColor: z.string().optional(),
   userId: zid('users').optional(),
+  // Canonical cross-project profile used by the contractor recommendations
+  // directory. Optional while existing project contractors are gradually linked.
+  contractorProfileId: zid('contractorProfiles').optional(),
   includesVat: z.boolean().optional(),
   canViewBudget: z.boolean().optional(),
   canViewSchedule: z.boolean().optional(),
+};
+
+export const zContractorProfile = {
+  displayName: z.string(),
+  company: z.string().optional(),
+  role: zContractorRole,
+  serviceAreas: z.array(z.string()),
+  phone: z.string().optional(),
+  email: z.string().optional(),
+  originalImageStorageId: z.string().optional(),
+  pendingImageStorageId: z.string().optional(),
+  previewImageStorageId: z.string().optional(),
+  claimedUserId: zid('users').optional(),
+  normalizedPhone: z.string().optional(),
+  createdAt: z.number(),
+  updatedAt: z.number(),
+};
+
+export const zContractorReviewStatus = z.enum(['pending', 'published', 'rejected', 'reported', 'hidden']);
+
+export const zContractorReview = {
+  contractorProfileId: zid('contractorProfiles'),
+  contractorId: zid('contractors'),
+  projectId: zid('projects'),
+  authorUserId: zid('users'),
+  authorRole: z.enum(['owner', 'manager', 'inspector']),
+  overallRating: z.number(),
+  professionalismRating: z.number(),
+  timelinessRating: z.number(),
+  communicationRating: z.number(),
+  tags: z.array(z.string()),
+  body: z.string(),
+  workMonth: z.string().optional(),
+  status: zContractorReviewStatus,
+  moderatedByUserId: zid('users').optional(),
+  moderatedAt: z.number().optional(),
+  moderationNote: z.string().optional(),
+  createdAt: z.number(),
+  updatedAt: z.number(),
+};
+
+export const zContractorReviewResponse = {
+  reviewId: zid('contractorReviews'),
+  contractorProfileId: zid('contractorProfiles'),
+  authorUserId: zid('users'),
+  body: z.string(),
+  createdAt: z.number(),
+  updatedAt: z.number(),
+};
+
+export const zContractorProfileImageSubmission = {
+  contractorProfileId: zid('contractorProfiles'),
+  reviewId: zid('contractorReviews'),
+  storageId: z.string(),
+  status: z.enum(['pending', 'published', 'rejected']),
+  submittedByUserId: zid('users'),
+  moderatedByUserId: zid('users').optional(),
+  moderatedAt: z.number().optional(),
+  moderationNote: z.string().optional(),
+  createdAt: z.number(),
+  updatedAt: z.number(),
+};
+
+export const zContractorReviewReport = {
+  reviewId: zid('contractorReviews'),
+  reporterUserId: zid('users'),
+  reason: z.string(),
+  // Optional temporarily so reports created before the moderation-state
+  // rollout are treated as open without requiring a data migration.
+  status: z.enum(['open', 'resolved']).optional(),
+  resolvedByUserId: zid('users').optional(),
+  resolvedAt: z.number().optional(),
+  resolution: z.enum(['kept_visible', 'review_hidden']).optional(),
+  createdAt: z.number(),
+};
+
+/** A small, transactional read model for badges in the super-admin UI. */
+export const zContractorRecommendationModerationStats = {
+  key: z.string(),
+  pendingReviewCount: z.number(),
+  openReportCount: z.number(),
+  updatedAt: z.number(),
+};
+
+/** Immutable operational history. Reviews may be deleted, but their audit
+ * event remains available to an administrator. */
+export const zContractorReviewModerationEvent = {
+  reviewId: zid('contractorReviews'),
+  actorUserId: zid('users'),
+  action: z.enum([
+    'submitted', 'resubmitted', 'approved', 'rejected', 'report_received',
+    'report_kept_visible', 'report_hidden', 'republished', 'edited', 'deleted',
+  ]),
+  note: z.string().optional(),
+  createdAt: z.number(),
+};
+
+/** Fixed-window limits for the write-heavy public moderation endpoints. */
+export const zContractorRecommendationRateLimit = {
+  userId: zid('users'),
+  scope: z.enum(['review_write', 'image_submission', 'review_report']),
+  windowStart: z.number(),
+  count: z.number(),
+  updatedAt: z.number(),
 };
 
 export const zContractorPaymentMilestone = {
