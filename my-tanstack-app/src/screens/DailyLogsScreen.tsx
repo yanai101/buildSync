@@ -412,7 +412,7 @@ export const DailyLogsScreen = () => {
                 </div>
 
                 {/* Action Buttons */}
-                <div style={{ display: "flex", gap: 12 }}>
+                <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
                   {isLocked && (
                     <Btn
                       variant="outline"
@@ -423,6 +423,17 @@ export const DailyLogsScreen = () => {
                     </Btn>
                   )}
 
+                  {/* Primary action first → appears rightmost in RTL */}
+                  {canEditBasic && <Btn variant="primary" onClick={handleSave} disabled={saving}>
+                    <Icon n="save" s={16} /> {saving ? "שומר..." : "שמור טיוטה"}
+                  </Btn>}
+
+                  {/* Lock — secondary important action */}
+                  {canEditAdvanced && log && !isLocked && <Btn onClick={handleLock} disabled={saving} style={{ background: "#FF3B30", color: "#fff" }}>
+                    <Icon n="lock" s={16} /> נעל דוח יום
+                  </Btn>}
+
+                  {/* Delete — danger, leftmost in RTL */}
                   {log && !isLocked && (canEditAdvanced || canEditBasic) && (
                     <Btn
                       variant="outline"
@@ -433,12 +444,6 @@ export const DailyLogsScreen = () => {
                       <Icon n="trash" s={16} /> מחק
                     </Btn>
                   )}
-                  {canEditBasic && <Btn variant="primary" onClick={handleSave} disabled={saving}>
-                    <Icon n="save" s={16} /> {saving ? "שומר..." : "שמור טיוטה"}
-                  </Btn>}
-                  {canEditAdvanced && log && !isLocked && <Btn onClick={handleLock} disabled={saving} style={{ background: "#FF3B30", color: "#fff" }}>
-                    <Icon n="lock" s={16} /> נעל דוח יום
-                  </Btn>}
                 </div>
               </div>
 
@@ -493,14 +498,21 @@ export const DailyLogsScreen = () => {
               {/* General */}
               <div style={{ background: "var(--surface)", borderRadius: 12, border: "1px solid var(--border)", overflow: "hidden" }}>
                 {renderSectionHeader("תנאי שטח", "sun")}
-                <div style={{ padding: 16, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 16 }}>
+                <style>{`.weather-grid { display: flex; flex-direction: column; gap: 12px; } @media (min-width: 600px) { .weather-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; } }`}</style>
+                <div className="weather-grid" style={{ padding: 16 }}>
                   <div>
-                    <label style={{ display: "block", fontSize: 12, color: "var(--text2)", marginBottom: 4 }}>מזג אוויר</label>
-                    <input disabled={!canEditBasic} value={form.weather} onChange={e => setForm({ ...form, weather: e.target.value })} placeholder="לדוגמה: שרב / גשום / רגיל" style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid var(--border)", fontSize: 14, opacity: canEditBasic ? 1 : 0.6 }} />
+                    <span style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--text2)", marginBottom: 4 }}>מזג אוויר</span>
+                    {canEditBasic
+                      ? <input value={form.weather} onChange={e => setForm({ ...form, weather: e.target.value })} placeholder="לדוגמה: שרב / גשום / רגיל" style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid var(--border)", fontSize: 14, background: "var(--bg)", color: "var(--text1)", boxSizing: 'border-box' }} />
+                      : <span style={{ display: "block", fontSize: 14, color: "var(--text1)", padding: "4px 0", lineHeight: 1.5 }}>{form.weather || '—'}</span>
+                    }
                   </div>
                   <div>
-                    <label style={{ display: "block", fontSize: 12, color: "var(--text2)", marginBottom: 4 }}>טמפרטורה</label>
-                    <input disabled={!canEditBasic} value={form.temperature} onChange={e => setForm({ ...form, temperature: e.target.value })} placeholder="לדוגמה: 28°C" style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid var(--border)", fontSize: 14, opacity: canEditBasic ? 1 : 0.6 }} />
+                    <span style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--text2)", marginBottom: 4 }}>טמפרטורה</span>
+                    {canEditBasic
+                      ? <input value={form.temperature} onChange={e => setForm({ ...form, temperature: e.target.value })} placeholder="לדוגמה: 28°C" style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid var(--border)", fontSize: 14, background: "var(--bg)", color: "var(--text1)", boxSizing: 'border-box' }} />
+                      : <span style={{ display: "block", fontSize: 14, color: "var(--text1)", padding: "4px 0", lineHeight: 1.5 }}>{form.temperature || '—'}</span>
+                    }
                   </div>
                 </div>
               </div>
@@ -510,37 +522,56 @@ export const DailyLogsScreen = () => {
                 {renderSectionHeader("כוח אדם וקבלנים", "users")}
                 <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
                   {form.workforce.map((w, i) => (
-                    <div key={i} style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-                      <select disabled={!canEditBasic} value={w.contractorId || ''} onChange={e => {
-                        const newArr = [...form.workforce];
-                        const selectedC = contractors.find(c => c._id === e.target.value);
-                        newArr[i].contractorId = e.target.value || undefined;
-                        newArr[i].contractorName = selectedC ? selectedC.name : (e.target.value ? '' : 'כללי');
-                        setForm({ ...form, workforce: newArr });
-                      }} style={{ width: 140, padding: "8px", borderRadius: 8, border: "1px solid var(--border)", fontSize: 13 }}>
-                        <option value="">כללי (לא משויך)</option>
-                        {contractors.map(c => <option key={c._id} value={c._id}>{c.name}</option>)}
-                      </select>
+                    canEditBasic ? (
+                      <div key={i} style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-start" }}>
+                        <select value={w.contractorId || ''} onChange={e => {
+                          const newArr = [...form.workforce];
+                          const selectedC = contractors.find(c => c._id === e.target.value);
+                          newArr[i].contractorId = e.target.value || undefined;
+                          newArr[i].contractorName = selectedC ? selectedC.name : (e.target.value ? '' : 'כללי');
+                          setForm({ ...form, workforce: newArr });
+                        }} style={{ width: 140, padding: "8px", borderRadius: 8, border: "1px solid var(--border)", fontSize: 13, background: "var(--bg)", color: "var(--text1)" }}>
+                          <option value="">כללי (לא משויך)</option>
+                          {contractors.map(c => <option key={c._id} value={c._id}>{c.name}</option>)}
+                        </select>
 
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <span style={{ fontSize: 13 }}>פועלים:</span>
-                        <input type="number" disabled={!canEditBasic} value={w.workersCount} min={1} onChange={e => {
-                          const newArr = [...form.workforce]; newArr[i].workersCount = parseInt(e.target.value) || 0; setForm({ ...form, workforce: newArr });
-                        }} style={{ width: 60, padding: "8px", borderRadius: 8, border: "1px solid var(--border)", fontSize: 13 }} />
-                      </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text2)" }}>פועלים:</span>
+                          <select value={w.workersCount} onChange={e => {
+                            const newArr = [...form.workforce]; newArr[i].workersCount = parseInt(e.target.value) || 1; setForm({ ...form, workforce: newArr });
+                          }} style={{ width: 70, padding: "8px", borderRadius: 8, border: "1px solid var(--border)", fontSize: 13, background: "var(--bg)", color: "var(--text1)" }}>
+                            {Array.from({ length: 20 }, (_, k) => k + 1).map(n => (
+                              <option key={n} value={n}>{n}</option>
+                            ))}
+                          </select>
+                        </div>
 
-                      <input disabled={!canEditBasic} value={w.notes || ''} onChange={e => {
-                        const newArr = [...form.workforce]; newArr[i].notes = e.target.value; setForm({ ...form, workforce: newArr });
-                      }} placeholder="הערות (אופציונלי)" style={{ flex: 1, padding: "8px 12px", borderRadius: 8, border: "1px solid var(--border)", fontSize: 13, minWidth: 150 }} />
+                        <textarea value={w.notes || ''} onChange={e => {
+                          const newArr = [...form.workforce]; newArr[i].notes = e.target.value; setForm({ ...form, workforce: newArr });
+                        }} placeholder="הערות (אופציונלי)" style={{ flex: 1, padding: "8px 12px", borderRadius: 8, border: "1px solid var(--border)", fontSize: 13, minWidth: 150, minHeight: 60, resize: 'vertical', lineHeight: 1.5, fontFamily: 'inherit', background: "var(--bg)", color: "var(--text1)" }} />
 
-                      {canEditBasic && (
                         <button onClick={() => {
                           const newArr = [...form.workforce]; newArr.splice(i, 1); setForm({ ...form, workforce: newArr });
-                        }} style={{ background: "rgba(255,59,48,0.1)", border: "none", borderRadius: 8, padding: "8px 12px", cursor: "pointer", color: "#FF3B30", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }} onMouseOver={e => e.currentTarget.style.background = "rgba(255,59,48,0.2)"} onMouseOut={e => e.currentTarget.style.background = "rgba(255,59,48,0.1)"}>
+                        }} style={{ background: "rgba(255,59,48,0.1)", border: "none", borderRadius: 8, padding: "8px 12px", cursor: "pointer", color: "#FF3B30", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s", marginTop: 2 }} onMouseOver={e => e.currentTarget.style.background = "rgba(255,59,48,0.2)"} onMouseOut={e => e.currentTarget.style.background = "rgba(255,59,48,0.1)"}>
                           <Icon n="trash" s={14} />
                         </button>
-                      )}
-                    </div>
+                      </div>
+                    ) : (
+                      <div key={i} style={{ padding: "10px 12px", borderRadius: 8, background: "var(--bg)", border: "1px solid var(--border)" }}>
+                        <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "center", marginBottom: w.notes ? 6 : 0 }}>
+                          <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text1)" }}>{w.contractorName || 'כללי'}</span>
+                          <span style={{ fontSize: 12, color: "var(--text2)" }}>
+                            <span style={{ fontWeight: 700 }}>פועלים: </span>{w.workersCount}
+                          </span>
+                        </div>
+                        {w.notes && (
+                          <div>
+                            <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text2)" }}>הערות: </span>
+                            <span style={{ fontSize: 13, color: "var(--text1)", lineHeight: 1.5 }}>{w.notes}</span>
+                          </div>
+                        )}
+                      </div>
+                    )
                   ))}
                   {canEditBasic && <Btn size="sm" variant="outline" style={{ alignSelf: "flex-start", marginTop: 8 }} onClick={() => setForm({ ...form, workforce: [...form.workforce, { contractorId: undefined, contractorName: 'כללי', workersCount: 1, notes: '' }] })}><Icon n="plus" s={14} /> הוסף רישום פועלים</Btn>}
                   {form.workforce.length === 0 && !canEditBasic && <div style={{ fontSize: 13, color: "var(--text3)" }}>אין רישום כוח אדם ליום זה.</div>}
@@ -551,27 +582,36 @@ export const DailyLogsScreen = () => {
               <div style={{ background: "var(--surface)", borderRadius: 12, border: "1px solid var(--border)", overflow: "hidden" }}>
                 {renderSectionHeader("מה בוצע היום?", "check-square")}
                 <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
-                  {form.activities.map((act, i) => (
-                    <div key={i} style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                      <input disabled={!canEditBasic} value={act.description} onChange={e => {
-                        const newArr = [...form.activities]; newArr[i].description = e.target.value; setForm({ ...form, activities: newArr });
-                      }} placeholder="תיאור העבודה (למשל יציקת קירות ממ״ד)" style={{ flex: 1, padding: "8px 12px", borderRadius: 8, border: "1px solid var(--border)", fontSize: 13 }} />
-                      <select disabled={!canEditBasic} value={act.status} onChange={e => {
-                        const newArr = [...form.activities]; newArr[i].status = e.target.value as any; setForm({ ...form, activities: newArr });
-                      }} style={{ width: 140, padding: "8px", borderRadius: 8, border: "1px solid var(--border)", fontSize: 13 }}>
-                        <option value="in_progress">בביצוע</option>
-                        <option value="completed">הושלם</option>
-                        <option value="delayed">באיחור</option>
-                      </select>
-                      {canEditBasic && (
-                        <button onClick={() => {
-                          const newArr = [...form.activities]; newArr.splice(i, 1); setForm({ ...form, activities: newArr });
-                        }} style={{ background: "rgba(255,59,48,0.1)", border: "none", borderRadius: 8, padding: "8px 12px", cursor: "pointer", color: "#FF3B30", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s", flex: "0 0 auto" }} onMouseOver={e => e.currentTarget.style.background = "rgba(255,59,48,0.2)"} onMouseOut={e => e.currentTarget.style.background = "rgba(255,59,48,0.1)"}>
-                          <Icon n="trash" s={14} />
-                        </button>
-                      )}
-                    </div>
-                  ))}
+                  {form.activities.map((act, i) => {
+                    const statusLabel = act.status === 'completed' ? 'הושלם' : act.status === 'delayed' ? 'באיחור' : 'בביצוע';
+                    const statusColor = act.status === 'completed' ? '#34C759' : act.status === 'delayed' ? '#FF3B30' : 'var(--accent)';
+                    return canEditBasic ? (
+                      <div key={i} style={{ display: "flex", flexDirection: "column", gap: 8, padding: "10px 12px", background: "var(--bg)", borderRadius: 8, border: "1px solid var(--border)" }}>
+                        <textarea value={act.description} onChange={e => {
+                          const newArr = [...form.activities]; newArr[i].description = e.target.value; setForm({ ...form, activities: newArr });
+                        }} placeholder="תיאור העבודה (למשל יציקת קירות ממ״ד)" style={{ width: '100%', padding: "8px 12px", borderRadius: 8, border: "1px solid var(--border)", fontSize: 13, minHeight: 64, resize: 'vertical', lineHeight: 1.5, fontFamily: 'inherit', background: "var(--surface)", color: "var(--text1)", boxSizing: 'border-box' }} />
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "space-between" }}>
+                          <select value={act.status} onChange={e => {
+                            const newArr = [...form.activities]; newArr[i].status = e.target.value as any; setForm({ ...form, activities: newArr });
+                          }} style={{ flex: 1, padding: "8px", borderRadius: 8, border: "1px solid var(--border)", fontSize: 13, background: "var(--bg)", color: "var(--text1)" }}>
+                            <option value="in_progress">בביצוע</option>
+                            <option value="completed">הושלם</option>
+                            <option value="delayed">באיחור</option>
+                          </select>
+                          <button onClick={() => {
+                            const newArr = [...form.activities]; newArr.splice(i, 1); setForm({ ...form, activities: newArr });
+                          }} style={{ background: "rgba(255,59,48,0.1)", border: "none", borderRadius: 8, padding: "8px 12px", cursor: "pointer", color: "#FF3B30", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s", flexShrink: 0 }} onMouseOver={e => e.currentTarget.style.background = "rgba(255,59,48,0.2)"} onMouseOut={e => e.currentTarget.style.background = "rgba(255,59,48,0.1)"}>
+                            <Icon n="trash" s={14} />
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div key={i} style={{ padding: "10px 12px", borderRadius: 8, background: "var(--bg)", border: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+                        <span style={{ fontSize: 13, color: "var(--text1)", lineHeight: 1.5, flex: 1 }}>{act.description || '—'}</span>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: statusColor, whiteSpace: 'nowrap', padding: '2px 8px', borderRadius: 20, background: `${statusColor}18`, border: `1px solid ${statusColor}40` }}>{statusLabel}</span>
+                      </div>
+                    );
+                  })}
                   {canEditBasic && <Btn size="sm" variant="outline" style={{ alignSelf: "flex-start", marginTop: 8 }} onClick={() => setForm({ ...form, activities: [...form.activities, { description: '', status: 'in_progress' }] })}><Icon n="plus" s={14} /> הוסף עבודה</Btn>}
                   {form.activities.length === 0 && !canEditBasic && <div style={{ fontSize: 13, color: "var(--text3)" }}>אין רישום עבודות להיום.</div>}
                 </div>
@@ -582,37 +622,51 @@ export const DailyLogsScreen = () => {
                 {renderSectionHeader("עיכובים ובעיות ⚠️", "alert-triangle")}
                 <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
                   {!isInspectorOrManager && !isOwner && <div style={{ fontSize: 13, color: "var(--text3)" }}>רק מפקח מורשה להזין ולנהל עיכובים וחריגות כספיות.</div>}
-                  {form.issues.map((iss, i) => (
-                    <div key={i} style={{ display: "flex", gap: 8, flexWrap: "wrap", padding: 12, background: "rgba(255,59,48,0.05)", borderRadius: 8, border: "1px solid rgba(255,59,48,0.2)" }}>
-                      <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8 }}>
-                        <input disabled={!canEditAdvanced} value={iss.description} onChange={e => {
+                  {form.issues.map((iss, i) => {
+                    const issTypeLabel = iss.type === 'delay' ? 'עיכוב' : iss.type === 'quality' ? 'ליקוי איכות' : iss.type === 'safety' ? 'בטיחות' : 'אחר';
+                    return canEditAdvanced ? (
+                      <div key={i} style={{ display: "flex", flexDirection: "column", gap: 8, padding: 12, background: "rgba(255,59,48,0.05)", borderRadius: 8, border: "1px solid rgba(255,59,48,0.2)" }}>
+                        <textarea value={iss.description} onChange={e => {
                           const newArr = [...form.issues]; newArr[i].description = e.target.value; setForm({ ...form, issues: newArr });
-                        }} placeholder="תיאור הבעיה (למשל: משאבת בטון לא הגיעה)" style={{ padding: "8px 12px", borderRadius: 6, border: "1px solid var(--border)", fontSize: 13 }} />
-                        <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "center" }}>
-                          <select disabled={!canEditAdvanced} value={iss.type} onChange={e => {
-                            const newArr = [...form.issues]; newArr[i].type = e.target.value as any; setForm({ ...form, issues: newArr });
-                          }} style={{ padding: "6px", borderRadius: 6, border: "1px solid var(--border)", fontSize: 12 }}>
-                            <option value="delay">עיכוב</option>
-                            <option value="quality">ליקוי איכות</option>
-                            <option value="safety">בטיחות</option>
-                            <option value="other">אחר</option>
-                          </select>
-                          <label style={{ fontSize: 12, display: "flex", alignItems: "center", gap: 6 }}>
-                            <input type="checkbox" disabled={!canEditAdvanced} checked={iss.financialImpact} onChange={e => {
-                              const newArr = [...form.issues]; newArr[i].financialImpact = e.target.checked; setForm({ ...form, issues: newArr });
-                            }} /> השפעה כספית / חריגה
-                          </label>
+                        }} placeholder="תיאור הבעיה (למשל: משאבת בטון לא הגיעה)" style={{ width: '100%', padding: "8px 12px", borderRadius: 6, border: "1px solid rgba(255,59,48,0.3)", fontSize: 13, minHeight: 64, resize: 'vertical', lineHeight: 1.5, fontFamily: 'inherit', background: "var(--bg)", color: "var(--text1)", boxSizing: 'border-box' }} />
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "space-between", flexWrap: "wrap" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 12, flex: 1, flexWrap: "wrap" }}>
+                            <select value={iss.type} onChange={e => {
+                              const newArr = [...form.issues]; newArr[i].type = e.target.value as any; setForm({ ...form, issues: newArr });
+                            }} style={{ padding: "6px 10px", borderRadius: 6, border: "1px solid var(--border)", fontSize: 12, background: "var(--bg)", color: "var(--text1)" }}>
+                              <option value="delay">עיכוב</option>
+                              <option value="quality">ליקוי איכות</option>
+                              <option value="safety">בטיחות</option>
+                              <option value="other">אחר</option>
+                            </select>
+                            <label style={{ fontSize: 12, display: "flex", alignItems: "center", gap: 6, color: "var(--text1)", cursor: "pointer" }}>
+                              <input type="checkbox" checked={iss.financialImpact} onChange={e => {
+                                const newArr = [...form.issues]; newArr[i].financialImpact = e.target.checked; setForm({ ...form, issues: newArr });
+                              }} /> השפעה כספית / חריגה
+                            </label>
+                          </div>
+                          <button onClick={() => {
+                            const newArr = [...form.issues]; newArr.splice(i, 1); setForm({ ...form, issues: newArr });
+                          }} style={{ background: "rgba(255,59,48,0.1)", border: "none", borderRadius: 8, padding: "8px 12px", cursor: "pointer", color: "#FF3B30", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s", flexShrink: 0 }} onMouseOver={e => e.currentTarget.style.background = "rgba(255,59,48,0.2)"} onMouseOut={e => e.currentTarget.style.background = "rgba(255,59,48,0.1)"}>
+                            <Icon n="trash" s={14} />
+                          </button>
                         </div>
                       </div>
-                      {canEditAdvanced && (
-                        <button onClick={() => {
-                          const newArr = [...form.issues]; newArr.splice(i, 1); setForm({ ...form, issues: newArr });
-                        }} style={{ background: "rgba(255,59,48,0.1)", border: "none", borderRadius: 8, padding: "8px 12px", cursor: "pointer", color: "#FF3B30", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s", flex: "0 0 auto", height: "fit-content" }} onMouseOver={e => e.currentTarget.style.background = "rgba(255,59,48,0.2)"} onMouseOut={e => e.currentTarget.style.background = "rgba(255,59,48,0.1)"}>
-                          <Icon n="trash" s={14} />
-                        </button>
-                      )}
-                    </div>
-                  ))}
+                    ) : (
+                      <div key={i} style={{ padding: "10px 12px", background: "rgba(255,59,48,0.05)", borderRadius: 8, border: "1px solid rgba(255,59,48,0.2)", display: "flex", flexDirection: "column", gap: 6 }}>
+                        <span style={{ fontSize: 13, color: "var(--text1)", lineHeight: 1.5 }}>{iss.description || '—'}</span>
+                        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+                          <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text2)" }}>סוג: </span>
+                          <span style={{ fontSize: 12, color: "#FF3B30", fontWeight: 600 }}>{issTypeLabel}</span>
+                          {iss.financialImpact && (
+                            <span style={{ fontSize: 12, fontWeight: 700, color: "#FF3B30", display: "flex", alignItems: "center", gap: 4 }}>
+                              <Icon n="alert-triangle" s={12} c="#FF3B30" /> השפעה כספית
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
                   {canEditAdvanced && <Btn size="sm" variant="outline" style={{ alignSelf: "flex-start", marginTop: 8 }} onClick={() => setForm({ ...form, issues: [...form.issues, { type: 'delay', description: '', financialImpact: false }] })}><Icon n="plus" s={14} /> דווח חריגה</Btn>}
                 </div>
               </div>
