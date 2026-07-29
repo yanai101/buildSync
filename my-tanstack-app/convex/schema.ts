@@ -206,4 +206,37 @@ export default defineSchema({
   pushSubscriptions: defineTable(zodToConvexFields(s.zPushSubscription))
     .index('by_user', ['userId'])
     .index('by_endpoint', ['endpoint']),
+
+  announcements: defineTable({
+    title: v.string(),
+    body: v.string(),
+    imageUrl: v.optional(v.string()),
+    type: v.union(
+      v.literal('feature'),
+      v.literal('info'),
+      v.literal('warning'),
+      v.literal('error'),
+      v.literal('success'),
+    ),
+    audienceType: v.union(
+      v.literal('all'),
+      v.literal('plan'),
+      v.literal('users'),
+    ),
+    plans: v.optional(v.array(v.union(
+      v.literal('pro'),
+      v.literal('premium'),
+    ))),
+    userIds: v.optional(v.array(v.string())),
+    status: v.union(
+      v.literal('draft'),
+      v.literal('published'),
+      v.literal('archived'),
+    ),
+    publishAt: v.number(),
+    expiresAt: v.optional(v.number()),
+    createdBy: v.id('users'),
+  })
+    .index('by_status', ['status'])
+    .index('by_status_publish', ['status', 'publishAt']),
 }, { schemaValidation: false });

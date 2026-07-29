@@ -287,6 +287,50 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false)
   const menuRef = React.useRef<HTMLDivElement>(null)
 
+  const activeAnnouncements = useQuery(api.announcements.getActiveAnnouncements, identity ? {} : 'skip');
+  const [readAnnouncementsMap, setReadAnnouncementsMap] = React.useState<Record<string, number>>({});
+  const [expandedAnnouncementId, setExpandedAnnouncementId] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    try {
+      const stored = localStorage.getItem('buildsync:announcements_read');
+      if (stored) {
+        setReadAnnouncementsMap(JSON.parse(stored));
+      }
+    } catch (e) {}
+  }, []);
+
+  const unreadAnnouncementsCount = React.useMemo(() => {
+    if (!activeAnnouncements) return 0;
+    return activeAnnouncements.filter((a) => !readAnnouncementsMap[a._id]).length;
+  }, [activeAnnouncements, readAnnouncementsMap]);
+
+  const markAnnouncementRead = (id: string) => {
+    setReadAnnouncementsMap((prev) => {
+      if (prev[id]) return prev;
+      const next = { ...prev, [id]: Date.now() };
+      try {
+        localStorage.setItem('buildsync:announcements_read', JSON.stringify(next));
+      } catch (e) {}
+      return next;
+    });
+  };
+
+  const markAllAnnouncementsRead = () => {
+    if (!activeAnnouncements || activeAnnouncements.length === 0) return;
+    setReadAnnouncementsMap((prev) => {
+      const next = { ...prev };
+      const now = Date.now();
+      activeAnnouncements.forEach((a) => {
+        next[a._id] = now;
+      });
+      try {
+        localStorage.setItem('buildsync:announcements_read', JSON.stringify(next));
+      } catch (e) {}
+      return next;
+    });
+  };
+
   const [deferredPrompt, setDeferredPrompt] = React.useState<any>(null);
   const [showPWABanner, setShowPWABanner] = React.useState(false);
   const [isStandalone, setIsStandalone] = React.useState(false);
@@ -854,11 +898,32 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                     {supportTicketCount}
                   </span>
                 )}
+                {unreadAnnouncementsCount > 0 && (
+                  <span style={{
+                    position: "absolute",
+                    top: -4,
+                    left: (identity?.isSuperAdmin && supportTicketCount > 0) ? -4 : "auto",
+                    right: (identity?.isSuperAdmin && supportTicketCount > 0) ? "auto" : -4,
+                    background: "var(--accent)",
+                    color: "white",
+                    fontSize: 10,
+                    fontWeight: 800,
+                    width: 16,
+                    height: 16,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    borderRadius: "50%",
+                    border: "2px solid var(--surface)"
+                  }}>
+                    {unreadAnnouncementsCount > 9 ? '9+' : unreadAnnouncementsCount}
+                  </span>
+                )}
               </button>
               {menuOpen && (
                 <div
                   role="menu"
-                  style={{ position: "absolute", top: "calc(100% + 6px)", insetInlineEnd: 0, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: 8, minWidth: 220, boxShadow: "0 8px 24px rgba(0,0,0,0.08)", zIndex: 30 }}
+                  style={{ position: "absolute", top: "calc(100% + 6px)", insetInlineEnd: 0, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: 8, minWidth: 260, maxWidth: 320, boxShadow: "0 8px 24px rgba(0,0,0,0.08)", zIndex: 30 }}
                 >
                   <div style={{ padding: "8px 10px" }}>
                     <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text1)" }}>
@@ -870,7 +935,84 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                       </div>
                     )}
                   </div>
-                  <div style={{ height: 1, background: "var(--border)", margin: "6px 0" }} />
+
+                  {activeAnnouncements && activeAnnouncements.length > 0 && (
+                    <>
+                      <div style={{ height: 1, background: "var(--border)", margin: "6px 0" }} />
+                      <div style={{ background: "var(--bg)", borderRadius: 8, padding: 8, border: "1px solid var(--border)" }}>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6, padding: "0 2px" }}>
+                          <span style={{ fontSize: 12, fontWeight: 800, color: "var(--text1)", display: "flex", alignItems: "center", gap: 6 }}>
+                            <span>📣</span> הודעות {unreadAnnouncementsCount > 0 && <span style={{ background: "var(--accent)", color: "#fff", borderRadius: 10, padding: "1px 6px", fontSize: 10, fontWeight: 800 }}>{unreadAnnouncementsCount}</span>}
+                          </span>
+                          {unreadAnnouncementsCount > 0 && (
+                            <button
+                              onClick={markAllAnnouncementsRead}
+                              style={{ background: "none", border: "none", color: "var(--accent)", fontSize: 11, fontWeight: 700, cursor: "pointer", padding: 0 }}
+                            >
+                              סמן הכל כנקרא
+                            </button>
+                          )}
+                        </div>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 220, overflowY: "auto" }}>
+                          {activeAnnouncements.map((ann) => {
+                            const isRead = !!readAnnouncementsMap[ann._id];
+                            const isExpanded = expandedAnnouncementId === ann._id;
+                            const badgeConfig = {
+                              feature: { label: "פיצ'ר חדש", bg: "rgba(52, 199, 89, 0.12)", color: "#34C759", icon: "⭐" },
+                              info: { label: "עדכון", bg: "rgba(0, 122, 255, 0.12)", color: "#007AFF", icon: "ℹ️" },
+                              warning: { label: "תחזוקה", bg: "rgba(255, 149, 0, 0.12)", color: "#FF9500", icon: "🔧" },
+                              error: { label: "חשוב", bg: "rgba(255, 59, 48, 0.12)", color: "#FF3B30", icon: "🚨" },
+                              success: { label: "הודעה", bg: "rgba(52, 199, 89, 0.12)", color: "#34C759", icon: "✅" },
+                            }[ann.type] || { label: "הודעה", bg: "rgba(0, 122, 255, 0.12)", color: "#007AFF", icon: "ℹ️" };
+
+                            return (
+                              <div
+                                key={ann._id}
+                                onClick={() => {
+                                  markAnnouncementRead(ann._id);
+                                  setExpandedAnnouncementId(isExpanded ? null : ann._id);
+                                }}
+                                style={{
+                                  padding: "8px 10px",
+                                  borderRadius: 8,
+                                  background: isRead ? "var(--surface)" : "var(--accent-light, rgba(217,119,6,0.08))",
+                                  border: isRead ? "1px solid var(--border)" : "1px solid var(--accent-glow-sm)",
+                                  cursor: "pointer",
+                                  transition: "all 0.2s"
+                                }}
+                              >
+                                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
+                                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                    <span style={{ fontSize: 12 }}>{badgeConfig.icon}</span>
+                                    <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text1)" }}>{ann.title}</span>
+                                  </div>
+                                  {!isRead && (
+                                    <span style={{ fontSize: 10, fontWeight: 800, color: "var(--accent)", background: "rgba(217,119,6,0.15)", padding: "1px 5px", borderRadius: 4, whiteSpace: "nowrap" }}>
+                                      חדש
+                                    </span>
+                                  )}
+                                </div>
+                                <div style={{
+                                  fontSize: 12,
+                                  color: "var(--text2)",
+                                  marginTop: 4,
+                                  lineHeight: 1.4,
+                                  display: isExpanded ? "block" : "-webkit-box",
+                                  WebkitLineClamp: isExpanded ? "unset" : 2,
+                                  WebkitBoxOrient: "vertical",
+                                  overflow: "hidden",
+                                  whiteSpace: "pre-wrap"
+                                }}>
+                                  {ann.body}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </>
+                  )}
+
                   <div style={{ height: 1, background: "var(--border)", margin: "6px 0" }} />
                   <Link
                     to="/account"

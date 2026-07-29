@@ -29,7 +29,22 @@ export function SuperAdminScreen() {
   const promoCodes = useQuery(api.superAdmin.getPromoCodes, isSuperAdmin ? {} : 'skip');
   const generatePromoCode = useMutation(api.superAdmin.generatePromoCode);
   const deletePromoCode = useMutation(api.superAdmin.deletePromoCode);
-  const [activeTab, setActiveTab] = useState<'users' | 'promo' | 'cleanup' | 'support' | 'guides'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'promo' | 'cleanup' | 'support' | 'guides' | 'announcements'>('users');
+
+  const announcements = useQuery(api.announcements.getAllAnnouncements, isSuperAdmin && activeTab === 'announcements' ? {} : 'skip');
+  const createAnnouncement = useMutation(api.announcements.createAnnouncement);
+  const updateAnnouncement = useMutation(api.announcements.updateAnnouncement);
+  const setAnnouncementStatus = useMutation(api.announcements.setAnnouncementStatus);
+  const deleteAnnouncement = useMutation(api.announcements.deleteAnnouncement);
+
+  const [annTitle, setAnnTitle] = useState('');
+  const [annBody, setAnnBody] = useState('');
+  const [annType, setAnnType] = useState<'feature' | 'info' | 'warning' | 'error' | 'success'>('feature');
+  const [annAudience, setAnnAudience] = useState<'all' | 'plan' | 'users'>('all');
+  const [annPlans, setAnnPlans] = useState<('pro' | 'premium')[]>(['pro', 'premium']);
+  const [annUserIds, setAnnUserIds] = useState<string[]>([]);
+  const [annStatus, setAnnStatus] = useState<'draft' | 'published' | 'archived'>('published');
+  const [editingAnnId, setEditingAnnId] = useState<Id<'announcements'> | null>(null);
 
   const cleanupCandidates = useQuery(api.cleanup.getCleanupCandidates, isSuperAdmin && activeTab === 'cleanup' ? {} : 'skip');
   const deleteProject = useMutation(api.cleanup.manualDeleteProject);
@@ -338,6 +353,27 @@ export function SuperAdminScreen() {
         >
           <Icon n="play-circle" s={20} />
           ניהול הדרכות וידאו
+        </button>
+        <button 
+          onClick={() => setActiveTab('announcements')}
+          style={{ 
+            background: activeTab === 'announcements' ? 'var(--surface)' : 'transparent',
+            border: 'none',
+            borderBottom: activeTab === 'announcements' ? '2px solid var(--accent)' : '2px solid transparent',
+            padding: '12px 24px',
+            fontSize: 16,
+            fontWeight: activeTab === 'announcements' ? 600 : 400,
+            color: activeTab === 'announcements' ? 'var(--text1)' : 'var(--text2)',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            whiteSpace: 'nowrap',
+            flexShrink: 0
+          }}
+        >
+          <Icon n="bell" s={20} />
+          הודעות מערכת
         </button>
       </div>
 
@@ -1268,6 +1304,310 @@ export function SuperAdminScreen() {
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {activeTab === 'announcements' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+          <div className="card" style={{ padding: 24 }}>
+            <h2 style={{ fontSize: 24, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 12 }}>
+              <Icon n="bell" s={28} c="var(--accent)" />
+              ניהול הודעות מערכת (In-App Announcements)
+            </h2>
+            <p style={{ color: 'var(--text2)', marginBottom: 24 }}>
+              פרסם עדכונים, הודעות על פיצ'רים חדשים, אזהרות או הודעות תחזוקה. ההודעות יופיעו למשתמשים ישירות בתפריט המשתמש עם אינדיקטור על האווטר.
+            </p>
+
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 24, alignItems: 'start' }}>
+              {/* Form & Live Preview */}
+              <div style={{ background: 'var(--surface)', padding: 20, borderRadius: 12, border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <h3 style={{ fontSize: 18, fontWeight: 700, margin: 0, color: 'var(--text1)' }}>
+                  {editingAnnId ? '✏️ עריכת הודעה' : '➕ יצירת הודעה חדשה'}
+                </h3>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: 'var(--text2)', marginBottom: 6 }}>כותרת ההודעה</label>
+                  <input
+                    type="text"
+                    value={annTitle}
+                    onChange={(e) => setAnnTitle(e.target.value)}
+                    placeholder="לדוגמה: ⭐ יצוא פרויקט חדש זמין עכשיו!"
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text1)', fontSize: 14, boxSizing: 'border-box' }}
+                  />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: 'var(--text2)', marginBottom: 6 }}>סוג הודעה</label>
+                    <select
+                      value={annType}
+                      onChange={(e) => setAnnType(e.target.value as any)}
+                      style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text1)', fontSize: 14, boxSizing: 'border-box' }}
+                    >
+                      <option value="feature">⭐ פיצ'ר חדש (ירוק)</option>
+                      <option value="info">ℹ️ עדכון כללי (כחול)</option>
+                      <option value="warning">🔧 תחזוקה / אזהרה (כתום)</option>
+                      <option value="error">🚨 חשוב / דחוף (אדום)</option>
+                      <option value="success">✅ הצלחה / סיום (ירוק)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: 'var(--text2)', marginBottom: 6 }}>סטטוס</label>
+                    <select
+                      value={annStatus}
+                      onChange={(e) => setAnnStatus(e.target.value as any)}
+                      style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text1)', fontSize: 14, boxSizing: 'border-box' }}
+                    >
+                      <option value="published">🟢 מפורסם (פעיל)</option>
+                      <option value="draft">🟡 טיוטה (שמור)</option>
+                      <option value="archived">⚫ בארכיון (מוסתר)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: 'var(--text2)', marginBottom: 6 }}>קהל יעד</label>
+                  <select
+                    value={annAudience}
+                    onChange={(e) => setAnnAudience(e.target.value as any)}
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text1)', fontSize: 14, boxSizing: 'border-box' }}
+                  >
+                    <option value="all">👥 כולם (כל המשתמשים)</option>
+                    <option value="plan">⭐ לפי תוכנית מנוי</option>
+                    <option value="users">👤 משתמשים ספציפיים</option>
+                  </select>
+                </div>
+
+                {annAudience === 'plan' && (
+                  <div style={{ display: 'flex', gap: 16, alignItems: 'center', background: 'var(--bg)', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border)' }}>
+                    <label style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', color: 'var(--text1)' }}>
+                      <input
+                        type="checkbox"
+                        checked={annPlans.includes('pro')}
+                        onChange={(e) => {
+                          setAnnPlans(e.target.checked ? [...annPlans, 'pro'] : annPlans.filter(p => p !== 'pro'));
+                        }}
+                      />
+                      מנויי Pro
+                    </label>
+                    <label style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', color: 'var(--text1)' }}>
+                      <input
+                        type="checkbox"
+                        checked={annPlans.includes('premium')}
+                        onChange={(e) => {
+                          setAnnPlans(e.target.checked ? [...annPlans, 'premium'] : annPlans.filter(p => p !== 'premium'));
+                        }}
+                      />
+                      מנויי Premium
+                    </label>
+                  </div>
+                )}
+
+                {annAudience === 'users' && users && (
+                  <div>
+                    <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: 'var(--text2)', marginBottom: 6 }}>בחר משתמשים ({annUserIds.length} נבחרו)</label>
+                    <div style={{ maxHeight: 120, overflowY: 'auto', background: 'var(--bg)', padding: 8, borderRadius: 8, border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      {users.map((u) => (
+                        <label key={u._id} style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', color: 'var(--text1)' }}>
+                          <input
+                            type="checkbox"
+                            checked={annUserIds.includes(u._id)}
+                            onChange={(e) => {
+                              setAnnUserIds(e.target.checked ? [...annUserIds, u._id] : annUserIds.filter(id => id !== u._id));
+                            }}
+                          />
+                          <span>{u.name || u.email || u._id}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: 'var(--text2)', marginBottom: 6 }}>תוכן ההודעה</label>
+                  <textarea
+                    rows={4}
+                    value={annBody}
+                    onChange={(e) => setAnnBody(e.target.value)}
+                    placeholder="תיאור מפורט של ההודעה או הפיצ'ר החדש..."
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text1)', fontSize: 14, lineHeight: 1.5, fontFamily: 'inherit', boxSizing: 'border-box' }}
+                  />
+                </div>
+
+                {/* Live Preview Box */}
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text3)', marginBottom: 6 }}>👀 תצוגה מקדימה (כך תופיע ההודעה בתפריט המשתמש):</div>
+                  <div style={{ padding: 12, borderRadius: 10, background: 'var(--bg)', border: '1px solid var(--border)' }}>
+                    <div style={{ padding: "8px 10px", borderRadius: 8, background: "var(--accent-light, rgba(217,119,6,0.08))", border: "1px solid var(--accent-glow-sm)" }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <span>{annType === 'feature' ? '⭐' : annType === 'info' ? 'ℹ️' : annType === 'warning' ? '🔧' : annType === 'error' ? '🚨' : '✅'}</span>
+                          <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text1)" }}>{annTitle || 'כותרת לדוגמה'}</span>
+                        </div>
+                        <span style={{ fontSize: 10, fontWeight: 800, color: "var(--accent)", background: "rgba(217,119,6,0.15)", padding: "1px 5px", borderRadius: 4 }}>חדש</span>
+                      </div>
+                      <div style={{ fontSize: 12, color: "var(--text2)", marginTop: 4, lineHeight: 1.4, whiteSpace: "pre-wrap" }}>
+                        {annBody || 'תוכן ההודעה יופיע כאן בצורה ברורה וקריאה...'}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
+                  <Btn
+                    variant="primary"
+                    disabled={!annTitle.trim() || !annBody.trim()}
+                    onClick={async () => {
+                      try {
+                        if (editingAnnId) {
+                          await updateAnnouncement({
+                            id: editingAnnId,
+                            title: annTitle,
+                            body: annBody,
+                            type: annType,
+                            audienceType: annAudience,
+                            plans: annAudience === 'plan' ? annPlans : undefined,
+                            userIds: annAudience === 'users' ? annUserIds : undefined,
+                            status: annStatus,
+                          });
+                          alert('ההודעה עודכנה בהצלחה!');
+                        } else {
+                          await createAnnouncement({
+                            title: annTitle,
+                            body: annBody,
+                            type: annType,
+                            audienceType: annAudience,
+                            plans: annAudience === 'plan' ? annPlans : undefined,
+                            userIds: annAudience === 'users' ? annUserIds : undefined,
+                            status: annStatus,
+                          });
+                          alert('ההודעה נשמרה/פורסמה בהצלחה!');
+                        }
+                        setAnnTitle('');
+                        setAnnBody('');
+                        setEditingAnnId(null);
+                      } catch (e: any) {
+                        alert('שגיאה בשמירת ההודעה: ' + e.message);
+                      }
+                    }}
+                    style={{ flex: 1, justifyContent: 'center' }}
+                  >
+                    <Icon n="check" s={16} /> {editingAnnId ? 'עדכן הודעה' : 'שמור / פרסם הודעה'}
+                  </Btn>
+                  {editingAnnId && (
+                    <Btn
+                      variant="outline"
+                      onClick={() => {
+                        setEditingAnnId(null);
+                        setAnnTitle('');
+                        setAnnBody('');
+                      }}
+                      style={{ justifyContent: 'center' }}
+                    >
+                      ביטול
+                    </Btn>
+                  )}
+                </div>
+              </div>
+
+              {/* Announcements List */}
+              <div style={{ background: 'var(--surface)', padding: 20, borderRadius: 12, border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <h3 style={{ fontSize: 18, fontWeight: 700, margin: 0, color: 'var(--text1)' }}>
+                  📋 רשימת הודעות ({announcements?.length || 0})
+                </h3>
+
+                {!announcements || announcements.length === 0 ? (
+                  <div style={{ padding: 24, textAlign: 'center', color: 'var(--text3)', fontSize: 14 }}>
+                    טרם פורסמו הודעות במערכת. צור הודעה ראשונה באמצעות הטופס.
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxHeight: 600, overflowY: 'auto' }}>
+                    {announcements.map((ann) => {
+                      const statusColor = ann.status === 'published' ? '#34C759' : ann.status === 'draft' ? '#FF9500' : 'var(--text3)';
+                      const statusLabel = ann.status === 'published' ? 'מפורסם' : ann.status === 'draft' ? 'טיוטה' : 'ארכיון';
+
+                      return (
+                        <div
+                          key={ann._id}
+                          style={{
+                            padding: 14,
+                            borderRadius: 10,
+                            background: 'var(--bg)',
+                            border: '1px solid var(--border)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 10
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <span style={{ fontSize: 14 }}>
+                                {ann.type === 'feature' ? '⭐' : ann.type === 'info' ? 'ℹ️' : ann.type === 'warning' ? '🔧' : ann.type === 'error' ? '🚨' : '✅'}
+                              </span>
+                              <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text1)' }}>{ann.title}</span>
+                            </div>
+                            <span style={{ fontSize: 11, fontWeight: 800, color: statusColor, background: `${statusColor}18`, border: `1px solid ${statusColor}40`, padding: '2px 8px', borderRadius: 20 }}>
+                              {statusLabel}
+                            </span>
+                          </div>
+
+                          <div style={{ fontSize: 13, color: 'var(--text2)', lineHeight: 1.4, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                            {ann.body}
+                          </div>
+
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 12, color: 'var(--text3)', borderTop: '1px solid var(--border)', paddingTop: 8, marginTop: 2 }}>
+                            <span>קהל: {ann.audienceType === 'all' ? 'כולם' : ann.audienceType === 'plan' ? `מנויי ${(ann.plans || []).join(', ')}` : `${(ann.userIds || []).length} משתמשים`}</span>
+                            <span>{formatTimeAgo(ann.publishAt)}</span>
+                          </div>
+
+                          <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 4 }}>
+                            {ann.status !== 'published' && (
+                              <Btn size="sm" variant="outline" onClick={() => setAnnouncementStatus({ id: ann._id, status: 'published' })}>
+                                🟢 פרסם
+                              </Btn>
+                            )}
+                            {ann.status !== 'archived' && (
+                              <Btn size="sm" variant="outline" onClick={() => setAnnouncementStatus({ id: ann._id, status: 'archived' })}>
+                                ⚫ ארכיון
+                              </Btn>
+                            )}
+                            <Btn
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setEditingAnnId(ann._id);
+                                setAnnTitle(ann.title);
+                                setAnnBody(ann.body);
+                                setAnnType(ann.type);
+                                setAnnAudience(ann.audienceType);
+                                setAnnPlans(ann.plans || ['pro', 'premium']);
+                                setAnnUserIds(ann.userIds || []);
+                                setAnnStatus(ann.status);
+                              }}
+                            >
+                              <Icon n="edit" s={12} /> ערוך
+                            </Btn>
+                            <Btn
+                              size="sm"
+                              variant="outline"
+                              onClick={async () => {
+                                if (confirm('האם למחוק הודעה זו?')) {
+                                  await deleteAnnouncement({ id: ann._id });
+                                }
+                              }}
+                              style={{ color: 'var(--danger)', borderColor: 'rgba(255,59,48,0.3)' }}
+                            >
+                              <Icon n="trash" s={12} /> מחיקה
+                            </Btn>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
