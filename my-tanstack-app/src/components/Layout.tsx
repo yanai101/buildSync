@@ -923,7 +923,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               {menuOpen && (
                 <div
                   role="menu"
-                  style={{ position: "absolute", top: "calc(100% + 6px)", insetInlineEnd: 0, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: 8, minWidth: 260, maxWidth: 320, boxShadow: "0 8px 24px rgba(0,0,0,0.08)", zIndex: 30 }}
+                  style={{ position: "absolute", top: "calc(100% + 6px)", insetInlineEnd: 0, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: 8, minWidth: 260, maxWidth: "min(320px, calc(100vw - 32px))", boxShadow: "0 8px 24px rgba(0,0,0,0.08)", zIndex: 30 }}
                 >
                   <div style={{ padding: "8px 10px" }}>
                     <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text1)" }}>

@@ -1523,8 +1523,12 @@ export function SuperAdminScreen() {
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxHeight: 600, overflowY: 'auto' }}>
                     {announcements.map((ann) => {
-                      const statusColor = ann.status === 'published' ? '#34C759' : ann.status === 'draft' ? '#FF9500' : 'var(--text3)';
-                      const statusLabel = ann.status === 'published' ? 'מפורסם' : ann.status === 'draft' ? 'טיוטה' : 'ארכיון';
+                      const getStatusStyles = (status: string) => {
+                        if (status === 'published') return { label: 'מפורסם', color: '#34C759', bg: '#34C75918', border: '#34C75940' };
+                        if (status === 'draft') return { label: 'טיוטה', color: '#FF9500', bg: '#FF950018', border: '#FF950040' };
+                        return { label: 'ארכיון', color: 'var(--text3)', bg: 'var(--surface-2)', border: 'var(--border)' };
+                      };
+                      const sStyles = getStatusStyles(ann.status);
 
                       return (
                         <div
@@ -1546,8 +1550,8 @@ export function SuperAdminScreen() {
                               </span>
                               <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text1)' }}>{ann.title}</span>
                             </div>
-                            <span style={{ fontSize: 11, fontWeight: 800, color: statusColor, background: `${statusColor}18`, border: `1px solid ${statusColor}40`, padding: '2px 8px', borderRadius: 20 }}>
-                              {statusLabel}
+                            <span style={{ fontSize: 11, fontWeight: 800, color: sStyles.color, background: sStyles.bg, border: `1px solid ${sStyles.border}`, padding: '2px 8px', borderRadius: 20 }}>
+                              {sStyles.label}
                             </span>
                           </div>
 
