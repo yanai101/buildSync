@@ -331,6 +331,14 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     });
   };
 
+  const [unreadSnapshot, setUnreadSnapshot] = React.useState<any[] | null>(null);
+
+  React.useEffect(() => {
+    if (menuOpen && activeAnnouncements) {
+      setUnreadSnapshot(activeAnnouncements.filter((a) => !readAnnouncementsMap[a._id]));
+    }
+  }, [menuOpen, activeAnnouncements]);
+
   const [deferredPrompt, setDeferredPrompt] = React.useState<any>(null);
   const [showPWABanner, setShowPWABanner] = React.useState(false);
   const [isStandalone, setIsStandalone] = React.useState(false);
@@ -936,84 +944,110 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                     )}
                   </div>
 
-                  {activeAnnouncements && activeAnnouncements.length > 0 && (
-                    <>
-                      <div style={{ height: 1, background: "var(--border)", margin: "6px 0" }} />
-                      <div style={{ background: "var(--bg)", borderRadius: 8, padding: 8, border: "1px solid var(--border)" }}>
-                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6, padding: "0 2px" }}>
-                          <span style={{ fontSize: 12, fontWeight: 800, color: "var(--text1)", display: "flex", alignItems: "center", gap: 6 }}>
-                            <span>📣</span> הודעות {unreadAnnouncementsCount > 0 && <span style={{ background: "var(--accent)", color: "#fff", borderRadius: 10, padding: "1px 6px", fontSize: 10, fontWeight: 800 }}>{unreadAnnouncementsCount}</span>}
-                          </span>
-                          {unreadAnnouncementsCount > 0 && (
-                            <button
-                              onClick={markAllAnnouncementsRead}
-                              style={{ background: "none", border: "none", color: "var(--accent)", fontSize: 11, fontWeight: 700, cursor: "pointer", padding: 0 }}
-                            >
-                              סמן הכל כנקרא
-                            </button>
-                          )}
-                        </div>
-                        <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 220, overflowY: "auto" }}>
-                          {activeAnnouncements.map((ann) => {
-                            const isRead = !!readAnnouncementsMap[ann._id];
-                            const isExpanded = expandedAnnouncementId === ann._id;
-                            const badgeConfig = {
-                              feature: { label: "פיצ'ר חדש", bg: "rgba(52, 199, 89, 0.12)", color: "#34C759", icon: "⭐" },
-                              info: { label: "עדכון", bg: "rgba(0, 122, 255, 0.12)", color: "#007AFF", icon: "ℹ️" },
-                              warning: { label: "תחזוקה", bg: "rgba(255, 149, 0, 0.12)", color: "#FF9500", icon: "🔧" },
-                              error: { label: "חשוב", bg: "rgba(255, 59, 48, 0.12)", color: "#FF3B30", icon: "🚨" },
-                              success: { label: "הודעה", bg: "rgba(52, 199, 89, 0.12)", color: "#34C759", icon: "✅" },
-                            }[ann.type] || { label: "הודעה", bg: "rgba(0, 122, 255, 0.12)", color: "#007AFF", icon: "ℹ️" };
-
-                            return (
-                              <div
-                                key={ann._id}
-                                onClick={() => {
-                                  markAnnouncementRead(ann._id);
-                                  setExpandedAnnouncementId(isExpanded ? null : ann._id);
-                                }}
-                                style={{
-                                  padding: "8px 10px",
-                                  borderRadius: 8,
-                                  background: isRead ? "var(--surface)" : "var(--accent-light, rgba(217,119,6,0.08))",
-                                  border: isRead ? "1px solid var(--border)" : "1px solid var(--accent-glow-sm)",
-                                  cursor: "pointer",
-                                  transition: "all 0.2s"
-                                }}
-                              >
-                                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
-                                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                                    <span style={{ fontSize: 12 }}>{badgeConfig.icon}</span>
-                                    <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text1)" }}>{ann.title}</span>
-                                  </div>
-                                  {!isRead && (
-                                    <span style={{ fontSize: 10, fontWeight: 800, color: "var(--accent)", background: "rgba(217,119,6,0.15)", padding: "1px 5px", borderRadius: 4, whiteSpace: "nowrap" }}>
-                                      חדש
-                                    </span>
-                                  )}
-                                </div>
-                                <div style={{
-                                  fontSize: 12,
-                                  color: "var(--text2)",
-                                  marginTop: 4,
-                                  lineHeight: 1.4,
-                                  display: isExpanded ? "block" : "-webkit-box",
-                                  WebkitLineClamp: isExpanded ? "unset" : 2,
-                                  WebkitBoxOrient: "vertical",
-                                  overflow: "hidden",
-                                  whiteSpace: "pre-wrap"
-                                }}>
-                                  {ann.body}
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
+                  <div style={{ height: 1, background: "var(--border)", margin: "4px 0" }} />
+                  {(!unreadSnapshot || unreadSnapshot.length === 0) ? (
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 10px" }}>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text3)", display: "flex", alignItems: "center", gap: 6 }}>
+                        <span style={{ opacity: 0.6 }}>📣</span> אין הודעות חדשות
+                      </span>
+                      <Link
+                        to="/announcements"
+                        onClick={() => setMenuOpen(false)}
+                        style={{ fontSize: 12, fontWeight: 700, color: "var(--accent)", textDecoration: "none" }}
+                      >
+                        היסטוריה ←
+                      </Link>
+                    </div>
+                  ) : (
+                    <div style={{ background: "var(--bg)", borderRadius: 8, padding: "8px 10px", border: "1px solid var(--border)" }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                        <span style={{ fontSize: 13, fontWeight: 800, color: "var(--text1)", display: "flex", alignItems: "center", gap: 6 }}>
+                          <span>📣</span> הודעות <span style={{ background: "var(--accent)", color: "#fff", borderRadius: 10, padding: "1px 6px", fontSize: 10, fontWeight: 800 }}>{unreadAnnouncementsCount}</span>
+                        </span>
+                        <button
+                          onClick={markAllAnnouncementsRead}
+                          style={{ background: "none", border: "none", color: "var(--accent)", fontSize: 11, fontWeight: 700, cursor: "pointer", padding: 0 }}
+                        >
+                          סמן הכל
+                        </button>
                       </div>
-                    </>
+                      
+                      <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 280, overflowY: "auto" }}>
+                        {unreadSnapshot.map((ann) => {
+                          const isRead = !!readAnnouncementsMap[ann._id];
+                          const isExpanded = expandedAnnouncementId === ann._id;
+                          const badgeConfig = {
+                            feature: { label: "פיצ'ר חדש", bg: "rgba(52, 199, 89, 0.12)", color: "#34C759", icon: "⭐" },
+                            info: { label: "עדכון", bg: "rgba(0, 122, 255, 0.12)", color: "#007AFF", icon: "ℹ️" },
+                            warning: { label: "תחזוקה", bg: "rgba(255, 149, 0, 0.12)", color: "#FF9500", icon: "🔧" },
+                            error: { label: "חשוב", bg: "rgba(255, 59, 48, 0.12)", color: "#FF3B30", icon: "🚨" },
+                            success: { label: "הודעה", bg: "rgba(52, 199, 89, 0.12)", color: "#34C759", icon: "✅" },
+                          }[ann.type] || { label: "הודעה", bg: "rgba(0, 122, 255, 0.12)", color: "#007AFF", icon: "ℹ️" };
+
+                          return (
+                            <div
+                              key={ann._id}
+                              onClick={() => {
+                                markAnnouncementRead(ann._id);
+                                setExpandedAnnouncementId(isExpanded ? null : ann._id);
+                              }}
+                              style={{
+                                padding: "8px 10px",
+                                borderRadius: 8,
+                                background: isRead ? "var(--surface)" : "var(--accent-light, rgba(217,119,6,0.08))",
+                                border: isRead ? "1px solid var(--border)" : "1px solid var(--accent-glow-sm)",
+                                cursor: "pointer",
+                                transition: "all 0.2s"
+                              }}
+                            >
+                              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                  <span style={{ fontSize: 12 }}>{badgeConfig.icon}</span>
+                                  <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text1)" }}>{ann.title}</span>
+                                </div>
+                                {!isRead && (
+                                  <span style={{ fontSize: 10, fontWeight: 800, color: "var(--accent)", background: "rgba(217,119,6,0.15)", padding: "2px 6px", borderRadius: 6 }}>
+                                    חדש
+                                  </span>
+                                )}
+                              </div>
+                              <div style={{
+                                fontSize: 12,
+                                color: "var(--text2)",
+                                marginTop: 4,
+                                lineHeight: 1.4,
+                                display: isExpanded ? "block" : "-webkit-box",
+                                WebkitLineClamp: isExpanded ? "unset" : 2,
+                                WebkitBoxOrient: "vertical",
+                                overflow: "hidden",
+                                whiteSpace: "pre-wrap"
+                              }}>
+                                {ann.body}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      
+                      <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px solid var(--border)", textAlign: "center" }}>
+                        <Link
+                          to="/announcements"
+                          onClick={() => setMenuOpen(false)}
+                          style={{
+                            display: "inline-block",
+                            fontSize: 12,
+                            fontWeight: 700,
+                            color: "var(--accent)",
+                            textDecoration: "none",
+                          }}
+                        >
+                          הצג את כל ההודעות ←
+                        </Link>
+                      </div>
+                    </div>
                   )}
 
-                  <div style={{ height: 1, background: "var(--border)", margin: "6px 0" }} />
+                  <div style={{ height: 1, background: "var(--border)", margin: "4px 0" }} />
                   <Link
                     to="/account"
                     onClick={() => setMenuOpen(false)}
