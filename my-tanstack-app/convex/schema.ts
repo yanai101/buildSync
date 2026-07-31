@@ -244,6 +244,8 @@ export default defineSchema({
     publishAt: v.number(),
     expiresAt: v.optional(v.number()),
     createdBy: v.id('users'),
+    sendPush: v.optional(v.boolean()),
+    pushSent: v.optional(v.boolean()),
   })
     .index('by_status', ['status'])
     .index('by_status_publish', ['status', 'publishAt']),

@@ -1,6 +1,35 @@
 import { query, mutation } from './_generated/server';
 import { getAuthUserId } from '@convex-dev/auth/server';
 import { v } from 'convex/values';
+import { scheduleUserNotifications } from './notifications';
+import { Id } from './_generated/dataModel';
+
+async function getAudienceUserIds(ctx: any, announcement: any): Promise<Id<'users'>[]> {
+  const users = await ctx.db.query('users').collect();
+  
+  return users
+    .filter((user: any) => {
+      const userTier = user.subscriptionTier || 'free';
+      const userRole = user.role;
+
+      if (announcement.audienceType === 'all') return true;
+
+      if (announcement.audienceType === 'plan' && announcement.plans) {
+        return announcement.plans.includes(userTier);
+      }
+
+      if (announcement.audienceType === 'users' && announcement.userIds) {
+        return announcement.userIds.includes(user._id);
+      }
+
+      if (announcement.audienceType === 'roles' && announcement.roles && userRole) {
+        return announcement.roles.includes(userRole);
+      }
+
+      return false;
+    })
+    .map((user: any) => user._id);
+}
 
 async function checkSuperAdmin(ctx: any) {
   const userId = await getAuthUserId(ctx);
@@ -104,6 +133,7 @@ export const createAnnouncement = mutation({
     ),
     publishAt: v.optional(v.number()),
     expiresAt: v.optional(v.number()),
+    sendPush: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const admin = await checkSuperAdmin(ctx);
@@ -132,7 +162,23 @@ export const createAnnouncement = mutation({
       publishAt,
       expiresAt: args.expiresAt,
       createdBy: admin._id,
+      sendPush: args.sendPush,
+      pushSent: args.status === 'published' && args.sendPush ? true : undefined,
     });
+
+    if (args.status === 'published' && args.sendPush) {
+      const announcementData = await ctx.db.get(id);
+      if (announcementData) {
+        const userIds = await getAudienceUserIds(ctx, announcementData);
+        await scheduleUserNotifications(ctx, {
+          userIds,
+          title: `עדכון חדש: ${args.title}`,
+          body: args.body.substring(0, 100) + (args.body.length > 100 ? '...' : ''),
+          url: '/dashboard',
+          tag: `announcement-${id}`,
+        });
+      }
+    }
 
     return id;
   },
@@ -169,6 +215,7 @@ export const updateAnnouncement = mutation({
     ),
     publishAt: v.optional(v.number()),
     expiresAt: v.optional(v.number()),
+    sendPush: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     await checkSuperAdmin(ctx);
@@ -199,6 +246,24 @@ export const updateAnnouncement = mutation({
     }
 
     await ctx.db.patch(id, patch);
+
+    const finalStatus = patch.status !== undefined ? patch.status : existing.status;
+    const finalSendPush = patch.sendPush !== undefined ? patch.sendPush : existing.sendPush;
+    
+    if (finalStatus === 'published' && finalSendPush && !existing.pushSent) {
+      const announcementData = await ctx.db.get(id);
+      if (announcementData) {
+        const userIds = await getAudienceUserIds(ctx, announcementData);
+        await scheduleUserNotifications(ctx, {
+          userIds,
+          title: `עדכון חדש: ${announcementData.title}`,
+          body: announcementData.body.substring(0, 100) + (announcementData.body.length > 100 ? '...' : ''),
+          url: '/dashboard',
+          tag: `announcement-${id}`,
+        });
+        await ctx.db.patch(id, { pushSent: true });
+      }
+    }
   },
 });
 
@@ -217,6 +282,21 @@ export const setAnnouncementStatus = mutation({
     if (!existing) throw new Error('Announcement not found');
 
     await ctx.db.patch(args.id, { status: args.status });
+
+    if (args.status === 'published' && existing.sendPush && !existing.pushSent) {
+      const announcementData = await ctx.db.get(args.id);
+      if (announcementData) {
+        const userIds = await getAudienceUserIds(ctx, announcementData);
+        await scheduleUserNotifications(ctx, {
+          userIds,
+          title: `עדכון חדש: ${announcementData.title}`,
+          body: announcementData.body.substring(0, 100) + (announcementData.body.length > 100 ? '...' : ''),
+          url: '/dashboard',
+          tag: `announcement-${args.id}`,
+        });
+        await ctx.db.patch(args.id, { pushSent: true });
+      }
+    }
   },
 });
 

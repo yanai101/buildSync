@@ -49,6 +49,7 @@ export function SuperAdminScreen() {
   const [annUserIds, setAnnUserIds] = useState<string[]>([]);
   const [annUserSearch, setAnnUserSearch] = useState('');
   const [annStatus, setAnnStatus] = useState<'draft' | 'published' | 'archived'>('published');
+  const [annSendPush, setAnnSendPush] = useState<boolean>(false);
   
   const [annIsScheduled, setAnnIsScheduled] = useState(false);
   const [annScheduledDate, setAnnScheduledDate] = useState('');
@@ -1381,6 +1382,23 @@ export function SuperAdminScreen() {
                 </div>
 
                 <div>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700, color: 'var(--text2)', cursor: 'pointer' }}>
+                    <input 
+                      type="checkbox" 
+                      checked={annSendPush} 
+                      onChange={(e) => setAnnSendPush(e.target.checked)} 
+                      style={{ width: 16, height: 16 }}
+                    />
+                    שלח הודעת פוש (Push Notification) למשתמשים
+                  </label>
+                  {annSendPush && (
+                    <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4 }}>
+                      התראה תישלח רק אם הסטטוס מוגדר ל'מפורסם'. יש להשתמש באופציה זו בזהירות כדי לא להציף משתמשים.
+                    </div>
+                  )}
+                </div>
+
+                <div>
                   <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: 'var(--text2)', marginBottom: 6 }}>קהל יעד</label>
                   <select
                     value={annAudience}
@@ -1593,6 +1611,7 @@ export function SuperAdminScreen() {
                             status: annStatus,
                             publishAt,
                             storageId: finalStorageId === null ? null : finalStorageId,
+                            sendPush: annSendPush,
                           });
                           alert('ההודעה עודכנה בהצלחה!');
                         } else {
@@ -1607,6 +1626,7 @@ export function SuperAdminScreen() {
                             status: annStatus,
                             publishAt,
                             storageId: finalStorageId === null ? undefined : finalStorageId,
+                            sendPush: annSendPush,
                           });
                           alert('ההודעה נשמרה/פורסמה בהצלחה!');
                         }
@@ -1619,6 +1639,7 @@ export function SuperAdminScreen() {
                         setEditingAnnId(null);
                         setAnnIsScheduled(false);
                         setAnnScheduledDate('');
+                        setAnnSendPush(false);
                       } catch (e: any) {
                         alert('שגיאה בשמירת ההודעה: ' + e.message);
                       }
@@ -1720,6 +1741,7 @@ export function SuperAdminScreen() {
                                 setAnnPlans(ann.plans || ['pro', 'premium']);
                                 setAnnUserIds(ann.userIds || []);
                                 setAnnStatus(ann.status);
+                                setAnnSendPush(false);
                               }}
                             >
                               <Icon n="edit" s={12} /> ערוך

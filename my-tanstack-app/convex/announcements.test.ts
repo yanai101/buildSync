@@ -115,4 +115,58 @@ describe('announcements system', () => {
     const anonActive = await t.query(api.announcements.getActiveAnnouncements);
     expect(anonActive).toHaveLength(0);
   });
+
+  test('announcements push notifications', async () => {
+    const t = convexTest(schema, modules);
+    const adminId = await t.run((ctx) => ctx.db.insert('users', { name: 'Admin', isSuperAdmin: true }));
+    const asAdmin = t.withIdentity({ subject: adminId });
+
+    const targetUserId = await t.run((ctx) => ctx.db.insert('users', { name: 'Target User' }));
+    await t.run((ctx) => ctx.db.insert('pushSubscriptions', { userId: targetUserId, endpoint: 'https://push', p256dh: 'p', auth: 'a' }));
+
+    // 1. Create with sendPush: false should NOT schedule push
+    let annId = await asAdmin.mutation(api.announcements.createAnnouncement, {
+      title: 'No Push', body: 'x', type: 'info', audienceType: 'all', status: 'published', publishAt: Date.now(), sendPush: false
+    });
+    
+    let scheduled = (await t.run((ctx) => ctx.db.system.query('_scheduled_functions').collect())).filter(s => s.state.kind === 'pending');
+    expect(scheduled).toHaveLength(0);
+
+    // 2. Create with sendPush: true should schedule push
+    annId = await asAdmin.mutation(api.announcements.createAnnouncement, {
+      title: 'Yes Push', body: 'x', type: 'info', audienceType: 'all', status: 'published', publishAt: Date.now(), sendPush: true
+    });
+
+    scheduled = (await t.run((ctx) => ctx.db.system.query('_scheduled_functions').collect())).filter(s => s.state.kind === 'pending');
+    expect(scheduled).toHaveLength(1);
+    expect(scheduled[0].name).toContain('pushActions:sendNotification');
+    let args = scheduled[0].args[0] as any;
+    expect(args.payload.title).toBe('עדכון חדש: Yes Push');
+    
+    // Clear scheduled for next test
+    await t.run(async (ctx) => {
+      for (const s of scheduled) await ctx.scheduler.cancel(s._id);
+    });
+
+    // 3. Draft with sendPush: true should NOT schedule push yet
+    annId = await asAdmin.mutation(api.announcements.createAnnouncement, {
+      title: 'Draft Push', body: 'x', type: 'info', audienceType: 'all', status: 'draft', publishAt: Date.now(), sendPush: true
+    });
+    scheduled = (await t.run((ctx) => ctx.db.system.query('_scheduled_functions').collect())).filter(s => s.state.kind === 'pending');
+    expect(scheduled).toHaveLength(0);
+
+    // 4. Update Draft to Published should schedule push
+    await asAdmin.mutation(api.announcements.setAnnouncementStatus, { id: annId, status: 'published' });
+    scheduled = (await t.run((ctx) => ctx.db.system.query('_scheduled_functions').collect())).filter(s => s.state.kind === 'pending');
+    expect(scheduled).toHaveLength(1);
+    
+    await t.run(async (ctx) => {
+      for (const s of scheduled) await ctx.scheduler.cancel(s._id);
+    });
+
+    // 5. Updating an already published announcement with pushSent: true should NOT send push again
+    await asAdmin.mutation(api.announcements.updateAnnouncement, { id: annId, title: 'Updated Draft Push', sendPush: true });
+    scheduled = (await t.run((ctx) => ctx.db.system.query('_scheduled_functions').collect())).filter(s => s.state.kind === 'pending');
+    expect(scheduled).toHaveLength(0);
+  });
 });
