@@ -55,7 +55,19 @@ export function SuperAdminScreen() {
   const [annScheduledDate, setAnnScheduledDate] = useState('');
   
   const [annImageFile, setAnnImageFile] = useState<File | null>(null);
-  const [annImageUrl, setAnnImageUrl] = useState<string>(''); 
+  const [annImageUrl, setAnnImageUrl] = useState<string>('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const pastImages = useMemo(() => {
+    if (!announcements) return [];
+    const unique = new Map<string, { url: string; storageId: string }>();
+    announcements.forEach(a => {
+      if (a.imageUrl && a.storageId) {
+        unique.set(a.imageUrl, { url: a.imageUrl, storageId: a.storageId as string });
+      }
+    });
+    return Array.from(unique.values()).slice(0, 5);
+  }, [announcements]); 
   const [annStorageId, setAnnStorageId] = useState<Id<'_storage'> | null>(null);
   const [annIsUploading, setAnnIsUploading] = useState(false);
   const [annUploadStats, setAnnUploadStats] = useState(''); 
@@ -1504,6 +1516,7 @@ export function SuperAdminScreen() {
                     <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: 'var(--text2)', marginBottom: 6 }}>תמונה (אופציונלי)</label>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                       <input
+                        ref={fileInputRef}
                         type="file"
                         accept="image/*"
                         onChange={async (e) => {
@@ -1525,6 +1538,28 @@ export function SuperAdminScreen() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           <img src={annImageUrl} alt="Current" style={{ height: 40, borderRadius: 4, border: '1px solid var(--border)' }} />
                           <button onClick={() => { setAnnImageUrl(''); setAnnStorageId(null); }} style={{ background: 'none', border: 'none', color: 'var(--danger)', fontSize: 11, cursor: 'pointer' }}>הסר תמונה</button>
+                        </div>
+                      )}
+                      
+                      {pastImages.length > 0 && (
+                        <div style={{ marginTop: 8 }}>
+                          <span style={{ fontSize: 11, color: 'var(--text3)' }}>תמונות קודמות (לחץ לבחירה):</span>
+                          <div style={{ display: 'flex', gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
+                            {pastImages.map((img, idx) => (
+                              <img
+                                key={idx}
+                                src={img.url}
+                                alt="past"
+                                style={{ width: 40, height: 40, borderRadius: 4, objectFit: 'cover', cursor: 'pointer', border: annImageUrl === img.url ? '2px solid var(--primary)' : '1px solid var(--border)' }}
+                                onClick={() => {
+                                  setAnnImageUrl(img.url);
+                                  setAnnStorageId(img.storageId as any);
+                                  setAnnImageFile(null);
+                                  if (fileInputRef.current) fileInputRef.current.value = '';
+                                }}
+                              />
+                            ))}
+                          </div>
                         </div>
                       )}
                     </div>
@@ -1640,6 +1675,7 @@ export function SuperAdminScreen() {
                         setAnnIsScheduled(false);
                         setAnnScheduledDate('');
                         setAnnSendPush(false);
+                        if (fileInputRef.current) fileInputRef.current.value = '';
                       } catch (e: any) {
                         alert('שגיאה בשמירת ההודעה: ' + e.message);
                       }
@@ -1655,6 +1691,11 @@ export function SuperAdminScreen() {
                         setEditingAnnId(null);
                         setAnnTitle('');
                         setAnnBody('');
+                        setAnnImageFile(null);
+                        setAnnImageUrl('');
+                        setAnnStorageId(null);
+                        setAnnSendPush(false);
+                        if (fileInputRef.current) fileInputRef.current.value = '';
                       }}
                       style={{ justifyContent: 'center' }}
                     >
@@ -1704,9 +1745,14 @@ export function SuperAdminScreen() {
                               </span>
                               <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text1)' }}>{ann.title}</span>
                             </div>
-                            <span style={{ fontSize: 11, fontWeight: 800, color: sStyles.color, background: sStyles.bg, border: `1px solid ${sStyles.border}`, padding: '2px 8px', borderRadius: 20 }}>
-                              {sStyles.label}
-                            </span>
+                            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                              {(ann.sendPush || ann.pushSent) && (
+                                <span title="נשלח Push" style={{ fontSize: 13, cursor: 'help' }}>🔔</span>
+                              )}
+                              <span style={{ fontSize: 11, fontWeight: 800, color: sStyles.color, background: sStyles.bg, border: `1px solid ${sStyles.border}`, padding: '2px 8px', borderRadius: 20 }}>
+                                {sStyles.label}
+                              </span>
+                            </div>
                           </div>
 
                           <div style={{ fontSize: 13, color: 'var(--text2)', lineHeight: 1.4, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
@@ -1741,7 +1787,11 @@ export function SuperAdminScreen() {
                                 setAnnPlans(ann.plans || ['pro', 'premium']);
                                 setAnnUserIds(ann.userIds || []);
                                 setAnnStatus(ann.status);
+                                setAnnImageUrl(ann.imageUrl || '');
+                                setAnnStorageId((ann.storageId as any) || null);
                                 setAnnSendPush(false);
+                                setAnnImageFile(null);
+                                if (fileInputRef.current) fileInputRef.current.value = '';
                               }}
                             >
                               <Icon n="edit" s={12} /> ערוך
