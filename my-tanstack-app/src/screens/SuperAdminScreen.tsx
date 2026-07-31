@@ -39,6 +39,7 @@ export function SuperAdminScreen() {
   const deleteAnnouncement = useMutation(api.announcements.deleteAnnouncement);
 
   const generateUploadUrl = useMutation(api.announcements.generateUploadUrl);
+  const deleteSharedImage = useMutation(api.announcements.deleteSharedImage);
 
   const [annTitle, setAnnTitle] = useState('');
   const [annBody, setAnnBody] = useState('');
@@ -66,13 +67,13 @@ export function SuperAdminScreen() {
         unique.set(a.imageUrl, { url: a.imageUrl, storageId: a.storageId as string });
       }
     });
-    return Array.from(unique.values()).slice(0, 5);
+    return Array.from(unique.values());
   }, [announcements]); 
   const [annStorageId, setAnnStorageId] = useState<Id<'_storage'> | null>(null);
   const [annIsUploading, setAnnIsUploading] = useState(false);
   const [annUploadStats, setAnnUploadStats] = useState(''); 
-
   const [editingAnnId, setEditingAnnId] = useState<Id<'announcements'> | null>(null);
+  const [isGalleryOpen, setIsGalleryOpen] = useState(false);
 
   const cleanupCandidates = useQuery(api.cleanup.getCleanupCandidates, isSuperAdmin && activeTab === 'cleanup' ? {} : 'skip');
   const deleteProject = useMutation(api.cleanup.manualDeleteProject);
@@ -1531,35 +1532,37 @@ export function SuperAdminScreen() {
                           setAnnImageFile(new File([optimized.blob], optimized.storedName, { type: optimized.storedMimeType }) as any);
                           setAnnUploadStats(`כווץ: ${(file.size / 1024).toFixed(0)}KB ➡️ ${(optimized.blob.size / 1024).toFixed(0)}KB`);
                         }}
-                        style={{ fontSize: 12 }}
+                        style={{ display: 'none' }}
                       />
+                      
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <Btn
+                          variant="primary"
+                          onClick={(e: React.MouseEvent) => {
+                            e.preventDefault();
+                            fileInputRef.current?.click();
+                          }}
+                          style={{ flex: 1, justifyContent: 'center' }}
+                        >
+                          <Icon n="upload" s={14} /> העלה תמונה חדשה
+                        </Btn>
+                        <Btn
+                          variant="outline"
+                          onClick={(e: React.MouseEvent) => {
+                            e.preventDefault();
+                            setIsGalleryOpen(true);
+                          }}
+                          style={{ flex: 1, justifyContent: 'center' }}
+                        >
+                          <Icon n="image" s={14} /> בחר מגלריה
+                        </Btn>
+                      </div>
+
                       {annUploadStats && <span style={{ fontSize: 11, color: 'var(--success)' }}>{annUploadStats}</span>}
                       {annImageUrl && !annImageFile && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           <img src={annImageUrl} alt="Current" style={{ height: 40, borderRadius: 4, border: '1px solid var(--border)' }} />
-                          <button onClick={() => { setAnnImageUrl(''); setAnnStorageId(null); }} style={{ background: 'none', border: 'none', color: 'var(--danger)', fontSize: 11, cursor: 'pointer' }}>הסר תמונה</button>
-                        </div>
-                      )}
-                      
-                      {pastImages.length > 0 && (
-                        <div style={{ marginTop: 8 }}>
-                          <span style={{ fontSize: 11, color: 'var(--text3)' }}>תמונות קודמות (לחץ לבחירה):</span>
-                          <div style={{ display: 'flex', gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
-                            {pastImages.map((img, idx) => (
-                              <img
-                                key={idx}
-                                src={img.url}
-                                alt="past"
-                                style={{ width: 40, height: 40, borderRadius: 4, objectFit: 'cover', cursor: 'pointer', border: annImageUrl === img.url ? '2px solid var(--primary)' : '1px solid var(--border)' }}
-                                onClick={() => {
-                                  setAnnImageUrl(img.url);
-                                  setAnnStorageId(img.storageId as any);
-                                  setAnnImageFile(null);
-                                  if (fileInputRef.current) fileInputRef.current.value = '';
-                                }}
-                              />
-                            ))}
-                          </div>
+                          <button onClick={(e) => { e.preventDefault(); setAnnImageUrl(''); setAnnStorageId(null); }} style={{ background: 'none', border: 'none', color: 'var(--danger)', fontSize: 11, cursor: 'pointer' }}>הסר תמונה</button>
                         </div>
                       )}
                     </div>
@@ -1796,18 +1799,28 @@ export function SuperAdminScreen() {
                             >
                               <Icon n="edit" s={12} /> ערוך
                             </Btn>
-                            <Btn
-                              size="sm"
-                              variant="outline"
+                            <button
                               onClick={async () => {
                                 if (confirm('האם למחוק הודעה זו?')) {
                                   await deleteAnnouncement({ id: ann._id });
                                 }
                               }}
-                              style={{ color: 'var(--danger)', borderColor: 'rgba(255,59,48,0.3)' }}
+                              style={{ 
+                                background: 'rgba(255,59,48,0.1)', 
+                                border: 'none', 
+                                color: 'var(--danger)', 
+                                padding: '4px 10px', 
+                                borderRadius: 6, 
+                                fontSize: 12, 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                gap: 4, 
+                                cursor: 'pointer',
+                                fontWeight: 600
+                              }}
                             >
                               <Icon n="trash" s={12} /> מחיקה
-                            </Btn>
+                            </button>
                           </div>
                         </div>
                       );
@@ -1922,6 +1935,67 @@ export function SuperAdminScreen() {
           </div>
         </Modal>
       )}
+      {/* Announcements Gallery Modal */}
+      {isGalleryOpen && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+          <div style={{ background: 'var(--surface)', padding: 24, borderRadius: 16, width: '100%', maxWidth: 600, maxHeight: '80vh', display: 'flex', flexDirection: 'column', gap: 20, boxShadow: '0 10px 30px rgba(0,0,0,0.3)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ margin: 0, fontSize: 18, color: 'var(--text1)' }}>🖼️ בחר תמונה מגלריה</h3>
+              <button onClick={() => setIsGalleryOpen(false)} style={{ background: 'none', border: 'none', fontSize: 24, color: 'var(--text3)', cursor: 'pointer' }}>&times;</button>
+            </div>
+            
+            <div style={{ flex: 1, overflowY: 'auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', gap: 12 }}>
+              {pastImages.length === 0 ? (
+                <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: 40, color: 'var(--text3)' }}>
+                  אין תמונות בגלריה
+                </div>
+              ) : (
+                pastImages.map((img, idx) => (
+                  <div key={idx} style={{ position: 'relative', aspectRatio: '1', borderRadius: 8, overflow: 'hidden', border: annImageUrl === img.url ? '3px solid var(--primary)' : '1px solid var(--border)', cursor: 'pointer' }}>
+                    <img 
+                      src={img.url} 
+                      alt="past" 
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                      onClick={() => {
+                        setAnnImageUrl(img.url);
+                        setAnnStorageId(img.storageId as any);
+                        setAnnImageFile(null);
+                        if (fileInputRef.current) fileInputRef.current.value = '';
+                        setIsGalleryOpen(false);
+                      }}
+                    />
+                    <button
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        if (confirm('מחיקת תמונה זו תסיר אותה מכל ההכרזות (בעבר ובהווה) שמשתמשות בה! האם להמשיך?')) {
+                          try {
+                            await deleteSharedImage({ storageId: img.storageId as any });
+                            if (annStorageId === img.storageId) {
+                              setAnnImageUrl('');
+                              setAnnStorageId(null);
+                            }
+                          } catch (err: any) {
+                            alert('שגיאה במחיקת תמונה: ' + err.message);
+                          }
+                        }
+                      }}
+                      style={{ position: 'absolute', top: 4, right: 4, background: 'rgba(255,59,48,0.9)', border: 'none', borderRadius: '50%', width: 24, height: 24, color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                      title="מחק לצמיתות"
+                    >
+                      <Icon n="trash" s={12} />
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+            
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <Btn variant="outline" onClick={() => setIsGalleryOpen(false)}>סגור</Btn>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

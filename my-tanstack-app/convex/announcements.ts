@@ -42,6 +42,19 @@ async function checkSuperAdmin(ctx: any) {
   return user;
 }
 
+async function deleteImageIfUnused(ctx: any, storageId: Id<'_storage'>, skipAnnouncementId: Id<'announcements'>) {
+  const allWithSameImage = await ctx.db
+    .query('announcements')
+    .filter((q: any) => q.eq(q.field('storageId'), storageId))
+    .collect();
+  
+  const isUsedElsewhere = allWithSameImage.some((a: any) => a._id !== skipAnnouncementId);
+  
+  if (!isUsedElsewhere) {
+    await ctx.storage.delete(storageId);
+  }
+}
+
 export const generateUploadUrl = mutation({
   args: {},
   handler: async (ctx) => {
@@ -231,7 +244,7 @@ export const updateAnnouncement = mutation({
         patch.storageId = undefined;
         patch.imageUrl = undefined;
         if (existing.storageId) {
-          await ctx.storage.delete(existing.storageId);
+          await deleteImageIfUnused(ctx, existing.storageId, id);
         }
       } else {
         const url = await ctx.storage.getUrl(storageId);
@@ -240,7 +253,7 @@ export const updateAnnouncement = mutation({
           patch.imageUrl = url;
         }
         if (existing.storageId && existing.storageId !== storageId) {
-          await ctx.storage.delete(existing.storageId);
+          await deleteImageIfUnused(ctx, existing.storageId, id);
         }
       }
     }
@@ -310,9 +323,32 @@ export const deleteAnnouncement = mutation({
     if (!existing) throw new Error('Announcement not found');
 
     if (existing.storageId) {
-      await ctx.storage.delete(existing.storageId);
+      await deleteImageIfUnused(ctx, existing.storageId, args.id);
     }
 
     await ctx.db.delete(args.id);
+  },
+});
+
+export const deleteSharedImage = mutation({
+  args: {
+    storageId: v.id('_storage'),
+  },
+  handler: async (ctx, args) => {
+    await checkSuperAdmin(ctx);
+    
+    await ctx.storage.delete(args.storageId);
+    
+    const affected = await ctx.db
+      .query('announcements')
+      .filter((q: any) => q.eq(q.field('storageId'), args.storageId))
+      .collect();
+      
+    for (const ann of affected) {
+      await ctx.db.patch(ann._id, {
+        storageId: undefined,
+        imageUrl: undefined,
+      });
+    }
   },
 });
