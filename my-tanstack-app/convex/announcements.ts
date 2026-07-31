@@ -174,7 +174,7 @@ export const createAnnouncement = mutation({
           userIds,
           title: `עדכון חדש: ${args.title}`,
           body: args.body.substring(0, 100) + (args.body.length > 100 ? '...' : ''),
-          url: '/dashboard',
+          url: '/announcements',
           tag: `announcement-${id}`,
         });
       }
@@ -258,7 +258,7 @@ export const updateAnnouncement = mutation({
           userIds,
           title: `עדכון חדש: ${announcementData.title}`,
           body: announcementData.body.substring(0, 100) + (announcementData.body.length > 100 ? '...' : ''),
-          url: '/dashboard',
+          url: '/announcements',
           tag: `announcement-${id}`,
         });
         await ctx.db.patch(id, { pushSent: true });
@@ -291,7 +291,7 @@ export const setAnnouncementStatus = mutation({
           userIds,
           title: `עדכון חדש: ${announcementData.title}`,
           body: announcementData.body.substring(0, 100) + (announcementData.body.length > 100 ? '...' : ''),
-          url: '/dashboard',
+          url: '/announcements',
           tag: `announcement-${args.id}`,
         });
         await ctx.db.patch(args.id, { pushSent: true });
