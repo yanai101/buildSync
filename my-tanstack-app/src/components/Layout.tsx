@@ -424,12 +424,26 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   }, []);
 
   React.useEffect(() => {
-    if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js')
-        .then((reg) => console.log('Service Worker registered successfully:', reg.scope))
-        .catch((err) => console.error('Service Worker registration failed:', err));
-    }
-  }, []);
+    if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
+
+    navigator.serviceWorker.register('/sw.js')
+      .then((reg) => console.log('Service Worker registered successfully:', reg.scope))
+      .catch((err) => console.error('Service Worker registration failed:', err));
+
+    const handleSwMessage = (event: MessageEvent) => {
+      if (event.data && event.data.type === 'BS_NAVIGATE' && typeof event.data.url === 'string') {
+        const target = event.data.url;
+        if (target && target.startsWith('/')) {
+          navigate({ to: target as any });
+        }
+      }
+    };
+
+    navigator.serviceWorker.addEventListener('message', handleSwMessage);
+    return () => {
+      navigator.serviceWorker.removeEventListener('message', handleSwMessage);
+    };
+  }, [navigate]);
 
   const handlePWAInstall = async () => {
     if (!deferredPrompt) return;
@@ -575,14 +589,33 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     if (isLoading) return
     if (!isAuthenticated && !isPublicRoute(currentPath)) {
-      navigate({ to: '/login' })
+      const searchStr = typeof window !== 'undefined' ? window.location.search : ''
+      const fullTarget = currentPath + searchStr
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem('buildsync:auth_redirect', fullTarget)
+        } catch (e) {}
+      }
+      navigate({ to: '/login', search: { redirect: fullTarget } as any })
     }
   }, [currentPath, isAuthenticated, isLoading, navigate])
 
   React.useEffect(() => {
     if (isLoading) return
     if (isAuthenticated && (currentPath === '/login' || currentPath === '/')) {
-      navigate({ to: '/dashboard', replace: true })
+      let target = '/dashboard'
+      if (typeof window !== 'undefined') {
+        try {
+          const redirectParam = new URLSearchParams(window.location.search).get('redirect')
+          const stored = localStorage.getItem('buildsync:auth_redirect')
+          const chosen = redirectParam || stored
+          if (chosen && chosen.startsWith('/') && !chosen.startsWith('/login') && !chosen.startsWith('/register')) {
+            target = chosen
+            localStorage.removeItem('buildsync:auth_redirect')
+          }
+        } catch (e) {}
+      }
+      navigate({ to: target as any, replace: true })
     }
   }, [currentPath, isAuthenticated, isLoading, navigate])
 
@@ -606,9 +639,16 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     }
   }, [isAuthenticated, isLoading, redeemPromoCode])
 
+  const GLOBAL_ROUTES = ['/projects', '/announcements', '/account', '/guides', '/super-admin']
+
   React.useEffect(() => {
     if (isLoading || isProjectLoading) return
-    if (isAuthenticated && !isPublicRoute(currentPath) && currentPath !== '/projects' && projects.length === 0) {
+    if (
+      isAuthenticated &&
+      !isPublicRoute(currentPath) &&
+      !GLOBAL_ROUTES.includes(currentPath) &&
+      projects.length === 0
+    ) {
       navigate({ to: '/projects' })
     }
   }, [currentPath, isAuthenticated, isLoading, isProjectLoading, navigate, projects.length])
@@ -616,7 +656,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     if (typeof window === 'undefined' || isLoading || isProjectLoading) return;
     if (isAuthenticated && !isPublicRoute(currentPath)) {
-      if (projects.length === 0 && currentPath !== '/projects') return;
+      if (projects.length === 0 && !GLOBAL_ROUTES.includes(currentPath)) return;
 
       const onboardingCompleted = window.localStorage.getItem('buildsync:welcome_onboarding_completed');
       if (!onboardingCompleted) {

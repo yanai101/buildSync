@@ -5,12 +5,24 @@ import { useConvexAuth, useMutation, useConvex, useQuery } from 'convex/react'
 import { Icon, Input, Btn } from '~/components/Shared'
 import { api } from '../../convex/_generated/api'
 
+import { z } from 'zod'
+
+const searchSchema = z.object({
+  redirect: z.string().optional(),
+  promo: z.string().optional(),
+  code: z.string().optional(),
+  verifyCode: z.string().optional(),
+  email: z.string().optional(),
+})
+
 export const Route = createFileRoute('/register')({
+  validateSearch: (search: Record<string, unknown>) => searchSchema.parse(search),
   component: RegisterPage,
 })
 
 function RegisterPage() {
   const navigate = useNavigate()
+  const search = Route.useSearch()
   const convex = useConvex()
   const { signIn } = useAuthActions()
   const { isAuthenticated, isLoading: isAuthLoading } = useConvexAuth()
@@ -23,25 +35,42 @@ function RegisterPage() {
   const [code, setCode] = useState('')
   const [promoCode, setPromoCode] = useState<string | null>(null)
 
+  const getRedirectTarget = () => {
+    let target = search?.redirect
+    if (!target && typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem('buildsync:auth_redirect')
+        if (stored) {
+          target = stored
+        }
+      } catch (e) {}
+    }
+    if (target && target.startsWith('/') && !target.startsWith('/login') && !target.startsWith('/register')) {
+      return target
+    }
+    return '/dashboard'
+  }
+
   // Use the standard hook for checking promo code status
   const promoStatus = useQuery(api.users.getPromoCodeStatus, promoCode ? { code: promoCode } : 'skip')
 
   useEffect(() => {
-    if (typeof window === 'undefined') return
-    const params = new URLSearchParams(window.location.search)
-    
-    // Check for project invitation code
-    const joinCode = params.get('code')
-    if (joinCode) {
-      navigate({ to: '/join/$code', params: { code: joinCode } })
-      return
-    }
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search)
+      
+      // Check for project invitation code
+      const joinCode = params.get('code')
+      if (joinCode) {
+        navigate({ to: '/join/$code', params: { code: joinCode } })
+        return
+      }
 
-    // Check for promo code
-    const promo = params.get('promo')
-    if (promo) {
-      setPromoCode(promo)
-      localStorage.setItem('promoCode', promo)
+      // Check for promo code
+      const promo = params.get('promo')
+      if (promo) {
+        setPromoCode(promo)
+        localStorage.setItem('promoCode', promo)
+      }
     }
   }, [navigate])
 
@@ -49,7 +78,13 @@ function RegisterPage() {
     if (isAuthLoading) return
 
     if (isAuthenticated) {
-      navigate({ to: '/dashboard' })
+      const target = getRedirectTarget()
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.removeItem('buildsync:auth_redirect')
+        } catch (e) {}
+      }
+      navigate({ to: target as any })
       return
     }
 
@@ -97,7 +132,13 @@ function RegisterPage() {
 
   useEffect(() => {
     if (isAuthLoading || !isAuthenticated) return
-    navigate({ to: '/dashboard' })
+    const target = getRedirectTarget()
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.removeItem('buildsync:auth_redirect')
+      } catch (e) {}
+    }
+    navigate({ to: target as any })
   }, [isAuthenticated, isAuthLoading, navigate])
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -169,8 +210,9 @@ function RegisterPage() {
 
   const handleGoogle = async () => {
     setError(null)
+    const target = getRedirectTarget()
     try {
-      await signIn('google', { redirectTo: '/dashboard' })
+      await signIn('google', { redirectTo: target })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'שגיאה בהתחברות Google')
     }

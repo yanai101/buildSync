@@ -34,6 +34,7 @@ self.addEventListener('push', function (event) {
       event.waitUntil(
         self.registration.showNotification('התראה חדשה', {
           body: event.data.text(),
+          data: '/',
           dir: 'rtl',
         })
       );
@@ -44,27 +45,41 @@ self.addEventListener('push', function (event) {
 self.addEventListener('notificationclick', function (event) {
   event.notification.close();
   
-  // This is the magic line that opens the specific URL!
-  const urlToOpen = new URL(event.notification.data || '/', self.location.origin).href;
+  const rawTarget = event.notification && event.notification.data ? event.notification.data : '/';
+  const targetUrl = new URL(rawTarget, self.location.origin).href;
 
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(async (windowClients) => {
       // Reuse an already-open app tab if possible
       for (const client of windowClients) {
         if (new URL(client.url).origin !== self.location.origin) continue;
-        if ('focus' in client) await client.focus();
-        if (client.url !== urlToOpen && 'navigate' in client) {
+        
+        try {
+          if ('focus' in client) await client.focus();
+        } catch (e) {
+          console.error('Failed to focus client:', e);
+        }
+
+        // Notify SPA to route internally
+        try {
+          client.postMessage({ type: 'BS_NAVIGATE', url: rawTarget });
+        } catch (e) {
+          console.error('Failed to postMessage BS_NAVIGATE:', e);
+        }
+
+        if (client.url !== targetUrl && 'navigate' in client) {
           try {
-            await client.navigate(urlToOpen);
+            await client.navigate(targetUrl);
           } catch (e) {
-            if (clients.openWindow) return clients.openWindow(urlToOpen);
+            console.error('client.navigate failed:', e);
           }
         }
         return;
       }
-      // If no tab is open, open a new one
+
+      // If no tab is open, open a new window
       if (clients.openWindow) {
-        return clients.openWindow(urlToOpen);
+        return clients.openWindow(targetUrl);
       }
     })
   );

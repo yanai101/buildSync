@@ -4,18 +4,43 @@ import { useAuthActions } from '@convex-dev/auth/react'
 import { useConvexAuth } from 'convex/react'
 import { Btn, Input, Icon } from '~/components/Shared'
 
+import { z } from 'zod'
+
+const searchSchema = z.object({
+  redirect: z.string().optional(),
+  promo: z.string().optional(),
+})
+
 export const Route = createFileRoute('/login')({
+  validateSearch: (search: Record<string, unknown>) => searchSchema.parse(search),
   component: LoginPage,
 })
 
 function LoginPage() {
   const navigate = useNavigate()
+  const search = Route.useSearch()
   const { signIn } = useAuthActions()
   const { isAuthenticated, isLoading: isAuthLoading } = useConvexAuth()
   const [form, setForm] = useState({ email: '', password: '' })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [verificationSent, setVerificationSent] = useState(false)
+
+  const getRedirectTarget = () => {
+    let target = search?.redirect
+    if (!target && typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem('buildsync:auth_redirect')
+        if (stored) {
+          target = stored
+        }
+      } catch (e) {}
+    }
+    if (target && target.startsWith('/') && !target.startsWith('/login') && !target.startsWith('/register')) {
+      return target
+    }
+    return '/dashboard'
+  }
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -28,7 +53,13 @@ function LoginPage() {
 
   useEffect(() => {
     if (isAuthLoading || !isAuthenticated) return
-    navigate({ to: '/dashboard' })
+    const target = getRedirectTarget()
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.removeItem('buildsync:auth_redirect')
+      } catch (e) {}
+    }
+    navigate({ to: target as any })
   }, [isAuthenticated, isAuthLoading, navigate])
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -67,8 +98,9 @@ function LoginPage() {
 
   const handleGoogle = async () => {
     setError(null)
+    const target = getRedirectTarget()
     try {
-      await signIn('google', { redirectTo: '/dashboard' })
+      await signIn('google', { redirectTo: target })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'שגיאה בהתחברות Google')
     }
