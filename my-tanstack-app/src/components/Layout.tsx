@@ -262,6 +262,18 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const [tweaksOpen, setTweaksOpen] = React.useState(false)
   const { project, projects, hasMultipleProjects, isLoading: isProjectLoading } = useCurrentProject()
   const { isAuthenticated, isLoading } = useConvexAuth()
+  // Track whether auth has fully initialized — prevents flash-redirect to login
+  // on cold start (e.g. when opening from a push notification with no open tab).
+  // isLoading can start as false before Convex begins its first check, so we wait
+  // until it has transitioned through at least one load cycle.
+  const [authStabilized, setAuthStabilized] = React.useState(false)
+  React.useEffect(() => {
+    if (!isLoading && !authStabilized) {
+      // Use a microtask delay to let Convex settle its initial state
+      const timer = setTimeout(() => setAuthStabilized(true), 50)
+      return () => clearTimeout(timer)
+    }
+  }, [isLoading, authStabilized])
   const { role: resolvedRole } = useRequireRole(ALL_ROLES)
   const userRole = resolvedRole ?? 'owner'
   const [shortcuts] = useBottomNavShortcuts()
@@ -587,7 +599,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const redeemPromoCode = useMutation(api.users.redeemPromoCode)
 
   React.useEffect(() => {
-    if (isLoading) return
+    if (!authStabilized) return
     if (!isAuthenticated && !isPublicRoute(currentPath)) {
       const searchStr = typeof window !== 'undefined' ? window.location.search : ''
       const fullTarget = currentPath + searchStr
@@ -598,7 +610,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       }
       navigate({ to: '/login', search: { redirect: fullTarget } as any })
     }
-  }, [currentPath, isAuthenticated, isLoading, navigate])
+  }, [currentPath, isAuthenticated, authStabilized, navigate])
 
   React.useEffect(() => {
     if (isLoading) return
@@ -681,7 +693,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     )
   }
 
-  if (isLoading) {
+  if (isLoading || !authStabilized) {
     return <AppLoadingScreen />
   }
 

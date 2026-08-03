@@ -60,20 +60,15 @@ self.addEventListener('notificationclick', function (event) {
           console.error('Failed to focus client:', e);
         }
 
-        // Notify SPA to route internally
+        // Notify SPA to route internally — this is sufficient for an already-
+        // loaded app tab; no need for client.navigate() which causes a full
+        // page reload and re-triggers the auth guard race condition.
         try {
           client.postMessage({ type: 'BS_NAVIGATE', url: rawTarget });
         } catch (e) {
           console.error('Failed to postMessage BS_NAVIGATE:', e);
         }
 
-        if (client.url !== targetUrl && 'navigate' in client) {
-          try {
-            await client.navigate(targetUrl);
-          } catch (e) {
-            console.error('client.navigate failed:', e);
-          }
-        }
         return;
       }
 
