@@ -36,6 +36,38 @@ interface UploadToArchiveModalProps {
 
 const MAX_SECTION_PHOTOS = 3;
 
+const generateSafeId = (): string => {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    try {
+      return crypto.randomUUID();
+    } catch {
+      // Fallback
+    }
+  }
+  return `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+};
+
+const createStagedItems = (files: File[]): StagedFileItem[] => {
+  return (files || []).map((file) => {
+    const isImg = file.type.startsWith('image/') || /\.(jpg|jpeg|png|webp|avif|heic|heif|bmp|gif)$/i.test(file.name);
+    let previewUrl = '';
+    if (isImg && typeof URL !== 'undefined' && URL.createObjectURL) {
+      try {
+        previewUrl = URL.createObjectURL(file);
+      } catch {
+        previewUrl = '';
+      }
+    }
+    return {
+      id: generateSafeId(),
+      file,
+      previewUrl,
+      note: '',
+      isImage: isImg,
+    };
+  });
+};
+
 export const UploadToArchiveModal: React.FC<UploadToArchiveModalProps> = ({
   isOpen,
   onClose,
@@ -48,10 +80,26 @@ export const UploadToArchiveModal: React.FC<UploadToArchiveModalProps> = ({
 }) => {
   const uploadFile = usePersonalFileUploader(projectId);
 
-  const [items, setItems] = React.useState<StagedFileItem[]>([]);
-  const [groupMode, setGroupMode] = React.useState<'existing' | 'new' | 'none'>('existing');
-  const [selectedSectionId, setSelectedSectionId] = React.useState<string>('');
-  const [newGroupName, setNewGroupName] = React.useState('');
+  const isFromSpecificSection = Boolean(initialSectionId);
+
+  const [items, setItems] = React.useState<StagedFileItem[]>(() => createStagedItems(initialFiles));
+  
+  const [groupMode, setGroupMode] = React.useState<'existing' | 'new' | 'none'>(() => {
+    if (initialSectionId) {
+      return 'existing';
+    }
+    return existingSections.length > 0 ? 'existing' : 'new';
+  });
+
+  const [selectedSectionId, setSelectedSectionId] = React.useState<string>(() => {
+    if (initialSectionId) {
+      return initialSectionId;
+    }
+    return existingSections.length > 0 ? existingSections[0].id : '';
+  });
+
+  const [newGroupName, setNewGroupName] = React.useState<string>('');
+
   const [isUploading, setIsUploading] = React.useState(false);
   const [uploadProgress, setUploadProgress] = React.useState<{ current: number; total: number } | null>(null);
   const [errorMsg, setErrorMsg] = React.useState<string | null>(null);
@@ -59,7 +107,7 @@ export const UploadToArchiveModal: React.FC<UploadToArchiveModalProps> = ({
   const cameraInputRef = React.useRef<HTMLInputElement | null>(null);
   const galleryInputRef = React.useRef<HTMLInputElement | null>(null);
 
-  // Initialize staged items when modal opens or initialFiles change
+  // Sync staged items when modal opens or initialFiles change
   React.useEffect(() => {
     if (!isOpen) return;
 
@@ -67,55 +115,44 @@ export const UploadToArchiveModal: React.FC<UploadToArchiveModalProps> = ({
     setIsUploading(false);
     setUploadProgress(null);
 
-    const initialItems: StagedFileItem[] = initialFiles.map((file) => {
-      const isImg = file.type.startsWith('image/') || /\.(jpg|jpeg|png|webp|avif|heic|heif|bmp|gif)$/i.test(file.name);
-      return {
-        id: crypto.randomUUID(),
-        file,
-        previewUrl: isImg ? URL.createObjectURL(file) : '',
-        note: '',
-        isImage: isImg,
-      };
-    });
-
-    setItems(initialItems);
-
-    return () => {
-      initialItems.forEach((item) => {
-        if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
-      });
-    };
-  }, [isOpen, initialFiles]);
-
-  // Set initial section states when opening
-  React.useEffect(() => {
-    if (!isOpen) return;
+    const staged = createStagedItems(initialFiles);
+    setItems(staged);
 
     if (initialSectionId) {
-      const match = existingSections.find((s) => s.id === initialSectionId);
-      if (match) {
-        setGroupMode('existing');
-        setSelectedSectionId(initialSectionId);
-      } else {
-        setGroupMode('new');
-        setNewGroupName(initialSectionName || '');
-      }
+      setGroupMode('existing');
+      setSelectedSectionId(initialSectionId);
     } else if (existingSections.length > 0) {
       setGroupMode('existing');
       setSelectedSectionId(existingSections[0].id);
+      setNewGroupName('');
     } else {
       setGroupMode('new');
       setNewGroupName('');
     }
-  }, [isOpen, initialSectionId, initialSectionName, existingSections]);
+
+    return () => {
+      staged.forEach((item) => {
+        if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
+      });
+    };
+  }, [isOpen, initialFiles, initialSectionId, initialSectionName, existingSections]);
 
   if (!isOpen) return null;
 
-  const isAllImages = items.every((i) => i.isImage);
-  const selectedSection = existingSections.find((s) => s.id === selectedSectionId);
-  const currentSectionCount = groupMode === 'existing' && selectedSection ? selectedSection.count : 0;
+  const isAllImages = items.length === 0 || items.every((i) => i.isImage);
+  
+  const targetSection = isFromSpecificSection
+    ? existingSections.find((s) => s.id === initialSectionId)
+    : existingSections.find((s) => s.id === selectedSectionId);
+
+  const currentSectionCount = isFromSpecificSection
+    ? (targetSection?.count ?? 0)
+    : (groupMode === 'existing' && targetSection ? targetSection.count : 0);
+
   const remainingSlots = Math.max(0, MAX_SECTION_PHOTOS - currentSectionCount - items.length);
   const canAddMore = isAllImages && remainingSlots > 0;
+
+  const resolvedSectionName = targetSection?.name || initialSectionName || '';
 
   const formatBytes = (bytes: number): string => {
     if (bytes === 0) return '0 B';
@@ -139,17 +176,7 @@ export const UploadToArchiveModal: React.FC<UploadToArchiveModalProps> = ({
       setErrorMsg(null);
     }
 
-    const newItems: StagedFileItem[] = toAdd.map((file) => {
-      const isImg = file.type.startsWith('image/') || /\.(jpg|jpeg|png|webp|avif|heic|heif|bmp|gif)$/i.test(file.name);
-      return {
-        id: crypto.randomUUID(),
-        file,
-        previewUrl: isImg ? URL.createObjectURL(file) : '',
-        note: '',
-        isImage: isImg,
-      };
-    });
-
+    const newItems = createStagedItems(toAdd);
     setItems((prev) => [...prev, ...newItems]);
   };
 
@@ -180,12 +207,15 @@ export const UploadToArchiveModal: React.FC<UploadToArchiveModalProps> = ({
     let targetSectionName: string | undefined = undefined;
 
     if (isAllImages) {
-      if (groupMode === 'existing' && selectedSectionId) {
+      if (isFromSpecificSection && initialSectionId) {
+        targetSectionId = initialSectionId;
+        targetSectionName = resolvedSectionName || undefined;
+      } else if (groupMode === 'existing' && selectedSectionId) {
         targetSectionId = selectedSectionId;
         const matched = existingSections.find((s) => s.id === selectedSectionId);
         targetSectionName = matched?.name || undefined;
       } else if (groupMode === 'new') {
-        targetSectionId = initialSectionId || crypto.randomUUID();
+        targetSectionId = generateSafeId();
         targetSectionName = newGroupName.trim() || undefined;
       }
     }
@@ -250,7 +280,10 @@ export const UploadToArchiveModal: React.FC<UploadToArchiveModalProps> = ({
           capture="environment"
           style={{ display: 'none' }}
           onChange={(e) => {
-            handleAddFiles(e.target.files);
+            const files = e.target.files;
+            if (files && files.length > 0) {
+              handleAddFiles(files);
+            }
             e.target.value = '';
           }}
         />
@@ -261,10 +294,33 @@ export const UploadToArchiveModal: React.FC<UploadToArchiveModalProps> = ({
           multiple
           style={{ display: 'none' }}
           onChange={(e) => {
-            handleAddFiles(e.target.files);
+            const files = e.target.files;
+            if (files && files.length > 0) {
+              handleAddFiles(files);
+            }
             e.target.value = '';
           }}
         />
+
+        {/* Target Section Indicator if opened from a specific section */}
+        {isFromSpecificSection && resolvedSectionName && (
+          <div
+            style={{
+              padding: '8px 12px',
+              borderRadius: 8,
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              fontSize: 13,
+              color: 'var(--text1)',
+            }}
+          >
+            <Icon n="folder" s={16} c="var(--accent)" />
+            <span>שומר בקבוצה: <strong>{resolvedSectionName}</strong></span>
+          </div>
+        )}
 
         {/* Error message */}
         {errorMsg && (
@@ -385,7 +441,7 @@ export const UploadToArchiveModal: React.FC<UploadToArchiveModalProps> = ({
                   className="bp-input"
                   value={item.note}
                   onChange={(e) => handleItemNoteChange(item.id, e.target.value)}
-                  placeholder={items.length > 1 ? `הערה לתמונה ${idx + 1}...` : "הוסף הערה או תיאור לתמונה..."}
+                  placeholder={items.length > 1 ? `הערה לתמונה ${idx + 1}...` : 'הוסף הערה או תיאור לתמונה...'}
                   disabled={isUploading}
                   style={{ width: '100%', fontSize: 13, padding: '7px 10px' }}
                 />
@@ -393,7 +449,7 @@ export const UploadToArchiveModal: React.FC<UploadToArchiveModalProps> = ({
             </div>
           ))}
 
-          {/* Buttons to snap another photo or add from gallery if slots remaining */}
+          {/* Buttons to snap another photo (mobile only) or add from gallery if slots remaining */}
           {canAddMore && !isUploading && (
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 2 }}>
               <button
@@ -410,7 +466,6 @@ export const UploadToArchiveModal: React.FC<UploadToArchiveModalProps> = ({
                   fontWeight: 600,
                   fontSize: 13,
                   cursor: 'pointer',
-                  display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   gap: 6,
@@ -442,14 +497,14 @@ export const UploadToArchiveModal: React.FC<UploadToArchiveModalProps> = ({
                 }}
               >
                 <Icon n="plus" s={15} />
-                <span>הוסף מהגלריה ({items.length}/{MAX_SECTION_PHOTOS})</span>
+                <span>הוסף תמונה נוספת ({items.length}/{MAX_SECTION_PHOTOS})</span>
               </button>
             </div>
           )}
         </div>
 
-        {/* Section / Group Selection (for images) */}
-        {isAllImages && (
+        {/* Section / Group Selection (ONLY when NOT uploaded from a specific section) */}
+        {isAllImages && !isFromSpecificSection && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4 }}>
             <label style={{ fontSize: 13, fontWeight: 700, color: 'var(--text1)' }}>
               קבוצה בארכיון

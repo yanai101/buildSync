@@ -30,6 +30,17 @@ const formatDate = (ms: number) =>
     year: 'numeric',
   });
 
+const generateSafeId = (): string => {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    try {
+      return crypto.randomUUID();
+    } catch {
+      // Fallback
+    }
+  }
+  return `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+};
+
 const decompress = (bytes: Uint8Array): Promise<Uint8Array> =>
   new Promise((resolve, reject) => {
     gunzip(bytes, (err, data) => {
@@ -199,12 +210,20 @@ export const PersonalFilesScreen = () => {
     cameraInputRef.current?.click();
   };
 
+  const handleAddNewSection = () => {
+    const newId = generateSafeId();
+    setEmptySections(prev => [{ id: newId, name: '' }, ...prev]);
+    setExpandedSections(prev => new Set(prev).add(newId));
+  };
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    e.target.value = '';
     if (!files || files.length === 0) return;
     const filesArray = Array.from(files);
-    setUploadModalFiles(filesArray.slice(0, 3));
+    e.target.value = '';
+    if (filesArray.length > 0) {
+      setUploadModalFiles(filesArray.slice(0, 3));
+    }
   };
 
   const handleNoteChange = (fileId: Id<'personalFiles'>, value: string) => {
@@ -712,7 +731,7 @@ export const PersonalFilesScreen = () => {
     const key = section.id;
     const sectionNameValue = sectionDrafts[key] ?? section.name ?? '';
     const isFull = section.files.length >= 3;
-    const isExpanded = !expandedSections.has(key); // Default to expanded, toggle to collapse
+    const isExpanded = expandedSections.has(key); // Default to collapsed, toggle to expand
 
     return (
       <div
@@ -751,9 +770,9 @@ export const PersonalFilesScreen = () => {
           />
 
           {!isExpanded && section.files.length > 0 && (
-            <div className="desktop-only" style={{ fontSize: 12, color: 'var(--text2)', background: 'var(--bg)', padding: '2px 8px', borderRadius: 12, border: '1px solid var(--border)', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 4 }}>
-              <Icon n="camera" s={12} />
-              {section.files.length === 1 ? 'תמונה אחת' : `${section.files.length} תמונות`}
+            <div style={{ fontSize: 12, color: 'var(--text2)', background: 'var(--bg)', padding: '3px 10px', borderRadius: 12, border: '1px solid var(--border)', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 5 }}>
+              <Icon n="camera" s={13} />
+              <span>{section.files.length === 1 ? 'תמונה אחת' : `${section.files.length} תמונות`}</span>
             </div>
           )}
           
@@ -796,15 +815,6 @@ export const PersonalFilesScreen = () => {
         <div style={{ fontSize: 11, color: 'var(--text3)', minHeight: 14, marginTop: -8, paddingInlineStart: 26 }}>
           {savingNote === `sec-${key}` ? 'שומר שם קבוצה...' : ''}
         </div>
-
-        {!isExpanded && section.files.length > 0 && (
-          <div className="mobile-only" style={{ paddingInlineStart: 26, marginTop: -14, marginBottom: 4 }}>
-            <div style={{ fontSize: 12, color: 'var(--text2)', background: 'var(--bg)', padding: '2px 8px', borderRadius: 12, border: '1px solid var(--border)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-              <Icon n="camera" s={12} />
-              {section.files.length === 1 ? 'תמונה אחת' : `${section.files.length} תמונות`}
-            </div>
-          </div>
-        )}
 
         {isExpanded && (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 14, paddingInlineStart: 26, marginTop: 4 }}>
@@ -961,7 +971,7 @@ export const PersonalFilesScreen = () => {
                );
             })}
 
-            {!isFull && (
+            {isOwner && !isFull && (
               <div style={{
                   display: 'flex', flexDirection: 'column', alignItems: 'stretch', justifyContent: 'center',
                   gap: 8, color: 'var(--text2)', minHeight: 120
@@ -973,7 +983,7 @@ export const PersonalFilesScreen = () => {
                    <Icon n="camera" s={14} /> צלם תמונה
                  </Btn>
                  {section.files.length === 0 && (
-                   <Btn variant="ghost" size="sm" className="mobile-only" style={{ color: 'var(--danger)', borderColor: 'var(--danger)', display: 'flex', justifyContent: 'center', gap: 6, marginTop: 4 }} onClick={() => setEmptySections(prev => prev.filter(s => s.id !== key))}>
+                   <Btn variant="ghost" size="sm" style={{ color: 'var(--danger)', borderColor: 'var(--danger)', display: 'flex', justifyContent: 'center', gap: 6, marginTop: 4 }} onClick={() => setEmptySections(prev => prev.filter(s => s.id !== key))}>
                      <Icon n="trash" s={14} /> מחק קבוצה
                    </Btn>
                  )}
@@ -1009,6 +1019,25 @@ export const PersonalFilesScreen = () => {
           <div className="card-header" style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
             <span>המסמכים והתמונות שלך ({fileList.length} / {MAX_FILES})</span>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {activeTab === 'images' && (
+                <>
+                  <Btn
+                    className="mobile-only"
+                    onClick={() => handleCamera()}
+                    disabled={uploading || atCap}
+                    style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+                  >
+                    <Icon n="camera" s={14} /> צלם תמונה
+                  </Btn>
+                  <Btn
+                    onClick={() => handlePick()}
+                    disabled={uploading || atCap}
+                    style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+                  >
+                    <Icon n="upload-cloud" s={14} /> העלה תמונה
+                  </Btn>
+                </>
+              )}
               {activeTab === 'docs' && (
                 <Btn onClick={() => handlePick()} disabled={uploading || atCap} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   <Icon n="file-text" s={14} /> העלה מסמך
@@ -1058,7 +1087,7 @@ export const PersonalFilesScreen = () => {
                     <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, gap: 12 }}>
                       <div style={{ fontSize: 14, color: 'var(--text2)' }}>סמן תמונות כדי להפיק דוח מרוכז</div>
                       <div style={{ display: 'flex', gap: 8 }}>
-                        <Btn size="sm" variant="outline" onClick={() => setEmptySections(prev => [{ id: crypto.randomUUID(), name: '' }, ...prev])}>
+                        <Btn size="sm" variant="outline" onClick={handleAddNewSection}>
                           <Icon n="plus" s={14} /> הוסף קבוצה חדשה
                         </Btn>
                         <Btn size="sm" variant="primary" disabled={selectedImages.size === 0 || isGeneratingPdf} onClick={handleGeneratePDF}>
@@ -1071,7 +1100,46 @@ export const PersonalFilesScreen = () => {
                         {allSections.map(renderSection)}
                       </div>
                     ) : (
-                      <div style={{ textAlign: 'center', padding: 24, color: 'var(--text3)' }}>אין תמונות או סקשנים.</div>
+                      <div style={{
+                        textAlign: 'center', padding: '36px 20px', color: 'var(--text2)',
+                        background: 'var(--surface)', borderRadius: 12, border: '1px dashed var(--border)',
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12
+                      }}>
+                        <div style={{ width: 50, height: 50, borderRadius: '50%', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent)' }}>
+                          <Icon n="image" s={24} />
+                        </div>
+                        <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text1)' }}>עדיין אין תמונות בארכיון</div>
+                        <div style={{ fontSize: 13, color: 'var(--text2)', maxWidth: 360 }}>
+                          התחל בתיעוד הפרויקט על ידי העלאת תמונות תשתיות, בדיקות או צילום ישיר בנייד.
+                        </div>
+                        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center', marginTop: 4 }}>
+                          <Btn
+                            variant="primary"
+                            className="mobile-only"
+                            onClick={() => handleCamera()}
+                            disabled={uploading || atCap}
+                            style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+                          >
+                            <Icon n="camera" s={14} /> צלם תמונה
+                          </Btn>
+                          <Btn
+                            variant="primary"
+                            onClick={() => handlePick()}
+                            disabled={uploading || atCap}
+                            style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+                          >
+                            <Icon n="upload-cloud" s={14} /> העלה תמונה
+                          </Btn>
+                          <Btn
+                            variant="outline"
+                            onClick={handleAddNewSection}
+                            disabled={uploading || atCap}
+                            style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+                          >
+                            <Icon n="plus" s={14} /> הוסף קבוצה חדשה
+                          </Btn>
+                        </div>
+                      </div>
                     )}
                   </div>
                 )}
@@ -1143,6 +1211,11 @@ export const PersonalFilesScreen = () => {
           initialFiles={uploadModalFiles}
           projectId={projectId}
           initialSectionId={targetSectionRef.current || undefined}
+          initialSectionName={
+            targetSectionRef.current
+              ? (existingSectionsForModal.find(s => s.id === targetSectionRef.current)?.name || sectionDrafts[targetSectionRef.current] || emptySections.find(s => s.id === targetSectionRef.current)?.name || '')
+              : undefined
+          }
           existingSections={existingSectionsForModal}
           onClose={() => {
             setUploadModalFiles([]);
