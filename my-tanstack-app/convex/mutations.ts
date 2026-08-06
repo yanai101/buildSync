@@ -1696,7 +1696,10 @@ export const markMessagesAsRead = mutation({
             await ctx.db.patch(msg._id, { readAt: now });
           }
         } else {
-          await ctx.db.patch(msg._id, { readAt: now });
+          // Broadcast: only mark messages without a specific contractor recipient
+          if (!msg.recipientContractorId) {
+            await ctx.db.patch(msg._id, { readAt: now });
+          }
         }
       }
     }

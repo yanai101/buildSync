@@ -162,9 +162,15 @@ export const NotesScreen = () => {
         }
       } else if (n.thread === 'contractor') {
         if (canSeeAllChats) {
-          if (n.role === 'contractor') {
-            const cId = getContractorIdStr(n.recipientContractorId);
-            if (cId) counts[`contractor-${cId}`] = (counts[`contractor-${cId}`] ?? 0) + 1;
+          const cId = getContractorIdStr(n.recipientContractorId);
+          if (cId) {
+            // Per-contractor conversation — only count messages FROM contractors
+            if (n.role === 'contractor') {
+              counts[`contractor-${cId}`] = (counts[`contractor-${cId}`] ?? 0) + 1;
+            }
+          } else {
+            // Broadcast message (no recipientContractorId) — count under broadcast tab
+            counts['contractor-broadcast'] = (counts['contractor-broadcast'] ?? 0) + 1;
           }
         } else {
           counts['contractor-team'] = (counts['contractor-team'] ?? 0) + 1;
@@ -214,8 +220,6 @@ export const NotesScreen = () => {
   // Optimistic local update fires immediately so counts reset without waiting for DB roundtrip.
   React.useEffect(() => {
     if (mode !== 'db' || !projectId || !activeConv) return;
-    // The "broadcast to all contractors" tab has no incoming messages to mark read.
-    if (canSeeAllChats && activeConv.thread === 'contractor' && !activeConv.contractorId) return;
 
     const now = Date.now();
 
@@ -229,8 +233,13 @@ export const NotesScreen = () => {
         } else if ((n as any).recipientUserId !== undefined) {
           return n;
         }
-      } else if (canSeeAllChats && activeConv.contractorId) {
-        if (getContractorIdStr((n as any).recipientContractorId) !== activeConv.contractorId) return n;
+      } else if (canSeeAllChats && activeConv.thread === 'contractor') {
+        if (activeConv.contractorId) {
+          if (getContractorIdStr((n as any).recipientContractorId) !== activeConv.contractorId) return n;
+        } else {
+          // Broadcast tab — only mark broadcast messages (no recipientContractorId)
+          if ((n as any).recipientContractorId) return n;
+        }
       }
       return { ...n, readAt: now } as any;
     }));
