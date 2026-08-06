@@ -742,6 +742,31 @@ export const PersonalFilesScreen = () => {
         }}
       >
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', width: '100%' }}>
+          {/* Expand / Collapse Chevron */}
+          <button
+            type="button"
+            onClick={() => toggleSection(key)}
+            title={isExpanded ? 'סגור קבוצה' : 'פתח קבוצה'}
+            style={{
+              background: 'var(--bg)',
+              border: '1px solid var(--border)',
+              borderRadius: 8,
+              width: 32,
+              height: 32,
+              cursor: 'pointer',
+              color: 'var(--text1)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+            }}
+          >
+            <div style={{ transform: isExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', display: 'flex' }}>
+              <Icon n="chevron-down" s={16} />
+            </div>
+          </button>
+
+          {/* Section Checkbox */}
           <input 
             type="checkbox" 
             checked={section.files.length > 0 && section.files.every(f => selectedImages.has(f.id))}
@@ -761,60 +786,76 @@ export const PersonalFilesScreen = () => {
             disabled={section.files.length === 0}
             style={{ width: 18, height: 18, cursor: section.files.length > 0 ? 'pointer' : 'default', flexShrink: 0 }}
           />
+
+          {/* Group Name Input - Full remaining width */}
           <input
             className="bp-input"
             value={sectionNameValue}
-            placeholder="תיאור הקבוצה (לדוגמה: סלון - צנרת חשמל)..."
+            placeholder="שם הקבוצה (לדוגמה: איטום, צנרת)..."
             onChange={(e) => handleSectionNameChange(key, e.target.value, section.files)}
-            style={{ flex: 1, minWidth: 0, fontFamily: "'Heebo',sans-serif", fontSize: 14, fontWeight: 600, padding: '8px 10px' }}
+            style={{
+              flex: 1,
+              minWidth: 0,
+              fontFamily: "'Heebo',sans-serif",
+              fontSize: 14,
+              fontWeight: 600,
+              padding: '7px 10px',
+              color: 'var(--text1)',
+            }}
           />
 
-          {!isExpanded && section.files.length > 0 && (
-            <div style={{ fontSize: 12, color: 'var(--text2)', background: 'var(--bg)', padding: '3px 10px', borderRadius: 12, border: '1px solid var(--border)', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 5 }}>
+          {/* Photos Count Badge */}
+          {section.files.length > 0 && (
+            <div
+              style={{
+                fontSize: 12,
+                color: 'var(--text2)',
+                background: 'var(--bg)',
+                padding: '4px 8px',
+                borderRadius: 8,
+                border: '1px solid var(--border)',
+                whiteSpace: 'nowrap',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
+                flexShrink: 0,
+              }}
+            >
               <Icon n="camera" s={13} />
-              <span>{section.files.length === 1 ? 'תמונה אחת' : `${section.files.length} תמונות`}</span>
+              <span>{section.files.length}</span>
             </div>
           )}
-          
+
+          {/* Delete Group Button */}
           {isOwner && (
             <button
               type="button"
               onClick={() => setSectionToDelete({ id: key, name: sectionNameValue || 'קבוצה ללא שם', count: section.files.length })}
-              title="מחק קבוצה וכל התמונות שבה"
+              title="מחק קבוצה"
               style={{
                 background: 'transparent',
-                border: '1px solid var(--danger)',
+                border: '1px solid var(--border)',
                 color: 'var(--danger)',
-                borderRadius: 6,
-                padding: '6px 10px',
-                fontSize: 12,
-                fontWeight: 600,
+                borderRadius: 8,
+                width: 32,
+                height: 32,
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
-                gap: 5,
+                justifyContent: 'center',
                 flexShrink: 0,
-                fontFamily: "'Heebo',sans-serif",
               }}
             >
               <Icon n="trash" s={14} />
-              <span className="desktop-only">מחק קבוצה</span>
             </button>
           )}
-
-          <button
-            onClick={() => toggleSection(key)}
-            style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, padding: '6px', cursor: 'pointer', color: 'var(--text2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
-          >
-            <div style={{ transform: isExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', display: 'flex' }}>
-              <Icon n="chevron-down" s={18} />
-            </div>
-          </button>
         </div>
         
-        <div style={{ fontSize: 11, color: 'var(--text3)', minHeight: 14, marginTop: -8, paddingInlineStart: 26 }}>
-          {savingNote === `sec-${key}` ? 'שומר שם קבוצה...' : ''}
-        </div>
+        {savingNote === `sec-${key}` && (
+          <div style={{ fontSize: 11, color: 'var(--accent)', paddingInlineStart: 42, marginTop: -4 }}>
+            שומר שם קבוצה...
+          </div>
+        )}
 
         {isExpanded && (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 14, paddingInlineStart: 26, marginTop: 4 }}>
@@ -1017,29 +1058,31 @@ export const PersonalFilesScreen = () => {
 
         <div className="card">
           <div className="card-header" style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
-            <span>המסמכים והתמונות שלך ({fileList.length} / {MAX_FILES})</span>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            <span style={{ fontWeight: 700, fontSize: 15, color: 'var(--text1)' }}>המסמכים והתמונות שלך ({fileList.length} / {MAX_FILES})</span>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
               {activeTab === 'images' && (
                 <>
                   <Btn
+                    variant="primary"
                     className="mobile-only"
                     onClick={() => handleCamera()}
                     disabled={uploading || atCap}
-                    style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
                   >
                     <Icon n="camera" s={14} /> צלם תמונה
                   </Btn>
                   <Btn
+                    variant="outline"
                     onClick={() => handlePick()}
                     disabled={uploading || atCap}
-                    style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
                   >
                     <Icon n="upload-cloud" s={14} /> העלה תמונה
                   </Btn>
                 </>
               )}
               {activeTab === 'docs' && (
-                <Btn onClick={() => handlePick()} disabled={uploading || atCap} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Btn onClick={() => handlePick()} disabled={uploading || atCap} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                   <Icon n="file-text" s={14} /> העלה מסמך
                 </Btn>
               )}
@@ -1084,14 +1127,14 @@ export const PersonalFilesScreen = () => {
 
                 {activeTab === 'images' && (
                   <div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, gap: 12 }}>
-                      <div style={{ fontSize: 14, color: 'var(--text2)' }}>סמן תמונות כדי להפיק דוח מרוכז</div>
-                      <div style={{ display: 'flex', gap: 8 }}>
-                        <Btn size="sm" variant="outline" onClick={handleAddNewSection}>
-                          <Icon n="plus" s={14} /> הוסף קבוצה חדשה
+                    <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, gap: 10 }}>
+                      <div style={{ fontSize: 13, color: 'var(--text2)' }}>סמן תמונות להפקת דוח מרוכז</div>
+                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                        <Btn size="sm" variant="primary" onClick={handleAddNewSection}>
+                          <Icon n="plus" s={14} /> הוסף קבוצה
                         </Btn>
-                        <Btn size="sm" variant="primary" disabled={selectedImages.size === 0 || isGeneratingPdf} onClick={handleGeneratePDF}>
-                          {isGeneratingPdf ? 'מייצר PDF...' : `הפק דוח תמונות PDF (${selectedImages.size})`}
+                        <Btn size="sm" variant="outline" disabled={selectedImages.size === 0 || isGeneratingPdf} onClick={handleGeneratePDF}>
+                          {isGeneratingPdf ? 'מייצר PDF...' : `הפק דוח PDF (${selectedImages.size})`}
                         </Btn>
                       </div>
                     </div>

@@ -199,13 +199,14 @@ export const StatCard = ({label, value, sub, accent, icon, className}: any) => {
   );
 };
 
-export const Btn = ({onClick, children, variant="primary", size="md", disabled, style:sx, type="button", icon, ...rest}: any) => {
+export const Btn = ({onClick, children, variant="primary", size="md", disabled, style:sx, type="button", icon, className="", ...rest}: any) => {
   const variantClass = ({
     primary: "btn-primary",
     ghost: "btn-ghost",
     secondary: "btn-secondary",
     danger: "btn-danger",
     success: "btn-success",
+    outline: "btn-secondary",
   } as Record<string, string>)[variant] || "btn-primary";
   const sizeClass = size==="sm"?"btn-sm":size==="lg"?"btn-lg":"";
   return (
@@ -215,7 +216,7 @@ export const Btn = ({onClick, children, variant="primary", size="md", disabled, 
       whileTap={disabled?{}:{scale:0.97}}
       onClick={onClick}
       disabled={disabled}
-      className={`btn ${variantClass} ${sizeClass}`}
+      className={`btn ${variantClass} ${sizeClass} ${className || ''}`.trim()}
       style={{opacity:disabled?.5:1,cursor:disabled?"not-allowed":"pointer",...sx}}
       {...rest}
     >
