@@ -302,3 +302,43 @@ export const deletePersonalFile = mutation({
     return { deleted: true };
   },
 });
+
+export const deletePersonalSection = mutation({
+  args: {
+    projectId: v.id('projects'),
+    sectionId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error('Not authenticated');
+
+    const project = await ctx.db.get(args.projectId);
+    if (!project) throw new Error('Project not found');
+
+    const user = await ctx.db.get(userId);
+    const isSuperAdmin = !!user?.isSuperAdmin;
+    const isOwner = project.ownerUserId === userId || isSuperAdmin;
+
+    if (!isOwner) {
+      throw new Error('רק בעל הפרויקט רשאי למחוק קבצים מהארכיון');
+    }
+
+    const files = await ctx.db
+      .query('personalFiles')
+      .withIndex('by_owner_and_project', (q) =>
+        q.eq('ownerUserId', project.ownerUserId!).eq('projectId', args.projectId)
+      )
+      .collect();
+
+    const sectionFiles = files.filter(
+      (f) => f.sectionId === args.sectionId || (!f.sectionId && `legacy-${f._id}` === args.sectionId),
+    );
+
+    for (const file of sectionFiles) {
+      await ctx.storage.delete(file.storageId);
+      await ctx.db.delete(file._id);
+    }
+
+    return { deletedCount: sectionFiles.length };
+  },
+});

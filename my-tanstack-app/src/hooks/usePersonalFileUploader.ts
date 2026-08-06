@@ -25,7 +25,8 @@ export function usePersonalFileUploader(projectId: Id<'projects'> | null) {
     let finalMimeType = file.type || 'application/octet-stream';
     let originalName = file.name;
 
-    if (file.type.startsWith('image/')) {
+    const isImage = file.type.startsWith('image/') || /\.(jpg|jpeg|png|webp|avif|heic|heif|bmp|gif)$/i.test(file.name);
+    if (isImage) {
       const optimized = await optimizeImageFile(file);
       finalFileToUpload = optimized.blob;
       finalMimeType = optimized.storedMimeType;

@@ -52,7 +52,8 @@ const loadImage = async (file: File) => {
 };
 
 export const optimizeImageFile = async (file: File): Promise<OptimizedFile> => {
-  if (!file.type.startsWith('image/')) {
+  const isImage = file.type.startsWith('image/') || /\.(jpg|jpeg|png|webp|avif|heic|heif|bmp|gif)$/i.test(file.name);
+  if (!isImage) {
     return {
       blob: file,
       storedName: file.name,

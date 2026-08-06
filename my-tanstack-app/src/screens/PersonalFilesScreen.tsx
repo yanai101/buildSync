@@ -55,6 +55,7 @@ export const PersonalFilesScreen = () => {
   const updateNote = useMutation(api.personalFiles.updatePersonalFileNote);
   const updateFilesNote = useMutation(api.personalFiles.updatePersonalFilesNote);
   const deleteFile = useMutation(api.personalFiles.deletePersonalFile);
+  const deleteSection = useMutation(api.personalFiles.deletePersonalSection);
   const uploadFile = usePersonalFileUploader(projectId);
   const { notify, permission, requestPermission, messages, dismiss } = useAppNotify();
 
@@ -78,6 +79,8 @@ export const PersonalFilesScreen = () => {
   const [selectedImages, setSelectedImages] = React.useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = React.useState<'images' | 'docs'>('images');
   const [fileToDelete, setFileToDelete] = React.useState<{id: Id<'personalFiles'>, name: string} | null>(null);
+  const [sectionToDelete, setSectionToDelete] = React.useState<{ id: string; note: string; count: number } | null>(null);
+  const [pendingDeleteSection, setPendingDeleteSection] = React.useState<string | null>(null);
   const [viewGallery, setViewGallery] = React.useState<{ images: {url: string, title?: string, description?: string}[], initialIndex: number } | null>(null);
   const [expandedSections, setExpandedSections] = React.useState<Set<string>>(new Set());
 
@@ -438,6 +441,43 @@ export const PersonalFilesScreen = () => {
     }
   };
 
+  const handleDeleteSection = async (sectionId: string, note: string, count: number) => {
+    if (count === 0) {
+      setEmptySections(prev => prev.filter(s => s.id !== sectionId));
+      setSectionToDelete(null);
+      await notify({ title: 'הקבוצה נמחקה', body: 'קבוצה ריקה הוסרה', kind: 'info' });
+      return;
+    }
+
+    if (!projectId) return;
+
+    setPendingDeleteSection(sectionId);
+    try {
+      const res = await deleteSection({ projectId, sectionId });
+      setEmptySections(prev => prev.filter(s => s.id !== sectionId));
+      setSelectedImages(prev => {
+        const next = new Set(prev);
+        const sectionFiles = imageFiles.filter(f => (f.sectionId || `legacy-${f.id}`) === sectionId);
+        sectionFiles.forEach(f => next.delete(f.id));
+        return next;
+      });
+      await notify({
+        title: 'הקבוצה נמחקה בהצלחה',
+        body: `הקבוצה וכל ${res.deletedCount} התמונות שבתוכה נמחקו לצמיתות מהארכיון`,
+        kind: 'success',
+      });
+      setSectionToDelete(null);
+    } catch (err) {
+      await notify({
+        title: 'שגיאה במחיקת הקבוצה',
+        body: err instanceof Error ? err.message : 'אירעה שגיאה בלתי צפויה',
+        kind: 'error',
+      });
+    } finally {
+      setPendingDeleteSection(null);
+    }
+  };
+
   if (identity === undefined || roleLoading || projectLoading || (projectId && archivePerms === undefined)) return <AccessLoading />;
   if (!allowed) return <AccessDenied message="המסמכים האישיים זמינים לבעל הפרויקט, מנהל עבודה ומפקח בלבד." />;
   if (!projectId) return <AccessDenied message="יש לבחור פרויקט פעיל לפני ניהול ארכיון הפרויקט." />;
@@ -574,13 +614,29 @@ export const PersonalFilesScreen = () => {
             </div>
           )}
           
-          {section.files.length === 0 && (
+          {isOwner && (
             <button
-              onClick={() => setEmptySections(prev => prev.filter(s => s.id !== key))}
-              className="desktop-only"
-              style={{ background: 'transparent', border: '1px solid var(--danger)', color: 'var(--danger)', borderRadius: 6, padding: '6px 10px', fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}
+              type="button"
+              onClick={() => setSectionToDelete({ id: key, note: noteValue || 'קבוצה ללא שם', count: section.files.length })}
+              title="מחק קבוצה וכל התמונות שבה"
+              style={{
+                background: 'transparent',
+                border: '1px solid var(--danger)',
+                color: 'var(--danger)',
+                borderRadius: 6,
+                padding: '6px 10px',
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 5,
+                flexShrink: 0,
+                fontFamily: "'Heebo',sans-serif",
+              }}
             >
-              <Icon n="trash" s={14} /> מחק קבוצה
+              <Icon n="trash" s={14} />
+              <span className="desktop-only">מחק קבוצה</span>
             </button>
           )}
 
@@ -624,7 +680,8 @@ export const PersonalFilesScreen = () => {
                       }} style={{ width: 14, height: 14, cursor: 'pointer' }} />
                     </div>
                     <div style={{ fontSize: 11, color: 'var(--text3)' }}>
-                      {formatBytes(file.originalSize)}
+                      {formatBytes(file.originalSize)} → {formatBytes(file.storedSize)}
+                      {file.originalSize > file.storedSize ? ` · נחסכו ${Math.round(((file.originalSize - file.storedSize) / file.originalSize) * 100)}%` : ''}
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--border)', paddingTop: 6, marginTop: 2 }}>
                        <button onClick={() => void handlePreview(file)} disabled={pendingPreview === file.id || !file.url} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text2)' }}>
@@ -825,6 +882,25 @@ export const PersonalFilesScreen = () => {
             if (!pendingDelete) setFileToDelete(null);
           }}
           onConfirm={() => void handleDelete(fileToDelete.id, fileToDelete.name)}
+        />
+      )}
+
+      {/* Delete Section Confirmation Dialog */}
+      {sectionToDelete && (
+        <ConfirmDialog
+          title="מחיקת קבוצה מהארכיון"
+          message={
+            sectionToDelete.count > 0
+              ? `האם אתה בטוח שברצונך למחוק את הקבוצה "${sectionToDelete.note}"? פעולה זו תמחק לצמיתות את הקבוצה ואת כל ${sectionToDelete.count} התמונות שבתוכה מהארכיון ולא ניתן יהיה לשחזר אותן.`
+              : `האם למחוק את הקבוצה הריקה "${sectionToDelete.note}"?`
+          }
+          confirmText={sectionToDelete.count > 0 ? `מחק קבוצה ו-${sectionToDelete.count} תמונות` : "מחק קבוצה"}
+          type="error"
+          loading={pendingDeleteSection === sectionToDelete.id}
+          onClose={() => {
+            if (!pendingDeleteSection) setSectionToDelete(null);
+          }}
+          onConfirm={() => void handleDeleteSection(sectionToDelete.id, sectionToDelete.note, sectionToDelete.count)}
         />
       )}
     </PremiumLock>

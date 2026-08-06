@@ -38,7 +38,8 @@ const insertArchiveFile = async (t: ReturnType<typeof convexTest>, fields: Recor
       originalMimeType: (fields.originalMimeType as string) ?? 'application/pdf',
       originalSize: 100,
       storedSize: 50,
-      note: 'הערת קובץ',
+      sectionId: fields.sectionId as string | undefined,
+      note: (fields.note as string) ?? 'הערת קובץ',
       uploadedAt: Date.now(),
     }));
 };
@@ -135,6 +136,46 @@ describe('personal project archive scoping', () => {
 
     await expect(
       t.withIdentity({ subject: managerId }).mutation(api.personalFiles.deletePersonalFile, { fileId }),
+    ).rejects.toThrow('רק בעל הפרויקט רשאי למחוק קבצים מהארכיון');
+  });
+
+  test('allows owner to delete an entire section of files from archive', async () => {
+    const t = convexTest(schema, modules);
+    const { ownerId, projectId } = await setup(t);
+
+    await insertArchiveFile(t, { ownerUserId: ownerId, projectId, originalName: 'תמונה1.jpg', sectionId: 'sec-123' });
+    await insertArchiveFile(t, { ownerUserId: ownerId, projectId, originalName: 'תמונה2.jpg', sectionId: 'sec-123' });
+    await insertArchiveFile(t, { ownerUserId: ownerId, projectId, originalName: 'תמונה3.jpg', sectionId: 'sec-456' });
+
+    const result = await t.withIdentity({ subject: ownerId }).mutation(
+      api.personalFiles.deletePersonalSection,
+      { projectId, sectionId: 'sec-123' },
+    );
+    expect(result.deletedCount).toBe(2);
+
+    const remainingFiles = await t.withIdentity({ subject: ownerId }).query(
+      api.personalFiles.listMyPersonalFiles,
+      { projectId },
+    );
+    expect(remainingFiles.map((f) => f.originalName)).toEqual(['תמונה3.jpg']);
+  });
+
+  test('non-owner cannot delete a section from archive', async () => {
+    const t = convexTest(schema, modules);
+    const { ownerId, projectId } = await setup(t);
+    const managerId = await t.run((ctx) => ctx.db.insert('users', { name: 'מנהל עבודה', role: 'manager' }));
+    await t.run((ctx) => ctx.db.patch(projectId, {
+      managerUserId: managerId,
+      managerCanViewArchivePhotos: true,
+    }));
+
+    await insertArchiveFile(t, { ownerUserId: ownerId, projectId, originalName: 'תמונה1.jpg', sectionId: 'sec-123' });
+
+    await expect(
+      t.withIdentity({ subject: managerId }).mutation(
+        api.personalFiles.deletePersonalSection,
+        { projectId, sectionId: 'sec-123' },
+      ),
     ).rejects.toThrow('רק בעל הפרויקט רשאי למחוק קבצים מהארכיון');
   });
 

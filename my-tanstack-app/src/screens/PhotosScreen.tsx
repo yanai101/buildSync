@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Icon, Btn, Modal, TagBadge, Select, FeedbackModal, EmptyState, PageBackground, ConfirmDialog } from '../components/Shared';
+import { ExportToArchiveModal, PhotoToExport } from '../components/ExportToArchiveModal';
 import { useDataSource } from '../hooks/useDataSource';
 import { useDataMutation } from '../hooks/useDataMutation';
 import { useCurrentProject } from '../hooks/useCurrentProject';
@@ -218,6 +219,41 @@ export const PhotosScreen = () => {
     api.photos.getDetails,
     selectedPhotoId ? { photoId: selectedPhotoId } : "skip",
   );
+
+  const [exportModalOpen, setExportModalOpen] = React.useState(false);
+  const [photosToExport, setPhotosToExport] = React.useState<PhotoToExport[]>([]);
+  const [selectionMode, setSelectionMode] = React.useState(false);
+  const [selectedPhotoIds, setSelectedPhotoIds] = React.useState<Set<string>>(new Set());
+
+  const togglePhotoSelection = (id: string) => {
+    setSelectedPhotoIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const selectAllFiltered = () => {
+    const allIds = filtered.map(p => String(p._id || p.id));
+    setSelectedPhotoIds(new Set(allIds));
+  };
+
+  const clearSelection = () => {
+    setSelectedPhotoIds(new Set());
+  };
+
+  const openBatchExport = () => {
+    const selectedList = photos
+      .filter(p => selectedPhotoIds.has(String(p._id || p.id)))
+      .map(p => ({
+        ...p,
+        notes: [],
+      }));
+    if (selectedList.length === 0) return;
+    setPhotosToExport(selectedList);
+    setExportModalOpen(true);
+  };
   
   React.useEffect(() => {
     if (!paginatedPhotos) return;
@@ -823,6 +859,16 @@ export const PhotosScreen = () => {
             {t}
           </button>
         ))}
+        <Btn
+          size="sm"
+          variant={selectionMode ? "primary" : "outline"}
+          onClick={() => {
+            setSelectionMode(!selectionMode);
+            if (selectionMode) setSelectedPhotoIds(new Set());
+          }}
+        >
+          <Icon n="check-square" s={13}/> {selectionMode ? "ביטול בחירה" : "בחירה מרובה"}
+        </Btn>
         <Btn size="sm" style={{marginRight:"auto"}} onClick={openUpload} disabled={uploadingPhoto}>
           <Icon n="image" s={13}/> {uploadingPhoto ? "מעלה..." : "העלה תמונה"}
         </Btn>
@@ -831,42 +877,136 @@ export const PhotosScreen = () => {
         </Btn>
       </div>
 
+      {/* Multi-selection Action Bar */}
+      {selectionMode && (
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          background: 'var(--surface)',
+          padding: '10px 16px',
+          borderRadius: 10,
+          border: '1px solid var(--accent)',
+          marginBottom: 16,
+          flexWrap: 'wrap',
+          gap: 10,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--accent)' }}>
+              נבחרו {selectedPhotoIds.size} מתוך {filtered.length} תמונות
+            </span>
+            <button
+              onClick={selectAllFiltered}
+              style={{
+                fontSize: 12,
+                color: 'var(--text1)',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                textDecoration: 'underline',
+                padding: 0,
+              }}
+            >
+              בחר הכל
+            </button>
+            {selectedPhotoIds.size > 0 && (
+              <button
+                onClick={clearSelection}
+                style={{
+                  fontSize: 12,
+                  color: 'var(--text3)',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: 0,
+                }}
+              >
+                נקה בחירה
+              </button>
+            )}
+          </div>
+          <Btn
+            size="sm"
+            onClick={openBatchExport}
+            disabled={selectedPhotoIds.size === 0}
+          >
+            <Icon n="archive" s={14} /> ייצוא לארכיון ({selectedPhotoIds.size})
+          </Btn>
+        </div>
+      )}
+
       <motion.div
         className="photo-grid"
         variants={{ show: { transition: { staggerChildren: 0.07 } } }}
         initial="hidden"
         animate="show"
       >
-        {filtered.map(p=>(
-          <motion.div
-            key={p.id}
-            className="photo-card"
-            variants={{ hidden: { opacity: 0, scale: 0.95 }, show: { opacity: 1, scale: 1 } }}
-            whileHover={{ y: -5, boxShadow: "var(--shadow-xl)" }}
-            whileTap={{ scale: 0.97 }}
-            onClick={()=>setSelected(p)}
-          >
-            <div className="photo-thumb" style={{background:p.color,position:"relative"}}>
-              {p.fileUrl ? (
-                <img src={p.fileUrl} alt={p.label} style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
-              ) : (
-                <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4}}>
-                  <Icon n="camera" s={28} c="rgba(255,255,255,.5)"/>
-                  <span style={{fontSize:11,color:"rgba(255,255,255,.7)",textAlign:"center",padding:"0 8px"}}>{p.label}</span>
-                </div>
-              )}
-              {p.notesCount>0 && <div style={{position:"absolute",top:6,left:6,background:"var(--accent)",color:"#fff",borderRadius:10,fontSize:10,fontWeight:700,padding:"1px 5px"}}>{p.notesCount}</div>}
-              {p.tag === "אישור" && <ApprovedBadge compact />}
-              <div style={{position:"absolute",top:6,right:6}}><TagBadge tag={p.tag}/></div>
-            </div>
-            <div className="photo-info">
-              <div style={{fontWeight:600,fontSize:13,marginBottom:3}}>{p.location}</div>
-              <div style={{color:"var(--text3)",fontSize:11,display:"flex",justifyContent:"space-between"}}>
-                <span>{p.stage}</span><span>{p.date}</span>
+        {filtered.map(p=>{
+          const photoKey = String(p._id || p.id);
+          const isSelected = selectedPhotoIds.has(photoKey);
+          return (
+            <motion.div
+              key={p.id || p._id}
+              className="photo-card"
+              variants={{ hidden: { opacity: 0, scale: 0.95 }, show: { opacity: 1, scale: 1 } }}
+              whileHover={{ y: -5, boxShadow: "var(--shadow-xl)" }}
+              whileTap={{ scale: 0.97 }}
+              onClick={() => {
+                if (selectionMode) {
+                  togglePhotoSelection(photoKey);
+                } else {
+                  setSelected(p);
+                }
+              }}
+              style={{
+                cursor: 'pointer',
+                outline: selectionMode && isSelected ? '3px solid var(--accent)' : 'none',
+                boxShadow: selectionMode && isSelected ? '0 0 12px rgba(var(--accent-rgb, 255, 149, 0), 0.3)' : undefined,
+              }}
+            >
+              <div className="photo-thumb" style={{background:p.color,position:"relative"}}>
+                {p.fileUrl ? (
+                  <img src={p.fileUrl} alt={p.label} style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
+                ) : (
+                  <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4}}>
+                    <Icon n="camera" s={28} c="rgba(255,255,255,.5)"/>
+                    <span style={{fontSize:11,color:"rgba(255,255,255,.7)",textAlign:"center",padding:"0 8px"}}>{p.label}</span>
+                  </div>
+                )}
+                {/* Selection Checkbox Badge */}
+                {selectionMode && (
+                  <div style={{
+                    position: 'absolute',
+                    top: 8,
+                    left: 8,
+                    zIndex: 4,
+                    width: 24,
+                    height: 24,
+                    borderRadius: 6,
+                    background: isSelected ? 'var(--accent)' : 'rgba(0,0,0,0.5)',
+                    color: '#fff',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    border: '2px solid #fff',
+                    boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
+                  }}>
+                    {isSelected && <Icon n="check" s={14} />}
+                  </div>
+                )}
+                {!selectionMode && p.notesCount>0 && <div style={{position:"absolute",top:6,left:6,background:"var(--accent)",color:"#fff",borderRadius:10,fontSize:10,fontWeight:700,padding:"1px 5px"}}>{p.notesCount}</div>}
+                {p.tag === "אישור" && <ApprovedBadge compact />}
+                <div style={{position:"absolute",top:6,right:6}}><TagBadge tag={p.tag}/></div>
               </div>
-            </div>
-          </motion.div>
-        ))}
+              <div className="photo-info">
+                <div style={{fontWeight:600,fontSize:13,marginBottom:3}}>{p.location}</div>
+                <div style={{color:"var(--text3)",fontSize:11,display:"flex",justifyContent:"space-between"}}>
+                  <span>{p.stage}</span><span>{p.date}</span>
+                </div>
+              </div>
+            </motion.div>
+          );
+        })}
       </motion.div>
 
       {/* Pagination footer */}
@@ -1022,6 +1162,19 @@ export const PhotosScreen = () => {
               <span style={{fontSize:12,color:"var(--text3)"}}>{selected.stage} · {selected.location}</span>
             </div>
             <div style={{display:"flex",gap:8}}>
+              <Btn
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setPhotosToExport([{
+                    ...selected,
+                    notes: selectedDetails?.notes ?? [],
+                  }]);
+                  setExportModalOpen(true);
+                }}
+              >
+                <Icon n="archive" s={13}/> ייצוא לארכיון
+              </Btn>
               {canManagePhotos && (
                 <Btn
                   size="sm"
@@ -1070,6 +1223,35 @@ export const PhotosScreen = () => {
           loading={deletingPhoto}
           onClose={() => !deletingPhoto && setDeleteConfirmOpen(false)}
           onConfirm={deleteSelectedPhoto}
+        />
+      )}
+      {projectId && (
+        <ExportToArchiveModal
+          isOpen={exportModalOpen}
+          onClose={() => setExportModalOpen(false)}
+          projectId={projectId}
+          photos={photosToExport}
+          onSuccess={(info) => {
+            setExportModalOpen(false);
+            setSelected(null);
+            setSelectionMode(false);
+            setSelectedPhotoIds(new Set());
+            if (info?.deleted) {
+              setPhotos(prev => prev.filter(p => !photosToExport.some(e => (e.id || e._id) === (p.id || p._id))));
+              refetch();
+              setFeedback({
+                title: 'הייצוא הושלם בהצלחה',
+                message: `${info.count === 1 ? 'התמונה הועברה' : `${info.count} תמונות הועברו`} בהצלחה לארכיון הפרויקט ונמחקו מגלריית התמונות.`,
+                type: 'success',
+              });
+            } else {
+              setFeedback({
+                title: 'הייצוא הושלם בהצלחה',
+                message: `${info.count === 1 ? 'התמונה הועברה' : `${info.count} תמונות הועברו`} בהצלחה לארכיון הפרויקט.`,
+                type: 'success',
+              });
+            }
+          }}
         />
       )}
     </div>
