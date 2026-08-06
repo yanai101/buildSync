@@ -9,19 +9,24 @@ export interface ArchiveSectionOption {
   count: number;
 }
 
+export interface StagedFileItem {
+  id: string;
+  file: File;
+  previewUrl: string;
+  note: string;
+  isImage: boolean;
+}
+
 interface UploadToArchiveModalProps {
   isOpen: boolean;
   onClose: () => void;
-  file: File | null;
+  initialFiles: File[];
   projectId: Id<'projects'>;
   initialSectionId?: string | null;
   initialSectionName?: string;
   existingSections: ArchiveSectionOption[];
   onSuccess: (info: {
-    fileId: string;
-    name: string;
-    sectionId?: string;
-    note?: string;
+    count: number;
     originalSize: number;
     storedSize: number;
     saved: number;
@@ -29,10 +34,12 @@ interface UploadToArchiveModalProps {
   }) => void;
 }
 
+const MAX_SECTION_PHOTOS = 3;
+
 export const UploadToArchiveModal: React.FC<UploadToArchiveModalProps> = ({
   isOpen,
   onClose,
-  file,
+  initialFiles,
   projectId,
   initialSectionId,
   initialSectionName,
@@ -41,33 +48,48 @@ export const UploadToArchiveModal: React.FC<UploadToArchiveModalProps> = ({
 }) => {
   const uploadFile = usePersonalFileUploader(projectId);
 
-  const [previewUrl, setPreviewUrl] = React.useState<string | null>(null);
-  const [noteText, setNoteText] = React.useState('');
+  const [items, setItems] = React.useState<StagedFileItem[]>([]);
   const [groupMode, setGroupMode] = React.useState<'existing' | 'new' | 'none'>('existing');
   const [selectedSectionId, setSelectedSectionId] = React.useState<string>('');
   const [newGroupName, setNewGroupName] = React.useState('');
   const [isUploading, setIsUploading] = React.useState(false);
+  const [uploadProgress, setUploadProgress] = React.useState<{ current: number; total: number } | null>(null);
   const [errorMsg, setErrorMsg] = React.useState<string | null>(null);
 
-  // Generate object URL for image preview
+  const cameraInputRef = React.useRef<HTMLInputElement | null>(null);
+  const galleryInputRef = React.useRef<HTMLInputElement | null>(null);
+
+  // Initialize staged items when modal opens or initialFiles change
   React.useEffect(() => {
-    if (file && file.type.startsWith('image/')) {
-      const url = URL.createObjectURL(file);
-      setPreviewUrl(url);
-      return () => {
-        URL.revokeObjectURL(url);
+    if (!isOpen) return;
+
+    setErrorMsg(null);
+    setIsUploading(false);
+    setUploadProgress(null);
+
+    const initialItems: StagedFileItem[] = initialFiles.map((file) => {
+      const isImg = file.type.startsWith('image/') || /\.(jpg|jpeg|png|webp|avif|heic|heif|bmp|gif)$/i.test(file.name);
+      return {
+        id: crypto.randomUUID(),
+        file,
+        previewUrl: isImg ? URL.createObjectURL(file) : '',
+        note: '',
+        isImage: isImg,
       };
-    } else {
-      setPreviewUrl(null);
-    }
-  }, [file]);
+    });
+
+    setItems(initialItems);
+
+    return () => {
+      initialItems.forEach((item) => {
+        if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
+      });
+    };
+  }, [isOpen, initialFiles]);
 
   // Set initial section states when opening
   React.useEffect(() => {
     if (!isOpen) return;
-    setErrorMsg(null);
-    setNoteText('');
-    setIsUploading(false);
 
     if (initialSectionId) {
       const match = existingSections.find((s) => s.id === initialSectionId);
@@ -87,9 +109,13 @@ export const UploadToArchiveModal: React.FC<UploadToArchiveModalProps> = ({
     }
   }, [isOpen, initialSectionId, initialSectionName, existingSections]);
 
-  if (!isOpen || !file) return null;
+  if (!isOpen) return null;
 
-  const isImage = file.type.startsWith('image/') || /\.(jpg|jpeg|png|webp|avif|heic|heif|bmp|gif)$/i.test(file.name);
+  const isAllImages = items.every((i) => i.isImage);
+  const selectedSection = existingSections.find((s) => s.id === selectedSectionId);
+  const currentSectionCount = groupMode === 'existing' && selectedSection ? selectedSection.count : 0;
+  const remainingSlots = Math.max(0, MAX_SECTION_PHOTOS - currentSectionCount - items.length);
+  const canAddMore = isAllImages && remainingSlots > 0;
 
   const formatBytes = (bytes: number): string => {
     if (bytes === 0) return '0 B';
@@ -99,54 +125,147 @@ export const UploadToArchiveModal: React.FC<UploadToArchiveModalProps> = ({
     return `${(bytes / Math.pow(k, i)).toFixed(1)} ${sizes[i]}`;
   };
 
+  const handleAddFiles = (newFiles: FileList | null) => {
+    if (!newFiles || newFiles.length === 0) return;
+    const filesArray = Array.from(newFiles);
+
+    // Limit to remaining capacity
+    const slotsAvailable = Math.max(0, MAX_SECTION_PHOTOS - currentSectionCount - items.length);
+    const toAdd = filesArray.slice(0, slotsAvailable);
+
+    if (toAdd.length < filesArray.length) {
+      setErrorMsg(`ניתן להעלות עד ${MAX_SECTION_PHOTOS} תמונות בסך הכל לקבוצה זו.`);
+    } else {
+      setErrorMsg(null);
+    }
+
+    const newItems: StagedFileItem[] = toAdd.map((file) => {
+      const isImg = file.type.startsWith('image/') || /\.(jpg|jpeg|png|webp|avif|heic|heif|bmp|gif)$/i.test(file.name);
+      return {
+        id: crypto.randomUUID(),
+        file,
+        previewUrl: isImg ? URL.createObjectURL(file) : '',
+        note: '',
+        isImage: isImg,
+      };
+    });
+
+    setItems((prev) => [...prev, ...newItems]);
+  };
+
+  const handleRemoveItem = (id: string) => {
+    setItems((prev) => {
+      const target = prev.find((item) => item.id === id);
+      if (target?.previewUrl) {
+        URL.revokeObjectURL(target.previewUrl);
+      }
+      const updated = prev.filter((item) => item.id !== id);
+      if (updated.length === 0) {
+        onClose();
+      }
+      return updated;
+    });
+  };
+
+  const handleItemNoteChange = (id: string, note: string) => {
+    setItems((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, note } : item))
+    );
+  };
+
   const handleUpload = async () => {
-    if (!file || !projectId) return;
+    if (items.length === 0 || !projectId) return;
 
     let targetSectionId: string | undefined = undefined;
     let targetSectionName: string | undefined = undefined;
-    if (groupMode === 'existing' && selectedSectionId) {
-      targetSectionId = selectedSectionId;
-      const matched = existingSections.find((s) => s.id === selectedSectionId);
-      targetSectionName = matched?.name || undefined;
-    } else if (groupMode === 'new') {
-      targetSectionId = initialSectionId || crypto.randomUUID();
-      targetSectionName = newGroupName.trim() || undefined;
+
+    if (isAllImages) {
+      if (groupMode === 'existing' && selectedSectionId) {
+        targetSectionId = selectedSectionId;
+        const matched = existingSections.find((s) => s.id === selectedSectionId);
+        targetSectionName = matched?.name || undefined;
+      } else if (groupMode === 'new') {
+        targetSectionId = initialSectionId || crypto.randomUUID();
+        targetSectionName = newGroupName.trim() || undefined;
+      }
     }
 
     setIsUploading(true);
     setErrorMsg(null);
 
-    try {
-      const finalNote = noteText.trim();
-      const result = await uploadFile(file, targetSectionId, finalNote, targetSectionName);
+    let totalOriginalSize = 0;
+    let totalStoredSize = 0;
 
-      const saved = Math.max(0, file.size - result.storedSize);
-      const pct = file.size > 0 ? Math.round((saved / file.size) * 100) : 0;
+    try {
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        setUploadProgress({ current: i + 1, total: items.length });
+        totalOriginalSize += item.file.size;
+
+        const res = await uploadFile(
+          item.file,
+          targetSectionId,
+          item.note.trim(),
+          targetSectionName
+        );
+        totalStoredSize += res.storedSize;
+      }
+
+      const totalSaved = Math.max(0, totalOriginalSize - totalStoredSize);
+      const pct = totalOriginalSize > 0 ? Math.round((totalSaved / totalOriginalSize) * 100) : 0;
 
       onSuccess({
-        fileId: result.fileId,
-        name: file.name,
-        sectionId: targetSectionId,
-        note: finalNote,
-        originalSize: file.size,
-        storedSize: result.storedSize,
-        saved,
+        count: items.length,
+        originalSize: totalOriginalSize,
+        storedSize: totalStoredSize,
+        saved: totalSaved,
         pct,
       });
       onClose();
     } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : 'שגיאה בעת העלאת הקובץ');
+      setErrorMsg(err instanceof Error ? err.message : 'שגיאה בעת העלאת הקבצים');
     } finally {
       setIsUploading(false);
+      setUploadProgress(null);
     }
   };
 
   return (
     <Modal
-      title={isImage ? 'העלאת תמונה לארכיון' : 'העלאת מסמך לארכיון'}
+      title={
+        isAllImages
+          ? items.length > 1
+            ? `העלאת ${items.length} תמונות לארכיון`
+            : 'העלאת תמונה לארכיון'
+          : 'העלאת מסמך לארכיון'
+      }
       onClose={isUploading ? () => {} : onClose}
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 540 }}>
+        {/* Hidden inputs for adding additional files from modal */}
+        <input
+          ref={cameraInputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          style={{ display: 'none' }}
+          onChange={(e) => {
+            handleAddFiles(e.target.files);
+            e.target.value = '';
+          }}
+        />
+        <input
+          ref={galleryInputRef}
+          type="file"
+          accept="image/*"
+          multiple
+          style={{ display: 'none' }}
+          onChange={(e) => {
+            handleAddFiles(e.target.files);
+            e.target.value = '';
+          }}
+        />
+
         {/* Error message */}
         {errorMsg && (
           <div
@@ -167,79 +286,171 @@ export const UploadToArchiveModal: React.FC<UploadToArchiveModalProps> = ({
           </div>
         )}
 
-        {/* Media preview and file details */}
-        <div
-          style={{
-            display: 'flex',
-            gap: 14,
-            background: 'var(--bg)',
-            border: '1px solid var(--border)',
-            borderRadius: 10,
-            padding: 12,
-            alignItems: 'center',
-          }}
-        >
-          {previewUrl ? (
+        {/* Staged Media Items List / Cards */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {items.map((item, idx) => (
             <div
+              key={item.id}
               style={{
-                width: 72,
-                height: 72,
-                borderRadius: 8,
-                overflow: 'hidden',
-                flexShrink: 0,
-                border: '1px solid var(--border)',
-                background: '#000',
-              }}
-            >
-              <img
-                src={previewUrl}
-                alt={file.name}
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-              />
-            </div>
-          ) : (
-            <div
-              style={{
-                width: 72,
-                height: 72,
-                borderRadius: 8,
-                background: 'var(--surface)',
-                border: '1px solid var(--border)',
                 display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: 'var(--accent)',
-                flexShrink: 0,
+                flexDirection: 'column',
+                gap: 10,
+                background: 'var(--bg)',
+                border: '1px solid var(--border)',
+                borderRadius: 10,
+                padding: 12,
               }}
             >
-              <Icon n={isImage ? 'image' : 'file-text'} s={32} />
+              <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                {item.previewUrl ? (
+                  <div
+                    style={{
+                      width: 64,
+                      height: 64,
+                      borderRadius: 8,
+                      overflow: 'hidden',
+                      flexShrink: 0,
+                      border: '1px solid var(--border)',
+                      background: '#000',
+                    }}
+                  >
+                    <img
+                      src={item.previewUrl}
+                      alt={item.file.name}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
+                  </div>
+                ) : (
+                  <div
+                    style={{
+                      width: 64,
+                      height: 64,
+                      borderRadius: 8,
+                      background: 'var(--surface)',
+                      border: '1px solid var(--border)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'var(--accent)',
+                      flexShrink: 0,
+                    }}
+                  >
+                    <Icon n={item.isImage ? 'image' : 'file-text'} s={28} />
+                  </div>
+                )}
+
+                <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 3 }}>
+                  <div
+                    style={{
+                      fontWeight: 700,
+                      fontSize: 13,
+                      color: 'var(--text1)',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}
+                    title={item.file.name}
+                  >
+                    {item.file.name}
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--text2)', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <span>{formatBytes(item.file.size)}</span>
+                    {item.isImage && <span style={{ color: 'var(--success, #16a34a)' }}>⚡ כיווץ WebP אוטומטי</span>}
+                  </div>
+                </div>
+
+                {items.length > 1 && !isUploading && (
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveItem(item.id)}
+                    title="הסר תמונה"
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      color: 'var(--danger)',
+                      cursor: 'pointer',
+                      padding: 6,
+                      display: 'flex',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <Icon n="trash" s={16} />
+                  </button>
+                )}
+              </div>
+
+              {/* Note input for this specific photo */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <input
+                  className="bp-input"
+                  value={item.note}
+                  onChange={(e) => handleItemNoteChange(item.id, e.target.value)}
+                  placeholder={items.length > 1 ? `הערה לתמונה ${idx + 1}...` : "הוסף הערה או תיאור לתמונה..."}
+                  disabled={isUploading}
+                  style={{ width: '100%', fontSize: 13, padding: '7px 10px' }}
+                />
+              </div>
+            </div>
+          ))}
+
+          {/* Buttons to snap another photo or add from gallery if slots remaining */}
+          {canAddMore && !isUploading && (
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 2 }}>
+              <button
+                type="button"
+                className="mobile-only"
+                onClick={() => cameraInputRef.current?.click()}
+                style={{
+                  flex: 1,
+                  padding: '9px 12px',
+                  borderRadius: 8,
+                  border: '1px dashed var(--accent)',
+                  background: 'var(--accent-subtle, rgba(235,94,40,0.06))',
+                  color: 'var(--accent)',
+                  fontWeight: 600,
+                  fontSize: 13,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 6,
+                  fontFamily: "'Heebo',sans-serif",
+                }}
+              >
+                <Icon n="camera" s={15} />
+                <span>צלם תמונה נוספת ({items.length}/{MAX_SECTION_PHOTOS})</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => galleryInputRef.current?.click()}
+                style={{
+                  flex: 1,
+                  padding: '9px 12px',
+                  borderRadius: 8,
+                  border: '1px dashed var(--border)',
+                  background: 'var(--surface)',
+                  color: 'var(--text2)',
+                  fontWeight: 600,
+                  fontSize: 13,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 6,
+                  fontFamily: "'Heebo',sans-serif",
+                }}
+              >
+                <Icon n="plus" s={15} />
+                <span>הוסף מהגלריה ({items.length}/{MAX_SECTION_PHOTOS})</span>
+              </button>
             </div>
           )}
-
-          <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <div
-              style={{
-                fontWeight: 700,
-                fontSize: 14,
-                color: 'var(--text1)',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-              }}
-              title={file.name}
-            >
-              {file.name}
-            </div>
-            <div style={{ fontSize: 12, color: 'var(--text2)', display: 'flex', gap: 10 }}>
-              <span>גודל מקורי: {formatBytes(file.size)}</span>
-              {isImage && <span style={{ color: 'var(--success, #16a34a)' }}>⚡ יידחס אוטומטית</span>}
-            </div>
-          </div>
         </div>
 
         {/* Section / Group Selection (for images) */}
-        {isImage && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {isAllImages && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4 }}>
             <label style={{ fontSize: 13, fontWeight: 700, color: 'var(--text1)' }}>
               קבוצה בארכיון
             </label>
@@ -248,6 +459,7 @@ export const UploadToArchiveModal: React.FC<UploadToArchiveModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setGroupMode('existing')}
+                  disabled={isUploading}
                   style={{
                     flex: 1,
                     padding: '8px 12px',
@@ -270,6 +482,7 @@ export const UploadToArchiveModal: React.FC<UploadToArchiveModalProps> = ({
               <button
                 type="button"
                 onClick={() => setGroupMode('new')}
+                disabled={isUploading}
                 style={{
                   flex: 1,
                   padding: '8px 12px',
@@ -291,6 +504,7 @@ export const UploadToArchiveModal: React.FC<UploadToArchiveModalProps> = ({
               <button
                 type="button"
                 onClick={() => setGroupMode('none')}
+                disabled={isUploading}
                 style={{
                   flex: 1,
                   padding: '8px 12px',
@@ -315,6 +529,7 @@ export const UploadToArchiveModal: React.FC<UploadToArchiveModalProps> = ({
               <select
                 className="bp-input"
                 value={selectedSectionId}
+                disabled={isUploading}
                 onChange={(e) => setSelectedSectionId(e.target.value)}
                 style={{ width: '100%', fontSize: 13, padding: '8px 10px', marginTop: 4 }}
               >
@@ -331,6 +546,7 @@ export const UploadToArchiveModal: React.FC<UploadToArchiveModalProps> = ({
                 className="bp-input"
                 placeholder="הזן שם לקבוצה החדשה (לדוגמה: איטום מרפסת)..."
                 value={newGroupName}
+                disabled={isUploading}
                 onChange={(e) => setNewGroupName(e.target.value)}
                 style={{ width: '100%', fontSize: 13, padding: '8px 10px', marginTop: 4 }}
               />
@@ -338,39 +554,27 @@ export const UploadToArchiveModal: React.FC<UploadToArchiveModalProps> = ({
           </div>
         )}
 
-        {/* Note / Description input */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <label style={{ fontSize: 13, fontWeight: 700, color: 'var(--text1)', display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Icon n="file-text" s={14} /> הערה / תיאור לתמונה
-            </label>
-            <span style={{ fontSize: 11, color: 'var(--text3)' }}>אופציונלי</span>
-          </div>
-          <textarea
-            className="bp-input"
-            rows={3}
-            value={noteText}
-            onChange={(e) => setNoteText(e.target.value)}
-            placeholder="הוסף תיאור מפורט של התמונה (לדוגמה: בוצע איטום ביטומני בשכבה כפולה כולל רולקות)..."
-            style={{ width: '100%', fontSize: 13, padding: '10px', resize: 'vertical' }}
-          />
-        </div>
-
-        {/* Action Buttons */}
+        {/* Action Buttons & Progress */}
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 8 }}>
           <Btn variant="ghost" onClick={onClose} disabled={isUploading}>
             ביטול
           </Btn>
-          <Btn variant="primary" onClick={handleUpload} disabled={isUploading}>
+          <Btn variant="primary" onClick={handleUpload} disabled={isUploading || items.length === 0}>
             {isUploading ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <Icon n="loader" s={16} className="spin" />
-                <span>מעלה ומכווץ...</span>
+                <span>
+                  {uploadProgress
+                    ? `מעלה ומכווץ (${uploadProgress.current}/${uploadProgress.total})...`
+                    : 'מעלה ומכווץ...'}
+                </span>
               </div>
             ) : (
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <Icon n="upload" s={16} />
-                <span>העלה ושמור לארכיון</span>
+                <span>
+                  {items.length > 1 ? `העלה ${items.length} תמונות לארכיון` : 'העלה ושמור לארכיון'}
+                </span>
               </div>
             )}
           </Btn>

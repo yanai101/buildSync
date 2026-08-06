@@ -143,7 +143,7 @@ export const PersonalFilesScreen = () => {
   const targetSectionRef = React.useRef<string | null>(null);
   
   const [uploading, setUploading] = React.useState(false);
-  const [uploadModalFile, setUploadModalFile] = React.useState<File | null>(null);
+  const [uploadModalFiles, setUploadModalFiles] = React.useState<File[]>([]);
   const [editingFileNote, setEditingFileNote] = React.useState<{ id: Id<'personalFiles'>; name: string; note: string } | null>(null);
 
   const [pendingDelete, setPendingDelete] = React.useState<string | null>(null);
@@ -200,10 +200,11 @@ export const PersonalFilesScreen = () => {
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+    const files = e.target.files;
     e.target.value = '';
-    if (!file) return;
-    setUploadModalFile(file);
+    if (!files || files.length === 0) return;
+    const filesArray = Array.from(files);
+    setUploadModalFiles(filesArray.slice(0, 3));
   };
 
   const handleNoteChange = (fileId: Id<'personalFiles'>, value: string) => {
@@ -1016,7 +1017,7 @@ export const PersonalFilesScreen = () => {
             </div>
           </div>
           
-          <input ref={fileInputRef} type="file" style={{ display: 'none' }} onChange={handleFileChange} />
+          <input ref={fileInputRef} type="file" accept={activeTab === 'images' ? 'image/*' : undefined} multiple={activeTab === 'images'} style={{ display: 'none' }} onChange={handleFileChange} />
           <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={handleFileChange} />
 
           <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
@@ -1136,26 +1137,28 @@ export const PersonalFilesScreen = () => {
       )}
 
       {/* Upload To Archive Modal */}
-      {uploadModalFile && (
+      {uploadModalFiles.length > 0 && (
         <UploadToArchiveModal
-          isOpen={!!uploadModalFile}
-          file={uploadModalFile}
+          isOpen={uploadModalFiles.length > 0}
+          initialFiles={uploadModalFiles}
           projectId={projectId}
           initialSectionId={targetSectionRef.current || undefined}
           existingSections={existingSectionsForModal}
           onClose={() => {
-            setUploadModalFile(null);
+            setUploadModalFiles([]);
             targetSectionRef.current = null;
           }}
           onSuccess={async (res) => {
             if (targetSectionRef.current && emptySections.some(s => s.id === targetSectionRef.current)) {
               setEmptySections(prev => prev.filter(s => s.id !== targetSectionRef.current));
             }
-            setUploadModalFile(null);
+            setUploadModalFiles([]);
             targetSectionRef.current = null;
             await notify({
-              title: 'הקובץ נשמר בארכיון',
-              body: `${uploadModalFile.name} נשמר בהצלחה`,
+              title: 'הקבצים נשמרו בארכיון',
+              body: res.count === 1
+                ? `הקובץ נשמר בהצלחה (נחסכו ${res.pct}% בנפח)`
+                : `${res.count} תמונות נשמרו בהצלחה (נחסכו ${res.pct}% בנפח)`,
               kind: 'success',
             });
           }}
