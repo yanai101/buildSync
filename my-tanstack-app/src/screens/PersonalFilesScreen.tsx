@@ -12,6 +12,7 @@ import { AccessDenied, AccessLoading } from '../components/AccessDenied';
 import { useSubscription } from '../hooks/useSubscription';
 import { PremiumLock, Modal, ConfirmDialog } from '../components/Shared';
 import { ImageGalleryViewer } from '../components/ImageGalleryViewer';
+import { UploadToArchiveModal } from '../components/UploadToArchiveModal';
 import { useCurrentProject } from '../hooks/useCurrentProject';
 
 const MAX_FILES = 30;
@@ -37,6 +38,84 @@ const decompress = (bytes: Uint8Array): Promise<Uint8Array> =>
     });
   });
 
+const ArchiveImageThumbnail: React.FC<{
+  file: any;
+  fetchAndDecompress: (file: any) => Promise<string>;
+  onClick: () => void;
+}> = ({ file, fetchAndDecompress, onClick }) => {
+  const [thumbUrl, setThumbUrl] = React.useState<string | null>(null);
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    let active = true;
+    fetchAndDecompress(file)
+      .then((url) => {
+        if (active) {
+          setThumbUrl(url);
+          setLoading(false);
+        }
+      })
+      .catch(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [file.id, file.url]);
+
+  return (
+    <div
+      onClick={onClick}
+      style={{
+        width: '100%',
+        height: 110,
+        borderRadius: 8,
+        overflow: 'hidden',
+        background: '#18181b',
+        position: 'relative',
+        cursor: 'pointer',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        border: '1px solid var(--border)',
+      }}
+    >
+      {loading ? (
+        <div style={{ color: 'var(--text3)', display: 'flex', alignItems: 'center', gap: 6, fontSize: 11 }}>
+          <Icon n="loader" s={16} className="spin" />
+        </div>
+      ) : thumbUrl ? (
+        <img
+          src={thumbUrl}
+          alt={file.originalName}
+          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+          loading="lazy"
+        />
+      ) : (
+        <Icon n="image" s={28} c="var(--text3)" />
+      )}
+      <div
+        className="thumb-hover-overlay"
+        style={{
+          position: 'absolute',
+          inset: 0,
+          background: 'rgba(0,0,0,0.38)',
+          opacity: 0,
+          transition: 'opacity 0.2s',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: '#fff',
+        }}
+        onMouseOver={(e) => (e.currentTarget.style.opacity = '1')}
+        onMouseOut={(e) => (e.currentTarget.style.opacity = '0')}
+      >
+        <Icon n="maximize-2" s={18} />
+      </div>
+    </div>
+  );
+};
+
 export const PersonalFilesScreen = () => {
   const { allowed, loading: roleLoading } = useRequireRole(['owner', 'manager', 'inspector']);
   const { project, projectId, isLoading: projectLoading } = useCurrentProject();
@@ -53,7 +132,7 @@ export const PersonalFilesScreen = () => {
     allowed && projectId ? { projectId } : 'skip',
   );
   const updateNote = useMutation(api.personalFiles.updatePersonalFileNote);
-  const updateFilesNote = useMutation(api.personalFiles.updatePersonalFilesNote);
+  const updateSectionName = useMutation(api.personalFiles.updatePersonalSectionName);
   const deleteFile = useMutation(api.personalFiles.deletePersonalFile);
   const deleteSection = useMutation(api.personalFiles.deletePersonalSection);
   const uploadFile = usePersonalFileUploader(projectId);
@@ -64,24 +143,29 @@ export const PersonalFilesScreen = () => {
   const targetSectionRef = React.useRef<string | null>(null);
   
   const [uploading, setUploading] = React.useState(false);
+  const [uploadModalFile, setUploadModalFile] = React.useState<File | null>(null);
+  const [editingFileNote, setEditingFileNote] = React.useState<{ id: Id<'personalFiles'>; name: string; note: string } | null>(null);
+
   const [pendingDelete, setPendingDelete] = React.useState<string | null>(null);
   const [pendingDownload, setPendingDownload] = React.useState<string | null>(null);
   const [pendingPreview, setPendingPreview] = React.useState<string | null>(null);
   const [isGeneratingPdf, setIsGeneratingPdf] = React.useState(false);
   
+  const [sectionDrafts, setSectionDrafts] = React.useState<Record<string, string>>({});
   const [noteDrafts, setNoteDrafts] = React.useState<Record<string, string>>({});
   const [savingNote, setSavingNote] = React.useState<string | null>(null);
   const noteTimers = React.useRef<Record<string, number>>({});
+  const sectionTimers = React.useRef<Record<string, number>>({});
   
-  const [emptySections, setEmptySections] = React.useState<{id: string, note: string}[]>([]);
+  const [emptySections, setEmptySections] = React.useState<{id: string, name: string}[]>([]);
   
   const [previewFile, setPreviewFile] = React.useState<{url: string, name: string, isImage: boolean} | null>(null);
   const [selectedImages, setSelectedImages] = React.useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = React.useState<'images' | 'docs'>('images');
   const [fileToDelete, setFileToDelete] = React.useState<{id: Id<'personalFiles'>, name: string} | null>(null);
-  const [sectionToDelete, setSectionToDelete] = React.useState<{ id: string; note: string; count: number } | null>(null);
+  const [sectionToDelete, setSectionToDelete] = React.useState<{ id: string; name: string; count: number } | null>(null);
   const [pendingDeleteSection, setPendingDeleteSection] = React.useState<string | null>(null);
-  const [viewGallery, setViewGallery] = React.useState<{ images: {url: string, title?: string, description?: string}[], initialIndex: number } | null>(null);
+  const [viewGallery, setViewGallery] = React.useState<{ images: { id?: string; url: string; title?: string; description?: string; groupName?: string }[], initialIndex: number } | null>(null);
   const [expandedSections, setExpandedSections] = React.useState<Set<string>>(new Set());
 
   const isOwner = archivePerms?.isOwner ?? (project?.myRole === 'owner' || identity?.isSuperAdmin);
@@ -115,41 +199,11 @@ export const PersonalFilesScreen = () => {
     cameraInputRef.current?.click();
   };
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
-    setUploading(true);
-    
-    const targetSection = targetSectionRef.current;
-    const isImage = file.type.startsWith('image/');
-    
-    try {
-      const draftedNote = targetSection ? (noteDrafts[targetSection] ?? emptySections.find(s => s.id === targetSection)?.note) : '';
-      
-      const result = await uploadFile(file, isImage && targetSection ? targetSection : undefined, isImage && draftedNote ? draftedNote : undefined);
-      
-      if (targetSection && emptySections.some(s => s.id === targetSection)) {
-        setEmptySections(prev => prev.filter(s => s.id !== targetSection));
-      }
-
-      const saved = Math.max(0, file.size - result.storedSize);
-      const pct = file.size > 0 ? Math.round((saved / file.size) * 100) : 0;
-      await notify({
-        title: 'הקובץ נשמר',
-        body: `${file.name} · נחסכו ${formatBytes(saved)} (${pct}%)`,
-        kind: 'success',
-      });
-    } catch (err) {
-      await notify({
-        title: 'העלאה נכשלה',
-        body: err instanceof Error ? err.message : 'אירעה שגיאה',
-        kind: 'error',
-      });
-    } finally {
-      setUploading(false);
-      targetSectionRef.current = null;
-    }
+    setUploadModalFile(file);
   };
 
   const handleNoteChange = (fileId: Id<'personalFiles'>, value: string) => {
@@ -173,25 +227,26 @@ export const PersonalFilesScreen = () => {
     }, 600);
   };
 
-  const handleSectionNoteChange = (sectionId: string, value: string, sectionFiles: typeof imageFiles) => {
-    setNoteDrafts((prev) => ({ ...prev, [sectionId]: value }));
+  const handleSectionNameChange = (sectionId: string, value: string, sectionFiles: typeof imageFiles) => {
+    setSectionDrafts((prev) => ({ ...prev, [sectionId]: value }));
     
     if (sectionFiles.length === 0) {
-      setEmptySections(prev => prev.map(s => s.id === sectionId ? { ...s, note: value } : s));
+      setEmptySections(prev => prev.map(s => s.id === sectionId ? { ...s, name: value } : s));
       return;
     }
 
-    const existing = noteTimers.current[sectionId];
+    if (!projectId) return;
+
+    const existing = sectionTimers.current[sectionId];
     if (existing) window.clearTimeout(existing);
-    noteTimers.current[sectionId] = window.setTimeout(async () => {
-      setSavingNote(sectionId);
+    sectionTimers.current[sectionId] = window.setTimeout(async () => {
+      setSavingNote(`sec-${sectionId}`);
       try {
-        const fileIds = sectionFiles.map(f => f.id);
-        await updateFilesNote({ fileIds, note: value });
+        await updateSectionName({ projectId, sectionId, name: value });
       } catch (err) {
-        await notify({ title: 'שמירת ההערה נכשלה', body: err instanceof Error ? err.message : 'אירעה שגיאה', kind: 'error' });
+        await notify({ title: 'שמירת שם הקבוצה נכשלה', body: err instanceof Error ? err.message : 'אירעה שגיאה', kind: 'error' });
       } finally {
-        setSavingNote((cur) => (cur === sectionId ? null : cur));
+        setSavingNote((cur) => (cur === `sec-${sectionId}` ? null : cur));
       }
     }, 600);
   };
@@ -236,8 +291,15 @@ export const PersonalFilesScreen = () => {
       const items = await Promise.all(imageFiles.map(async (f) => {
          const objectUrl = await fetchAndDecompress(f);
          const sectionId = f.sectionId || `legacy-${f.id}`;
-         const note = noteDrafts[sectionId] ?? f.note ?? '';
-         return { url: objectUrl, title: f.originalName, description: note };
+         const groupName = sectionDrafts[sectionId] ?? emptySections.find(s => s.id === sectionId)?.name ?? f.sectionName ?? '';
+         const photoNote = noteDrafts[String(f.id)] ?? f.note ?? '';
+         return {
+           id: String(f.id),
+           url: objectUrl,
+           title: f.originalName,
+           description: photoNote,
+           groupName,
+         };
       }));
       setViewGallery({ images: items, initialIndex: startIndex });
     } catch (err) {
@@ -277,17 +339,18 @@ export const PersonalFilesScreen = () => {
       const filesToExport = imageFiles.filter(f => selectedImages.has(f.id));
       
       // Group by section for the PDF
-      const pdfSections = new Map<string, { note: string, items: { url: string, name: string }[] }>();
+      const pdfSections = new Map<string, { name: string, items: { url: string, name: string, note?: string }[] }>();
       
       for (const f of filesToExport) {
          const url = await fetchAndDecompress(f);
          const sectionId = f.sectionId || `legacy-${f.id}`;
-         const note = noteDrafts[sectionId] ?? f.note ?? '';
+         const groupName = sectionDrafts[sectionId] ?? emptySections.find(s => s.id === sectionId)?.name ?? f.sectionName ?? '';
+         const photoNote = noteDrafts[String(f.id)] ?? f.note ?? '';
          
          if (!pdfSections.has(sectionId)) {
-           pdfSections.set(sectionId, { note, items: [] });
+           pdfSections.set(sectionId, { name: groupName, items: [] });
          }
-         pdfSections.get(sectionId)!.items.push({ url, name: f.originalName });
+         pdfSections.get(sectionId)!.items.push({ url, name: f.originalName, note: photoNote });
       }
 
       const container = document.createElement('div');
@@ -345,9 +408,9 @@ export const PersonalFilesScreen = () => {
          sectionDiv.style.marginBottom = '30px';
          sectionDiv.style.pageBreakInside = 'avoid';
          
-         if (section.note) {
+         if (section.name) {
            const noteEl = document.createElement('h3');
-           noteEl.innerText = section.note;
+           noteEl.innerText = section.name;
            noteEl.style.fontSize = '18px';
            noteEl.style.color = '#333';
            noteEl.style.marginBottom = '16px';
@@ -360,16 +423,37 @@ export const PersonalFilesScreen = () => {
          grid.style.display = 'flex';
          grid.style.flexWrap = 'wrap';
          grid.style.gap = '12px';
-         grid.style.justifyContent = 'flex-start'; // Align from the right (RTL)
+         grid.style.justifyContent = 'flex-start';
          
          section.items.forEach(item => {
+           const itemBox = document.createElement('div');
+           itemBox.style.width = 'calc(50% - 6px)';
+           itemBox.style.display = 'flex';
+           itemBox.style.flexDirection = 'column';
+           itemBox.style.gap = '6px';
+
            const img = document.createElement('img');
            img.src = item.url;
-           img.style.width = 'calc(50% - 6px)'; // Always exactly half width minus half gap
-           img.style.height = '280px'; // Fixed height to ensure consistent layout
+           img.style.width = '100%';
+           img.style.height = '240px';
            img.style.objectFit = 'contain';
            img.style.borderRadius = '8px';
-           grid.appendChild(img);
+           img.style.background = '#f9fafb';
+           itemBox.appendChild(img);
+
+           if (item.note) {
+             const noteP = document.createElement('div');
+             noteP.innerText = item.note;
+             noteP.style.fontSize = '12px';
+             noteP.style.color = '#444';
+             noteP.style.background = '#f3f4f6';
+             noteP.style.padding = '4px 8px';
+             noteP.style.borderRadius = '4px';
+             noteP.style.fontWeight = '500';
+             itemBox.appendChild(noteP);
+           }
+
+           grid.appendChild(itemBox);
          });
          
          sectionDiv.appendChild(grid);
@@ -414,15 +498,28 @@ export const PersonalFilesScreen = () => {
         const imagesInSection = imageFiles.filter(f => (f.sectionId || `legacy-${f.id}`) === sectionId);
         
         if (imagesInSection.length === 1) {
-          const note = noteDrafts[sectionId] ?? fileToDeleteRef.note ?? '';
+          const groupName = sectionDrafts[sectionId] ?? fileToDeleteRef.sectionName ?? '';
           setEmptySections(prev => {
              if (prev.some(s => s.id === sectionId)) return prev;
-             return [{ id: sectionId, note }, ...prev];
+             return [{ id: sectionId, name: groupName }, ...prev];
           });
         }
       }
 
       await deleteFile({ fileId });
+
+      // Clean up note draft and debounce timer for this file
+      const key = String(fileId);
+      if (noteTimers.current[key]) {
+        window.clearTimeout(noteTimers.current[key]);
+        delete noteTimers.current[key];
+      }
+      setNoteDrafts(prev => {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
+
       setSelectedImages(prev => {
         const next = new Set(prev);
         next.delete(fileId);
@@ -441,10 +538,19 @@ export const PersonalFilesScreen = () => {
     }
   };
 
-  const handleDeleteSection = async (sectionId: string, note: string, count: number) => {
+  const handleDeleteSection = async (sectionId: string, name: string, count: number) => {
     if (count === 0) {
       setEmptySections(prev => prev.filter(s => s.id !== sectionId));
       setSectionToDelete(null);
+      if (sectionTimers.current[sectionId]) {
+        window.clearTimeout(sectionTimers.current[sectionId]);
+        delete sectionTimers.current[sectionId];
+      }
+      setSectionDrafts(prev => {
+        const next = { ...prev };
+        delete next[sectionId];
+        return next;
+      });
       await notify({ title: 'הקבוצה נמחקה', body: 'קבוצה ריקה הוסרה', kind: 'info' });
       return;
     }
@@ -453,11 +559,38 @@ export const PersonalFilesScreen = () => {
 
     setPendingDeleteSection(sectionId);
     try {
+      const sectionFiles = imageFiles.filter(f => (f.sectionId || `legacy-${f.id}`) === sectionId);
       const res = await deleteSection({ projectId, sectionId });
+      
+      // Clean up drafts & timers for section and all files within it
+      if (sectionTimers.current[sectionId]) {
+        window.clearTimeout(sectionTimers.current[sectionId]);
+        delete sectionTimers.current[sectionId];
+      }
+      setSectionDrafts(prev => {
+        const next = { ...prev };
+        delete next[sectionId];
+        return next;
+      });
+
+      sectionFiles.forEach(f => {
+        const fKey = String(f.id);
+        if (noteTimers.current[fKey]) {
+          window.clearTimeout(noteTimers.current[fKey]);
+          delete noteTimers.current[fKey];
+        }
+      });
+      setNoteDrafts(prev => {
+        const next = { ...prev };
+        sectionFiles.forEach(f => {
+          delete next[String(f.id)];
+        });
+        return next;
+      });
+
       setEmptySections(prev => prev.filter(s => s.id !== sectionId));
       setSelectedImages(prev => {
         const next = new Set(prev);
-        const sectionFiles = imageFiles.filter(f => (f.sectionId || `legacy-${f.id}`) === sectionId);
         sectionFiles.forEach(f => next.delete(f.id));
         return next;
       });
@@ -557,17 +690,26 @@ export const PersonalFilesScreen = () => {
   });
 
   const allSections = [
-    ...emptySections.map(s => ({ id: s.id, note: s.note, files: [] as typeof imageFiles })),
+    ...emptySections.map(s => ({ id: s.id, name: s.name, files: [] as typeof imageFiles })),
     ...Array.from(imageSectionsMap.entries()).map(([id, files]) => ({
       id,
       files,
-      note: files[0]?.note || '',
+      name: files[0]?.sectionName || '',
     }))
   ];
 
-  const renderSection = (section: { id: string, note: string, files: typeof imageFiles }) => {
+  const existingSectionsForModal = [
+    ...emptySections.map(s => ({ id: s.id, name: s.name || 'קבוצה חדשה', count: 0 })),
+    ...Array.from(imageSectionsMap.entries()).map(([id, sFiles]) => ({
+      id,
+      name: sectionDrafts[id] ?? sFiles[0]?.sectionName ?? 'קבוצה ללא שם',
+      count: sFiles.length,
+    })),
+  ];
+
+  const renderSection = (section: { id: string, name: string, files: typeof imageFiles }) => {
     const key = section.id;
-    const noteValue = noteDrafts[key] ?? section.note ?? '';
+    const sectionNameValue = sectionDrafts[key] ?? section.name ?? '';
     const isFull = section.files.length >= 3;
     const isExpanded = !expandedSections.has(key); // Default to expanded, toggle to collapse
 
@@ -575,7 +717,7 @@ export const PersonalFilesScreen = () => {
       <div
         key={key}
         style={{
-          border: '1px solid var(--border)', borderRadius: 10, padding: '16px', background: 'var(--surface)',
+          border: '1px solid var(--border)', borderRadius: 12, padding: '16px', background: 'var(--surface)',
           display: 'flex', flexDirection: 'column', gap: 12,
         }}
       >
@@ -601,9 +743,9 @@ export const PersonalFilesScreen = () => {
           />
           <input
             className="bp-input"
-            value={noteValue}
+            value={sectionNameValue}
             placeholder="תיאור הקבוצה (לדוגמה: סלון - צנרת חשמל)..."
-            onChange={(e) => handleSectionNoteChange(key, e.target.value, section.files)}
+            onChange={(e) => handleSectionNameChange(key, e.target.value, section.files)}
             style={{ flex: 1, minWidth: 0, fontFamily: "'Heebo',sans-serif", fontSize: 14, fontWeight: 600, padding: '8px 10px' }}
           />
 
@@ -617,7 +759,7 @@ export const PersonalFilesScreen = () => {
           {isOwner && (
             <button
               type="button"
-              onClick={() => setSectionToDelete({ id: key, note: noteValue || 'קבוצה ללא שם', count: section.files.length })}
+              onClick={() => setSectionToDelete({ id: key, name: sectionNameValue || 'קבוצה ללא שם', count: section.files.length })}
               title="מחק קבוצה וכל התמונות שבה"
               style={{
                 background: 'transparent',
@@ -651,7 +793,7 @@ export const PersonalFilesScreen = () => {
         </div>
         
         <div style={{ fontSize: 11, color: 'var(--text3)', minHeight: 14, marginTop: -8, paddingInlineStart: 26 }}>
-          {savingNote === key ? 'שומר הערה...' : ''}
+          {savingNote === `sec-${key}` ? 'שומר שם קבוצה...' : ''}
         </div>
 
         {!isExpanded && section.files.length > 0 && (
@@ -664,35 +806,153 @@ export const PersonalFilesScreen = () => {
         )}
 
         {isExpanded && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12, paddingInlineStart: 30, marginTop: 4 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 14, paddingInlineStart: 26, marginTop: 4 }}>
             {section.files.map(file => {
+               const fileKey = String(file.id);
+               const photoNote = noteDrafts[fileKey] ?? file.note ?? '';
+
                return (
-                 <div key={file.id} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '8px', background: 'var(--surface)', display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <div style={{ fontSize: 12, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }} title={file.originalName}>
+                 <div
+                   key={file.id}
+                   style={{
+                     border: '1px solid var(--border)',
+                     borderRadius: 10,
+                     padding: '10px',
+                     background: 'var(--surface)',
+                     display: 'flex',
+                     flexDirection: 'column',
+                     gap: 8,
+                   }}
+                 >
+                    {/* Thumbnail Preview */}
+                    <ArchiveImageThumbnail
+                      file={file}
+                      fetchAndDecompress={fetchAndDecompress}
+                      onClick={() => void handlePreview(file)}
+                    />
+
+                    {/* Title & Checkbox */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 6 }}>
+                      <div style={{ fontSize: 12.5, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }} title={file.originalName}>
                         {file.originalName}
                       </div>
-                      <input type="checkbox" checked={selectedImages.has(file.id)} onChange={(e) => {
-                        const next = new Set(selectedImages);
-                        if (e.target.checked) next.add(file.id);
-                        else next.delete(file.id);
-                        setSelectedImages(next);
-                      }} style={{ width: 14, height: 14, cursor: 'pointer' }} />
+                      <input
+                        type="checkbox"
+                        checked={selectedImages.has(file.id)}
+                        onChange={(e) => {
+                          const next = new Set(selectedImages);
+                          if (e.target.checked) next.add(file.id);
+                          else next.delete(file.id);
+                          setSelectedImages(next);
+                        }}
+                        style={{ width: 15, height: 15, cursor: 'pointer', flexShrink: 0 }}
+                      />
                     </div>
+
+                    {/* Note Snippet / Edit Button */}
+                    {photoNote ? (
+                      <div
+                        style={{
+                          fontSize: 12,
+                          color: 'var(--text1)',
+                          background: 'var(--bg)',
+                          border: '1px solid var(--border)',
+                          borderRadius: 6,
+                          padding: '5px 8px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: 6,
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 5,
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                            flex: 1,
+                          }}
+                          title={photoNote}
+                        >
+                          <Icon n="file-text" s={13} c="var(--accent)" />
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{photoNote}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingFileNote({ id: file.id, name: file.originalName, note: photoNote });
+                          }}
+                          style={{
+                            background: 'transparent',
+                            border: 'none',
+                            cursor: 'pointer',
+                            color: 'var(--text2)',
+                            padding: 2,
+                            display: 'flex',
+                            alignItems: 'center',
+                            flexShrink: 0,
+                          }}
+                          title="ערוך הערה לתמונה"
+                        >
+                          <Icon n="edit-3" s={12} />
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditingFileNote({ id: file.id, name: file.originalName, note: '' });
+                        }}
+                        style={{
+                          fontSize: 11.5,
+                          color: 'var(--text3)',
+                          background: 'transparent',
+                          border: '1px dashed var(--border)',
+                          borderRadius: 6,
+                          padding: '5px 8px',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: 4,
+                          transition: 'all 0.15s',
+                        }}
+                        onMouseOver={(e) => {
+                          e.currentTarget.style.color = 'var(--accent)';
+                          e.currentTarget.style.borderColor = 'var(--accent)';
+                        }}
+                        onMouseOut={(e) => {
+                          e.currentTarget.style.color = 'var(--text3)';
+                          e.currentTarget.style.borderColor = 'var(--border)';
+                        }}
+                      >
+                        <Icon n="plus" s={12} />
+                        <span>הוסף הערה לתמונה</span>
+                      </button>
+                    )}
+
+                    {/* File Size & Saved */}
                     <div style={{ fontSize: 11, color: 'var(--text3)' }}>
                       {formatBytes(file.originalSize)} → {formatBytes(file.storedSize)}
                       {file.originalSize > file.storedSize ? ` · נחסכו ${Math.round(((file.originalSize - file.storedSize) / file.originalSize) * 100)}%` : ''}
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--border)', paddingTop: 6, marginTop: 2 }}>
-                       <button onClick={() => void handlePreview(file)} disabled={pendingPreview === file.id || !file.url} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text2)' }}>
-                         {pendingPreview === file.id ? <Icon n="loader" s={14} className="spin" /> : <Icon n="eye" s={14} />}
+
+                    {/* Action buttons */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--border)', paddingTop: 6, marginTop: 'auto' }}>
+                       <button onClick={() => void handlePreview(file)} disabled={pendingPreview === file.id || !file.url} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text2)', padding: 4 }} title="תצוגה מקדימה">
+                         {pendingPreview === file.id ? <Icon n="loader" s={15} className="spin" /> : <Icon n="eye" s={15} />}
                        </button>
-                       <button onClick={() => void handleDownload(file)} disabled={pendingDownload === file.id || !file.url} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text2)' }}>
-                         <Icon n="download" s={14} />
+                       <button onClick={() => void handleDownload(file)} disabled={pendingDownload === file.id || !file.url} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text2)', padding: 4 }} title="הורד קובץ">
+                         <Icon n="download" s={15} />
                        </button>
                        {isOwner && (
-                         <button onClick={() => setFileToDelete({ id: file.id, name: file.originalName })} disabled={pendingDelete === file.id} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--danger)' }}>
-                           <Icon n="trash" s={14} />
+                         <button onClick={() => setFileToDelete({ id: file.id, name: file.originalName })} disabled={pendingDelete === file.id} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--danger)', padding: 4 }} title="מחק תמונה">
+                           <Icon n="trash" s={15} />
                          </button>
                        )}
                     </div>
@@ -703,7 +963,7 @@ export const PersonalFilesScreen = () => {
             {!isFull && (
               <div style={{
                   display: 'flex', flexDirection: 'column', alignItems: 'stretch', justifyContent: 'center',
-                  gap: 8, color: 'var(--text2)', minHeight: 90
+                  gap: 8, color: 'var(--text2)', minHeight: 120
               }}>
                  <Btn variant="outline" size="sm" style={{ display: 'flex', justifyContent: 'center', gap: 6 }} onClick={() => handlePick(key)} disabled={uploading || atCap}>
                    <Icon n="upload-cloud" s={14} /> העלה תמונה
@@ -797,7 +1057,7 @@ export const PersonalFilesScreen = () => {
                     <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, gap: 12 }}>
                       <div style={{ fontSize: 14, color: 'var(--text2)' }}>סמן תמונות כדי להפיק דוח מרוכז</div>
                       <div style={{ display: 'flex', gap: 8 }}>
-                        <Btn size="sm" variant="outline" onClick={() => setEmptySections(prev => [{ id: crypto.randomUUID(), note: '' }, ...prev])}>
+                        <Btn size="sm" variant="outline" onClick={() => setEmptySections(prev => [{ id: crypto.randomUUID(), name: '' }, ...prev])}>
                           <Icon n="plus" s={14} /> הוסף קבוצה חדשה
                         </Btn>
                         <Btn size="sm" variant="primary" disabled={selectedImages.size === 0 || isGeneratingPdf} onClick={handleGeneratePDF}>
@@ -867,7 +1127,89 @@ export const PersonalFilesScreen = () => {
             viewGallery.images.forEach(img => URL.revokeObjectURL(img.url));
             setViewGallery(null);
           }} 
+          onSaveNote={async (index, newNote, imageId) => {
+            if (!imageId) return;
+            const fileId = imageId as Id<'personalFiles'>;
+            handleNoteChange(fileId, newNote);
+          }}
         />
+      )}
+
+      {/* Upload To Archive Modal */}
+      {uploadModalFile && (
+        <UploadToArchiveModal
+          isOpen={!!uploadModalFile}
+          file={uploadModalFile}
+          projectId={projectId}
+          initialSectionId={targetSectionRef.current || undefined}
+          existingSections={existingSectionsForModal}
+          onClose={() => {
+            setUploadModalFile(null);
+            targetSectionRef.current = null;
+          }}
+          onSuccess={async (res) => {
+            if (targetSectionRef.current && emptySections.some(s => s.id === targetSectionRef.current)) {
+              setEmptySections(prev => prev.filter(s => s.id !== targetSectionRef.current));
+            }
+            setUploadModalFile(null);
+            targetSectionRef.current = null;
+            await notify({
+              title: 'הקובץ נשמר בארכיון',
+              body: `${uploadModalFile.name} נשמר בהצלחה`,
+              kind: 'success',
+            });
+          }}
+        />
+      )}
+
+      {/* Edit Photo Note Modal */}
+      {editingFileNote && (
+        <Modal
+          title={`הערה לתמונה: ${editingFileNote.name}`}
+          onClose={() => setEditingFileNote(null)}
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <textarea
+              className="bp-input"
+              rows={4}
+              autoFocus
+              value={editingFileNote.note}
+              onChange={(e) => setEditingFileNote(prev => prev ? { ...prev, note: e.target.value } : null)}
+              placeholder="הזן תיאור או הערה מפורטת לתמונה זו..."
+              style={{ width: '100%', fontSize: 13, padding: 10, resize: 'vertical', fontFamily: "'Heebo',sans-serif" }}
+            />
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              {editingFileNote.note && (
+                <Btn
+                  variant="ghost"
+                  size="sm"
+                  style={{ color: 'var(--danger)' }}
+                  onClick={() => {
+                    handleNoteChange(editingFileNote.id, '');
+                    setEditingFileNote(null);
+                  }}
+                >
+                  מחק הערה
+                </Btn>
+              )}
+              <div style={{ display: 'flex', gap: 8, marginInlineStart: 'auto' }}>
+                <Btn variant="ghost" size="sm" onClick={() => setEditingFileNote(null)}>
+                  ביטול
+                </Btn>
+                <Btn
+                  variant="primary"
+                  size="sm"
+                  onClick={() => {
+                    handleNoteChange(editingFileNote.id, editingFileNote.note);
+                    setEditingFileNote(null);
+                  }}
+                >
+                  שמור הערה
+                </Btn>
+              </div>
+            </div>
+          </div>
+        </Modal>
       )}
 
       {/* Delete Confirmation Dialog */}
@@ -891,8 +1233,8 @@ export const PersonalFilesScreen = () => {
           title="מחיקת קבוצה מהארכיון"
           message={
             sectionToDelete.count > 0
-              ? `האם אתה בטוח שברצונך למחוק את הקבוצה "${sectionToDelete.note}"? פעולה זו תמחק לצמיתות את הקבוצה ואת כל ${sectionToDelete.count} התמונות שבתוכה מהארכיון ולא ניתן יהיה לשחזר אותן.`
-              : `האם למחוק את הקבוצה הריקה "${sectionToDelete.note}"?`
+              ? `האם אתה בטוח שברצונך למחוק את הקבוצה "${sectionToDelete.name}"? פעולה זו תמחק לצמיתות את הקבוצה ואת כל ${sectionToDelete.count} התמונות שבתוכה מהארכיון ולא ניתן יהיה לשחזר אותן.`
+              : `האם למחוק את הקבוצה הריקה "${sectionToDelete.name}"?`
           }
           confirmText={sectionToDelete.count > 0 ? `מחק קבוצה ו-${sectionToDelete.count} תמונות` : "מחק קבוצה"}
           type="error"
@@ -900,7 +1242,7 @@ export const PersonalFilesScreen = () => {
           onClose={() => {
             if (!pendingDeleteSection) setSectionToDelete(null);
           }}
-          onConfirm={() => void handleDeleteSection(sectionToDelete.id, sectionToDelete.note, sectionToDelete.count)}
+          onConfirm={() => void handleDeleteSection(sectionToDelete.id, sectionToDelete.name, sectionToDelete.count)}
         />
       )}
     </PremiumLock>

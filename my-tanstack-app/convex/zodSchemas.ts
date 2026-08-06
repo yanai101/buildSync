@@ -357,6 +357,7 @@ export const zPersonalFile = {
   originalSize: z.number(),
   storedSize: z.number(),
   sectionId: z.string().optional(),
+  sectionName: z.string().optional(),
   note: z.string(),
   uploadedAt: z.number(),
 };

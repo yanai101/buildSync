@@ -19,7 +19,7 @@ export function usePersonalFileUploader(projectId: Id<'projects'> | null) {
   const generateUploadUrl = useMutation(api.personalFiles.generateUploadUrl);
   const createPersonalFile = useMutation(api.personalFiles.createPersonalFile);
 
-  return React.useCallback(async (file: File, sectionId?: string, note?: string) => {
+  return React.useCallback(async (file: File, sectionId?: string, note?: string, sectionName?: string) => {
     if (!projectId) throw new Error('יש לבחור פרויקט פעיל לפני העלאת קובץ');
     let finalFileToUpload: File | Blob = file;
     let finalMimeType = file.type || 'application/octet-stream';
@@ -58,6 +58,7 @@ export function usePersonalFileUploader(projectId: Id<'projects'> | null) {
       originalSize: file.size,
       storedSize: blob.size,
       sectionId,
+      sectionName,
       note,
     });
 

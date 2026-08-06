@@ -140,6 +140,7 @@ export const createPersonalFile = mutation({
     originalSize: v.number(),
     storedSize: v.number(),
     sectionId: v.optional(v.string()),
+    sectionName: v.optional(v.string()),
     note: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -177,6 +178,7 @@ export const createPersonalFile = mutation({
       originalSize: args.originalSize,
       storedSize: args.storedSize,
       sectionId: args.sectionId,
+      sectionName: args.sectionName,
       note: args.note ?? '',
       uploadedAt: Date.now(),
     });
@@ -237,6 +239,29 @@ export const updatePersonalFileNote = mutation({
       await requireArchiveAccess(ctx, file.projectId, isImage ? 'photos' : 'docs');
     }
     await ctx.db.patch(args.fileId, { note: args.note });
+  },
+});
+
+export const updatePersonalSectionName = mutation({
+  args: {
+    projectId: v.id('projects'),
+    sectionId: v.string(),
+    name: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const { ownerUserId } = await requireArchiveAccess(ctx, args.projectId, 'photos');
+    const files = await ctx.db
+      .query('personalFiles')
+      .withIndex('by_owner_and_project', (q) =>
+        q.eq('ownerUserId', ownerUserId).eq('projectId', args.projectId),
+      )
+      .collect();
+    const sectionFiles = files.filter(
+      (f) => f.sectionId === args.sectionId || (!f.sectionId && `legacy-${f._id}` === args.sectionId),
+    );
+    for (const file of sectionFiles) {
+      await ctx.db.patch(file._id, { sectionName: args.name });
+    }
   },
 });
 

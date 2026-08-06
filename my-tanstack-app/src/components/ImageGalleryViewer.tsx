@@ -4,9 +4,11 @@ import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
 import { Icon } from './Shared';
 
 export interface GalleryImage {
+  id?: string;
   url: string;
   title?: string;
   description?: string;
+  groupName?: string;
 }
 
 const ZoomableSlide = ({ img, index }: { img: GalleryImage; index: number }) => {
@@ -39,28 +41,38 @@ interface ImageGalleryViewerProps {
   images: GalleryImage[];
   initialIndex?: number;
   onClose: () => void;
+  onSaveNote?: (imageIndex: number, newNote: string, imageId?: string) => Promise<void> | void;
 }
 
 export const ImageGalleryViewer: React.FC<ImageGalleryViewerProps> = ({
-  images,
+  images: initialImages,
   initialIndex = 0,
   onClose,
+  onSaveNote,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
+  const [imagesList, setImagesList] = useState<GalleryImage[]>(initialImages);
+
+  const [isEditingNote, setIsEditingNote] = useState(false);
+  const [editedNoteText, setEditedNoteText] = useState('');
+  const [isSavingNote, setIsSavingNote] = useState(false);
+
+  useEffect(() => {
+    setImagesList(initialImages);
+  }, [initialImages]);
+
+  // Reset editing mode when navigating slides
+  useEffect(() => {
+    setIsEditingNote(false);
+    setEditedNoteText(imagesList[currentIndex]?.description || '');
+  }, [currentIndex, imagesList]);
 
   // Initialize scroll position
   useEffect(() => {
     if (containerRef.current) {
-      // Small timeout ensures the DOM is fully rendered before scrolling
       setTimeout(() => {
         if (containerRef.current) {
-          const containerWidth = containerRef.current.clientWidth;
-          // Calculate the correct scroll position. RTL means scrolling is negative or reversed in some browsers,
-          // but flex row typically handles it. We'll use scrollTo.
-          // Note: In RTL environments, scroll position logic can vary by browser.
-          // Usually, the first item is at scrollLeft = 0.
-          // Since direction is rtl, scrolling right might be negative. Let's just scroll to the specific element.
           const slide = containerRef.current.children[initialIndex] as HTMLElement;
           if (slide) {
              slide.scrollIntoView({ behavior: 'instant', block: 'nearest', inline: 'center' });
@@ -75,8 +87,6 @@ export const ImageGalleryViewer: React.FC<ImageGalleryViewerProps> = ({
     if (!containerRef.current) return;
     const container = containerRef.current;
     
-    // Calculate which slide is most visible
-    // In RTL, scrollLeft can be negative in some browsers. We can find the element closest to the center.
     let closestIndex = 0;
     let closestDistance = Infinity;
     
@@ -100,7 +110,7 @@ export const ImageGalleryViewer: React.FC<ImageGalleryViewerProps> = ({
 
   const handleNext = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (currentIndex < images.length - 1 && containerRef.current) {
+    if (currentIndex < imagesList.length - 1 && containerRef.current) {
       const slide = containerRef.current.children[currentIndex + 1] as HTMLElement;
       slide?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
     }
@@ -114,13 +124,36 @@ export const ImageGalleryViewer: React.FC<ImageGalleryViewerProps> = ({
     }
   };
 
+  const handleSaveEditedNote = async () => {
+    const cur = imagesList[currentIndex];
+    if (!cur) return;
+    setIsSavingNote(true);
+    try {
+      if (onSaveNote) {
+        await onSaveNote(currentIndex, editedNoteText.trim(), cur.id);
+      }
+      setImagesList(prev => prev.map((item, i) => i === currentIndex ? { ...item, description: editedNoteText.trim() } : item));
+      setIsEditingNote(false);
+    } catch {
+      // keep editing state on error
+    } finally {
+      setIsSavingNote(false);
+    }
+  };
+
   // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-      // Arrow navigation (consider RTL: ArrowRight usually means prev, ArrowLeft means next in Hebrew)
+      if (e.key === 'Escape') {
+        if (isEditingNote) {
+          setIsEditingNote(false);
+        } else {
+          onClose();
+        }
+      }
+      if (isEditingNote) return; // Don't navigate while typing note
       if (e.key === 'ArrowLeft') {
-        if (currentIndex < images.length - 1 && containerRef.current) {
+        if (currentIndex < imagesList.length - 1 && containerRef.current) {
           const slide = containerRef.current.children[currentIndex + 1] as HTMLElement;
           slide?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
         }
@@ -134,9 +167,11 @@ export const ImageGalleryViewer: React.FC<ImageGalleryViewerProps> = ({
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentIndex, images.length, onClose]);
+  }, [currentIndex, imagesList.length, isEditingNote, onClose]);
 
-  if (!images || images.length === 0) return null;
+  if (!imagesList || imagesList.length === 0) return null;
+
+  const currentImage = imagesList[currentIndex];
 
   return (
     <AnimatePresence>
@@ -149,28 +184,34 @@ export const ImageGalleryViewer: React.FC<ImageGalleryViewerProps> = ({
       >
         {/* Top Bar */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 24px', zIndex: 10 }}>
-          <div style={{ color: 'white', fontSize: 16, fontWeight: 600, background: 'rgba(0,0,0,0.5)', padding: '6px 12px', borderRadius: 20, backdropFilter: 'blur(4px)' }}>
-            {currentIndex + 1} / {images.length}
+          <div style={{ color: 'white', fontSize: 15, fontWeight: 600, background: 'rgba(0,0,0,0.55)', padding: '6px 14px', borderRadius: 20, backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span>{currentIndex + 1} / {imagesList.length}</span>
+            {currentImage?.groupName && (
+              <span style={{ opacity: 0.8, fontSize: 13, borderRight: '1px solid rgba(255,255,255,0.3)', paddingRight: 8 }}>
+                📁 {currentImage.groupName}
+              </span>
+            )}
           </div>
           <button 
             onClick={onClose} 
             style={{ 
-              background: 'rgba(255,255,255,0.1)', border: 'none', color: 'white', 
+              background: 'rgba(255,255,255,0.15)', border: 'none', color: 'white', 
               width: 40, height: 40, borderRadius: '50%', cursor: 'pointer', 
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              backdropFilter: 'blur(4px)', transition: 'background 0.2s'
+              backdropFilter: 'blur(6px)', transition: 'background 0.2s'
             }}
-            onMouseOver={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.2)'}
-            onMouseOut={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
+            onMouseOver={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.25)'}
+            onMouseOut={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.15)'}
+            title="סגור (Esc)"
           >
             <Icon n="x" s={20} />
           </button>
         </div>
 
         {/* Desktop Navigation Buttons */}
-        {images.length > 1 && (
+        {imagesList.length > 1 && (
           <>
-            {currentIndex < images.length - 1 && (
+            {currentIndex < imagesList.length - 1 && (
               <button className="gallery-nav-btn gallery-nav-btn-left" onClick={handleNext}>
                 <div style={{ transform: 'rotate(180deg)', display: 'flex' }}><Icon n="arrow-right" s={24} /></div>
               </button>
@@ -189,18 +230,156 @@ export const ImageGalleryViewer: React.FC<ImageGalleryViewerProps> = ({
           ref={containerRef}
           onScroll={handleScroll}
         >
-          {images.map((img, index) => (
+          {imagesList.map((img, index) => (
             <ZoomableSlide key={index} img={img} index={index} />
           ))}
         </div>
 
-        {/* Bottom Text Overlay */}
-        {(images[currentIndex]?.title || images[currentIndex]?.description) && (
-          <div style={{ position: 'absolute', bottom: 40, left: '50%', transform: 'translateX(-50%)', background: 'rgba(0,0,0,0.7)', padding: '16px 24px', borderRadius: 16, color: 'white', textAlign: 'center', backdropFilter: 'blur(8px)', minWidth: 250, maxWidth: '90%', zIndex: 10 }} onClick={(e) => e.stopPropagation()}>
-            {images[currentIndex].title && <div style={{ fontWeight: 700, fontSize: 16, marginBottom: images[currentIndex].description ? 6 : 0 }}>{images[currentIndex].title}</div>}
-            {images[currentIndex].description && <div style={{ fontSize: 14, whiteSpace: 'pre-wrap', color: 'rgba(255,255,255,0.9)' }}>{images[currentIndex].description}</div>}
-          </div>
-        )}
+        {/* Bottom Panel (Note display & in-viewer editor) */}
+        <div 
+          style={{ 
+            position: 'absolute', 
+            bottom: 24, 
+            left: '50%', 
+            transform: 'translateX(-50%)', 
+            background: 'rgba(15, 23, 42, 0.85)', 
+            padding: '16px 20px', 
+            borderRadius: 16, 
+            color: 'white', 
+            backdropFilter: 'blur(12px)', 
+            boxShadow: '0 12px 36px rgba(0,0,0,0.5)',
+            border: '1px solid rgba(255,255,255,0.15)',
+            minWidth: 280, 
+            maxWidth: 'min(92vw, 560px)', 
+            zIndex: 10,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 10,
+          }} 
+          onClick={(e) => e.stopPropagation()}
+        >
+          {isEditingNote ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: 'rgba(255,255,255,0.9)' }}>
+                  עריכת הערה לתמונה
+                </span>
+                <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)' }}>
+                  {currentImage?.title}
+                </span>
+              </div>
+              <textarea
+                value={editedNoteText}
+                onChange={(e) => setEditedNoteText(e.target.value)}
+                placeholder="הוסף הערה או תיאור לתמונה זו..."
+                rows={3}
+                autoFocus
+                style={{
+                  width: '100%',
+                  background: 'rgba(0,0,0,0.4)',
+                  border: '1px solid rgba(255,255,255,0.25)',
+                  borderRadius: 8,
+                  color: '#fff',
+                  padding: '8px 10px',
+                  fontSize: 13,
+                  fontFamily: "'Heebo',sans-serif",
+                  resize: 'vertical',
+                }}
+              />
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 2 }}>
+                <button
+                  type="button"
+                  onClick={() => setIsEditingNote(false)}
+                  disabled={isSavingNote}
+                  style={{
+                    background: 'transparent',
+                    border: '1px solid rgba(255,255,255,0.3)',
+                    color: 'white',
+                    borderRadius: 6,
+                    padding: '5px 12px',
+                    fontSize: 12,
+                    cursor: 'pointer',
+                  }}
+                >
+                  ביטול
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveEditedNote}
+                  disabled={isSavingNote}
+                  style={{
+                    background: 'var(--accent, #EB5E28)',
+                    border: 'none',
+                    color: 'white',
+                    borderRadius: 6,
+                    padding: '5px 14px',
+                    fontSize: 12,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                  }}
+                >
+                  {isSavingNote ? <Icon n="loader" s={14} className="spin" /> : <Icon n="check" s={14} />}
+                  <span>שמור הערה</span>
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  {currentImage?.title && (
+                    <div style={{ fontWeight: 700, fontSize: 14, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {currentImage.title}
+                    </div>
+                  )}
+                </div>
+                {onSaveNote && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditedNoteText(currentImage?.description || '');
+                      setIsEditingNote(true);
+                    }}
+                    style={{
+                      background: 'rgba(255,255,255,0.12)',
+                      border: '1px solid rgba(255,255,255,0.2)',
+                      color: 'white',
+                      borderRadius: 6,
+                      padding: '4px 10px',
+                      fontSize: 12,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 5,
+                      flexShrink: 0,
+                      backdropFilter: 'blur(4px)',
+                      transition: 'all 0.2s',
+                    }}
+                    onMouseOver={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.25)'}
+                    onMouseOut={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.12)'}
+                  >
+                    <Icon n="edit-3" s={13} />
+                    <span>{currentImage?.description ? 'ערוך הערה' : '+ הוסף הערה'}</span>
+                  </button>
+                )}
+              </div>
+
+              {currentImage?.description ? (
+                <div style={{ fontSize: 13.5, lineHeight: 1.5, color: 'rgba(255,255,255,0.92)', whiteSpace: 'pre-wrap', maxHeight: '18vh', overflowY: 'auto', paddingRight: 2 }}>
+                  {currentImage.description}
+                </div>
+              ) : (
+                <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', fontStyle: 'italic' }}>
+                  אין הערה לתמונה זו
+                </div>
+              )}
+            </>
+          )}
+        </div>
       </motion.div>
     </AnimatePresence>
   );

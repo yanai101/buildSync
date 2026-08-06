@@ -56,26 +56,54 @@ export const ExportToArchiveModal: React.FC<ExportToArchiveModalProps> = ({
   const [groupMode, setGroupMode] = React.useState<'new' | 'existing' | 'none'>('new');
   const [newGroupName, setNewGroupName] = React.useState('');
   const [selectedSectionId, setSelectedSectionId] = React.useState<string>('');
-  const [noteText, setNoteText] = React.useState('');
+  const [photoNotes, setPhotoNotes] = React.useState<Record<string, string>>({});
+  const [selectedPhotoIndex, setSelectedPhotoIndex] = React.useState<number>(0);
+  const [bulkNoteText, setBulkNoteText] = React.useState('');
   const [deleteFromPhotos, setDeleteFromPhotos] = React.useState(true);
   const [isExporting, setIsExporting] = React.useState(false);
   const [exportProgress, setExportProgress] = React.useState({ current: 0, total: 0 });
   const [errorMsg, setErrorMsg] = React.useState<string | null>(null);
 
+  // Helper to build individual photo note from its metadata and comments
+  const buildDefaultPhotoNote = React.useCallback((p: PhotoToExport): string => {
+    const details: string[] = [];
+    if (p.label) details.push(p.label);
+    if (p.location && p.location !== 'לא הוגדר') details.push(`מיקום: ${p.location}`);
+    if (p.stage) details.push(`שלב: ${p.stage}`);
+    if (p.date) details.push(`תאריך: ${p.date}`);
+
+    const lines: string[] = [];
+    if (details.length > 0) {
+      lines.push(details.join(' · '));
+    }
+
+    if (p.notes && p.notes.length > 0) {
+      lines.push('הערות:');
+      p.notes.forEach((n) => {
+        if (n.text) {
+          lines.push(`• ${n.authorName ? `${n.authorName}: ` : ''}${n.text}`);
+        }
+      });
+    }
+
+    return lines.join('\n');
+  }, []);
+
   // Extract existing sections from archive
   const existingSections = React.useMemo(() => {
     if (!archiveFiles) return [];
-    const sectionMap = new Map<string, { id: string; note: string; count: number }>();
+    const sectionMap = new Map<string, { id: string; name: string; count: number }>();
     for (const f of archiveFiles) {
       if (f.sectionId) {
         const existing = sectionMap.get(f.sectionId);
+        const groupName = f.sectionName || (f.note && f.note.length > 40 ? f.note.slice(0, 40) + '...' : f.note) || 'קבוצה ללא שם';
         if (existing) {
           existing.count++;
-          if (!existing.note && f.note) existing.note = f.note;
+          if (existing.name === 'קבוצה ללא שם' && f.sectionName) existing.name = f.sectionName;
         } else {
           sectionMap.set(f.sectionId, {
             id: f.sectionId,
-            note: f.note ? (f.note.length > 40 ? f.note.slice(0, 40) + '...' : f.note) : 'קבוצה ללא שם',
+            name: groupName,
             count: 1,
           });
         }
@@ -91,59 +119,27 @@ export const ExportToArchiveModal: React.FC<ExportToArchiveModalProps> = ({
     setErrorMsg(null);
     setDeleteFromPhotos(true);
     setExportProgress({ current: 0, total: photos.length });
+    setSelectedPhotoIndex(0);
+    setBulkNoteText('');
+
+    const initialNotes: Record<string, string> = {};
+    photos.forEach((p, idx) => {
+      const key = p._id || p.id || String(idx);
+      initialNotes[key] = buildDefaultPhotoNote(p);
+    });
+    setPhotoNotes(initialNotes);
 
     if (photos.length === 1) {
       const p = photos[0];
-      const details: string[] = [];
-      if (p.label) details.push(p.label);
-      if (p.location && p.location !== 'לא הוגדר') details.push(`מיקום: ${p.location}`);
-      if (p.stage) details.push(`שלב: ${p.stage}`);
-      if (p.date) details.push(`תאריך: ${p.date}`);
-
-      const noteLines: string[] = [];
-      if (details.length > 0) {
-        noteLines.push(details.join(' · '));
-      }
-
-      if (p.notes && p.notes.length > 0) {
-        noteLines.push('\nהערות:');
-        p.notes.forEach((n) => {
-          noteLines.push(`• ${n.authorName ? `${n.authorName}: ` : ''}${n.text}`);
-        });
-      }
-
-      setNoteText(noteLines.join('\n'));
       setNewGroupName(p.label ? p.label : (p.location ? `תמונות ${p.location}` : 'קבוצת תמונות'));
     } else {
-      const summaryLines: string[] = [];
-      summaryLines.push(`ייצוא של ${photos.length} תמונות ממסך התמונות`);
-      const distinctStages = Array.from(new Set(photos.map(p => p.stage).filter(Boolean)));
-      if (distinctStages.length > 0) {
-        summaryLines.push(`שלבים: ${distinctStages.join(', ')}`);
-      }
-
-      const allNotes: string[] = [];
-      photos.forEach(p => {
-        if (p.notes && p.notes.length > 0) {
-          p.notes.forEach(n => {
-            allNotes.push(`• ${p.label || 'תמונה'} (${n.authorName || 'משתמש'}): ${n.text}`);
-          });
-        }
-      });
-
-      if (allNotes.length > 0) {
-        summaryLines.push('\nהערות מהתמונות:');
-        summaryLines.push(...allNotes);
-      }
-
-      setNoteText(summaryLines.join('\n'));
       setNewGroupName(`תיעוד תמונות - ${new Date().toLocaleDateString('he-IL')}`);
     }
 
     if (existingSections.length > 0 && groupMode === 'existing' && !selectedSectionId) {
       setSelectedSectionId(existingSections[0].id);
     }
-  }, [isOpen, photos, existingSections]);
+  }, [isOpen, photos, existingSections, buildDefaultPhotoNote]);
 
   if (!isOpen) return null;
 
@@ -153,6 +149,16 @@ export const ExportToArchiveModal: React.FC<ExportToArchiveModalProps> = ({
 
   const canPhotos = archivePerms?.canPhotos ?? true;
   const isPro = archivePerms?.isProOrPremium ?? true;
+
+  const handleApplyBulkNote = () => {
+    if (!bulkNoteText.trim()) return;
+    const updated: Record<string, string> = {};
+    photos.forEach((p, idx) => {
+      const key = p._id || p.id || String(idx);
+      updated[key] = bulkNoteText.trim();
+    });
+    setPhotoNotes(updated);
+  };
 
   const handleExport = async () => {
     if (photos.length === 0 || isExporting) return;
@@ -166,19 +172,26 @@ export const ExportToArchiveModal: React.FC<ExportToArchiveModalProps> = ({
     setErrorMsg(null);
     setExportProgress({ current: 0, total: photos.length });
 
-    // Determine target section ID
+    // Determine target section ID and Section Name
     let targetSectionId: string | undefined = undefined;
+    let targetSectionName: string | undefined = undefined;
     if (groupMode === 'new') {
       targetSectionId = `section-${Date.now()}`;
+      targetSectionName = newGroupName.trim() || undefined;
     } else if (groupMode === 'existing') {
       targetSectionId = selectedSectionId || undefined;
+      const matched = existingSections.find((s) => s.id === selectedSectionId);
+      targetSectionName = matched?.name || undefined;
     }
 
     try {
-      // 1. Upload each photo to personalFiles archive
+      // 1. Upload each photo to personalFiles archive with its specific note and group name
       for (let i = 0; i < photos.length; i++) {
         const p = photos[i];
         if (!p.fileUrl) continue;
+
+        const photoKey = p._id || p.id || String(i);
+        const specificNote = photoNotes[photoKey] ?? buildDefaultPhotoNote(p);
 
         // Fetch image blob
         const res = await fetch(p.fileUrl);
@@ -191,11 +204,12 @@ export const ExportToArchiveModal: React.FC<ExportToArchiveModalProps> = ({
         const fileName = `${cleanName}.jpg`;
         const fileObj = new File([blob], fileName, { type: blob.type || 'image/jpeg' });
 
-        // Upload to archive with note & section
+        // Upload to archive with individual photo note & section name
         await uploadFile(
           fileObj,
           targetSectionId,
-          noteText.trim() ? noteText.trim() : undefined,
+          specificNote.trim() ? specificNote.trim() : undefined,
+          targetSectionName,
         );
 
         setExportProgress({ current: i + 1, total: photos.length });
@@ -304,39 +318,79 @@ export const ExportToArchiveModal: React.FC<ExportToArchiveModalProps> = ({
           </div>
         )}
 
-        {/* Selected photos preview */}
+        {/* Selected photos preview / selector */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text2)' }}>תמונות לייצוא ({photos.length}):</span>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text2)' }}>
+              תמונות לייצוא ({photos.length}):
+            </span>
+            {photos.length > 1 && (
+              <span style={{ fontSize: 11, color: 'var(--text3)' }}>
+                לחץ על תמונה כדי לערוך את ההערה שלה
+              </span>
+            )}
+          </div>
+
           <div style={{
             display: 'flex',
             gap: 8,
             overflowX: 'auto',
             padding: '6px 2px',
-            maxHeight: 90,
+            maxHeight: 96,
           }}>
-            {photos.map((p, idx) => (
-              <div
-                key={p.id || p._id || idx}
-                style={{
-                  flex: '0 0 70px',
-                  height: 70,
-                  borderRadius: 6,
-                  overflow: 'hidden',
-                  border: '1px solid var(--border)',
-                  position: 'relative',
-                  background: '#eee',
-                }}
-                title={p.label || `תמונה ${idx + 1}`}
-              >
-                {p.fileUrl ? (
-                  <img src={p.fileUrl} alt={p.label || ''} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                ) : (
-                  <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Icon n="camera" s={18} c="var(--text3)" />
-                  </div>
-                )}
-              </div>
-            ))}
+            {photos.map((p, idx) => {
+              const pKey = p._id || p.id || String(idx);
+              const isSelected = selectedPhotoIndex === idx;
+              const hasCustomNote = !!photoNotes[pKey]?.trim();
+
+              return (
+                <div
+                  key={pKey}
+                  onClick={() => setSelectedPhotoIndex(idx)}
+                  style={{
+                    flex: '0 0 74px',
+                    height: 74,
+                    borderRadius: 8,
+                    overflow: 'hidden',
+                    border: isSelected ? '2px solid var(--accent)' : '1px solid var(--border)',
+                    boxShadow: isSelected ? '0 0 0 2px rgba(255,149,0,0.2)' : 'none',
+                    position: 'relative',
+                    background: '#eee',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                  }}
+                  title={p.label || `תמונה ${idx + 1}`}
+                >
+                  {p.fileUrl ? (
+                    <img src={p.fileUrl} alt={p.label || ''} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Icon n="camera" s={18} c="var(--text3)" />
+                    </div>
+                  )}
+                  {hasCustomNote && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: 3,
+                        right: 3,
+                        background: 'rgba(0,0,0,0.65)',
+                        color: '#fff',
+                        borderRadius: '50%',
+                        width: 16,
+                        height: 16,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                      title="יש הערה לתמונה זו"
+                    >
+                      <Icon n="file-text" s={10} />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
 
@@ -447,7 +501,7 @@ export const ExportToArchiveModal: React.FC<ExportToArchiveModalProps> = ({
               >
                 {existingSections.map((sec) => (
                   <option key={sec.id} value={sec.id}>
-                    {sec.note} ({sec.count} תמונות)
+                    {sec.name} ({sec.count} תמונות)
                   </option>
                 ))}
               </select>
@@ -455,29 +509,100 @@ export const ExportToArchiveModal: React.FC<ExportToArchiveModalProps> = ({
           )}
         </div>
 
-        {/* Note Editor */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        {/* Note Editor for Photos */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: 13, fontWeight: 600 }}>הערות ומסמך תיעוד לארכיון:</span>
-            <span style={{ fontSize: 11, color: 'var(--text3)' }}>ניתן לערוך לפני השמירה</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Icon n="file-text" s={14} c="var(--accent)" />
+              <span style={{ fontSize: 13, fontWeight: 700 }}>
+                {photos.length === 1
+                  ? 'הערה לתמונה בארכיון:'
+                  : `הערה לתמונה ${selectedPhotoIndex + 1} מתוך ${photos.length}${photos[selectedPhotoIndex]?.label ? ` (${photos[selectedPhotoIndex].label})` : ''}:`}
+              </span>
+            </div>
+            <span style={{ fontSize: 11, color: 'var(--text3)' }}>
+              תישמר ישירות על גבי התמונה בארכיון ובדוח PDF
+            </span>
           </div>
-          <textarea
-            rows={3}
-            value={noteText}
-            onChange={(e) => setNoteText(e.target.value)}
-            placeholder="רשום הערות, סיכום או פרטי ביצוע שישמרו יחד עם התמונות בארכיון..."
-            style={{
-              width: '100%',
-              padding: '10px',
-              borderRadius: 8,
-              border: '1px solid var(--border)',
-              fontSize: 12,
-              fontFamily: "'Heebo', sans-serif",
-              resize: 'vertical',
-              outline: 'none',
-              lineHeight: 1.5,
-            }}
-          />
+
+          {photos.length > 0 && (() => {
+            const activePhoto = photos[selectedPhotoIndex] || photos[0];
+            const activeKey = activePhoto._id || activePhoto.id || String(selectedPhotoIndex);
+            const activeNote = photoNotes[activeKey] ?? '';
+
+            return (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <textarea
+                  rows={3}
+                  value={activeNote}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setPhotoNotes(prev => ({ ...prev, [activeKey]: val }));
+                  }}
+                  placeholder="הזן תיאור, הערות ביצוע או סיכום לתמונה זו בארכיון..."
+                  style={{
+                    width: '100%',
+                    padding: '10px',
+                    borderRadius: 8,
+                    border: '1px solid var(--border)',
+                    fontSize: 12.5,
+                    fontFamily: "'Heebo', sans-serif",
+                    resize: 'vertical',
+                    outline: 'none',
+                    lineHeight: 1.5,
+                  }}
+                />
+
+                {photos.length > 1 && (
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    background: 'var(--bg)',
+                    padding: '6px 10px',
+                    borderRadius: 8,
+                    border: '1px solid var(--border)',
+                    fontSize: 12,
+                  }}>
+                    <input
+                      type="text"
+                      value={bulkNoteText}
+                      onChange={(e) => setBulkNoteText(e.target.value)}
+                      placeholder="הזן הערה משותפת להחלה על כל התמונות..."
+                      style={{
+                        flex: 1,
+                        background: 'var(--surface)',
+                        border: '1px solid var(--border)',
+                        borderRadius: 6,
+                        padding: '4px 8px',
+                        fontSize: 11.5,
+                        fontFamily: "'Heebo', sans-serif",
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleApplyBulkNote}
+                      disabled={!bulkNoteText.trim()}
+                      style={{
+                        background: bulkNoteText.trim() ? 'var(--accent)' : 'var(--border)',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: 6,
+                        padding: '4px 10px',
+                        fontSize: 11,
+                        fontWeight: 600,
+                        cursor: bulkNoteText.trim() ? 'pointer' : 'default',
+                        whiteSpace: 'nowrap',
+                        fontFamily: "'Heebo', sans-serif",
+                      }}
+                    >
+                      החל על הכל
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
         </div>
 
         {/* Prominent delete toggle box */}
