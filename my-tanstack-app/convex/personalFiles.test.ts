@@ -35,7 +35,7 @@ const insertArchiveFile = async (t: ReturnType<typeof convexTest>, fields: Recor
       storageId,
       originalName: fields.originalName as string,
       storedName: `${fields.originalName}.gz`,
-      originalMimeType: 'application/pdf',
+      originalMimeType: (fields.originalMimeType as string) ?? 'application/pdf',
       originalSize: 100,
       storedSize: 50,
       note: 'הערת קובץ',
@@ -59,13 +59,83 @@ describe('personal project archive scoping', () => {
     expect(files.map((file) => file.originalName)).toEqual(['פרויקט-א.pdf']);
   });
 
-  test('does not allow an owner to read another owner\'s project archive', async () => {
+  test('does not allow a user without permissions to read project archive', async () => {
     const t = convexTest(schema, modules);
     const { ownerId, otherProjectId } = await setup(t);
 
     await expect(
       t.withIdentity({ subject: ownerId }).query(api.personalFiles.listMyPersonalFiles, { projectId: otherProjectId }),
-    ).rejects.toThrow('Only the project owner');
+    ).rejects.toThrow('אין לך הרשאה לגשת לארכיון פרויקט זה');
+  });
+
+  test('allows manager with permissions on Pro project to access archive', async () => {
+    const t = convexTest(schema, modules);
+    const { ownerId, projectId } = await setup(t);
+    const managerId = await t.run((ctx) => ctx.db.insert('users', { name: 'מנהל עבודה', role: 'manager' }));
+    
+    // Assign manager to project with photo permissions
+    await t.run((ctx) => ctx.db.patch(projectId, {
+      managerUserId: managerId,
+      managerCanViewArchivePhotos: true,
+      managerCanViewArchiveDocs: false,
+    }));
+
+    await insertArchiveFile(t, { ownerUserId: ownerId, projectId, originalName: 'תמונה.jpg', originalMimeType: 'image/jpeg' });
+    await insertArchiveFile(t, { ownerUserId: ownerId, projectId, originalName: 'מסמך.pdf', originalMimeType: 'application/pdf' });
+
+    const perms = await t.withIdentity({ subject: managerId }).query(
+      api.personalFiles.getArchivePermissions,
+      { projectId },
+    );
+    expect(perms).toEqual({
+      isOwner: false,
+      isProOrPremium: true,
+      canPhotos: true,
+      canDocs: false,
+      role: 'manager',
+    });
+
+    const files = await t.withIdentity({ subject: managerId }).query(
+      api.personalFiles.listMyPersonalFiles,
+      { projectId },
+    );
+    // Manager only has photos permission, so only photos are returned
+    expect(files.map((f) => f.originalName)).toEqual(['תמונה.jpg']);
+  });
+
+  test('blocks manager when project owner has free subscription', async () => {
+    const t = convexTest(schema, modules);
+    const freeOwnerId = await t.run((ctx) => ctx.db.insert('users', {
+      name: 'בעלים חינם',
+      role: 'owner',
+      subscriptionTier: 'free',
+    }));
+    const managerId = await t.run((ctx) => ctx.db.insert('users', { name: 'מנהל עבודה', role: 'manager' }));
+    const freeProjectId = await t.run((ctx) => ctx.db.insert('projects', {
+      name: 'פרויקט חינם', address: 'רחוב', ownerUserId: freeOwnerId, managerUserId: managerId,
+      managerCanViewArchivePhotos: true,
+      startDate: '2026-01-01', expectedEnd: '2026-12-31', progressPct: 0, budgetTotal: 0, spent: 0,
+    }));
+
+    await expect(
+      t.withIdentity({ subject: managerId }).query(api.personalFiles.listMyPersonalFiles, { projectId: freeProjectId }),
+    ).rejects.toThrow('הארכיון זמין רק כאשר בעל הפרויקט הוא בעל מנוי Pro או Premium');
+  });
+
+  test('non-owner cannot delete files from archive', async () => {
+    const t = convexTest(schema, modules);
+    const { ownerId, projectId } = await setup(t);
+    const managerId = await t.run((ctx) => ctx.db.insert('users', { name: 'מנהל עבודה', role: 'manager' }));
+    await t.run((ctx) => ctx.db.patch(projectId, {
+      managerUserId: managerId,
+      managerCanViewArchivePhotos: true,
+    }));
+
+    const fileId = await insertArchiveFile(t, { ownerUserId: ownerId, projectId, originalName: 'תמונה.jpg', originalMimeType: 'image/jpeg' });
+
+    await expect(
+      t.withIdentity({ subject: managerId }).mutation(api.personalFiles.deletePersonalFile, { fileId }),
+    ).rejects.toThrow('רק בעל הפרויקט רשאי למחוק קבצים מהארכיון');
   });
 
   test('exports only the active project archive, not project files from elsewhere', async () => {

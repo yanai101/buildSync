@@ -66,6 +66,8 @@ export const createInvitation = mutation({
     contractorId: v.optional(v.id('contractors')),
     allowBudgetView: v.optional(v.boolean()),
     allowScheduleView: v.optional(v.boolean()),
+    allowArchivePhotos: v.optional(v.boolean()),
+    allowArchiveDocs: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const { userId } = await requireProjectOwner(ctx, args.projectId);
@@ -118,6 +120,8 @@ export const createInvitation = mutation({
       ...(args.contractorId ? { contractorId: args.contractorId } : {}),
       allowBudgetView: args.allowBudgetView,
       allowScheduleView: args.allowScheduleView,
+      allowArchivePhotos: args.allowArchivePhotos,
+      allowArchiveDocs: args.allowArchiveDocs,
     });
 
     return { id, code, expiresAt };
@@ -208,6 +212,8 @@ export const _completeRedemption = internalMutation({
 
     const allowBudgetView = inv.allowBudgetView ?? (inv.role !== 'contractor');
     const allowScheduleView = inv.allowScheduleView !== false;
+    const allowArchivePhotos = inv.allowArchivePhotos ?? false;
+    const allowArchiveDocs = inv.allowArchiveDocs ?? false;
 
     if (inv.role === 'manager') {
       await ctx.db.patch(inv.projectId, { 
@@ -215,6 +221,8 @@ export const _completeRedemption = internalMutation({
         managerName: args.name,
         managerCanViewBudget: allowBudgetView,
         managerCanViewSchedule: allowScheduleView,
+        managerCanViewArchivePhotos: allowArchivePhotos,
+        managerCanViewArchiveDocs: allowArchiveDocs,
       });
     } else if (inv.role === 'inspector') {
       await ctx.db.patch(inv.projectId, { 
@@ -222,6 +230,8 @@ export const _completeRedemption = internalMutation({
         inspectorName: args.name,
         inspectorCanViewBudget: allowBudgetView,
         inspectorCanViewSchedule: allowScheduleView,
+        inspectorCanViewArchivePhotos: allowArchivePhotos,
+        inspectorCanViewArchiveDocs: allowArchiveDocs,
       });
     } else if (inv.role === 'contractor') {
       if (inv.contractorId) {
@@ -315,6 +325,8 @@ export const redeemInvitationExistingUser = mutation({
 
     const allowBudgetView = inv.allowBudgetView ?? (inv.role !== 'contractor');
     const allowScheduleView = inv.allowScheduleView !== false;
+    const allowArchivePhotos = inv.allowArchivePhotos ?? false;
+    const allowArchiveDocs = inv.allowArchiveDocs ?? false;
 
     // --- Inspector Limit Logic ---
     if (inv.role === 'inspector') {
@@ -357,12 +369,16 @@ export const redeemInvitationExistingUser = mutation({
           managerUserId: userId,
           managerCanViewBudget: allowBudgetView,
           managerCanViewSchedule: allowScheduleView,
+          managerCanViewArchivePhotos: allowArchivePhotos,
+          managerCanViewArchiveDocs: allowArchiveDocs,
         });
       } else if (inv.role === 'inspector') {
         await ctx.db.patch(inv.projectId, { 
           inspectorUserId: userId,
           inspectorCanViewBudget: allowBudgetView,
           inspectorCanViewSchedule: allowScheduleView,
+          inspectorCanViewArchivePhotos: allowArchivePhotos,
+          inspectorCanViewArchiveDocs: allowArchiveDocs,
         });
       } else if (inv.role === 'contractor') {
         if (inv.contractorId) {
@@ -493,6 +509,8 @@ export const listProjectMembers = query({
             email: manager.email ?? null,
             canViewBudget: project.managerCanViewBudget !== false,
             canViewSchedule: project.managerCanViewSchedule !== false,
+            canViewArchivePhotos: project.managerCanViewArchivePhotos === true,
+            canViewArchiveDocs: project.managerCanViewArchiveDocs === true,
           }
         : null,
       inspector: inspector
@@ -502,6 +520,8 @@ export const listProjectMembers = query({
             email: inspector.email ?? null,
             canViewBudget: project.inspectorCanViewBudget !== false,
             canViewSchedule: project.inspectorCanViewSchedule !== false,
+            canViewArchivePhotos: project.inspectorCanViewArchivePhotos === true,
+            canViewArchiveDocs: project.inspectorCanViewArchiveDocs === true,
           }
         : null,
       contractors: contractors.map((c) => ({
@@ -585,3 +605,39 @@ export const updateMemberSchedulePermission = mutation({
     return { success: true };
   },
 });
+
+export const updateMemberArchivePermission = mutation({
+  args: {
+    projectId: v.id('projects'),
+    role: v.union(v.literal('manager'), v.literal('inspector')),
+    canViewArchivePhotos: v.optional(v.boolean()),
+    canViewArchiveDocs: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    await requireProjectOwner(ctx, args.projectId);
+
+    const patchData: Record<string, boolean | undefined> = {};
+    if (args.role === 'manager') {
+      if (args.canViewArchivePhotos !== undefined) {
+        patchData.managerCanViewArchivePhotos = args.canViewArchivePhotos;
+      }
+      if (args.canViewArchiveDocs !== undefined) {
+        patchData.managerCanViewArchiveDocs = args.canViewArchiveDocs;
+      }
+    } else if (args.role === 'inspector') {
+      if (args.canViewArchivePhotos !== undefined) {
+        patchData.inspectorCanViewArchivePhotos = args.canViewArchivePhotos;
+      }
+      if (args.canViewArchiveDocs !== undefined) {
+        patchData.inspectorCanViewArchiveDocs = args.canViewArchiveDocs;
+      }
+    }
+
+    if (Object.keys(patchData).length > 0) {
+      await ctx.db.patch(args.projectId, patchData);
+    }
+
+    return { success: true };
+  },
+});
+

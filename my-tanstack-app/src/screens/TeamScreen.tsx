@@ -71,6 +71,7 @@ export const TeamScreen = () => {
   const unlinkContractor = useMutation(api.invitations.unlinkContractorLogin);
   const updateBudgetPermission = useMutation(api.invitations.updateMemberBudgetPermission);
   const updateSchedulePermission = useMutation(api.invitations.updateMemberSchedulePermission);
+  const updateArchivePermission = useMutation(api.invitations.updateMemberArchivePermission);
 
   const handleToggleBudgetPermission = async (
     role: 'manager' | 'inspector' | 'contractor',
@@ -126,6 +127,56 @@ export const TeamScreen = () => {
     }
   };
 
+  const handleToggleArchivePhotosPermission = async (
+    role: 'manager' | 'inspector',
+    canView: boolean
+  ) => {
+    if (!projectId) return;
+    try {
+      await updateArchivePermission({
+        projectId,
+        role,
+        canViewArchivePhotos: canView,
+      });
+      await notify({
+        title: 'הרשאה עודכנה בהצלחה',
+        body: 'הרשאת צפייה בתמונות ארכיון עודכנה',
+        kind: 'success',
+      });
+    } catch (err) {
+      await notify({
+        title: 'עדכון הרשאה נכשל',
+        body: err instanceof Error ? err.message : 'אירעה שגיאה',
+        kind: 'error',
+      });
+    }
+  };
+
+  const handleToggleArchiveDocsPermission = async (
+    role: 'manager' | 'inspector',
+    canView: boolean
+  ) => {
+    if (!projectId) return;
+    try {
+      await updateArchivePermission({
+        projectId,
+        role,
+        canViewArchiveDocs: canView,
+      });
+      await notify({
+        title: 'הרשאה עודכנה בהצלחה',
+        body: 'הרשאת צפייה במסמכי ארכיון עודכנה',
+        kind: 'success',
+      });
+    } catch (err) {
+      await notify({
+        title: 'עדכון הרשאה נכשל',
+        body: err instanceof Error ? err.message : 'אירעה שגיאה',
+        kind: 'error',
+      });
+    }
+  };
+
   const [showInvite, setShowInvite] = React.useState(false);
   const [inviteForm, setInviteForm] = React.useState<{
     role: InviteRole;
@@ -134,7 +185,18 @@ export const TeamScreen = () => {
     contractorId: string;
     allowBudgetView: boolean;
     allowScheduleView: boolean;
-  }>({ role: 'manager', name: '', email: '', contractorId: '', allowBudgetView: true, allowScheduleView: true });
+    allowArchivePhotos: boolean;
+    allowArchiveDocs: boolean;
+  }>({
+    role: 'manager',
+    name: '',
+    email: '',
+    contractorId: '',
+    allowBudgetView: true,
+    allowScheduleView: true,
+    allowArchivePhotos: false,
+    allowArchiveDocs: false,
+  });
   const [createdCode, setCreatedCode] = React.useState<{ code: string; expiresAt: number } | null>(null);
   const [submitting, setSubmitting] = React.useState(false);
 
@@ -196,7 +258,16 @@ export const TeamScreen = () => {
       });
       return;
     }
-    setInviteForm({ role: 'manager', name: '', email: '', contractorId: '', allowBudgetView: true, allowScheduleView: true });
+    setInviteForm({
+      role: 'manager',
+      name: '',
+      email: '',
+      contractorId: '',
+      allowBudgetView: true,
+      allowScheduleView: true,
+      allowArchivePhotos: false,
+      allowArchiveDocs: false,
+    });
     setCreatedCode(null);
     setShowInvite(true);
   };
@@ -214,6 +285,8 @@ export const TeamScreen = () => {
         role: inviteForm.role,
         allowBudgetView: inviteForm.allowBudgetView,
         allowScheduleView: inviteForm.allowScheduleView,
+        allowArchivePhotos: inviteForm.allowArchivePhotos,
+        allowArchiveDocs: inviteForm.allowArchiveDocs,
         ...(inviteForm.name ? { invitedName: inviteForm.name } : {}),
         ...(inviteForm.email ? { invitedEmail: inviteForm.email } : {}),
         ...(inviteForm.role === 'contractor' && inviteForm.contractorId
@@ -350,6 +423,18 @@ export const TeamScreen = () => {
                 ? (val) => void handleToggleSchedulePermission('manager', val)
                 : undefined
             }
+            canViewArchivePhotos={members?.manager?.canViewArchivePhotos}
+            onToggleArchivePhotos={
+              members?.manager
+                ? (val) => void handleToggleArchivePhotosPermission('manager', val)
+                : undefined
+            }
+            canViewArchiveDocs={members?.manager?.canViewArchiveDocs}
+            onToggleArchiveDocs={
+              members?.manager
+                ? (val) => void handleToggleArchiveDocsPermission('manager', val)
+                : undefined
+            }
             onRemove={
               members?.manager
                 ? () => handleRemoveMember('manager', members.manager!.name)
@@ -370,6 +455,18 @@ export const TeamScreen = () => {
             onToggleSchedule={
               members?.inspector
                 ? (val) => void handleToggleSchedulePermission('inspector', val)
+                : undefined
+            }
+            canViewArchivePhotos={members?.inspector?.canViewArchivePhotos}
+            onToggleArchivePhotos={
+              members?.inspector
+                ? (val) => void handleToggleArchivePhotosPermission('inspector', val)
+                : undefined
+            }
+            canViewArchiveDocs={members?.inspector?.canViewArchiveDocs}
+            onToggleArchiveDocs={
+              members?.inspector
+                ? (val) => void handleToggleArchiveDocsPermission('inspector', val)
                 : undefined
             }
             onRemove={
@@ -684,17 +781,47 @@ export const TeamScreen = () => {
                   style={{ width: '100%' }}
                 />
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4, padding: '4px 0' }}>
-                <input
-                  type="checkbox"
-                  id="allowBudgetView"
-                  checked={inviteForm.allowBudgetView}
-                  onChange={(e) => setInviteForm({ ...inviteForm, allowBudgetView: e.target.checked })}
-                  style={{ width: 16, height: 16, cursor: 'pointer' }}
-                />
-                <label htmlFor="allowBudgetView" style={{ fontSize: 13, fontWeight: 600, cursor: 'pointer', userSelect: 'none', color: 'var(--text1)' }}>
-                  אפשר צפייה בתקציב והוצאות פרויקט
-                </label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4, padding: '4px 0' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <input
+                    type="checkbox"
+                    id="allowBudgetView"
+                    checked={inviteForm.allowBudgetView}
+                    onChange={(e) => setInviteForm({ ...inviteForm, allowBudgetView: e.target.checked })}
+                    style={{ width: 16, height: 16, cursor: 'pointer' }}
+                  />
+                  <label htmlFor="allowBudgetView" style={{ fontSize: 13, fontWeight: 600, cursor: 'pointer', userSelect: 'none', color: 'var(--text1)' }}>
+                    אפשר צפייה בתקציב והוצאות פרויקט
+                  </label>
+                </div>
+                {inviteForm.role !== 'contractor' && (
+                  <>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <input
+                        type="checkbox"
+                        id="allowArchivePhotos"
+                        checked={inviteForm.allowArchivePhotos}
+                        onChange={(e) => setInviteForm({ ...inviteForm, allowArchivePhotos: e.target.checked })}
+                        style={{ width: 16, height: 16, cursor: 'pointer' }}
+                      />
+                      <label htmlFor="allowArchivePhotos" style={{ fontSize: 13, fontWeight: 600, cursor: 'pointer', userSelect: 'none', color: 'var(--text1)' }}>
+                        אפשר צפייה והעלאת תמונות בארכיון
+                      </label>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <input
+                        type="checkbox"
+                        id="allowArchiveDocs"
+                        checked={inviteForm.allowArchiveDocs}
+                        onChange={(e) => setInviteForm({ ...inviteForm, allowArchiveDocs: e.target.checked })}
+                        style={{ width: 16, height: 16, cursor: 'pointer' }}
+                      />
+                      <label htmlFor="allowArchiveDocs" style={{ fontSize: 13, fontWeight: 600, cursor: 'pointer', userSelect: 'none', color: 'var(--text1)' }}>
+                        אפשר צפייה והעלאת מסמכים בארכיון
+                      </label>
+                    </div>
+                  </>
+                )}
               </div>
               {inviteForm.role === 'contractor' && (
                 <div>
@@ -768,6 +895,10 @@ const MemberRow = ({
   onToggleBudget,
   canViewSchedule,
   onToggleSchedule,
+  canViewArchivePhotos,
+  onToggleArchivePhotos,
+  canViewArchiveDocs,
+  onToggleArchiveDocs,
   onRemove,
 }: {
   roleLabel: string;
@@ -777,6 +908,10 @@ const MemberRow = ({
   onToggleBudget?: (val: boolean) => void;
   canViewSchedule?: boolean;
   onToggleSchedule?: (val: boolean) => void;
+  canViewArchivePhotos?: boolean;
+  onToggleArchivePhotos?: (val: boolean) => void;
+  canViewArchiveDocs?: boolean;
+  onToggleArchiveDocs?: (val: boolean) => void;
   onRemove?: () => void;
 }) => (
   <div
@@ -788,6 +923,8 @@ const MemberRow = ({
       borderRadius: 8,
       padding: '10px 12px',
       background: 'var(--surface)',
+      flexWrap: 'wrap',
+      gap: 8,
     }}
   >
     <div>
@@ -795,7 +932,7 @@ const MemberRow = ({
       <div style={{ fontSize: 14, fontWeight: 600 }}>{name ?? 'טרם שובץ'}</div>
       {email && <div style={{ fontSize: 11, color: 'var(--text3)' }}>{email}</div>}
     </div>
-    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+    <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
       {name && onToggleBudget !== undefined && (
         <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, cursor: 'pointer', userSelect: 'none', color: 'var(--text2)' }}>
           <input
@@ -804,7 +941,7 @@ const MemberRow = ({
             onChange={(e) => onToggleBudget(e.target.checked)}
             style={{ width: 14, height: 14, cursor: 'pointer' }}
           />
-          צפייה בתקציב
+          תקציב
         </label>
       )}
       {name && onToggleSchedule !== undefined && (
@@ -815,7 +952,29 @@ const MemberRow = ({
             onChange={(e) => onToggleSchedule(e.target.checked)}
             style={{ width: 14, height: 14, cursor: 'pointer' }}
           />
-          צפייה בלוח זמנים
+          לו״ז
+        </label>
+      )}
+      {name && onToggleArchivePhotos !== undefined && (
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, cursor: 'pointer', userSelect: 'none', color: 'var(--text2)' }}>
+          <input
+            type="checkbox"
+            checked={canViewArchivePhotos}
+            onChange={(e) => onToggleArchivePhotos(e.target.checked)}
+            style={{ width: 14, height: 14, cursor: 'pointer' }}
+          />
+          תמונות ארכיון
+        </label>
+      )}
+      {name && onToggleArchiveDocs !== undefined && (
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, cursor: 'pointer', userSelect: 'none', color: 'var(--text2)' }}>
+          <input
+            type="checkbox"
+            checked={canViewArchiveDocs}
+            onChange={(e) => onToggleArchiveDocs(e.target.checked)}
+            style={{ width: 14, height: 14, cursor: 'pointer' }}
+          />
+          מסמכי ארכיון
         </label>
       )}
       {onRemove && (

@@ -37,7 +37,7 @@ export const NAV = [
   { id: "/daily-logs",    label: "יומן עבודה", icon: "calendar",  section: "תיעוד",   roles: ALL_ROLES },
   { id: "/photos",        label: "תמונות",     icon: "camera",    section: "תיעוד",   roles: ALL_ROLES },
   { id: "/notes",         label: "הודעות אישיות",      icon: "message",   section: "תיעוד",   roles: ALL_ROLES },
-  { id: "/personal-files",label: "ארכיון הפרויקט",icon: "folder", section: "תיעוד",  roles: OWNER_ONLY },
+  { id: "/personal-files",label: "ארכיון הפרויקט",icon: "folder", section: "תיעוד",  roles: OWNER_MANAGER_INSPECTOR },
   { id: "/budget",        label: "תקציב",      icon: "chart",     section: "פיננסי",  roles: OWNER_ONLY },
   { id: "/analytics",     label: "דוחות ומדדים", icon: "pie-chart", section: "פיננסי",  roles: OWNER_MANAGER },
   { id: "/quotes",        label: "הצעות מחיר", icon: "clipboard", section: "פיננסי",  roles: OWNER_ONLY },

@@ -38,10 +38,15 @@ const decompress = (bytes: Uint8Array): Promise<Uint8Array> =>
   });
 
 export const PersonalFilesScreen = () => {
-  const { allowed, loading: roleLoading } = useRequireRole(['owner']);
+  const { allowed, loading: roleLoading } = useRequireRole(['owner', 'manager', 'inspector']);
   const { project, projectId, isLoading: projectLoading } = useCurrentProject();
   const identity = useQuery(api.users.currentIdentity, {});
   const { isProOrPremium } = useSubscription();
+
+  const archivePerms = useQuery(
+    api.personalFiles.getArchivePermissions,
+    allowed && projectId ? { projectId } : 'skip',
+  );
 
   const files = useQuery(
     api.personalFiles.listMyPersonalFiles,
@@ -75,6 +80,19 @@ export const PersonalFilesScreen = () => {
   const [fileToDelete, setFileToDelete] = React.useState<{id: Id<'personalFiles'>, name: string} | null>(null);
   const [viewGallery, setViewGallery] = React.useState<{ images: {url: string, title?: string, description?: string}[], initialIndex: number } | null>(null);
   const [expandedSections, setExpandedSections] = React.useState<Set<string>>(new Set());
+
+  const isOwner = archivePerms?.isOwner ?? (project?.myRole === 'owner' || identity?.isSuperAdmin);
+  const canPhotos = isOwner || (archivePerms?.canPhotos ?? false);
+  const canDocs = isOwner || (archivePerms?.canDocs ?? false);
+  const effectivePro = isOwner ? isProOrPremium : (archivePerms?.isProOrPremium ?? false);
+
+  React.useEffect(() => {
+    if (!canPhotos && canDocs && activeTab === 'images') {
+      setActiveTab('docs');
+    } else if (canPhotos && !canDocs && activeTab === 'docs') {
+      setActiveTab('images');
+    }
+  }, [canPhotos, canDocs, activeTab]);
 
   const fileList = files ?? [];
   const imageFiles = fileList.filter(f => f.originalMimeType?.startsWith('image/'));
@@ -420,9 +438,12 @@ export const PersonalFilesScreen = () => {
     }
   };
 
-  if (identity === undefined || roleLoading || projectLoading) return <AccessLoading />;
-  if (!allowed) return <AccessDenied message="המסמכים האישיים זמינים ליזם הפרויקט בלבד." />;
+  if (identity === undefined || roleLoading || projectLoading || (projectId && archivePerms === undefined)) return <AccessLoading />;
+  if (!allowed) return <AccessDenied message="המסמכים האישיים זמינים לבעל הפרויקט, מנהל עבודה ומפקח בלבד." />;
   if (!projectId) return <AccessDenied message="יש לבחור פרויקט פעיל לפני ניהול ארכיון הפרויקט." />;
+  if (!isOwner && !canPhotos && !canDocs) {
+    return <AccessDenied message="בעל הפרויקט טרם הגדיר עבורך הרשאות גישה לארכיון פרויקט זה." />;
+  }
 
   const renderDocCard = (file: NonNullable<typeof files>[number]) => {
     const key = String(file.id);
@@ -455,9 +476,11 @@ export const PersonalFilesScreen = () => {
           <button onClick={() => void handleDownload(file)} disabled={pendingDownload === key || !file.url} style={{ background: 'none', border: 'none', padding: 6, cursor: 'pointer', color: 'var(--text2)', display: 'flex', alignItems: 'center' }}>
             <Icon n="download" s={16} />
           </button>
-          <button onClick={() => setFileToDelete({ id: file.id, name: file.originalName })} disabled={pendingDelete === key} style={{ background: 'none', border: 'none', padding: 6, cursor: 'pointer', color: 'var(--danger)', display: 'flex', alignItems: 'center' }}>
-            <Icon n="trash" s={16} />
-          </button>
+          {isOwner && (
+            <button onClick={() => setFileToDelete({ id: file.id, name: file.originalName })} disabled={pendingDelete === key} style={{ background: 'none', border: 'none', padding: 6, cursor: 'pointer', color: 'var(--danger)', display: 'flex', alignItems: 'center' }}>
+              <Icon n="trash" s={16} />
+            </button>
+          )}
         </div>
         <textarea
           className="bp-input"
@@ -587,7 +610,6 @@ export const PersonalFilesScreen = () => {
         {isExpanded && (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12, paddingInlineStart: 30, marginTop: 4 }}>
             {section.files.map(file => {
-               const saved = Math.max(0, file.originalSize - file.storedSize);
                return (
                  <div key={file.id} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '8px', background: 'var(--surface)', display: 'flex', flexDirection: 'column', gap: 6 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -611,9 +633,11 @@ export const PersonalFilesScreen = () => {
                        <button onClick={() => void handleDownload(file)} disabled={pendingDownload === file.id || !file.url} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text2)' }}>
                          <Icon n="download" s={14} />
                        </button>
-                       <button onClick={() => setFileToDelete({ id: file.id, name: file.originalName })} disabled={pendingDelete === file.id} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--danger)' }}>
-                         <Icon n="trash" s={14} />
-                       </button>
+                       {isOwner && (
+                         <button onClick={() => setFileToDelete({ id: file.id, name: file.originalName })} disabled={pendingDelete === file.id} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--danger)' }}>
+                           <Icon n="trash" s={14} />
+                         </button>
+                       )}
                     </div>
                  </div>
                );
@@ -645,9 +669,9 @@ export const PersonalFilesScreen = () => {
 
   return (
     <PremiumLock
-      isLocked={!isProOrPremium}
+      isLocked={!effectivePro}
       title="ניהול מסמכים ותמונות"
-      description="גיבוי, שמירה וניהול של כל הקבצים, התמונות והמסמכים החשובים של הפרויקט. שדרג ל-Pro כדי לקבל גישה."
+      description={isOwner ? "גיבוי, שמירה וניהול של כל הקבצים, התמונות והמסמכים החשובים של הפרויקט. שדרג ל-Pro כדי לקבל גישה." : "הארכיון זמין כאשר בעל הפרויקט הוא מנוי Pro או Premium."}
     >
       <div className="page-content" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         {permission === 'default' && (
@@ -682,32 +706,34 @@ export const PersonalFilesScreen = () => {
             {uploading && <div style={{ textAlign: 'center', padding: 12, color: 'var(--text2)' }}>מעלה קובץ, אנא המתן...</div>}
             
             <div>
-                <div style={{ display: 'flex', gap: 16, marginBottom: 24, borderBottom: '1px solid var(--border)', overflowX: 'auto', whiteSpace: 'nowrap' }}>
-                  <button 
-                    onClick={() => setActiveTab('images')}
-                    style={{ 
-                      background: 'transparent', border: 'none',
-                      borderBottom: activeTab === 'images' ? '2px solid var(--accent)' : '2px solid transparent',
-                      padding: '12px 16px', fontSize: 15, fontWeight: activeTab === 'images' ? 600 : 500,
-                      color: activeTab === 'images' ? 'var(--text1)' : 'var(--text2)', cursor: 'pointer',
-                      display: 'flex', alignItems: 'center', gap: 8
-                    }}
-                  >
-                    <Icon n="image" s={18} /> תמונות ({imageFiles.length})
-                  </button>
-                  <button 
-                    onClick={() => setActiveTab('docs')}
-                    style={{ 
-                      background: 'transparent', border: 'none',
-                      borderBottom: activeTab === 'docs' ? '2px solid var(--accent)' : '2px solid transparent',
-                      padding: '12px 16px', fontSize: 15, fontWeight: activeTab === 'docs' ? 600 : 500,
-                      color: activeTab === 'docs' ? 'var(--text1)' : 'var(--text2)', cursor: 'pointer',
-                      display: 'flex', alignItems: 'center', gap: 8
-                    }}
-                  >
-                    <Icon n="file-text" s={18} /> מסמכים ({docFiles.length})
-                  </button>
-                </div>
+                {(canPhotos && canDocs) && (
+                  <div style={{ display: 'flex', gap: 16, marginBottom: 24, borderBottom: '1px solid var(--border)', overflowX: 'auto', whiteSpace: 'nowrap' }}>
+                    <button 
+                      onClick={() => setActiveTab('images')}
+                      style={{ 
+                        background: 'transparent', border: 'none',
+                        borderBottom: activeTab === 'images' ? '2px solid var(--accent)' : '2px solid transparent',
+                        padding: '12px 16px', fontSize: 15, fontWeight: activeTab === 'images' ? 600 : 500,
+                        color: activeTab === 'images' ? 'var(--text1)' : 'var(--text2)', cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', gap: 8
+                      }}
+                    >
+                      <Icon n="image" s={18} /> תמונות ({imageFiles.length})
+                    </button>
+                    <button 
+                      onClick={() => setActiveTab('docs')}
+                      style={{ 
+                        background: 'transparent', border: 'none',
+                        borderBottom: activeTab === 'docs' ? '2px solid var(--accent)' : '2px solid transparent',
+                        padding: '12px 16px', fontSize: 15, fontWeight: activeTab === 'docs' ? 600 : 500,
+                        color: activeTab === 'docs' ? 'var(--text1)' : 'var(--text2)', cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', gap: 8
+                      }}
+                    >
+                      <Icon n="file-text" s={18} /> מסמכים ({docFiles.length})
+                    </button>
+                  </div>
+                )}
 
                 {activeTab === 'images' && (
                   <div>

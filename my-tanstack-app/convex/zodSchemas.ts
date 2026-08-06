@@ -122,6 +122,10 @@ export const zProject = {
   inspectorCanViewBudget: z.boolean().optional(),
   managerCanViewSchedule: z.boolean().optional(),
   inspectorCanViewSchedule: z.boolean().optional(),
+  inspectorCanViewArchivePhotos: z.boolean().optional(),
+  inspectorCanViewArchiveDocs: z.boolean().optional(),
+  managerCanViewArchivePhotos: z.boolean().optional(),
+  managerCanViewArchiveDocs: z.boolean().optional(),
 };
 
 export const zProjectRoom = {
@@ -337,6 +341,8 @@ export const zProjectInvitation = {
   revokedAt: z.number().optional(),
   allowBudgetView: z.boolean().optional(),
   allowScheduleView: z.boolean().optional(),
+  allowArchivePhotos: z.boolean().optional(),
+  allowArchiveDocs: z.boolean().optional(),
 };
 
 export const zPersonalFile = {
