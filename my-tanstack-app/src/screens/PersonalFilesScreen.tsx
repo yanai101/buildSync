@@ -1220,12 +1220,41 @@ export const PersonalFilesScreen = () => {
            URL.revokeObjectURL(previewFile.url);
            setPreviewFile(null);
         }}>
-           <div style={{ display: 'flex', justifyContent: 'center', background: '#f5f5f5', borderRadius: 8, overflow: 'hidden', height: previewFile.isImage ? 'auto' : '75vh' }}>
-             {previewFile.isImage ? (
-               <img src={previewFile.url} alt="Preview" style={{ maxWidth: '100%', maxHeight: '70vh', objectFit: 'contain' }} />
-             ) : (
-               <iframe src={previewFile.url} title={previewFile.name} style={{ width: '100%', height: '100%', border: 'none' }} />
+           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+             {!previewFile.isImage && (
+               <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                 <Btn
+                   size="sm"
+                   variant="outline"
+                   onClick={() => window.open(previewFile.url, '_blank')}
+                 >
+                   <Icon n="external-link" s={14} /> פתח בטאב חדש
+                 </Btn>
+               </div>
              )}
+             <div style={{ display: 'flex', justifyContent: 'center', background: '#f5f5f5', borderRadius: 8, overflow: 'hidden', height: previewFile.isImage ? 'auto' : '75vh' }}>
+               {previewFile.isImage ? (
+                 <img src={previewFile.url} alt="Preview" style={{ maxWidth: '100%', maxHeight: '70vh', objectFit: 'contain' }} />
+               ) : (
+                 <object
+                   data={previewFile.url}
+                   type="application/pdf"
+                   style={{ width: '100%', height: '100%', border: 'none' }}
+                   title={previewFile.name}
+                 >
+                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 16, color: 'var(--text2)', fontSize: 14 }}>
+                     <Icon n="file-text" s={48} c="var(--text3)" />
+                     <div style={{ textAlign: 'center' }}>
+                       <div style={{ fontWeight: 600, marginBottom: 6 }}>לא ניתן להציג את הקובץ בדפדפן זה</div>
+                       <div style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 12 }}>לחץ על "פתח בטאב חדש" כדי לצפות בקובץ</div>
+                       <Btn size="sm" onClick={() => window.open(previewFile.url, '_blank')}>
+                         <Icon n="external-link" s={14} /> פתח בטאב חדש
+                       </Btn>
+                     </div>
+                   </div>
+                 </object>
+               )}
+             </div>
            </div>
         </Modal>
       )}
