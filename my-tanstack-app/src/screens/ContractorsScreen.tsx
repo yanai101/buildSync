@@ -198,6 +198,99 @@ const ConfirmPaymentModal = ({
   );
 };
 
+const TaskBlockedPaymentModal = ({
+  contractor,
+  milestone,
+  vatPct,
+  saving,
+  onClose,
+  onConfirmForce,
+}: {
+  contractor: Contractor;
+  milestone: Milestone;
+  vatPct: number;
+  saving: boolean;
+  onClose: () => void;
+  onConfirmForce: (vatAdded: boolean) => Promise<void>;
+}) => {
+  const [vatAdded, setVatAdded] = React.useState(false);
+  const vatAmount = vatAdded ? Math.round(milestone.amount * (vatPct / 100)) : 0;
+  const finalAmount = milestone.amount + vatAmount;
+
+  return (
+    <Modal title="המשימה טרם הושלמה" onClose={saving ? undefined : onClose}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+        {/* Warning banner */}
+        <div style={{
+          display: 'flex', gap: 10, alignItems: 'flex-start',
+          background: 'rgba(255,170,0,0.1)', border: '1px solid rgba(255,170,0,0.4)',
+          borderRadius: 8, padding: '12px 14px',
+        }}>
+          <Icon n="alert-triangle" s={16} style={{ color: '#F59E0B', flexShrink: 0, marginTop: 1 }} />
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 13, color: '#B45309', marginBottom: 4 }}>
+              {milestone.lockedReason ?? 'המשימה המקושרת לשלב זה טרם הושלמה'}
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--text2)', lineHeight: 1.5 }}>
+              לא ניתן לאשר את תשלום <strong>{milestone.name}</strong> לקבלן <strong>{contractor.name}</strong> כל עוד המשימה המקושרת לא סומנה כהושלמה.
+            </div>
+          </div>
+        </div>
+
+        {/* Amount summary */}
+        <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: 14, background: 'var(--bg)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10, fontSize: 13 }}>
+            <span style={{ color: 'var(--text2)' }}>
+              {contractor.includesVat ? 'סכום תשלום (כולל מע"מ):' : 'סכום תשלום נטו:'}
+            </span>
+            <span style={{ fontWeight: 600 }}>{fmtMoney(milestone.amount)}</span>
+          </div>
+
+          {!contractor.includesVat && (
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginBottom: 10 }}>
+              <input
+                type="checkbox"
+                checked={vatAdded}
+                onChange={(e) => setVatAdded(e.target.checked)}
+                style={{ width: 16, height: 16, accentColor: 'var(--accent)' }}
+                disabled={saving}
+              />
+              <span style={{ fontSize: 13, fontWeight: 600 }}>הוסף מע"מ לתשלום ({vatPct}%)</span>
+            </label>
+          )}
+
+          {vatAdded && !contractor.includesVat && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10, fontSize: 13, color: 'var(--text2)' }}>
+              <span>סכום מע"מ:</span>
+              <span>{fmtMoney(vatAmount)}</span>
+            </div>
+          )}
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--border)', paddingTop: 10, fontSize: 15, fontWeight: 800 }}>
+            <span>סך הכל חיוב לתקציב:</span>
+            <span style={{ color: 'var(--accent)' }}>{fmtMoney(finalAmount)}</span>
+          </div>
+        </div>
+
+        {/* Explanation of what will happen */}
+        <div style={{ fontSize: 12, color: 'var(--text2)', background: 'var(--surface-2)', borderRadius: 6, padding: '10px 12px', lineHeight: 1.6 }}>
+          לחיצה על <strong>"סמן כהושלם ואשר תשלום"</strong> תבצע את שתי הפעולות יחד:
+          <br />✓ תסמן את המשימה כהושלמה בלוח הבנייה
+          <br />✓ תאשר את התשלום ותוסיף הוצאה גלובלית לתקציב
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+          <Btn variant="ghost" onClick={onClose} disabled={saving}>ביטול</Btn>
+          <Btn onClick={() => onConfirmForce(vatAdded)} disabled={saving}>
+            {saving ? 'מבצע...' : 'סמן כהושלם ואשר תשלום'}
+          </Btn>
+        </div>
+      </div>
+    </Modal>
+  );
+};
+
 const PartialPaymentModal = ({
   pendingPartial,
   onConfirm,
@@ -1285,6 +1378,7 @@ export const ContractorsScreen = () => {
   const deleteContractor = useMutation(api.mutations.deleteContractor);
   const saveSchedule = useMutation(api.mutations.saveContractorPaymentSchedule);
   const setMilestonePaid = useMutation(api.mutations.setContractorPaymentMilestonePaid);
+  const forceCompleteTasksAndPay = useMutation(api.mutations.forceCompleteTasksAndPay);
   const lockPaymentMilestone = useMutation(api.mutations.lockContractorPaymentMilestone);
   const addFilesToLockedMilestone = useMutation(api.mutations.addFilesToContractorPaymentMilestone);
   const deleteFileMutation = useMutation(api.mutations.deleteContractorPaymentMilestoneFile);
@@ -1303,6 +1397,8 @@ export const ContractorsScreen = () => {
 
   const [savingPayment, setSavingPayment] = React.useState(false);
   const [pendingPayment, setPendingPayment] = React.useState<{ contractor: Contractor; milestone: Milestone; paid: boolean } | null>(null);
+  const [taskBlockedPayment, setTaskBlockedPayment] = React.useState<{ contractor: Contractor; milestone: Milestone } | null>(null);
+  const [savingForcePayment, setSavingForcePayment] = React.useState(false);
   const [pendingPartial, setPendingPartial] = React.useState<{ contractor: Contractor; milestone: Milestone } | null>(null);
   const [savingPartial, setSavingPartial] = React.useState(false);
   const [deletePartialTarget, setDeletePartialTarget] = React.useState<{ milestoneId: string; partialId: string } | null>(null);
@@ -1404,6 +1500,14 @@ export const ContractorsScreen = () => {
     if (mode !== 'db') return;
     const contractor = contractors.find(c => normalizeMilestones(c).some(m => String(m.id) === String(milestone.id)));
     if (!contractor) return;
+
+    // Guard: if marking as paid but the linked stage task isn't done yet,
+    // open the dedicated "complete task first" popup instead of letting the server throw.
+    if (paid && milestone.readyToPay === false) {
+      setTaskBlockedPayment({ contractor, milestone });
+      return;
+    }
+
     setPendingPayment({ contractor, milestone, paid });
   };
 
@@ -1951,6 +2055,31 @@ export const ContractorsScreen = () => {
             onClose={() => savingPayment ? undefined : setPendingPayment(null)}
             saving={savingPayment}
             vatPct={(project as any)?.vatPct ?? 18}
+          />
+        )}
+        {taskBlockedPayment && (
+          <TaskBlockedPaymentModal
+            contractor={taskBlockedPayment.contractor}
+            milestone={taskBlockedPayment.milestone}
+            vatPct={(project as any)?.vatPct ?? 18}
+            saving={savingForcePayment}
+            onClose={() => savingForcePayment ? undefined : setTaskBlockedPayment(null)}
+            onConfirmForce={async (vatAdded) => {
+              setSavingForcePayment(true);
+              try {
+                await forceCompleteTasksAndPay({
+                  milestoneId: String(taskBlockedPayment.milestone.id) as any,
+                  vatAdded,
+                  amount: taskBlockedPayment.milestone.amount,
+                });
+                setTaskBlockedPayment(null);
+                setFeedback({ title: 'תשלום אושר', message: 'המשימה סומנה כהושלמה והתשלום אושר בהצלחה.', type: 'success' });
+              } catch (err) {
+                setFeedback({ title: 'שגיאה', message: err instanceof Error ? err.message : 'שגיאה בביצוע הפעולה.', type: 'error' });
+              } finally {
+                setSavingForcePayment(false);
+              }
+            }}
           />
         )}
         {pendingPartial && (

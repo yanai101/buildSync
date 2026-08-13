@@ -339,6 +339,140 @@ export const toggleTask = mutation({
   },
 });
 
+// Marks all pending tasks linked to the given payment milestone as done,
+// then atomically confirms the payment — so the user can override the
+// "task not done" guard in a single click from the UI.
+export const forceCompleteTasksAndPay = mutation({
+  args: {
+    milestoneId: v.string(),
+    vatAdded: v.optional(v.boolean()),
+    amount: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const milestoneId = await resolveMilestoneId(ctx as any, args.milestoneId);
+    const milestone = await ctx.db.get(milestoneId);
+    if (!milestone) throw new Error('Payment milestone not found');
+
+    const contractor = await ctx.db.get(milestone.contractorId);
+    if (!contractor) throw new Error('Contractor not found');
+
+    // ── 1. Collect all tasks that need to be marked done ──────────────────
+    const taskIds: Id<'stageTasks'>[] = [];
+
+    if (milestone.sourceTaskId && !milestone.sourceStageMilestoneId) {
+      // Direct task link
+      taskIds.push(milestone.sourceTaskId);
+    } else if (milestone.sourceStageMilestoneId) {
+      // Via stageMilestone → collect all required tasks under it
+      const taskLinks = await ctx.db
+        .query('stageMilestoneTasks')
+        .withIndex('by_milestone', (q) => q.eq('milestoneId', milestone.sourceStageMilestoneId!))
+        .take(100);
+      for (const link of taskLinks) {
+        const task = await ctx.db.get(link.taskId);
+        if (task && task.required !== false && !task.done) {
+          taskIds.push(link.taskId);
+        }
+      }
+      if (taskIds.length === 0 && milestone.sourceTaskId) {
+        taskIds.push(milestone.sourceTaskId);
+      }
+    } else if (milestone.sourceStageId) {
+      // All required tasks in the stage
+      const stageTasks = await ctx.db
+        .query('stageTasks')
+        .withIndex('by_stage', (q) => q.eq('stageId', milestone.sourceStageId!))
+        .take(200);
+      for (const task of stageTasks) {
+        if (task.required !== false && !task.done) {
+          taskIds.push(task._id);
+        }
+      }
+    }
+
+    // ── 2. Mark each task as done & update stage progress ─────────────────
+    const updatedStages = new Set<Id<'stages'>>();
+    for (const taskId of taskIds) {
+      const task = await ctx.db.get(taskId);
+      if (!task || task.done) continue;
+      await ctx.db.patch(taskId, { done: true });
+      updatedStages.add(task.stageId);
+    }
+
+    for (const stageId of updatedStages) {
+      const stage = await ctx.db.get(stageId);
+      if (!stage) continue;
+      const allTasks = await ctx.db
+        .query('stageTasks')
+        .withIndex('by_stage', (q) => q.eq('stageId', stageId))
+        .collect();
+      const doneCount = allTasks.filter((t) => t.done).length;
+      const progressPct = allTasks.length > 0 ? Math.round((doneCount / allTasks.length) * 100) : 100;
+      const newStatus = progressPct === 100 ? 'done' : progressPct > 0 ? 'active' : 'pending';
+      await ctx.db.patch(stageId, { progressPct, status: newStatus });
+
+      // Update project overall progress
+      const projectStages = await ctx.db
+        .query('stages')
+        .withIndex('by_project', (q) => q.eq('projectId', stage.projectId))
+        .collect();
+      const totalProgress = projectStages.reduce(
+        (sum, s) => sum + (s._id === stageId ? progressPct : s.progressPct),
+        0,
+      );
+      const projectProgress = Math.round(totalProgress / projectStages.length);
+      await ctx.db.patch(stage.projectId, { progressPct: projectProgress });
+
+      await insertActivity(ctx, {
+        projectId: stage.projectId,
+        text: `משימות בשלב "${stage.name}" סומנו כהושלמו לצורך אישור תשלום`,
+      });
+    }
+
+    // ── 3. Now run the full pay logic (readiness will pass now) ───────────
+    const project = await ctx.db.get(contractor.projectId);
+    const vatPct = project?.vatPct ?? 18;
+    const existingExpense = await findContractorPaymentExpense(ctx, contractor.projectId, milestoneId);
+    const category = await findBudgetCategoryForContractor(ctx, contractor.projectId, contractor.role);
+    const today = new Date().toISOString().slice(0, 10);
+
+    const amount =
+      args.amount !== undefined && Number.isFinite(args.amount) && args.amount >= 0
+        ? args.amount
+        : milestone.amount;
+    const vatAmount = args.vatAdded ? Math.round(amount * (vatPct / 100)) : undefined;
+
+    await ctx.db.patch(milestoneId, {
+      paid: true,
+      paidAt: today,
+      vatAdded: args.vatAdded,
+      vatAmount,
+      amount,
+    });
+
+    if (!existingExpense) {
+      const finalAmount = amount + (vatAmount || 0);
+      await ctx.db.insert('expenses', {
+        projectId: contractor.projectId,
+        description: `תשלום לקבלן ${contractor.name} — ${milestone.name}${args.vatAdded ? ' (כולל מע"מ)' : ''}`,
+        amount: finalAmount,
+        expenseDate: today,
+        status: 'שולם',
+        categoryId: category?._id,
+        contractorId: contractor._id,
+        milestoneId,
+      });
+      if (category) {
+        await ctx.db.patch(category._id, {
+          spent: category.spent + finalAmount,
+        });
+      }
+    }
+
+    await recomputeContractorPaid(ctx, milestone.contractorId);
+  },
+});
+
 export async function deleteStageSafely(ctx: MutationCtx, stageId: Id<'stages'>, projectId: Id<'projects'>) {
   const milestones = await ctx.db.query('stageMilestones').withIndex('by_stage', q => q.eq('stageId', stageId)).collect();
   for (const m of milestones) {
