@@ -183,6 +183,7 @@ export const createAnnouncement = mutation({
       const announcementData = await ctx.db.get(id);
       if (announcementData) {
         const userIds = await getAudienceUserIds(ctx, announcementData);
+        console.log(`[Announcement Push] createAnnouncement: status=${args.status}, sendPush=${args.sendPush}, audienceType=${args.audienceType}, audienceUserIds=${userIds.length}`);
         await scheduleUserNotifications(ctx, {
           userIds,
           title: `עדכון חדש: ${args.title}`,
@@ -191,6 +192,8 @@ export const createAnnouncement = mutation({
           tag: `announcement-${id}`,
         });
       }
+    } else {
+      console.log(`[Announcement Push] createAnnouncement: SKIPPED push — status=${args.status}, sendPush=${args.sendPush}`);
     }
 
     return id;

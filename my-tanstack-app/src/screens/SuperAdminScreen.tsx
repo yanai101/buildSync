@@ -33,6 +33,7 @@ export function SuperAdminScreen() {
   const [activeTab, setActiveTab] = useState<'users' | 'promo' | 'cleanup' | 'support' | 'guides' | 'announcements'>('users');
 
   const announcements = useQuery(api.announcements.getAllAnnouncements, isSuperAdmin && activeTab === 'announcements' ? {} : 'skip');
+  const pushDiagnostics = useQuery(api.superAdmin.getPushDiagnostics, isSuperAdmin && activeTab === 'announcements' ? {} : 'skip');
   const createAnnouncement = useMutation(api.announcements.createAnnouncement);
   const updateAnnouncement = useMutation(api.announcements.updateAnnouncement);
   const setAnnouncementStatus = useMutation(api.announcements.setAnnouncementStatus);
@@ -1407,6 +1408,12 @@ export function SuperAdminScreen() {
                   {annSendPush && (
                     <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4 }}>
                       התראה תישלח רק אם הסטטוס מוגדר ל'מפורסם'. יש להשתמש באופציה זו בזהירות כדי לא להציף משתמשים.
+                      {pushDiagnostics && (
+                        <div style={{ marginTop: 4, padding: '4px 8px', borderRadius: 6, background: pushDiagnostics.totalSubscriptions > 0 ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)', color: pushDiagnostics.totalSubscriptions > 0 ? 'var(--success)' : 'var(--danger)', fontWeight: 600 }}>
+                          📱 {pushDiagnostics.totalSubscriptions} מכשירים רשומים ({pushDiagnostics.usersWithSubscriptions} משתמשים)
+                          {pushDiagnostics.totalSubscriptions === 0 && ' — אין מכשירים רשומים, הפוש לא יגיע לאף אחד!'}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

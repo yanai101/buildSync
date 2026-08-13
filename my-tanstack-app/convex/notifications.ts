@@ -19,7 +19,12 @@ export async function scheduleUserNotifications(
   },
 ) {
   const targetUserIds = [...new Set(args.userIds.filter((id): id is Id<'users'> => !!id))];
-  if (targetUserIds.length === 0) return;
+  console.log(`[Push] scheduleUserNotifications called — raw userIds: ${args.userIds.length}, unique valid: ${targetUserIds.length}, tag: ${args.tag ?? '(none)'}`);
+
+  if (targetUserIds.length === 0) {
+    console.log('[Push] Aborting: 0 valid target user IDs after filtering.');
+    return;
+  }
 
   const subscriptions: { endpoint: string; p256dh: string; auth: string }[] = [];
   for (const targetId of targetUserIds) {
@@ -27,11 +32,18 @@ export async function scheduleUserNotifications(
       .query('pushSubscriptions')
       .withIndex('by_user', (q) => q.eq('userId', targetId))
       .collect();
+    if (userSubs.length > 0) {
+      console.log(`[Push] User ${targetId}: ${userSubs.length} subscription(s)`);
+    }
     subscriptions.push(...userSubs.map((s) => ({ endpoint: s.endpoint, p256dh: s.p256dh, auth: s.auth })));
   }
 
-  if (subscriptions.length === 0) return;
+  if (subscriptions.length === 0) {
+    console.log(`[Push] Aborting: ${targetUserIds.length} target user(s) but 0 push subscriptions found.`);
+    return;
+  }
 
+  console.log(`[Push] Scheduling sendNotification — ${subscriptions.length} subscription(s), title: "${args.title}"`);
   await ctx.scheduler.runAfter(0, internal.pushActions.sendNotification, {
     subscriptions,
     payload: {

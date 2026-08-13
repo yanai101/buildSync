@@ -39,6 +39,7 @@ function subscriptionToSaveArgs(subscription: PushSubscription) {
 export function usePushSubscriptionSync() {
   const { isAuthenticated } = useConvexAuth();
   const saveSubscription = useMutation(api.push.saveSubscription);
+  const removeSubscription = useMutation(api.push.removeSubscription);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -46,8 +47,25 @@ export function usePushSubscriptionSync() {
 
     navigator.serviceWorker
       .getRegistration('/sw.js')
-      .then((registration) => registration?.pushManager.getSubscription())
-      .then((subscription) => {
+      .then(async (registration) => {
+        if (!registration) return;
+
+        const subscription = await registration.pushManager.getSubscription();
+
+        // If permission was revoked after subscribing, the subscription
+        // object may still exist locally but the browser will never
+        // deliver the push. Remove it from our DB so diagnostics are
+        // accurate and we don't waste send attempts.
+        if (Notification.permission === 'denied' && subscription) {
+          try {
+            await removeSubscription({ endpoint: subscription.endpoint });
+            await subscription.unsubscribe();
+          } catch (e) {
+            console.error('Failed to clean up denied push subscription', e);
+          }
+          return;
+        }
+
         if (!subscription) return;
         const args = subscriptionToSaveArgs(subscription);
         if (args) return saveSubscription(args);
@@ -55,7 +73,7 @@ export function usePushSubscriptionSync() {
       .catch((err) => {
         console.error('Failed to sync push subscription to current user', err);
       });
-  }, [isAuthenticated, saveSubscription]);
+  }, [isAuthenticated, saveSubscription, removeSubscription]);
 }
 
 export function usePushNotifications() {

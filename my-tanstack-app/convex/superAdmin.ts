@@ -390,6 +390,24 @@ export const deletePromoCode = mutation({
   },
 });
 
+// Provides at-a-glance diagnostics for the push notification system.
+// Exposed in the Super Admin screen so the admin can quickly tell
+// whether there are push subscriptions, and for how many users.
+export const getPushDiagnostics = query({
+  args: {},
+  handler: async (ctx) => {
+    await checkSuperAdmin(ctx);
+
+    const allSubscriptions = await ctx.db.query('pushSubscriptions').collect();
+    const uniqueUserIds = new Set(allSubscriptions.map((s) => s.userId));
+
+    return {
+      totalSubscriptions: allSubscriptions.length,
+      usersWithSubscriptions: uniqueUserIds.size,
+    };
+  },
+});
+
 // Dev-only helper (exposed in the Super Admin screen behind import.meta.env.DEV)
 // to verify the Web Push pipeline end-to-end against a real device subscription.
 export const sendTestPushNotification = mutation({
