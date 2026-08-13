@@ -7,6 +7,8 @@ import { getSyncedPaymentReadiness, syncContractorStagePayments, deleteMilestone
 import { requireProjectFeature } from './_lib/projectAccess';
 import { scheduleUserNotifications } from './notifications';
 
+
+
 const contractorRoleValidator = v.union(
   v.literal('קבלן עד מפתח'),
   v.literal('קבלן שלד'),
@@ -1380,6 +1382,70 @@ export const saveBoq = mutation({
   },
 });
 
+export const addBoqItemsBatch = mutation({
+  args: {
+    projectId: v.id('projects'),
+    items: v.array(v.object({
+      roomId: v.optional(v.id('projectRooms')),
+      category: v.string(),
+      name: v.string(),
+      qty: v.number(),
+      unit: v.string(),
+      unitPrice: v.optional(v.number()),
+      supplier: v.optional(v.string()),
+      spec: v.optional(v.string()),
+      notes: v.optional(v.string()),
+      imageUrl: v.optional(v.string()),
+      projectFileId: v.optional(v.id('projectFiles')),
+      isLocked: v.optional(v.boolean()),
+      isEnabled: v.optional(v.boolean()),
+      userQty: v.optional(v.number()),
+      source: v.optional(v.union(v.literal('manual'), v.literal('wizard_smart'), v.literal('catalog'))),
+      localId: v.optional(v.string()),
+    })),
+  },
+  handler: async (ctx, args) => {
+    const project = await ctx.db.get(args.projectId);
+    if (!project) {
+      throw new Error('Project not found');
+    }
+    await requireProjectFeature(ctx, args.projectId, 'boq');
+
+    const results = [];
+    for (const item of args.items) {
+      if (item.roomId) {
+        const room = await ctx.db.get(item.roomId);
+        if (!room || room.projectId !== args.projectId) {
+          throw new Error('Room not found for project');
+        }
+      }
+
+      const dbId = await ctx.db.insert('boqItems', {
+        projectId: args.projectId,
+        roomId: item.roomId,
+        category: item.category,
+        name: item.name,
+        qty: item.qty,
+        unit: item.unit,
+        unitPrice: item.unitPrice || 0,
+        supplier: item.supplier,
+        spec: item.spec,
+        notes: item.notes,
+        imageUrl: item.imageUrl,
+        projectFileId: item.projectFileId,
+        isLocked: item.isLocked,
+        isEnabled: item.isEnabled,
+        userQty: item.userQty,
+        source: item.source || 'catalog',
+        status: 'pending',
+      });
+      
+      results.push({ localId: item.localId, dbId });
+    }
+    return results;
+  },
+});
+
 export const addBoqItem = mutation({
   args: {
     projectId: v.id('projects'),
@@ -1593,6 +1659,33 @@ export const updateBoqItem = mutation({
 
     if (Object.keys(patch).length === 0) return;
     await ctx.db.patch(args.itemId, patch);
+  },
+});
+
+export const deleteBoqItemsBatch = mutation({
+  args: {
+    itemIds: v.array(v.id('boqItems')),
+  },
+  handler: async (ctx, args) => {
+    for (const itemId of args.itemIds) {
+      const item = await ctx.db.get(itemId);
+      if (!item) continue;
+      
+      if (item.isLocked) {
+        continue; // Skip locked items silently
+      }
+
+      // Clean up linked project file (and its storage) if present
+      if (item.projectFileId) {
+        const projectFile = await ctx.db.get(item.projectFileId);
+        if (projectFile) {
+          try { await ctx.storage.delete(projectFile.storageId); } catch { /* best-effort */ }
+          await ctx.db.delete(projectFile._id);
+        }
+      }
+      
+      await ctx.db.delete(itemId);
+    }
   },
 });
 

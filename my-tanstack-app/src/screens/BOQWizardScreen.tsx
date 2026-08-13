@@ -275,6 +275,134 @@ const AddItemWidget = ({
 };
 
 // ── BOQ WIZARD SCREEN ───────────────────────────────────────────────────────
+function MagicActionsWidget({
+  step,
+  onAutoFillCurrent,
+  onResetCurrent,
+  onAutoFillAll,
+  onResetAll
+}: {
+  step: number;
+  onAutoFillCurrent: () => void;
+  onResetCurrent: () => void;
+  onAutoFillAll: () => void;
+  onResetAll: () => void;
+}) {
+  const [open, setOpen] = React.useState(false);
+  const [isMobile, setIsMobile] = React.useState(typeof window !== 'undefined' ? window.innerWidth < 768 : false);
+
+  React.useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <button
+        onClick={() => setOpen(!open)}
+        style={{
+          display: "flex", alignItems: "center", gap: 8,
+          padding: "8px 18px", borderRadius: 10,
+          border: "1.5px solid var(--accent)",
+          background: open ? "var(--accent-light)" : "transparent", color: "var(--accent)",
+          fontWeight: 700, fontSize: 14, cursor: "pointer",
+          transition: "all 0.2s"
+        }}
+      >
+        <Icon n="wand" s={15} /> 
+        {!isMobile && <span>פעולות תבנית</span>}
+      </button>
+      
+      <AnimatePresence>
+        {open && (
+          <>
+            <div style={{position: 'fixed', inset: 0, zIndex: 90}} onClick={() => setOpen(false)} />
+            <motion.div 
+              initial={{ opacity: 0, y: -5, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -5, scale: 0.95 }}
+              transition={{ duration: 0.15 }}
+              style={{
+                position: 'absolute', top: '100%', right: 0, marginTop: 8,
+                background: 'var(--surface)', borderRadius: 12,
+                boxShadow: '0 8px 30px rgba(0,0,0,0.12)', border: '1px solid var(--border)',
+                zIndex: 100, minWidth: 220, overflow: 'hidden',
+                display: 'flex', flexDirection: 'column'
+              }}
+            >
+              <div style={{ padding: '8px 12px', fontSize: 11, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                חדר נוכחי
+              </div>
+              <button 
+                onClick={() => { setOpen(false); onAutoFillCurrent(); }} 
+                style={{
+                  padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10, 
+                  border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'right', 
+                  fontSize: 14, fontWeight: 600, color: 'var(--text1)'
+                }}
+              >
+                <div style={{width: 24, height: 24, borderRadius: 6, background: 'var(--accent-light)', color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+                  <Icon n="wand" s={14} /> 
+                </div>
+                מלא חדר זה מתבנית
+              </button>
+              <button 
+                onClick={() => { setOpen(false); onResetCurrent(); }} 
+                style={{
+                  padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10, 
+                  border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'right', 
+                  fontSize: 14, fontWeight: 600, color: 'var(--text1)'
+                }}
+              >
+                <div style={{width: 24, height: 24, borderRadius: 6, background: 'rgba(239,68,68,0.1)', color: 'var(--danger)', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+                  <Icon n="trash" s={14} /> 
+                </div>
+                אפס חדר זה
+              </button>
+              
+              {step === 0 && (
+                <>
+                  <div style={{ height: 1, background: 'var(--border)', margin: '4px 0' }} />
+                  <div style={{ padding: '8px 12px', fontSize: 11, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    כל הפרויקט
+                  </div>
+                  <button 
+                    onClick={() => { setOpen(false); onAutoFillAll(); }} 
+                    style={{
+                      padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10, 
+                      border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'right', 
+                      fontSize: 14, fontWeight: 600, color: 'var(--text1)'
+                    }}
+                  >
+                    <div style={{width: 24, height: 24, borderRadius: 6, background: 'var(--accent-light)', color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+                      <Icon n="star" s={14} /> 
+                    </div>
+                    מלא הכל מתבניות
+                  </button>
+                  <button 
+                    onClick={() => { setOpen(false); onResetAll(); }} 
+                    style={{
+                      padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10, 
+                      border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'right', 
+                      fontSize: 14, fontWeight: 600, color: 'var(--text1)'
+                    }}
+                  >
+                    <div style={{width: 24, height: 24, borderRadius: 6, background: 'rgba(239,68,68,0.1)', color: 'var(--danger)', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+                      <Icon n="alert" s={14} /> 
+                    </div>
+                    אפס את כל הפרויקט
+                  </button>
+                </>
+              )}
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 
 export const BOQWizardScreen = () => {
   const navigate = useNavigate();
@@ -286,8 +414,10 @@ export const BOQWizardScreen = () => {
   const { mutate } = useDataMutation('boq');
   const uploadProjectFile = useProjectFileUploader();
   const addBoqItemMutation = useMutation(api.mutations.addBoqItem);
+  const addBoqItemsBatchMutation = useMutation(api.mutations.addBoqItemsBatch);
   const saveBoqMutation = useMutation(api.mutations.saveBoq);
   const deleteBoqItemMutation = useMutation(api.mutations.deleteBoqItem);
+  const deleteBoqItemsBatchMutation = useMutation(api.mutations.deleteBoqItemsBatch);
   const updateBoqItemMutation = useMutation(api.mutations.updateBoqItem);
   const dbBoqItems = useQuery(api.queries.listBoq, projectId ? { projectId } : 'skip');
   
@@ -299,6 +429,9 @@ export const BOQWizardScreen = () => {
   const printRef = React.useRef<HTMLDivElement>(null);
   const [feedback, setFeedback] = React.useState<{ title: string; message: string; type: 'success' | 'error'; redirect?: string } | null>(null);
   const [lightboxUrl, setLightboxUrl] = React.useState<string | null>(null);
+  const [autoFillModal, setAutoFillModal] = React.useState<{ open: boolean; scope: 'all' | 'current' }>({ open: false, scope: 'all' });
+  const [resetModal, setResetModal] = React.useState<{ open: boolean; scope: 'all' | 'current' }>({ open: false, scope: 'all' });
+  const [isAutoFilling, setIsAutoFilling] = React.useState(false);
 
   // Track which rooms have been initialised so we don't overwrite local state on re-render
   const [initialised, setInitialised] = React.useState(false);
@@ -343,6 +476,7 @@ export const BOQWizardScreen = () => {
           isLocked: (dbItem as any).isLocked === true,
           // Preserve isEnabled from DB so toggle state survives reloads.
           isEnabled: (dbItem as any).isEnabled,
+          source: (dbItem as any).source,
           _persisted: true, // mark so we don't re-save in onFinish
         });
       }
@@ -383,110 +517,98 @@ export const BOQWizardScreen = () => {
       // include `_id`; use `getRoomDbId` so this works for both shapes.
       const roomId = getRoomDbId(room);
       if (!roomId) return;
+      
+      const expectedRows: { name: string, category: string, unit: string, targetQty: number, initialQty: number, isEnabled: boolean }[] = [];
       const sizeSqm = Number(room.size ?? room.sizeSqm ?? 0);
 
-      // FLOOR row — qty derived from room size
-      const floorTargetQty = applyWaste(sizeSqm, wastePct);
-      const floorExisting = (dbBoqItems ?? []).find(
-        (it: any) => it.roomId === roomId && it.isLocked === true && it.category === FLOOR_CATEGORY,
-      );
-      if (!floorExisting) {
-        const key = `floor:${roomId}`;
-        if (!ensuredRef.current.has(key)) {
-          ensuredRef.current.add(key);
-          addBoqItemMutation({
-            projectId: projectId as any,
-            roomId: roomId as any,
-            category: FLOOR_CATEGORY,
-            name: FLOOR_NAME,
-            qty: floorTargetQty,
-            unit: FLOOR_UNIT,
-            unitPrice: 0,
-            isLocked: true,
-            isEnabled: true,
-            source: 'wizard_smart',
-          }).then((newId) => {
-            pushIntoLocal(room.uid, {
-              id: newId,
-              cat: FLOOR_CATEGORY,
-              name: FLOOR_NAME,
-              qty: floorTargetQty,
-              userQty: floorTargetQty,
-              unit: FLOOR_UNIT,
-              isLocked: true,
-              isEnabled: true,
-              notes: '',
-              _persisted: true,
-            });
-          }).catch(() => {
-            ensuredRef.current.delete(key);
-          });
+      if (room.type === 'yard') {
+        const paved = Number((project as any).yardPavedArea || 0);
+        const garden = Number((project as any).yardGardenArea || 0);
+        if (paved > 0) {
+          expectedRows.push({ name: 'ריצוף חוץ', category: 'ריצוף וחיפוי', unit: 'מ"ר', targetQty: applyWaste(paved, wastePct), initialQty: applyWaste(paved, wastePct), isEnabled: true });
         }
-      } else if (floorExisting.isEnabled !== false && floorExisting.qty !== floorTargetQty) {
-        const key = `floor-qty:${roomId}:${floorTargetQty}`;
-        if (!ensuredRef.current.has(key)) {
-          ensuredRef.current.add(key);
-          updateBoqItemMutation({ itemId: floorExisting._id, qty: floorTargetQty }).catch(() => {
-            ensuredRef.current.delete(key);
-          });
+        if (garden > 0) {
+          expectedRows.push({ name: 'גינון ופיתוח (דשא/שתילה)', category: 'גינון ופיתוח שטח', unit: 'מ"ר', targetQty: garden, initialQty: garden, isEnabled: true });
+        }
+      } else if (room.type === 'pool') {
+        const poolType = (project as any).poolType || 'built';
+        if (poolType === 'built') {
+          expectedRows.push({ name: 'חיפוי פסיפס / קרמיקה לבריכה', category: 'בריכות וג\'קוזי', unit: 'מ"ר', targetQty: applyWaste(sizeSqm, wastePct), initialQty: applyWaste(sizeSqm, wastePct), isEnabled: true });
+        } else {
+          expectedRows.push({ name: 'בריכה מתועשת קומפלט', category: 'בריכות וג\'קוזי', unit: 'יח\'', targetQty: 1, initialQty: 1, isEnabled: true });
+        }
+      } else {
+        // Regular internal room
+        expectedRows.push({ name: FLOOR_NAME, category: FLOOR_CATEGORY, unit: FLOOR_UNIT, targetQty: applyWaste(sizeSqm, wastePct), initialQty: applyWaste(sizeSqm, wastePct), isEnabled: true });
+        
+        if (room.type === 'bathroom' || room.type === 'toilet') {
+          // Wall tile defaults to 0 and disabled initially
+          expectedRows.push({ name: WALL_TILE_NAME, category: WALL_TILE_CATEGORY, unit: WALL_TILE_UNIT, targetQty: 0, initialQty: 0, isEnabled: false });
         }
       }
 
-      // WALL-TILE row — only created for wet rooms (toilets and bathrooms).
-      // Regular rooms typically don't get wall tiling. If the user later
-      // changes a room's type away from wet, an existing wall-tile row stays
-      // (but can be toggled off).
-      const isWetRoom = room.type === 'bathroom' || room.type === 'toilet';
-      const wallExisting = (dbBoqItems ?? []).find(
-        (it: any) => it.roomId === roomId && it.isLocked === true && it.category === WALL_TILE_CATEGORY,
-      );
-      if (!wallExisting && isWetRoom) {
-        const key = `wall:${roomId}`;
-        if (!ensuredRef.current.has(key)) {
-          ensuredRef.current.add(key);
-          addBoqItemMutation({
-            projectId: projectId as any,
-            roomId: roomId as any,
-            category: WALL_TILE_CATEGORY,
-            name: WALL_TILE_NAME,
-            qty: 0,
-            userQty: 0,
-            unit: WALL_TILE_UNIT,
-            unitPrice: 0,
-            isLocked: true,
-            isEnabled: false,
-            source: 'wizard_smart',
-          }).then((newId) => {
-            pushIntoLocal(room.uid, {
-              id: newId,
-              cat: WALL_TILE_CATEGORY,
-              name: WALL_TILE_NAME,
-              qty: 0,
-              userQty: 0,
-              unit: WALL_TILE_UNIT,
-              isLocked: true,
-              isEnabled: false,
-              notes: '',
-              _persisted: true,
-            });
-          }).catch(() => {
-            ensuredRef.current.delete(key);
-          });
-        }
-      } else if (wallExisting && wallExisting.isEnabled === true) {
-        // Re-derive qty when waste % changes
-        const base = Number(wallExisting.userQty ?? 0);
-        const target = applyWaste(base, wastePct);
-        if (wallExisting.qty !== target) {
-          const key = `wall-qty:${roomId}:${target}`;
+      expectedRows.forEach(expectedRow => {
+        const existing = (dbBoqItems ?? []).find(
+          (it: any) => it.roomId === roomId && it.isLocked === true && it.category === expectedRow.category && it.name === expectedRow.name
+        );
+        
+        if (!existing) {
+          const key = `locked:${roomId}:${expectedRow.name}`;
           if (!ensuredRef.current.has(key)) {
             ensuredRef.current.add(key);
-            updateBoqItemMutation({ itemId: wallExisting._id, qty: target }).catch(() => {
+            addBoqItemMutation({
+              projectId: projectId as any,
+              roomId: roomId as any,
+              category: expectedRow.category,
+              name: expectedRow.name,
+              qty: expectedRow.initialQty,
+              unit: expectedRow.unit,
+              unitPrice: 0,
+              isLocked: true,
+              isEnabled: expectedRow.isEnabled,
+              source: 'wizard_smart',
+            }).then((newId) => {
+              pushIntoLocal(room.uid, {
+                id: newId,
+                cat: expectedRow.category,
+                name: expectedRow.name,
+                qty: expectedRow.initialQty,
+                userQty: expectedRow.initialQty,
+                unit: expectedRow.unit,
+                isLocked: true,
+                isEnabled: expectedRow.isEnabled,
+                source: 'wizard_smart',
+                notes: '',
+                _persisted: true,
+              });
+            }).catch(() => {
               ensuredRef.current.delete(key);
             });
           }
+        } else if (existing.isEnabled !== false) {
+          // Re-derive qty when waste % changes, but only if it's a sqm row that scales with waste
+          let target = expectedRow.targetQty;
+          if (expectedRow.name === WALL_TILE_NAME) {
+            const base = Number(existing.userQty ?? 0);
+            target = applyWaste(base, wastePct);
+          } else if (expectedRow.unit === 'מ"ר' && expectedRow.name !== 'גינון ופיתוח (דשא/שתילה)') {
+            // Recalculate target for other SQM items (floor, yard paved, built pool)
+            let baseArea = sizeSqm;
+            if (expectedRow.name === 'ריצוף חוץ') baseArea = Number((project as any).yardPavedArea || 0);
+            target = applyWaste(baseArea, wastePct);
+          }
+          
+          if (existing.qty !== target) {
+            const key = `locked-qty:${roomId}:${expectedRow.name}:${target}`;
+            if (!ensuredRef.current.has(key)) {
+              ensuredRef.current.add(key);
+              updateBoqItemMutation({ itemId: existing._id, qty: target }).catch(() => {
+                ensuredRef.current.delete(key);
+              });
+            }
+          }
         }
-      }
+      });
     });
   }, [project, dbBoqItems, projectId, addBoqItemMutation, updateBoqItemMutation]);
 
@@ -721,6 +843,147 @@ export const BOQWizardScreen = () => {
     // If item has a DB id, delete it from DB (mutation also cleans up linked file)
     if (item?._persisted && projectId) {
       deleteBoqItemMutation({ itemId: itemId as any }).catch(console.error);
+    }
+  };
+
+  const handleAutoFillFromTemplates = async () => {
+    if (!projectId || !project || !rooms.length) return;
+    const scope = autoFillModal.scope;
+    setIsAutoFilling(true);
+    
+    try {
+      const targetRooms = scope === 'all' ? rooms : [currentRoom];
+      const itemsToInsert: any[] = [];
+      
+      targetRooms.forEach((room: any) => {
+        const roomId = getRoomDbId(room);
+        const catalog = getCatalogForRoom(room.type || 'general');
+        const existingNames = (allItems[room.uid] || []).map((i: any) => i.name.trim().toLowerCase());
+        
+        catalog.forEach((catItem) => {
+          if (!existingNames.includes(catItem.name.toLowerCase())) {
+            const localId = `cat_${room.uid}_${Date.now()}_${Math.random()}`;
+            itemsToInsert.push({
+              roomId: roomId as any,
+              roomUid: room.uid, // Needed to update local state
+              category: catItem.cat || 'כללי',
+              name: catItem.name,
+              qty: catItem.qty || 1,
+              unit: catItem.unit || "יח'",
+              unitPrice: 0,
+              userQty: catItem.qty || 1,
+              source: 'wizard_smart',
+              localId,
+            });
+          }
+        });
+      });
+      
+      if (itemsToInsert.length === 0) {
+        setFeedback({ title: 'אין מה להוסיף', message: 'כל הפריטים מהתבניות כבר קיימים בחדרים אלו, או שאין תבנית מתאימה.', type: 'success' });
+        setAutoFillModal({ open: false, scope: 'all' });
+        return;
+      }
+      
+      // Batch insert items
+      const results = await addBoqItemsBatchMutation({
+        projectId: projectId as any,
+        items: itemsToInsert.map(i => ({
+          roomId: i.roomId,
+          category: i.category,
+          name: i.name,
+          qty: i.qty,
+          unit: i.unit,
+          unitPrice: i.unitPrice,
+          userQty: i.userQty,
+          source: i.source,
+          localId: i.localId,
+        }))
+      });
+      
+      // Update local state
+      setAllItems((prev: any) => {
+        const next: any = { ...prev };
+        itemsToInsert.forEach((itemToInsert) => {
+          const res = results.find((r: any) => r.localId === itemToInsert.localId);
+          if (res) {
+            const newItem = {
+              id: res.dbId,
+              cat: itemToInsert.category,
+              name: itemToInsert.name,
+              qty: itemToInsert.qty,
+              userQty: itemToInsert.userQty,
+              unit: itemToInsert.unit,
+              isLocked: false,
+              isEnabled: true,
+              source: 'wizard_smart',
+              notes: '',
+              _persisted: true,
+            };
+            next[itemToInsert.roomUid] = [...(next[itemToInsert.roomUid] || []), newItem];
+          }
+        });
+        return next;
+      });
+      
+      setFeedback({ title: 'המילוי הושלם', message: `נוספו בהצלחה ${itemsToInsert.length} פריטים מתוך התבניות.`, type: 'success' });
+    } catch (err) {
+      console.error('Auto fill failed', err);
+      setFeedback({ title: 'שגיאה במילוי', message: 'לא הצלחנו למלא את הפריטים. אנא נסה שוב.', type: 'error' });
+    } finally {
+      setIsAutoFilling(false);
+      setAutoFillModal({ open: false, scope: 'all' });
+    }
+  };
+
+  const handleResetRooms = async () => {
+    if (!projectId || !project || !rooms.length) return;
+    const scope = resetModal.scope;
+    setIsAutoFilling(true);
+    
+    try {
+      const targetRooms = scope === 'all' ? rooms : [currentRoom];
+      const itemsToDelete: any[] = [];
+      
+      targetRooms.forEach((room: any) => {
+        const roomItems = allItems[room.uid] || [];
+        roomItems.forEach((item: any) => {
+          if (!item.isLocked && item.source === 'wizard_smart') {
+            itemsToDelete.push({ roomUid: room.uid, id: item.id, _persisted: item._persisted });
+          }
+        });
+      });
+      
+      if (itemsToDelete.length === 0) {
+        setFeedback({ title: 'אין מה לאפס', message: 'אין פריטים להסרה (פריטי מערכת נעולים לא ניתנים להסרה).', type: 'success' });
+        setResetModal({ open: false, scope: 'all' });
+        return;
+      }
+      
+      const persistedIds = itemsToDelete.filter(i => i._persisted).map(i => i.id);
+      
+      // Delete from DB if persisted
+      if (persistedIds.length > 0) {
+        await deleteBoqItemsBatchMutation({ itemIds: persistedIds as any[] });
+      }
+      
+      // Update local state
+      setAllItems((prev: any) => {
+        const next: any = { ...prev };
+        targetRooms.forEach((room: any) => {
+          const roomItems = next[room.uid] || [];
+          next[room.uid] = roomItems.filter((i: any) => i.isLocked || i.source !== 'wizard_smart');
+        });
+        return next;
+      });
+      
+      setFeedback({ title: 'איפוס הושלם', message: `הוסרו ${itemsToDelete.length} פריטים.`, type: 'success' });
+    } catch (err) {
+      console.error('Reset failed', err);
+      setFeedback({ title: 'שגיאה באיפוס', message: 'לא הצלחנו לאפס את הפריטים. אנא נסה שוב.', type: 'error' });
+    } finally {
+      setIsAutoFilling(false);
+      setResetModal({ open: false, scope: 'all' });
     }
   };
 
@@ -1048,8 +1311,8 @@ export const BOQWizardScreen = () => {
               </div>
             </div>
 
-            {/* Add Item button — always at top of items area */}
-            <div style={{display:"flex",justifyContent:"flex-start"}}>
+            {/* Add Item button and Auto-fill buttons */}
+            <div style={{display:"flex",justifyContent:"flex-start", gap: 12}}>
               <AddItemWidget
                 roomUid={currentRoom.uid}
                 roomType={currentRoom.type || 'general'}
@@ -1058,6 +1321,14 @@ export const BOQWizardScreen = () => {
                 projectId={projectId as any}
                 uploadProjectFile={uploadProjectFile}
                 globalCategories={globalCategories}
+              />
+              
+              <MagicActionsWidget 
+                step={step}
+                onAutoFillCurrent={() => setAutoFillModal({ open: true, scope: 'current' })}
+                onResetCurrent={() => setResetModal({ open: true, scope: 'current' })}
+                onAutoFillAll={() => setAutoFillModal({ open: true, scope: 'all' })}
+                onResetAll={() => setResetModal({ open: true, scope: 'all' })}
               />
             </div>
 
@@ -1278,6 +1549,82 @@ export const BOQWizardScreen = () => {
                 cursor:"default",
               }}
             />
+          </div>
+        )}
+
+        {/* Auto Fill Confirmation Modal */}
+        {autoFillModal.open && (
+          <div style={{position:"fixed",inset:0,zIndex:300,background:"rgba(0,0,0,0.6)",display:"flex",alignItems:"center",justifyContent:"center"}}>
+            <div style={{background:"var(--surface)",borderRadius:20,width:420,maxWidth:"90vw",padding:32,boxShadow:"0 24px 64px rgba(0,0,0,0.2)"}}>
+              <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16,color:"var(--accent)"}}>
+                <Icon n="wand" s={24}/>
+                <h3 style={{margin:0,fontSize:20,fontWeight:800,color:"var(--text1)"}}>
+                  {autoFillModal.scope === 'all' ? 'מילוי אוטומטי לכל החדרים' : 'מילוי אוטומטי לחדר זה'}
+                </h3>
+              </div>
+              <div style={{fontSize:15,color:"var(--text2)",lineHeight:1.6,marginBottom:24}}>
+                {autoFillModal.scope === 'all'
+                  ? 'פעולה זו תעבור על כל החדרים בפרויקט ותוסיף להם פריטים אוטומטית לפי סוג החדר (מטבח, סלון, חדר שינה וכו\').'
+                  : 'פעולה זו תוסיף אוטומטית פריטים מומלצים לחדר זה לפי סוגו.'}
+                <br/><br/>
+                <strong>שים לב:</strong> המערכת לא תוסיף פריטים שכבר קיימים (לפי שם הפריט) כדי למנוע כפילויות. תוכל לערוך או למחוק כל פריט לאחר ההוספה.
+              </div>
+              <div style={{display:"flex",gap:12}}>
+                <button
+                  onClick={() => setAutoFillModal({ open: false, scope: 'all' })}
+                  disabled={isAutoFilling}
+                  style={{flex:1,padding:"12px",borderRadius:10,border:"1px solid var(--border)",background:"var(--surface)",cursor:"pointer",fontSize:14,fontWeight:600}}
+                >
+                  ביטול
+                </button>
+                <button
+                  onClick={handleAutoFillFromTemplates}
+                  disabled={isAutoFilling}
+                  style={{flex:2,padding:"12px",borderRadius:10,border:"none",background:"var(--accent)",color:"#fff",cursor:isAutoFilling?"wait":"pointer",fontSize:14,fontWeight:700,opacity:isAutoFilling?0.7:1,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}
+                >
+                  {isAutoFilling && <Icon n="loader" s={14}/>}
+                  {isAutoFilling ? "ממלא..." : "הוסף פריטים מתבנית"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Reset Confirmation Modal */}
+        {resetModal.open && (
+          <div style={{position:"fixed",inset:0,zIndex:300,background:"rgba(0,0,0,0.6)",display:"flex",alignItems:"center",justifyContent:"center"}}>
+            <div style={{background:"var(--surface)",borderRadius:20,width:420,maxWidth:"90vw",padding:32,boxShadow:"0 24px 64px rgba(0,0,0,0.2)"}}>
+              <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16,color:"var(--danger)"}}>
+                <Icon n="trash" s={24}/>
+                <h3 style={{margin:0,fontSize:20,fontWeight:800,color:"var(--text1)"}}>
+                  {resetModal.scope === 'all' ? 'איפוס כל החדרים' : 'איפוס חדר זה'}
+                </h3>
+              </div>
+              <div style={{fontSize:15,color:"var(--text2)",lineHeight:1.6,marginBottom:24}}>
+                {resetModal.scope === 'all'
+                  ? 'פעולה זו תמחק את כל הפריטים שהוספת בכל החדרים בפרויקט. פריטי מערכת נעולים לא יימחקו.'
+                  : 'פעולה זו תמחק את כל הפריטים שהוספת בחדר זה. פריטי מערכת נעולים לא יימחקו.'}
+                <br/><br/>
+                <strong>שים לב:</strong> פעולה זו היא בלתי הפיכה.
+              </div>
+              <div style={{display:"flex",gap:12}}>
+                <button
+                  onClick={() => setResetModal({ open: false, scope: 'all' })}
+                  disabled={isAutoFilling}
+                  style={{flex:1,padding:"12px",borderRadius:10,border:"1px solid var(--border)",background:"var(--surface)",cursor:"pointer",fontSize:14,fontWeight:600}}
+                >
+                  ביטול
+                </button>
+                <button
+                  onClick={handleResetRooms}
+                  disabled={isAutoFilling}
+                  style={{flex:2,padding:"12px",borderRadius:10,border:"none",background:"var(--danger)",color:"#fff",cursor:isAutoFilling?"wait":"pointer",fontSize:14,fontWeight:700,opacity:isAutoFilling?0.7:1,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}
+                >
+                  {isAutoFilling && <Icon n="loader" s={14}/>}
+                  {isAutoFilling ? "מאפס..." : "מחק פריטים"}
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>

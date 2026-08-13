@@ -22,6 +22,10 @@ export interface ProjectConfig {
   floors: number;
   hasBasement?: boolean;
   hasYard?: boolean;
+  hasPool?: boolean;
+  poolType?: 'built' | 'prefab';
+  yardPavedArea?: number;
+  yardGardenArea?: number;
   housingUnits?: number;
   area: number;
   budgetTotal: number;
@@ -74,6 +78,10 @@ export const ProjectSetupScreen = () => {
         floors: project.floors || 1,
         hasBasement: (project as any).hasBasement || false,
         hasYard: (project as any).hasYard || false,
+        yardPavedArea: (project as any).yardPavedArea || 0,
+        yardGardenArea: (project as any).yardGardenArea || 0,
+        hasPool: (project as any).hasPool || false,
+        poolType: (project as any).poolType || 'built',
         housingUnits: (project as any).housingUnits || 0,
         area: project.areaSqm || 0,
         budgetTotal: (project as any).budgetTotal || 0,
@@ -103,14 +111,39 @@ export const ProjectSetupScreen = () => {
 
   const toggleYard = (checked: boolean) => {
     setField("hasYard", checked);
-    if (checked && floorRooms(0).length === 0) {
-      addRoom(0, "yard", "חצר", 50);
+    if (checked && floorRooms(0).filter(r => r.type === "yard").length === 0) {
+      const area = (cfg?.yardPavedArea || 0) + (cfg?.yardGardenArea || 0) || 50;
+      addRoom(0, "yard", "חצר / שטח חוץ", area);
     }
   };
+
+  const updateYardArea = (k: "yardPavedArea" | "yardGardenArea", v: number) => {
+    setCfg(c => {
+      if (!c) return c;
+      const next = { ...c, [k]: v };
+      const sum = (next.yardPavedArea || 0) + (next.yardGardenArea || 0);
+      const yardRoom = next.rooms.find(r => r.type === 'yard');
+      if (yardRoom && sum > 0) {
+        next.rooms = next.rooms.map(r => r.uid === yardRoom.uid ? { ...r, size: sum } : r);
+      }
+      return next;
+    });
+  };
+
+  const togglePool = (checked: boolean) => {
+    setField("hasPool", checked);
+    if (checked && floorRooms(0).filter(r => r.type === "pool").length === 0) {
+      addRoom(0, "pool", "בריכה", 20);
+    }
+  };
+  
   const removeRoom = (uid: string) => setCfg((c)=> c ? ({...c,rooms:(c.rooms || []).filter((r)=>r.uid!==uid)}) : c);
 
   const STEPS = ["פרטי הפרויקט","מבנה הבית","חדרים","צוות","סיכום"];
-  const totalRoomArea = cfg ? (cfg.rooms || []).reduce((a: number,r)=>a+Number(r.size||0),0) : 0;
+  const totalRoomArea = cfg ? (cfg.rooms || []).reduce((a: number,r) => {
+    if (['yard', 'pool', 'balcony', 'parking'].includes(r.type)) return a;
+    return a + Number(r.size || 0);
+  }, 0) : 0;
   const displayArea = cfg?.area || totalRoomArea;
 
   const floorRooms = (f: number) => cfg ? (cfg.rooms || []).filter((r)=>Number(r.floor)===f) : [];
@@ -129,6 +162,10 @@ export const ProjectSetupScreen = () => {
         floors: Number(cfg.floors),
         hasBasement: Boolean(cfg.hasBasement),
         hasYard: Boolean(cfg.hasYard),
+        yardPavedArea: Number(cfg.yardPavedArea) || 0,
+        yardGardenArea: Number(cfg.yardGardenArea) || 0,
+        hasPool: Boolean(cfg.hasPool),
+        poolType: cfg.poolType || 'built',
         housingUnits: Number(cfg.housingUnits) || 0,
         areaSqm: Number(cfg.area) || totalRoomArea,
         budgetTotal: Number(cfg.budgetTotal) || 0,
@@ -349,13 +386,49 @@ export const ProjectSetupScreen = () => {
                   <div style={{fontSize:12,color:"var(--text3)"}}>הוספת קומה תת-קרקעית</div>
                 </div>
               </label>
-              <label style={{display:"flex",alignItems:"center",gap:12,cursor:"pointer",flex:"1 1 200px"}}>
-                <input type="checkbox" checked={cfg.hasYard} onChange={e=>toggleYard(e.target.checked)} style={{width:18,height:18,accentColor:"var(--accent)"}}/>
-                <div>
-                  <div style={{fontWeight:600}}>יש חצר / חוץ</div>
-                  <div style={{fontSize:12,color:"var(--text3)"}}>הוספת שטחי גינה ופיתוח</div>
-                </div>
-              </label>
+              <div style={{flex:"1 1 200px"}}>
+                <label style={{display:"flex",alignItems:"center",gap:12,cursor:"pointer"}}>
+                  <input type="checkbox" checked={cfg.hasYard} onChange={e=>toggleYard(e.target.checked)} style={{width:18,height:18,accentColor:"var(--accent)"}}/>
+                  <div>
+                    <div style={{fontWeight:600}}>יש חצר / חוץ</div>
+                    <div style={{fontSize:12,color:"var(--text3)"}}>הוספת שטחי גינה ופיתוח</div>
+                  </div>
+                </label>
+                {cfg.hasYard && (
+                  <div style={{marginTop:12, display:"flex", gap:10, flexWrap:"wrap", paddingRight:30}}>
+                    <div style={{flex:1}}>
+                      <div style={{fontSize:11,color:"var(--text3)",marginBottom:4}}>שטח מרוצף (מ"ר)</div>
+                      <input type="number" className="bp-input" value={cfg.yardPavedArea||''} onChange={e=>updateYardArea('yardPavedArea', Number(e.target.value))} style={{width:"100%"}} />
+                    </div>
+                    <div style={{flex:1}}>
+                      <div style={{fontSize:11,color:"var(--text3)",marginBottom:4}}>שטח גינון (מ"ר)</div>
+                      <input type="number" className="bp-input" value={cfg.yardGardenArea||''} onChange={e=>updateYardArea('yardGardenArea', Number(e.target.value))} style={{width:"100%"}} />
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div style={{flex:"1 1 200px"}}>
+                <label style={{display:"flex",alignItems:"center",gap:12,cursor:"pointer"}}>
+                  <input type="checkbox" checked={cfg.hasPool} onChange={e=>togglePool(e.target.checked)} style={{width:18,height:18,accentColor:"var(--accent)"}}/>
+                  <div>
+                    <div style={{fontWeight:600}}>יש בריכה</div>
+                    <div style={{fontSize:12,color:"var(--text3)"}}>הוספת אזור בריכה לחצר</div>
+                  </div>
+                </label>
+                {cfg.hasPool && (
+                  <div style={{marginTop:12, display:"flex", flexDirection:"column", gap:8, paddingRight:30}}>
+                    <div style={{fontSize:11,color:"var(--text3)"}}>סוג הבריכה</div>
+                    <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",fontSize:13}}>
+                      <input type="radio" checked={cfg.poolType === 'built' || !cfg.poolType} onChange={()=>setField('poolType', 'built')} style={{accentColor:"var(--accent)"}} />
+                      בריכה בנויה מבטון
+                    </label>
+                    <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",fontSize:13}}>
+                      <input type="radio" checked={cfg.poolType === 'prefab'} onChange={()=>setField('poolType', 'prefab')} style={{accentColor:"var(--accent)"}} />
+                      בריכה מתועשת (פיברגלס / מתכת)
+                    </label>
+                  </div>
+                )}
+              </div>
             </div>
 
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(120px,1fr))",gap:10}}>
