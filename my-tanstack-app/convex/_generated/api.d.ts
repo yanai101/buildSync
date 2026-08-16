@@ -15,6 +15,7 @@ import type * as _lib_entitlements from "../_lib/entitlements.js";
 import type * as _lib_financialSummary from "../_lib/financialSummary.js";
 import type * as _lib_projectAccess from "../_lib/projectAccess.js";
 import type * as _lib_projectDeletion from "../_lib/projectDeletion.js";
+import type * as _lib_resolveCurrentStageName from "../_lib/resolveCurrentStageName.js";
 import type * as _lib_stageSchedule from "../_lib/stageSchedule.js";
 import type * as accountMerge from "../accountMerge.js";
 import type * as announcements from "../announcements.js";
@@ -69,6 +70,7 @@ declare const fullApi: ApiFromModules<{
   "_lib/financialSummary": typeof _lib_financialSummary;
   "_lib/projectAccess": typeof _lib_projectAccess;
   "_lib/projectDeletion": typeof _lib_projectDeletion;
+  "_lib/resolveCurrentStageName": typeof _lib_resolveCurrentStageName;
   "_lib/stageSchedule": typeof _lib_stageSchedule;
   accountMerge: typeof accountMerge;
   announcements: typeof announcements;

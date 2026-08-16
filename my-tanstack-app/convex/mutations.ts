@@ -5,6 +5,7 @@ import { v } from 'convex/values';
 import { getAuthUserId } from '@convex-dev/auth/server';
 import { getSyncedPaymentReadiness, syncContractorStagePayments, deleteMilestoneCascade } from './_lib/contractorPaymentSync';
 import { requireProjectFeature } from './_lib/projectAccess';
+import { resolveCurrentStageName } from './_lib/resolveCurrentStageName';
 import { scheduleUserNotifications } from './notifications';
 
 
@@ -321,7 +322,7 @@ export const toggleTask = mutation({
       // Update project overall progress
       const projectStages = await ctx.db
         .query('stages')
-        .withIndex('by_project', q => q.eq('projectId', stage.projectId))
+        .withIndex('by_project_sort', q => q.eq('projectId', stage.projectId))
         .collect();
       
       const totalProgress = projectStages.reduce((sum, s) => sum + (s._id === task.stageId ? progressPct : s.progressPct), 0);
@@ -329,7 +330,7 @@ export const toggleTask = mutation({
       
       await ctx.db.patch(stage.projectId, { 
         progressPct: projectProgress,
-        currentStageName: projectStages.find(s => s.status === 'active')?.name || projectStages[0]?.name
+        currentStageName: await resolveCurrentStageName(ctx, stage.projectId)
       });
 
       // Log activity
@@ -423,7 +424,10 @@ export const forceCompleteTasksAndPay = mutation({
         0,
       );
       const projectProgress = Math.round(totalProgress / projectStages.length);
-      await ctx.db.patch(stage.projectId, { progressPct: projectProgress });
+      await ctx.db.patch(stage.projectId, {
+        progressPct: projectProgress,
+        currentStageName: await resolveCurrentStageName(ctx, stage.projectId),
+      });
 
       await insertActivity(ctx, {
         projectId: stage.projectId,

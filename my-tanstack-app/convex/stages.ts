@@ -10,6 +10,7 @@ import {
   syncContractorStagePayments,
   syncStageLinkedContractorPayments,
 } from './_lib/contractorPaymentSync';
+import { resolveCurrentStageName } from './_lib/resolveCurrentStageName';
 
 export const list = query({
   args: { projectId: v.id('projects') },
@@ -1135,7 +1136,7 @@ export const deleteStage = mutation({
     }
 
     await ctx.db.patch(stage.projectId, {
-      currentStageName: remaining[0]?.name ?? 'חדש',
+      currentStageName: await resolveCurrentStageName(ctx, stage.projectId),
       progressPct: remaining.length
         ? Math.round(remaining.reduce((sum, item) => sum + item.progressPct, 0) / remaining.length)
         : 0,
