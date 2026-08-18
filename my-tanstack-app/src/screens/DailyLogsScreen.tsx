@@ -44,7 +44,7 @@ export const DailyLogsScreen = () => {
       if (filterPeriod === 'month' && logTs < monthAgo) return false;
       if (filterIssue === 'any_issue' && (!l.issues || l.issues.length === 0)) return false;
       if (filterIssue === 'financial' && !l.issues?.some((iss: any) => iss.financialImpact)) return false;
-      if (filterIssue === 'delay' && !l.issues?.some((iss: any) => iss.type === 'delay')) return false;
+      if (filterIssue === 'delay' && !l.issues?.some((iss: any) => iss.type === 'delay') && !l.activities?.some((act: any) => act.status === 'delayed')) return false;
       if (filterIssue === 'quality' && !l.issues?.some((iss: any) => iss.type === 'quality')) return false;
       if (filterIssue === 'safety' && !l.issues?.some((iss: any) => iss.type === 'safety')) return false;
       return true;
@@ -965,7 +965,7 @@ export const DailyLogsScreen = () => {
                         <div style={{ display: 'flex', flexDirection: 'column', maxHeight: '65vh', overflowY: 'auto' }}>
                           {monthLogs.map((l, idx) => {
                             const hasFinancial = l.issues?.some((iss: any) => iss.financialImpact);
-                            const hasDelay = l.issues?.some((iss: any) => iss.type === 'delay');
+                            const hasDelay = l.issues?.some((iss: any) => iss.type === 'delay') || l.activities?.some((act: any) => act.status === 'delayed');
                             const hasQuality = l.issues?.some((iss: any) => iss.type === 'quality');
                             const hasSafety = l.issues?.some((iss: any) => iss.type === 'safety');
                             const totalWorkers = l.workforce?.reduce((sum: number, w: any) => sum + (w.workersCount || 0), 0) ?? 0;
