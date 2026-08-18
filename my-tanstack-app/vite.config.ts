@@ -23,6 +23,29 @@ export default defineConfig({
     noExternal: [],
     external: ['html2pdf.js'],
   },
+  build: {
+    cssMinify: true,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('react') || id.includes('react-dom') || id.includes('react-is')) {
+              return 'react-vendor';
+            }
+            if (id.includes('@tanstack') || id.includes('@tanstack/react-start')) {
+              return 'router-vendor';
+            }
+            if (id.includes('framer-motion') || id.includes('lucide-react') || id.includes('tailwind-merge')) {
+              return 'ui-vendor';
+            }
+            if (id.includes('recharts') || id.includes('convex')) {
+              return 'data-vendor';
+            }
+          }
+        },
+      },
+    },
+  },
   plugins: [
     tailwindcss(),
     tanstackStart({
