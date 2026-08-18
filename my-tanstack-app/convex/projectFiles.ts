@@ -1,6 +1,10 @@
 import { mutation, query } from './_generated/server';
 import { v } from 'convex/values';
 import { requireProjectFileUser } from './_lib/projectAccess';
+import { validateUploadedFile } from './_lib/fileValidation';
+
+// Abuse guard, not a product limit — regular projects stay far below this.
+const MAX_FILES_PER_PROJECT = 2000;
 
 const usageValidator = v.union(
   v.literal('photo'),
@@ -45,9 +49,15 @@ export const createProjectFile = mutation({
   },
   handler: async (ctx, args) => {
     const { userId } = await requireProjectFileUser(ctx, args.projectId);
-    const metadata = await ctx.db.system.get('_storage', args.storageId);
-    if (!metadata) {
-      throw new Error('Uploaded file was not found in storage');
+    const metadata = await validateUploadedFile(ctx, args.storageId);
+
+    const existing = await ctx.db
+      .query('projectFiles')
+      .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
+      .take(MAX_FILES_PER_PROJECT);
+    if (existing.length >= MAX_FILES_PER_PROJECT) {
+      await ctx.storage.delete(args.storageId);
+      throw new Error('הפרויקט הגיע למכסת הקבצים המרבית');
     }
 
     return await ctx.db.insert('projectFiles', {
@@ -58,9 +68,10 @@ export const createProjectFile = mutation({
       originalName: args.originalName,
       storedName: args.storedName,
       originalMimeType: args.originalMimeType,
-      storedMimeType: args.storedMimeType,
+      // Trust the storage system's recorded values over the client's claims
+      storedMimeType: metadata.contentType ?? args.storedMimeType,
       originalSize: args.originalSize,
-      storedSize: args.storedSize,
+      storedSize: metadata.size,
       ...(args.width !== undefined ? { width: args.width } : {}),
       ...(args.height !== undefined ? { height: args.height } : {}),
       uploaderUserId: userId,
@@ -82,8 +93,7 @@ export const deleteProjectFile = mutation({
     const { userId, user, project } = await requireProjectFileUser(ctx, file.projectId);
     const isUploader = file.uploaderUserId === userId;
     const isProjectManager = project.ownerUserId === userId || project.managerUserId === userId;
-    const hasManagerRole = user?.role === 'owner' || user?.role === 'manager';
-    if (!isUploader && !isProjectManager && !hasManagerRole && !user?.isSuperAdmin) {
+    if (!isUploader && !isProjectManager && !user?.isSuperAdmin) {
       throw new Error('Only the uploader, owner, or manager can delete this file');
     }
 
@@ -103,21 +113,20 @@ export const deleteProjectFileByStorageId = mutation({
       .withIndex('by_storage', (q) => q.eq('storageId', args.storageId))
       .first();
 
-    if (file) {
-      const { userId, user, project } = await requireProjectFileUser(ctx, file.projectId);
-      const isUploader = file.uploaderUserId === userId;
-      const isProjectManager = project.ownerUserId === userId || project.managerUserId === userId;
-      const hasManagerRole = user?.role === 'owner' || user?.role === 'manager';
-      
-      // Attempt to enforce auth if we found the file.
-      // If we don't have permission, just return false (fail silently to user but protect data)
-      if (!isUploader && !isProjectManager && !hasManagerRole && !user?.isSuperAdmin) {
-        throw new Error('Only the uploader, owner, or manager can delete this file');
-      }
-      await ctx.db.delete(file._id);
+    // Storage files without a projectFiles record cannot be verified for
+    // ownership, so they are never deleted through this mutation.
+    if (!file) {
+      return { deleted: false };
     }
-    
-    // Always delete the underlying storage file if we get here
+
+    const { userId, user, project } = await requireProjectFileUser(ctx, file.projectId);
+    const isUploader = file.uploaderUserId === userId;
+    const isProjectManager = project.ownerUserId === userId || project.managerUserId === userId;
+    if (!isUploader && !isProjectManager && !user?.isSuperAdmin) {
+      throw new Error('Only the uploader, owner, or manager can delete this file');
+    }
+
+    await ctx.db.delete(file._id);
     try {
       await ctx.storage.delete(args.storageId);
     } catch (e) {

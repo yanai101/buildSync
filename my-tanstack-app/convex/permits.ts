@@ -1,17 +1,21 @@
 import { v } from 'convex/values';
 import { mutation, query } from './_generated/server';
 import { insertActivity } from './_lib/activity';
+import { requireProjectMember } from './_lib/projectAccess';
+import { validateUploadedFile } from './_lib/fileValidation';
 import { zPermitStatus } from './zodSchemas';
 import { zodToConvex } from 'convex-helpers/server/zod3';
 
 export const list = query({
   args: { projectId: v.id('projects') },
   handler: async (ctx, args) => {
+    await requireProjectMember(ctx, args.projectId);
+
     const records = await ctx.db
       .query('permits')
       .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
       .collect();
-      
+
     const withUrls = await Promise.all(records.map(async (p) => ({
       ...p,
       url: p.fileId ? await ctx.storage.getUrl(p.fileId) : null,
@@ -27,8 +31,8 @@ export const list = query({
 
 export const generateUploadUrl = mutation({
   args: { projectId: v.id('projects') },
-  handler: async (ctx) => {
-    // Basic auth check can go here if needed
+  handler: async (ctx, args) => {
+    await requireProjectMember(ctx, args.projectId);
     return await ctx.storage.generateUploadUrl();
   },
 });
@@ -44,7 +48,11 @@ export const addPermit = mutation({
     fileId: v.optional(v.id('_storage')),
   },
   handler: async (ctx, args) => {
-    
+    await requireProjectMember(ctx, args.projectId);
+    if (args.fileId) {
+      await validateUploadedFile(ctx, args.fileId);
+    }
+
     const permitId = await ctx.db.insert('permits', {
       projectId: args.projectId,
       title: args.title,
@@ -78,6 +86,10 @@ export const updatePermit = mutation({
   handler: async (ctx, args) => {
     const permit = await ctx.db.get(args.permitId);
     if (!permit) throw new Error('Permit not found');
+    await requireProjectMember(ctx, permit.projectId);
+    if (args.fileId && args.fileId !== permit.fileId) {
+      await validateUploadedFile(ctx, args.fileId);
+    }
 
     const { permitId, ...updates } = args;
     await ctx.db.patch(permitId, updates);
@@ -89,6 +101,7 @@ export const deletePermit = mutation({
   handler: async (ctx, args) => {
     const permit = await ctx.db.get(args.permitId);
     if (!permit) throw new Error('Permit not found');
+    await requireProjectMember(ctx, permit.projectId);
 
     if (permit.fileId) {
       await ctx.storage.delete(permit.fileId);
@@ -107,9 +120,17 @@ export const reorderPermits = mutation({
     ),
   },
   handler: async (ctx, args) => {
+    const permits = await Promise.all(args.updates.map((update) => ctx.db.get(update.id)));
+    const projectIds = new Set(
+      permits.filter((p): p is NonNullable<typeof p> => p !== null).map((p) => p.projectId),
+    );
+    for (const projectId of projectIds) {
+      await requireProjectMember(ctx, projectId);
+    }
+
     await Promise.all(
-      args.updates.map((update) =>
-        ctx.db.patch(update.id, { sortOrder: update.sortOrder })
+      args.updates.map((update, i) =>
+        permits[i] ? ctx.db.patch(update.id, { sortOrder: update.sortOrder }) : Promise.resolve()
       )
     );
   },

@@ -2,12 +2,13 @@ import { mutation, query } from './_generated/server';
 import { v } from 'convex/values';
 import { getAuthUserId } from '@convex-dev/auth/server';
 import { insertActivity } from './_lib/activity';
-import { requireProjectFeature } from './_lib/projectAccess';
+import { requireProjectFeature, requireProjectMember } from './_lib/projectAccess';
 import { scheduleUserNotifications } from './notifications';
 
 export const getLogsByDate = query({
   args: { projectId: v.id('projects'), date: v.string() },
   handler: async (ctx, args) => {
+    await requireProjectMember(ctx, args.projectId);
     const logs = await ctx.db
       .query('dailyLogs')
       .withIndex('by_project_date', (q) => q.eq('projectId', args.projectId).eq('date', args.date))
@@ -37,6 +38,7 @@ export const getLogs = query({
     paginationOpts: paginationOptsValidator,
   },
   handler: async (ctx, args) => {
+    await requireProjectMember(ctx, args.projectId);
     const logsPage = await ctx.db
       .query('dailyLogs')
       .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
@@ -107,6 +109,7 @@ export const saveLog = mutation({
     const user = await ctx.db.get(userId);
     if (!user) throw new Error("User not found");
 
+    await requireProjectMember(ctx, args.projectId);
     await requireProjectFeature(ctx, args.projectId, 'dailyLogs');
 
     if (args.logId) {
@@ -187,6 +190,7 @@ export const lockLog = mutation({
     const log = await ctx.db.get(args.logId);
     if (!log) throw new Error("Log not found");
 
+    await requireProjectMember(ctx, log.projectId);
     await requireProjectFeature(ctx, log.projectId, 'dailyLogs');
 
     // Must be inspector or manager to lock a log. Assuming this check will be done or UI handled.
@@ -216,6 +220,7 @@ export const deleteLog = mutation({
       throw new Error("Cannot delete a locked log");
     }
 
+    await requireProjectMember(ctx, log.projectId);
     await requireProjectFeature(ctx, log.projectId, 'dailyLogs');
 
     // Delete associated images

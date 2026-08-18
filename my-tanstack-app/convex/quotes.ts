@@ -1,10 +1,12 @@
 import { query, mutation } from './_generated/server';
 import { v } from 'convex/values';
 import type { Id } from './_generated/dataModel';
+import { requireProjectMember } from './_lib/projectAccess';
 
 export const listQuotes = query({
   args: { projectId: v.id('projects') },
   handler: async (ctx, args) => {
+    await requireProjectMember(ctx, args.projectId);
     const quotes = await ctx.db
       .query('priceQuotes')
       .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
@@ -80,6 +82,7 @@ export const saveQuote = mutation({
     id: v.optional(v.id('priceQuotes')),
   },
   handler: async (ctx, args) => {
+    await requireProjectMember(ctx, args.projectId);
     const { id, removeFile, ...data } = args;
     if (id) {
       await ctx.db.patch(id, removeFile ? {
@@ -126,6 +129,9 @@ export const saveQuote = mutation({
 export const deleteQuote = mutation({
   args: { id: v.id('priceQuotes') },
   handler: async (ctx, args) => {
+    const quote = await ctx.db.get(args.id);
+    if (!quote) return;
+    await requireProjectMember(ctx, quote.projectId);
     await ctx.db.delete(args.id);
   },
 });
@@ -137,6 +143,7 @@ export const addTopic = mutation({
     icon: v.string(),
   },
   handler: async (ctx, args) => {
+    await requireProjectMember(ctx, args.projectId);
     const key = `custom_${Date.now()}`;
     await ctx.db.insert('quoteTopics', {
       projectId: args.projectId,

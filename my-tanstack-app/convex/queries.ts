@@ -4,7 +4,7 @@ import { paginationOptsValidator } from 'convex/server';
 import type { Id } from './_generated/dataModel';
 import { getAuthUserId } from '@convex-dev/auth/server';
 import { getSyncedPaymentReadiness } from './_lib/contractorPaymentSync';
-import { requireProjectScheduleView } from './_lib/projectAccess';
+import { requireProjectScheduleView, requireProjectMember, requireProjectBudgetView, requireProjectFileUser } from './_lib/projectAccess';
 
 const formatMessageDate = (creationTime: number) => {
   const date = new Date(creationTime);
@@ -226,6 +226,7 @@ export const listStages = query({
 export const listRooms = query({
   args: { projectId: v.id('projects') },
   handler: async (ctx, args) => {
+    await requireProjectMember(ctx, args.projectId);
     return await ctx.db
       .query('projectRooms')
       .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
@@ -236,6 +237,7 @@ export const listRooms = query({
 export const listBoq = query({
   args: { projectId: v.id('projects') },
   handler: async (ctx, args) => {
+    await requireProjectMember(ctx, args.projectId);
     const items = await ctx.db
       .query('boqItems')
       .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
@@ -264,6 +266,7 @@ export const listPhotos = query({
     paginationOpts: paginationOptsValidator,
   },
   handler: async (ctx, args) => {
+    await requireProjectFileUser(ctx, args.projectId);
     const result = await ctx.db
       .query('photos')
       .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
@@ -384,6 +387,7 @@ export const listPhotos = query({
 export const getPhotosCount = query({
   args: { projectId: v.id('projects') },
   handler: async (ctx, args) => {
+    await requireProjectFileUser(ctx, args.projectId);
     const photos = await ctx.db
       .query('photos')
       .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
@@ -484,6 +488,7 @@ export const listNotes = query({
 export const listExpenses = query({
   args: { projectId: v.id('projects') },
   handler: async (ctx, args) => {
+    await requireProjectBudgetView(ctx, args.projectId);
     return await ctx.db
       .query('expenses')
       .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
@@ -494,6 +499,7 @@ export const listExpenses = query({
 export const listContractors = query({
   args: { projectId: v.id('projects') },
   handler: async (ctx, args) => {
+    await requireProjectMember(ctx, args.projectId);
     const contractors = await ctx.db
       .query('contractors')
       .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
@@ -640,6 +646,7 @@ export const listContractors = query({
 export const listBudgetCategories = query({
   args: { projectId: v.id('projects') },
   handler: async (ctx, args) => {
+    await requireProjectBudgetView(ctx, args.projectId);
     return await ctx.db
       .query('budgetCategories')
       .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
@@ -649,6 +656,7 @@ export const listBudgetCategories = query({
 export const getProject = query({
   args: { projectId: v.id('projects') },
   handler: async (ctx, args) => {
+    await requireProjectMember(ctx, args.projectId);
     return await ctx.db.get(args.projectId);
   },
 });

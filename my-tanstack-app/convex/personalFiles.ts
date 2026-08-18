@@ -4,6 +4,7 @@ import { getAuthUserId } from '@convex-dev/auth/server';
 import type { Id } from './_generated/dataModel';
 import type { MutationCtx, QueryCtx } from './_generated/server';
 import { getActiveTier } from './_lib/entitlements';
+import { validateUploadedFile } from './_lib/fileValidation';
 
 const MAX_FILES_PER_OWNER = 30;
 
@@ -163,10 +164,7 @@ export const createPersonalFile = mutation({
       throw new Error(`ניתן לשמור עד ${MAX_FILES_PER_OWNER} קבצים בארכיון`);
     }
 
-    const metadata = await ctx.db.system.get(args.storageId);
-    if (!metadata) {
-      throw new Error('Uploaded file was not found in storage');
-    }
+    const metadata = await validateUploadedFile(ctx, args.storageId);
 
     return await ctx.db.insert('personalFiles', {
       ownerUserId,
@@ -176,7 +174,7 @@ export const createPersonalFile = mutation({
       storedName: args.storedName,
       originalMimeType: args.originalMimeType,
       originalSize: args.originalSize,
-      storedSize: args.storedSize,
+      storedSize: metadata.size,
       sectionId: args.sectionId,
       sectionName: args.sectionName,
       note: args.note ?? '',

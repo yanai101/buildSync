@@ -1,7 +1,8 @@
 import { query, mutation } from './_generated/server';
 import { v } from 'convex/values';
 import { getAuthUserId } from '@convex-dev/auth/server';
-import { requireProjectFeature } from './_lib/projectAccess';
+import { requireProjectFeature, requireProjectMember } from './_lib/projectAccess';
+import { validateUploadedFile } from './_lib/fileValidation';
 
 export const list = query({
   args: { projectId: v.id('projects') },
@@ -13,6 +14,8 @@ export const list = query({
     if (user?.role === 'contractor') {
       throw new Error("Contractors cannot access orders");
     }
+
+    await requireProjectMember(ctx, args.projectId);
 
     const orders = await ctx.db
       .query('orders')
@@ -47,6 +50,7 @@ export const list = query({
 export const generateUploadUrl = mutation({
   args: { projectId: v.id('projects') },
   handler: async (ctx, args) => {
+    await requireProjectMember(ctx, args.projectId);
     await requireProjectFeature(ctx, args.projectId, 'orders');
     return await ctx.storage.generateUploadUrl();
   },
@@ -61,7 +65,9 @@ export const addDocument = mutation({
   handler: async (ctx, args) => {
     const order = await ctx.db.get(args.orderId);
     if (!order) throw new Error('Order not found');
+    await requireProjectMember(ctx, order.projectId);
     await requireProjectFeature(ctx, order.projectId, 'orders');
+    await validateUploadedFile(ctx, args.storageId);
     const documents = order.deliveryDocuments || [];
     documents.push({ storageId: args.storageId, name: args.name });
     await ctx.db.patch(args.orderId, { deliveryDocuments: documents });
@@ -76,8 +82,17 @@ export const removeDocument = mutation({
   handler: async (ctx, args) => {
     const order = await ctx.db.get(args.orderId);
     if (!order) throw new Error('Order not found');
+    await requireProjectMember(ctx, order.projectId);
     await requireProjectFeature(ctx, order.projectId, 'orders');
-    const documents = (order.deliveryDocuments || []).filter(d => d.storageId !== args.storageId);
+
+    // Only delete from storage if the file actually belongs to this order
+    const existingDocuments = order.deliveryDocuments || [];
+    const belongsToOrder = existingDocuments.some(d => d.storageId === args.storageId);
+    if (!belongsToOrder) {
+      throw new Error('Document does not belong to this order');
+    }
+
+    const documents = existingDocuments.filter(d => d.storageId !== args.storageId);
     await ctx.db.patch(args.orderId, { deliveryDocuments: documents });
     await ctx.storage.delete(args.storageId);
   },
@@ -103,6 +118,7 @@ export const create = mutation({
       throw new Error("Contractors cannot create orders");
     }
 
+    await requireProjectMember(ctx, args.projectId);
     await requireProjectFeature(ctx, args.projectId, 'orders');
 
     return await ctx.db.insert('orders', {
@@ -123,11 +139,12 @@ export const updateReceived = mutation({
     const order = await ctx.db.get(args.orderId);
     if (!order) throw new Error("Order not found");
 
+    await requireProjectMember(ctx, order.projectId);
     await requireProjectFeature(ctx, order.projectId, 'orders');
 
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("Unauthenticated");
-    
+
     const user = await ctx.db.get(userId);
     if (user?.role === 'contractor') {
       throw new Error("Contractors cannot update orders");
@@ -173,6 +190,7 @@ export const update = mutation({
     const order = await ctx.db.get(orderId);
     if (!order) throw new Error("Order not found");
 
+    await requireProjectMember(ctx, order.projectId);
     await requireProjectFeature(ctx, order.projectId, 'orders');
 
     await ctx.db.patch(orderId, updates);
@@ -185,11 +203,12 @@ export const remove = mutation({
     const order = await ctx.db.get(args.orderId);
     if (!order) throw new Error("Order not found");
 
+    await requireProjectMember(ctx, order.projectId);
     await requireProjectFeature(ctx, order.projectId, 'orders');
 
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("Unauthenticated");
-    
+
     const user = await ctx.db.get(userId);
     if (user?.role === 'contractor') {
       throw new Error("Contractors cannot delete orders");

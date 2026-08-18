@@ -72,13 +72,7 @@ export const requireProjectFileUser = async (ctx: Ctx, projectId: Id<'projects'>
     project.inspectorUserId === userId ||
     contractorRecord !== null;
 
-  const hasProjectTeamRole =
-    user?.role === 'owner' ||
-    user?.role === 'manager' ||
-    user?.role === 'inspector' ||
-    user?.role === 'contractor';
-
-  if (!isProjectMember && !hasProjectTeamRole && !user?.isSuperAdmin) {
+  if (!isProjectMember && !user?.isSuperAdmin) {
     throw new Error('Only project team members can access files');
   }
 
