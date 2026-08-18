@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useCurrentProject } from '../hooks/useCurrentProject';
-import { useQuery, useMutation } from 'convex/react';
+import { useQuery, useMutation, usePaginatedQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { useSearch } from '@tanstack/react-router';
 import { ScreenBoundary } from '../components/ScreenBoundary';
@@ -21,9 +21,44 @@ export const DailyLogsScreen = () => {
   const [activeTab, setActiveTab] = useState<'log' | 'history'>('log');
   const [selectedLogId, setSelectedLogId] = useState<string | null>(null);
   const [openMonths, setOpenMonths] = useState<Set<string>>(() => new Set([new Date().toISOString().slice(0, 7)]));
+  const [filterStatus, setFilterStatus] = useState<'all' | 'locked' | 'draft'>('all');
+  const [filterIssue, setFilterIssue] = useState<'all' | 'any_issue' | 'financial' | 'delay' | 'quality' | 'safety'>('all');
+  const [filterPeriod, setFilterPeriod] = useState<'all' | 'week' | 'month'>('all');
 
   const logsForDate = useQuery(api.dailyLogs.getLogsByDate, projectId ? { projectId, date: selectedDate } : 'skip');
-  const allLogs = useQuery(api.dailyLogs.getLogs, projectId && activeTab === 'history' ? { projectId } : 'skip') || [];
+  const { results: allLogs, status: pagedStatus, loadMore } = usePaginatedQuery(
+    api.dailyLogs.getLogs,
+    projectId && activeTab === 'history' ? { projectId } : 'skip',
+    { initialNumItems: 15 }
+  );
+
+  const filteredLogs = React.useMemo(() => {
+    const now = Date.now();
+    const weekAgo = now - 7 * 24 * 60 * 60 * 1000;
+    const monthAgo = now - 30 * 24 * 60 * 60 * 1000;
+    return allLogs.filter(l => {
+      if (filterStatus === 'locked' && l.status !== 'locked') return false;
+      if (filterStatus === 'draft' && l.status === 'locked') return false;
+      const logTs = new Date(l.date).getTime();
+      if (filterPeriod === 'week' && logTs < weekAgo) return false;
+      if (filterPeriod === 'month' && logTs < monthAgo) return false;
+      if (filterIssue === 'any_issue' && (!l.issues || l.issues.length === 0)) return false;
+      if (filterIssue === 'financial' && !l.issues?.some((iss: any) => iss.financialImpact)) return false;
+      if (filterIssue === 'delay' && !l.issues?.some((iss: any) => iss.type === 'delay')) return false;
+      if (filterIssue === 'quality' && !l.issues?.some((iss: any) => iss.type === 'quality')) return false;
+      if (filterIssue === 'safety' && !l.issues?.some((iss: any) => iss.type === 'safety')) return false;
+      return true;
+    });
+  }, [allLogs, filterStatus, filterIssue, filterPeriod]);
+
+  const stats = React.useMemo(() => ({
+    total: allLogs.length,
+    locked: allLogs.filter(l => l.status === 'locked').length,
+    withIssues: allLogs.filter(l => l.issues && l.issues.length > 0).length,
+    withFinancial: allLogs.filter(l => l.issues?.some((iss: any) => iss.financialImpact)).length,
+  }), [allLogs]);
+
+  const hasActiveFilter = filterStatus !== 'all' || filterIssue !== 'all' || filterPeriod !== 'all';
 
   const log = React.useMemo(() => {
     if (!logsForDate) return undefined;
@@ -769,12 +804,113 @@ export const DailyLogsScreen = () => {
             </div>
           ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+              {/* ── Summary Bar ── */}
+              {allLogs.length > 0 && (
+                <>
+                  <style>{`
+                    .dl-stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+                    @media (min-width: 600px) { .dl-stats-grid { grid-template-columns: repeat(4, 1fr); } }
+                    .dl-filter-bar { display: flex; flex-direction: column; gap: 10px; }
+                    @media (min-width: 600px) { .dl-filter-bar { flex-direction: row; align-items: center; } }
+                    .dl-filter-select { padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text1); font-size: 13px; font-family: inherit; cursor: pointer; flex: 1; min-width: 0; }
+                    .dl-log-row { display: flex; flex-wrap: wrap; gap: 12px; justify-content: space-between; align-items: flex-start; padding: 14px 20px; }
+                    .dl-action-btn { min-height: 44px; min-width: 44px; }
+                  `}</style>
+                  <div className="dl-stats-grid">
+                    {[
+                      { label: 'סה״כ דוחות', value: stats.total, icon: 'file-text', color: 'var(--accent)' },
+                      { label: 'דוחות נעולים', value: stats.locked, icon: 'lock', color: '#34C759' },
+                      { label: 'עם חריגות', value: stats.withIssues, icon: 'alert-triangle', color: '#FF9500' },
+                      { label: 'השפעה כספית', value: stats.withFinancial, icon: 'dollar-sign', color: '#FF3B30' },
+                    ].map(s => (
+                      <div key={s.label} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <Icon n={s.icon} s={14} c={s.color} />
+                          <span style={{ fontSize: 11, color: 'var(--text3)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.3 }}>{s.label}</span>
+                        </div>
+                        <span style={{ fontSize: 24, fontWeight: 800, color: s.value > 0 ? s.color : 'var(--text3)' }}>{s.value}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* ── Filter Bar ── */}
+                  <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '12px 16px' }}>
+                    <div className="dl-filter-bar">
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                        <Icon n="filter" s={14} c="var(--text3)" />
+                        <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text2)', whiteSpace: 'nowrap' }}>סינון:</span>
+                      </div>
+                      <select
+                        className="dl-filter-select"
+                        value={filterStatus}
+                        onChange={e => setFilterStatus(e.target.value as any)}
+                        aria-label="סינון לפי סטטוס"
+                      >
+                        <option value="all">כל הסטטוסים</option>
+                        <option value="locked">נעולים בלבד</option>
+                        <option value="draft">טיוטות בלבד</option>
+                      </select>
+                      <select
+                        className="dl-filter-select"
+                        value={filterIssue}
+                        onChange={e => setFilterIssue(e.target.value as any)}
+                        aria-label="סינון לפי חריגות"
+                      >
+                        <option value="all">כל הדוחות</option>
+                        <option value="any_issue">עם חריגות / בעיות</option>
+                        <option value="financial">עם השפעה כספית</option>
+                        <option value="delay">עם עיכובים</option>
+                        <option value="quality">עם ליקויי איכות</option>
+                        <option value="safety">עם אירועי בטיחות</option>
+                      </select>
+                      <select
+                        className="dl-filter-select"
+                        value={filterPeriod}
+                        onChange={e => setFilterPeriod(e.target.value as any)}
+                        aria-label="סינון לפי תקופה"
+                      >
+                        <option value="all">כל התקופות</option>
+                        <option value="week">7 ימים אחרונים</option>
+                        <option value="month">30 יום אחרונים</option>
+                      </select>
+                      {hasActiveFilter && (
+                        <button
+                          onClick={() => { setFilterStatus('all'); setFilterIssue('all'); setFilterPeriod('all'); }}
+                          style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text2)', fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: 'inherit' }}
+                        >
+                          נקה סינון
+                        </button>
+                      )}
+                    </div>
+                    {hasActiveFilter && (
+                      <div style={{ marginTop: 8, fontSize: 12, color: 'var(--text3)' }}>
+                        מציג {filteredLogs.length} מתוך {allLogs.length} דוחות
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+
+              {/* ── Log List ── */}
               {allLogs.length === 0 ? (
                 <EmptyState title="אין היסטוריית יומנים" description="עדיין לא נוצרו יומני עבודה בפרויקט זה." icon="file-text" />
+              ) : filteredLogs.length === 0 ? (
+                <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '32px 20px', textAlign: 'center' }}>
+                  <Icon n="search" s={28} c="var(--text3)" />
+                  <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text2)', marginTop: 12 }}>לא נמצאו דוחות</div>
+                  <div style={{ fontSize: 13, color: 'var(--text3)', marginTop: 4 }}>נסה לשנות את הסינון</div>
+                  <button
+                    onClick={() => { setFilterStatus('all'); setFilterIssue('all'); setFilterPeriod('all'); }}
+                    style={{ marginTop: 16, padding: '8px 20px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--accent)', fontSize: 13, cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit' }}
+                  >
+                    נקה סינון
+                  </button>
+                </div>
               ) : (() => {
-                // Group logs by year-month
-                const groups: Record<string, typeof allLogs> = {};
-                for (const l of allLogs) {
+                // Group filteredLogs by year-month
+                const groups: Record<string, typeof filteredLogs> = {};
+                for (const l of filteredLogs) {
                   const d = new Date(l.date);
                   const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
                   if (!groups[key]) groups[key] = [];
@@ -827,59 +963,122 @@ export const DailyLogsScreen = () => {
                       {/* Month Logs */}
                       {isOpen && (
                         <div style={{ display: 'flex', flexDirection: 'column', maxHeight: '65vh', overflowY: 'auto' }}>
-                          {monthLogs.map((l, idx) => (
-                            <div
-                              key={l._id}
-                              style={{
-                                display: 'flex', flexWrap: 'wrap', gap: 16, justifyContent: 'space-between', alignItems: 'center',
-                                padding: '14px 20px',
-                                borderBottom: idx < monthLogs.length - 1 ? '1px solid var(--border)' : 'none',
-                              }}
-                            >
-                              <div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-                                  <span style={{ fontSize: 15, fontWeight: 700 }}>
-                                    {new Date(l.date).toLocaleDateString('he-IL')}
-                                  </span>
-                                  <span style={{ fontSize: 12, color: 'var(--text3)' }}>
-                                    ({new Date(l._creationTime).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })})
-                                  </span>
-                                  {l.status === 'locked' ? (
-                                    <span className="badge" style={{ background: 'rgba(255,59,48,0.1)', color: '#FF3B30' }}>
-                                      <Icon n="lock" s={11} /> נעול
+                          {monthLogs.map((l, idx) => {
+                            const hasFinancial = l.issues?.some((iss: any) => iss.financialImpact);
+                            const hasDelay = l.issues?.some((iss: any) => iss.type === 'delay');
+                            const hasQuality = l.issues?.some((iss: any) => iss.type === 'quality');
+                            const hasSafety = l.issues?.some((iss: any) => iss.type === 'safety');
+                            const totalWorkers = l.workforce?.reduce((sum: number, w: any) => sum + (w.workersCount || 0), 0) ?? 0;
+                            return (
+                              <div
+                                key={l._id}
+                                className="dl-log-row"
+                                style={{ borderBottom: idx < monthLogs.length - 1 ? '1px solid var(--border)' : 'none' }}
+                              >
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 6 }}>
+                                    <span style={{ fontSize: 15, fontWeight: 700 }}>
+                                      {new Date(l.date).toLocaleDateString('he-IL', { weekday: 'short', day: 'numeric', month: 'numeric' })}
                                     </span>
-                                  ) : (
-                                    <span className="badge badge-draft">טיוטה</span>
+                                    {l.status === 'locked' ? (
+                                      <span className="badge" style={{ background: 'rgba(52,199,89,0.12)', color: '#34C759', display: 'flex', alignItems: 'center', gap: 3 }}>
+                                        <Icon n="lock" s={10} /> נעול
+                                      </span>
+                                    ) : (
+                                      <span className="badge badge-draft">טיוטה</span>
+                                    )}
+                                  </div>
+                                  {/* Stats row */}
+                                  <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', fontSize: 12, color: 'var(--text3)', marginBottom: l.issues?.length > 0 ? 6 : 0 }}>
+                                    {l.activities?.length > 0 && <span>✔ {l.activities.length} פעילויות</span>}
+                                    {totalWorkers > 0 && <span>👷 {totalWorkers} פועלים</span>}
+                                    {l.images && l.images.length > 0 && <span>📷 {l.images.length} תמונות</span>}
+                                  </div>
+                                  {/* Issue badges */}
+                                  {l.issues?.length > 0 && (
+                                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                                      {hasDelay && <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 20, background: 'rgba(255,149,0,0.12)', color: '#FF9500', fontWeight: 600 }}>⏱ עיכוב</span>}
+                                      {hasQuality && <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 20, background: 'rgba(255,59,48,0.1)', color: '#FF3B30', fontWeight: 600 }}>⚠ ליקוי איכות</span>}
+                                      {hasSafety && <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 20, background: 'rgba(255,59,48,0.12)', color: '#FF3B30', fontWeight: 700 }}>🦺 בטיחות</span>}
+                                      {hasFinancial && <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 20, background: 'rgba(255,59,48,0.15)', color: '#FF3B30', fontWeight: 700, border: '1px solid rgba(255,59,48,0.3)' }}>💸 חריגה כספית</span>}
+                                    </div>
                                   )}
                                 </div>
-                                <div style={{ fontSize: 12, color: 'var(--text2)' }}>
-                                  <span>פעילויות: {l.activities.length}</span>
-                                  <span style={{ margin: '0 8px' }}>·</span>
-                                  <span>חריגות: {l.issues.length}</span>
+                                <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+                                  <Btn
+                                    className="dl-action-btn"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                      setSelectedDate(l.date);
+                                      setSelectedLogId(l._id);
+                                      setActiveTab('log');
+                                    }}
+                                  >
+                                    <Icon n="eye" s={14} /> צפה
+                                  </Btn>
+                                  {l.status === 'locked' && (
+                                    <Btn
+                                      className="dl-action-btn"
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => exportPDF(allLogs.filter(x => x.date === l.date))}
+                                      disabled={exporting}
+                                    >
+                                      <Icon n="download" s={14} /> PDF
+                                    </Btn>
+                                  )}
                                 </div>
                               </div>
-                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                                <Btn variant="outline" size="sm" onClick={() => {
-                                  setSelectedDate(l.date);
-                                  setSelectedLogId(l._id);
-                                  setActiveTab('log');
-                                }}>
-                                  <Icon n="eye" s={14} /> צפה ביומן
-                                </Btn>
-                                {l.status === 'locked' && (
-                                  <Btn variant="outline" size="sm" onClick={() => exportPDF(allLogs.filter(x => x.date === l.date))} disabled={exporting}>
-                                    <Icon n="download" s={14} /> {exporting ? 'מפיק...' : 'PDF'}
-                                  </Btn>
-                                )}
-                              </div>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       )}
                     </div>
                   );
                 });
               })()}
+
+              {/* ── Infinite Scroll Trigger ── */}
+              {allLogs.length > 0 && !hasActiveFilter && (
+                <div style={{ padding: '20px', textAlign: 'center' }}>
+                  {pagedStatus === "CanLoadMore" || pagedStatus === "LoadingMore" ? (
+                    <button
+                      onClick={() => loadMore(15)}
+                      disabled={pagedStatus === "LoadingMore"}
+                      style={{ 
+                        padding: '12px 24px', borderRadius: 8, border: '1px solid var(--border)',
+                        background: 'var(--surface)', color: 'var(--text1)', fontWeight: 600,
+                        cursor: pagedStatus === "LoadingMore" ? 'wait' : 'pointer',
+                        fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 8, margin: '0 auto'
+                      }}
+                      ref={node => {
+                        // Very simple IntersectionObserver to auto-load more
+                        if (!node) return;
+                        const observer = new IntersectionObserver(entries => {
+                          if (entries[0].isIntersecting && pagedStatus === "CanLoadMore") {
+                            loadMore(15);
+                          }
+                        }, { threshold: 0.1 });
+                        observer.observe(node);
+                        return () => observer.disconnect();
+                      }}
+                    >
+                      {pagedStatus === "LoadingMore" ? (
+                        <>
+                          <style>{`@keyframes spin { 100% { transform: rotate(360deg); } }`}</style>
+                          <div style={{ animation: 'spin 1s linear infinite' }}><Icon n="loader" s={16} /></div>
+                          טוען עוד...
+                        </>
+                      ) : (
+                        'טען עוד דוחות'
+                      )}
+                    </button>
+                  ) : pagedStatus === "Exhausted" ? (
+                    <span style={{ fontSize: 13, color: 'var(--text3)' }}>הגעת לסוף. כל הדוחות נטענו.</span>
+                  ) : null}
+                </div>
+              )}
             </div>
           )}
         </div>

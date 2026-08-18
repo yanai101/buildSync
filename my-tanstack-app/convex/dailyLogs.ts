@@ -29,17 +29,22 @@ export const getLogsByDate = query({
   },
 });
 
+import { paginationOptsValidator } from 'convex/server';
+
 export const getLogs = query({
-  args: { projectId: v.id('projects') },
+  args: { 
+    projectId: v.id('projects'),
+    paginationOpts: paginationOptsValidator,
+  },
   handler: async (ctx, args) => {
-    const logs = await ctx.db
+    const logsPage = await ctx.db
       .query('dailyLogs')
       .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
       .order('desc')
-      .take(100);
+      .paginate(args.paginationOpts);
       
-    return await Promise.all(
-      logs.map(async (log) => {
+    const enhancedPage = await Promise.all(
+      logsPage.page.map(async (log) => {
         if (log.images) {
           log.images = await Promise.all(
             log.images.map(async (img) => ({
@@ -51,6 +56,11 @@ export const getLogs = query({
         return log;
       })
     );
+    
+    return {
+      ...logsPage,
+      page: enhancedPage,
+    };
   },
 });
 
