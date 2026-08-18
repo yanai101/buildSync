@@ -182,6 +182,7 @@ export const TeamScreen = () => {
     role: InviteRole;
     name: string;
     email: string;
+    phone: string;
     contractorId: string;
     allowBudgetView: boolean;
     allowScheduleView: boolean;
@@ -191,12 +192,25 @@ export const TeamScreen = () => {
     role: 'manager',
     name: '',
     email: '',
+    phone: '',
     contractorId: '',
     allowBudgetView: true,
     allowScheduleView: true,
     allowArchivePhotos: false,
     allowArchiveDocs: false,
   });
+
+  const isValidIsraeliPhone = (phone: string): boolean => {
+    const cleaned = phone.replace(/[\s\-\(\)]/g, '');
+    return /^(\+9725\d{8}|05\d{8})$/.test(cleaned);
+  };
+
+  const normalizePhoneForWhatsApp = (phone: string): string => {
+    const cleaned = phone.replace(/[\s\-\(\)]/g, '');
+    if (cleaned.startsWith('0')) return '972' + cleaned.slice(1);
+    if (cleaned.startsWith('+')) return cleaned.slice(1);
+    return cleaned;
+  };
   const [createdCode, setCreatedCode] = React.useState<{ code: string; expiresAt: number } | null>(null);
   const [submitting, setSubmitting] = React.useState(false);
 
@@ -262,6 +276,7 @@ export const TeamScreen = () => {
       role: 'manager',
       name: '',
       email: '',
+      phone: '',
       contractorId: '',
       allowBudgetView: true,
       allowScheduleView: true,
@@ -275,6 +290,29 @@ export const TeamScreen = () => {
   const closeInvite = () => {
     if (submitting) return;
     setShowInvite(false);
+  };
+
+  const handleSendWhatsApp = () => {
+    if (!createdCode || !isValidIsraeliPhone(inviteForm.phone)) return;
+    const phone = normalizePhoneForWhatsApp(inviteForm.phone);
+    const url = inviteUrl(createdCode.code);
+    const roleName = ROLE_LABEL[inviteForm.role];
+    const nameStr = inviteForm.name ? ` ${inviteForm.name}` : '';
+    const text = [
+      `שלום${nameStr}! 👋`,
+      `הוזמנת להצטרף לפרויקט "${project?.name ?? ''}" בתפקיד ${roleName} דרך BuildSync.`,
+      ``,
+      `לחץ על הקישור להצטרפות:`,
+      url,
+      ``,
+      `קוד הצטרפות: ${createdCode.code}`,
+      `(תקף ל-14 ימים)`,
+    ].join('\n');
+    window.open(
+      `https://wa.me/${phone}?text=${encodeURIComponent(text)}`,
+      '_blank',
+      'noopener,noreferrer',
+    );
   };
 
   const submitInvite = async () => {
@@ -730,6 +768,44 @@ export const TeamScreen = () => {
                   העתק קישור הצטרפות
                 </Btn>
               </div>
+              {/* WhatsApp send button */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <button
+                  type="button"
+                  disabled={!isValidIsraeliPhone(inviteForm.phone)}
+                  onClick={handleSendWhatsApp}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 8,
+                    width: '100%',
+                    padding: '10px 16px',
+                    borderRadius: 10,
+                    border: isValidIsraeliPhone(inviteForm.phone) ? 'none' : '1px dashed var(--border)',
+                    background: isValidIsraeliPhone(inviteForm.phone) ? '#25D366' : 'var(--surface)',
+                    color: isValidIsraeliPhone(inviteForm.phone) ? '#fff' : 'var(--text3)',
+                    fontSize: 14,
+                    fontWeight: 700,
+                    cursor: isValidIsraeliPhone(inviteForm.phone) ? 'pointer' : 'not-allowed',
+                    transition: 'background 0.2s, color 0.2s',
+                    fontFamily: 'inherit',
+                  }}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+                    <path d="M12 0C5.373 0 0 5.373 0 12c0 2.127.558 4.126 1.533 5.858L.057 23.215a.75.75 0 00.919.919l5.357-1.476A11.943 11.943 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.92 0-3.72-.51-5.27-1.396l-.378-.218-3.924 1.081 1.081-3.924-.218-.378A9.953 9.953 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/>
+                  </svg>
+                  שלח הזמנה בוואטסאפ
+                </button>
+                {!isValidIsraeliPhone(inviteForm.phone) && (
+                  <div style={{ fontSize: 11, color: 'var(--text3)', textAlign: 'center' }}>
+                    {inviteForm.phone
+                      ? 'מספר לא תקין — בדוק שוב'
+                      : 'הזן מספר טלפון ישראלי בטופס כדי לשלוח בוואטסאפ'}
+                  </div>
+                )}
+              </div>
               <Btn variant="ghost" onClick={closeInvite} style={{ alignSelf: 'flex-end' }}>
                 סיים
               </Btn>
@@ -780,6 +856,31 @@ export const TeamScreen = () => {
                   placeholder="name@company.com"
                   style={{ width: '100%' }}
                 />
+              </div>
+              <div>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="#25D366">
+                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+                    <path d="M12 0C5.373 0 0 5.373 0 12c0 2.127.558 4.126 1.533 5.858L.057 23.215a.75.75 0 00.919.919l5.357-1.476A11.943 11.943 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.92 0-3.72-.51-5.27-1.396l-.378-.218-3.924 1.081 1.081-3.924-.218-.378A9.953 9.953 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/>
+                  </svg>
+                  טלפון{' '}
+                  <span style={{ fontWeight: 400, color: 'var(--text3)', fontSize: 12 }}>
+                    (מלא כדי לשלוח את ההזמנה ישירות לנייד שלו)
+                  </span>
+                </label>
+                <Input
+                  type="tel"
+                  value={inviteForm.phone}
+                  onChange={(v: string) => setInviteForm({ ...inviteForm, phone: v })}
+                  placeholder="050-000-0000"
+                  dir="ltr"
+                  style={{ width: '100%' }}
+                />
+                {inviteForm.phone && !isValidIsraeliPhone(inviteForm.phone) && (
+                  <div style={{ fontSize: 11, color: 'var(--danger)', marginTop: 4 }}>
+                    מספר לא תקין — הזן מספר ישראלי כגון 050-000-0000
+                  </div>
+                )}
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4, padding: '4px 0' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
