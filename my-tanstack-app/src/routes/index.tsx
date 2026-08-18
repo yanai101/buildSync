@@ -29,8 +29,24 @@ const structuredData = JSON.stringify({
 
 export const Route = createFileRoute('/')({
   component: LandingPage,
+  // @ts-ignore - prerender config for TanStack Start
+  prerender: true,
   head: () => ({
+    meta: [
+      { title: 'BuildSync - מערכת ניהול לפרויקטי בנייה ושיפוצים' },
+      { name: 'description', content: 'פלטפורמה לניהול פרויקטי בנייה ושיפוצים: תקציב, קבלנים, יומני עבודה, תיעוד ותקשורת. כל מה שאתה צריך כדי לנהל פרויקט מוצלח בשטח.' },
+      { property: 'og:title', content: 'BuildSync - מערכת ניהול לפרויקטי בנייה ושיפוצים' },
+      { property: 'og:description', content: 'פלטפורמה לניהול פרויקטי בנייה ושיפוצים: תקציב, קבלנים, יומני עבודה, תיעוד ותקשורת. כל מה שאתה צריך כדי לנהל פרויקט מוצלח בשטח.' },
+      { property: 'og:type', content: 'website' },
+      { property: 'og:url', content: 'https://buildsync.co.il/' },
+      { property: 'og:image', content: 'https://buildsync.co.il/og-image.png' },
+      { name: 'twitter:card', content: 'summary_large_image' },
+      { name: 'twitter:title', content: 'BuildSync - מערכת ניהול לפרויקטי בנייה ושיפוצים' },
+      { name: 'twitter:description', content: 'פלטפורמה לניהול פרויקטי בנייה ושיפוצים: תקציב, קבלנים, יומני עבודה, תיעוד ותקשורת.' },
+      { name: 'twitter:image', content: 'https://buildsync.co.il/og-image.png' },
+    ],
     links: [
+      { rel: 'canonical', href: 'https://buildsync.co.il/' },
       // The hero is the LCP image — fetch it before the preload scanner finds it.
       { rel: 'preload', as: 'image', href: '/hero.webp', fetchPriority: 'high' },
     ],

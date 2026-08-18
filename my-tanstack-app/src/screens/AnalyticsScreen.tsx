@@ -86,6 +86,12 @@ export const AnalyticsScreen = () => {
     }));
   }, [stages]);
 
+  const commonTooltipProps = {
+    contentStyle: { backgroundColor: 'var(--surface)', borderColor: 'var(--border)', borderRadius: '8px', color: 'var(--text1)', fontSize: 13 },
+    itemStyle: { color: 'var(--text1)' },
+    labelStyle: { color: 'var(--text2)', fontWeight: 600, marginBottom: '4px' }
+  };
+
   if (roleLoading) return <AccessLoading />;
   if (!allowed) return <AccessDenied message="צפייה בדוחות וסטטיסטיקות מורשית למנהלי הפרויקט בלבד." />;
   if (loading) return <ScreenBoundary loading={true} onRetry={() => {}}><div/></ScreenBoundary>;
@@ -140,7 +146,7 @@ export const AnalyticsScreen = () => {
                         <Cell key={`cell-${index}`} fill={entry.color || COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>
-                    <Tooltip formatter={(value: any) => `₪${Number(value).toLocaleString()}`} contentStyle={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:10, fontSize:13 }}/>
+                    <Tooltip formatter={(value: any) => `₪${Number(value).toLocaleString()}`} {...commonTooltipProps} />
                     <Legend verticalAlign="bottom" height={36} />
                   </PieChart>
                 </ResponsiveContainer>
@@ -176,7 +182,7 @@ export const AnalyticsScreen = () => {
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
                     <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'var(--text2)' }} />
                     <YAxis orientation="right" tickFormatter={(val) => `₪${(val/1000)}k`} axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'var(--text2)' }} width={60} />
-                    <Tooltip formatter={(value: any) => `₪${Number(value).toLocaleString()}`} contentStyle={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:10, fontSize:13 }}/>
+                    <Tooltip formatter={(value: any) => `₪${Number(value).toLocaleString()}`} {...commonTooltipProps} />
                     <Area type="monotone" dataKey="total" name="סה״כ הוצאות" stroke="var(--accent)" strokeWidth={3} fillOpacity={1} fill="url(#colorTotal)" />
                   </AreaChart>
                 </ResponsiveContainer>
@@ -211,7 +217,7 @@ export const AnalyticsScreen = () => {
                       <Cell key={`cell-${index}`} fill={entry.fill} />
                     ))}
                   </Pie>
-                  <Tooltip />
+                  <Tooltip {...commonTooltipProps} />
                   <Legend verticalAlign="bottom" height={36} />
                 </PieChart>
               </ResponsiveContainer>
@@ -238,7 +244,7 @@ export const AnalyticsScreen = () => {
                       <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--border)" />
                       <XAxis type="number" domain={[0, 100]} hide />
                       <YAxis orientation="left" dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'var(--text1)' }} width={120} />
-                      <Tooltip formatter={(value) => `${value}%`} />
+                      <Tooltip formatter={(value) => `${value}%`} {...commonTooltipProps} cursor={{ fill: 'var(--border)' }} />
                       <Bar dataKey="התקדמות (%)" fill="var(--success)" radius={[0, 4, 4, 0]} barSize={16} />
                     </BarChart>
                   </ResponsiveContainer>
@@ -293,7 +299,7 @@ export const AnalyticsScreen = () => {
                       <Cell key={`cell-${index}`} fill={entry.color || COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(value: any) => `₪${Number(value).toLocaleString()}`} />
+                  <Tooltip formatter={(value: any) => `₪${Number(value).toLocaleString()}`} {...commonTooltipProps} />
                   <Legend verticalAlign="bottom" height={36} />
                 </PieChart>
               </ResponsiveContainer>
@@ -311,7 +317,7 @@ export const AnalyticsScreen = () => {
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
                   <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 14, fill: 'var(--text2)' }} />
                   <YAxis orientation="right" tickFormatter={(val) => `₪${(val/1000)}k`} axisLine={false} tickLine={false} tick={{ fontSize: 14, fill: 'var(--text2)' }} width={80} />
-                  <Tooltip formatter={(value: any) => `₪${Number(value).toLocaleString()}`} />
+                  <Tooltip formatter={(value: any) => `₪${Number(value).toLocaleString()}`} {...commonTooltipProps} />
                   <Area type="monotone" dataKey="total" name="סה״כ הוצאות" stroke="var(--accent)" strokeWidth={4} fillOpacity={1} fill="url(#colorTotalLarge)" />
                 </AreaChart>
               </ResponsiveContainer>
@@ -334,7 +340,7 @@ export const AnalyticsScreen = () => {
                       <Cell key={`cell-${index}`} fill={entry.fill} />
                     ))}
                   </Pie>
-                  <Tooltip />
+                  <Tooltip {...commonTooltipProps} />
                   <Legend verticalAlign="bottom" height={36} />
                 </PieChart>
               </ResponsiveContainer>
@@ -348,7 +354,7 @@ export const AnalyticsScreen = () => {
                       <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--border)" />
                       <XAxis type="number" domain={[0, 100]} hide />
                       <YAxis orientation="left" dataKey="fullName" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 13, fill: 'var(--text1)' }} width={160} />
-                      <Tooltip formatter={(value) => `${value}%`} />
+                      <Tooltip formatter={(value) => `${value}%`} {...commonTooltipProps} cursor={{ fill: 'var(--border)' }} />
                       <Bar dataKey="התקדמות (%)" fill="var(--success)" radius={[0, 4, 4, 0]} barSize={24} />
                     </BarChart>
                   </ResponsiveContainer>
