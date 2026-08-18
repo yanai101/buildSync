@@ -60,18 +60,20 @@ export const AnalyticsScreen = () => {
 
   const taskStats = useMemo(() => {
     if (!stages) return [];
-    let done = 0, active = 0, problem = 0, internal = 0;
+    let done = 0, active = 0, pending = 0, problem = 0, internal = 0;
     stages.forEach(s => {
       s.tasks?.forEach((t: any) => {
         if (t.status === 'done') done++;
         else if (t.status === 'problem') problem++;
         else if (t.status === 'internal') internal++;
+        else if (t.status === 'pending') pending++;
         else active++;
       });
     });
     return [
       { name: 'הושלם', value: done, fill: '#10B981' },
-      { name: 'פעיל/ממתין', value: active, fill: '#E07A38' },
+      { name: 'פעיל', value: active, fill: '#E07A38' },
+      { name: 'ממתין', value: pending, fill: '#F59E0B' },
       { name: 'בעיה', value: problem, fill: '#EF4444' },
       { name: 'פנימי', value: internal, fill: '#6B7280' },
     ].filter(s => s.value > 0);
