@@ -489,9 +489,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const dbNotes = useQuery(api.queries.listNotes, project?._id ? { projectId: project._id } : "skip")
   const unreadNotesCount = dbNotes?.filter(n => !(n as any).readAt && (n as any).fromUserId !== identity?.userId).length || 0;
 
-  const dbDailyLogs = useQuery(api.dailyLogs.getLogs, project?._id ? { projectId: project._id } : "skip")
   const todayStr = new Date().toISOString().split('T')[0];
-  const hasDailyLogToday = dbDailyLogs?.some(l => l.date === todayStr) ?? false;
+  const dbDailyLogsToday = useQuery(api.dailyLogs.getLogsByDate, project?._id ? { projectId: project._id, date: todayStr } : "skip");
+  const hasDailyLogToday = dbDailyLogsToday !== undefined && dbDailyLogsToday.length > 0;
   
   const [lastViewedDailyLogs, setLastViewedDailyLogs] = React.useState<string | null>(null);
 
