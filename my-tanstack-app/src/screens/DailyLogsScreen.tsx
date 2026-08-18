@@ -60,6 +60,14 @@ export const DailyLogsScreen = () => {
 
   const hasActiveFilter = filterStatus !== 'all' || filterIssue !== 'all' || filterPeriod !== 'all';
 
+  // The filter runs client-side, so while one is active keep loading the
+  // remaining pages — otherwise matching logs beyond the first page are missed.
+  React.useEffect(() => {
+    if (hasActiveFilter && pagedStatus === 'CanLoadMore') {
+      loadMore(50);
+    }
+  }, [hasActiveFilter, pagedStatus, loadMore]);
+
   const log = React.useMemo(() => {
     if (!logsForDate) return undefined;
     if (selectedLogId === 'new') return undefined;
@@ -895,6 +903,10 @@ export const DailyLogsScreen = () => {
               {/* ── Log List ── */}
               {allLogs.length === 0 ? (
                 <EmptyState title="אין היסטוריית יומנים" description="עדיין לא נוצרו יומני עבודה בפרויקט זה." icon="file-text" />
+              ) : filteredLogs.length === 0 && (pagedStatus === 'CanLoadMore' || pagedStatus === 'LoadingMore') ? (
+                <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '32px 20px', textAlign: 'center' }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text2)' }}>מחפש דוחות תואמים...</div>
+                </div>
               ) : filteredLogs.length === 0 ? (
                 <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '32px 20px', textAlign: 'center' }}>
                   <Icon n="search" s={28} c="var(--text3)" />
@@ -924,7 +936,9 @@ export const DailyLogsScreen = () => {
                   const [year, month] = monthKey.split('-');
                   const monthName = new Date(Number(year), Number(month) - 1, 1).toLocaleDateString('he-IL', { month: 'long', year: 'numeric' });
                   const isCurrentMonth = monthKey === currentMonthKey;
-                  const isOpen = openMonths.has(monthKey);
+                  // While filtering, show every matching log — a collapsed month
+                  // would hide results and make the filter look broken.
+                  const isOpen = hasActiveFilter || openMonths.has(monthKey);
                   const lockedCount = monthLogs.filter(l => l.status === 'locked').length;
 
                   return (
