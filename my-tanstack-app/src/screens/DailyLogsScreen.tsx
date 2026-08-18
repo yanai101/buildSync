@@ -42,7 +42,7 @@ export const DailyLogsScreen = () => {
       const logTs = new Date(l.date).getTime();
       if (filterPeriod === 'week' && logTs < weekAgo) return false;
       if (filterPeriod === 'month' && logTs < monthAgo) return false;
-      if (filterIssue === 'any_issue' && (!l.issues || l.issues.length === 0)) return false;
+      if (filterIssue === 'any_issue' && (!l.issues || l.issues.length === 0) && !l.activities?.some((act: any) => act.status === 'delayed')) return false;
       if (filterIssue === 'financial' && !l.issues?.some((iss: any) => iss.financialImpact)) return false;
       if (filterIssue === 'delay' && !l.issues?.some((iss: any) => iss.type === 'delay') && !l.activities?.some((act: any) => act.status === 'delayed')) return false;
       if (filterIssue === 'quality' && !l.issues?.some((iss: any) => iss.type === 'quality')) return false;
@@ -995,7 +995,7 @@ export const DailyLogsScreen = () => {
                                     {l.images && l.images.length > 0 && <span>📷 {l.images.length} תמונות</span>}
                                   </div>
                                   {/* Issue badges */}
-                                  {l.issues?.length > 0 && (
+                                  {(l.issues?.length > 0 || hasDelay) && (
                                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                                       {hasDelay && <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 20, background: 'rgba(255,149,0,0.12)', color: '#FF9500', fontWeight: 600 }}>⏱ עיכוב</span>}
                                       {hasQuality && <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 20, background: 'rgba(255,59,48,0.1)', color: '#FF3B30', fontWeight: 600 }}>⚠ ליקוי איכות</span>}
