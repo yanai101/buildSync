@@ -254,7 +254,7 @@ export function DashboardCategoryBreakdown({ projectId }: Props) {
               pinnedCategories.length === 1
                 ? '1fr'
                 : pinnedCategories.length === 2
-                  ? 'repeat(auto-fill, minmax(min(100%, 220px), 1fr))'
+                  ? '1fr 1fr'
                   : 'repeat(auto-fill, minmax(max(180px, calc((100% - 24px) / 3)), 1fr))',
             gap: 12,
           }}
