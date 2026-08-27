@@ -221,7 +221,7 @@ export function DashboardCategoryBreakdown({ projectId }: Props) {
         </button>
       </div>
 
-      {/* Category cards — responsive grid */}
+      {/* Category cards — responsive grid: 1→full, 2→two cols, 3+→max 3 per row */}
       <div className="card-body" style={{ paddingTop: 14, paddingBottom: 6 }}>
         <motion.div
           variants={containerV}
@@ -229,7 +229,12 @@ export function DashboardCategoryBreakdown({ projectId }: Props) {
           animate="show"
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+            gridTemplateColumns:
+              pinnedCategories.length === 1
+                ? '1fr'
+                : pinnedCategories.length === 2
+                  ? 'repeat(auto-fill, minmax(min(100%, 220px), 1fr))'
+                  : 'repeat(auto-fill, minmax(max(180px, calc((100% - 24px) / 3)), 1fr))',
             gap: 12,
           }}
         >
