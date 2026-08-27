@@ -5,6 +5,23 @@ import { useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { Icon, ProgressBar, Btn, Modal } from './Shared';
 import { fmtMoney } from '../utils/mockData';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 /* ── localStorage helpers ─────────────────────────────────────────────── */
 const STORAGE_KEY_PREFIX = 'dashboard_pinned_categories_';
@@ -47,7 +64,7 @@ export function DashboardCategoryBreakdown({ projectId }: Props) {
   const categories = useQuery(api.budget.listCategories, { projectId } as any);
   const [pinnedIds, setPinnedIds] = React.useState<string[]>(() => loadPinned(projectId));
   const [selectorOpen, setSelectorOpen] = React.useState(false);
-  const [draftPinned, setDraftPinned] = React.useState<Set<string>>(new Set());
+  const [draftPinned, setDraftPinned] = React.useState<string[]>([]);
 
   // Sync pinned IDs when projectId changes
   React.useEffect(() => {
@@ -61,35 +78,38 @@ export function DashboardCategoryBreakdown({ projectId }: Props) {
 
   /* ── Derived data ────────────────────────────────────────────────────── */
   const pinnedSet = new Set(pinnedIds);
-  const pinnedCategories = categories.filter((c: any) => pinnedSet.has(c._id));
+  // Render in saved order: iterate pinnedIds to maintain user-defined sequence
+  const catMap = new Map(categories.map((c: any) => [c._id, c]));
+  const pinnedCategories = pinnedIds.map((id) => catMap.get(id)).filter(Boolean);
 
   const openSelector = () => {
-    setDraftPinned(new Set(pinnedIds));
+    setDraftPinned([...pinnedIds]);
     setSelectorOpen(true);
   };
 
   const toggleDraft = (id: string) => {
     setDraftPinned((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
+      if (prev.includes(id)) return prev.filter((x) => x !== id);
+      return [...prev, id];
     });
   };
 
   const confirmSelection = () => {
-    const nextIds = Array.from(draftPinned);
-    setPinnedIds(nextIds);
-    savePinned(projectId, nextIds);
+    setPinnedIds(draftPinned);
+    savePinned(projectId, draftPinned);
     setSelectorOpen(false);
   };
 
   const selectAll = () => {
-    setDraftPinned(new Set(categories.map((c: any) => c._id)));
+    setDraftPinned(categories.map((c: any) => c._id));
   };
 
   const clearAll = () => {
-    setDraftPinned(new Set());
+    setDraftPinned([]);
+  };
+
+  const handleDraftReorder = (ids: string[]) => {
+    setDraftPinned(ids);
   };
 
   /* ── Empty state ─────────────────────────────────────────────────────── */
@@ -159,6 +179,7 @@ export function DashboardCategoryBreakdown({ projectId }: Props) {
             categories={categories}
             draftPinned={draftPinned}
             onToggle={toggleDraft}
+            onReorder={handleDraftReorder}
             onConfirm={confirmSelection}
             onClose={() => setSelectorOpen(false)}
             onSelectAll={selectAll}
@@ -393,6 +414,7 @@ export function DashboardCategoryBreakdown({ projectId }: Props) {
           categories={categories}
           draftPinned={draftPinned}
           onToggle={toggleDraft}
+          onReorder={handleDraftReorder}
           onConfirm={confirmSelection}
           onClose={() => setSelectorOpen(false)}
           onSelectAll={selectAll}
@@ -403,11 +425,118 @@ export function DashboardCategoryBreakdown({ projectId }: Props) {
   );
 }
 
+/* ── Sortable Category Row ──────────────────────────────────────────────── */
+function SortableCategoryRow({
+  cat,
+  isChecked,
+  onToggle,
+}: {
+  cat: any;
+  isChecked: boolean;
+  onToggle: (id: string) => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: cat._id });
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 10 : 1,
+    opacity: isDragging ? 0.85 : 1,
+    boxShadow: isDragging ? '0 8px 20px rgba(0,0,0,0.12)' : 'none',
+    display: 'flex',
+    alignItems: 'center',
+    gap: 10,
+    padding: '10px 12px',
+    borderRadius: 10,
+    border: `1px solid ${isChecked ? 'var(--accent-glow-sm)' : 'var(--border)'}`,
+    background: isChecked ? 'var(--accent-light)' : 'var(--surface-2)',
+    cursor: 'default',
+    userSelect: 'none',
+  };
+
+  const pct = cat.budget ? Math.round((cat.spent / cat.budget) * 100) : 0;
+
+  return (
+    <div ref={setNodeRef} style={style}>
+      {/* Drag handle */}
+      <div
+        {...attributes}
+        {...listeners}
+        style={{
+          cursor: 'grab',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: 'var(--text3)',
+          padding: 2,
+          touchAction: 'none',
+          flexShrink: 0,
+        }}
+        title="גרור לשינוי סדר"
+      >
+        <Icon n="menu" s={16} />
+      </div>
+
+      {/* Checkbox */}
+      <input
+        type="checkbox"
+        checked={isChecked}
+        onChange={() => onToggle(cat._id)}
+        style={{
+          width: 18,
+          height: 18,
+          accentColor: 'var(--accent)',
+          flexShrink: 0,
+          cursor: 'pointer',
+        }}
+      />
+
+      {/* Color dot */}
+      <div
+        style={{
+          width: 10,
+          height: 10,
+          borderRadius: 3,
+          background: cat.color || 'var(--accent)',
+          flexShrink: 0,
+        }}
+      />
+
+      {/* Category info */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div
+          style={{
+            fontWeight: 600,
+            fontSize: 13.5,
+            color: 'var(--text1)',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {cat.name}
+        </div>
+        <div style={{ fontSize: 11.5, color: 'var(--text3)', marginTop: 2 }}>
+          {fmtMoney(cat.spent)} / {fmtMoney(cat.budget)} · {pct}%
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ── Category Selector Modal ───────────────────────────────────────────── */
 type SelectorProps = {
   categories: any[];
-  draftPinned: Set<string>;
+  draftPinned: string[];
   onToggle: (id: string) => void;
+  onReorder: (ids: string[]) => void;
   onConfirm: () => void;
   onClose: () => void;
   onSelectAll: () => void;
@@ -418,11 +547,38 @@ function CategorySelectorModal({
   categories,
   draftPinned,
   onToggle,
+  onReorder,
   onConfirm,
   onClose,
   onSelectAll,
   onClearAll,
 }: SelectorProps) {
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  // Build ordered list: pinned items first (in order), then unchecked items
+  const pinnedSet = new Set(draftPinned);
+  const unchecked = categories.filter((c: any) => !pinnedSet.has(c._id));
+  const catMap = new Map(categories.map((c: any) => [c._id, c]));
+  const orderedPinned = draftPinned.map((id) => catMap.get(id)).filter(Boolean);
+  const orderedList = [...orderedPinned, ...unchecked];
+  const allIds = orderedList.map((c: any) => c._id);
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = draftPinned.indexOf(String(active.id));
+    const overIndex = draftPinned.indexOf(String(over.id));
+
+    // Only reorder within pinned items
+    if (oldIndex === -1 || overIndex === -1) return;
+
+    onReorder(arrayMove(draftPinned, oldIndex, overIndex));
+  };
+
   return (
     <Modal title="בחירת קטגוריות לדשבורד" onClose={onClose}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -434,7 +590,7 @@ function CategorySelectorModal({
             lineHeight: 1.5,
           }}
         >
-          סמן את הקטגוריות שברצונך להציג בדשבורד הראשי.
+          סמן את הקטגוריות שברצונך להציג וגרור לשינוי סדר.
         </div>
 
         {/* Select all / clear */}
@@ -481,7 +637,7 @@ function CategorySelectorModal({
           </button>
         </div>
 
-        {/* Category list */}
+        {/* Category list with drag-and-drop */}
         <div
           style={{
             maxHeight: '50vh',
@@ -491,66 +647,22 @@ function CategorySelectorModal({
             gap: 4,
           }}
         >
-          {categories.map((c: any) => {
-            const isChecked = draftPinned.has(c._id);
-            const pct = c.budget ? Math.round((c.spent / c.budget) * 100) : 0;
-            return (
-              <label
-                key={c._id}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 12,
-                  padding: '10px 12px',
-                  borderRadius: 10,
-                  border: `1px solid ${isChecked ? 'var(--accent-glow-sm)' : 'var(--border)'}`,
-                  background: isChecked ? 'var(--accent-light)' : 'var(--surface-2)',
-                  cursor: 'pointer',
-                  transition: 'all 0.15s',
-                  userSelect: 'none',
-                }}
-              >
-                <input
-                  type="checkbox"
-                  checked={isChecked}
-                  onChange={() => onToggle(c._id)}
-                  style={{
-                    width: 18,
-                    height: 18,
-                    accentColor: 'var(--accent)',
-                    flexShrink: 0,
-                    cursor: 'pointer',
-                  }}
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext items={allIds} strategy={verticalListSortingStrategy}>
+              {orderedList.map((c: any) => (
+                <SortableCategoryRow
+                  key={c._id}
+                  cat={c}
+                  isChecked={pinnedSet.has(c._id)}
+                  onToggle={onToggle}
                 />
-                <div
-                  style={{
-                    width: 10,
-                    height: 10,
-                    borderRadius: 3,
-                    background: c.color || 'var(--accent)',
-                    flexShrink: 0,
-                  }}
-                />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div
-                    style={{
-                      fontWeight: 600,
-                      fontSize: 13.5,
-                      color: 'var(--text1)',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    {c.name}
-                  </div>
-                  <div style={{ fontSize: 11.5, color: 'var(--text3)', marginTop: 2 }}>
-                    {fmtMoney(c.spent)} / {fmtMoney(c.budget)} · {pct}%
-                  </div>
-                </div>
-              </label>
-            );
-          })}
+              ))}
+            </SortableContext>
+          </DndContext>
         </div>
 
         {/* Actions */}
@@ -567,7 +679,7 @@ function CategorySelectorModal({
           }}
         >
           <span style={{ fontSize: 12, color: 'var(--text3)' }}>
-            {draftPinned.size} נבחרו מתוך {categories.length}
+            {draftPinned.length} נבחרו מתוך {categories.length}
           </span>
           <div style={{ display: 'flex', gap: 10 }}>
             <Btn variant="ghost" onClick={onClose}>
