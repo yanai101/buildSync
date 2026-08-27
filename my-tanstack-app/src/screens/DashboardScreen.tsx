@@ -9,6 +9,7 @@ import { useDashboardOverview } from '../hooks/useDashboardOverview';
 import { BudgetSummaryCards } from '../components/BudgetSummaryCards';
 import { useRequireRole } from '../hooks/useRequireRole';
 import { useCurrentProject } from '../hooks/useCurrentProject';
+import { DashboardCategoryBreakdown } from '../components/DashboardCategoryBreakdown';
 
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
@@ -561,6 +562,11 @@ export const DashboardScreen = () => {
                   </div>
                 </div>
               </motion.div>
+            )}
+
+            {/* Budget Category Breakdown (lite) */}
+            {canViewBudget && projectId && (
+              <DashboardCategoryBreakdown projectId={projectId} />
             )}
 
             {/* Top Overruns */}
