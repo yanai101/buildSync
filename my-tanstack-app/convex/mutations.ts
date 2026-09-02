@@ -1,7 +1,7 @@
 import { mutation } from './_generated/server';
 import type { MutationCtx } from './_generated/server';
 import type { Id } from './_generated/dataModel';
-import { v } from 'convex/values';
+import { v, ConvexError } from 'convex/values';
 import { getAuthUserId } from '@convex-dev/auth/server';
 import { getSyncedPaymentReadiness, syncContractorStagePayments, deleteMilestoneCascade } from './_lib/contractorPaymentSync';
 import { requireProjectFeature } from './_lib/projectAccess';
@@ -805,9 +805,14 @@ export const saveContractorPaymentSchedule = mutation({
 
         let stageId: Id<'stages'> | undefined = undefined;
 
-        // Priority 1: direct sourceStageId sent from the UI (most reliable — survives milestone replacement by sync)
+        // Priority 1: direct sourceStageId sent from the UI (most reliable — survives milestone replacement by sync).
+        // The client may hold a stale id for a stage that was deleted since — only
+        // accept it if the stage still exists, otherwise fall through to the next match.
         if (milestone.sourceStageId) {
-          stageId = milestone.sourceStageId;
+          const directStage = await ctx.db.get(milestone.sourceStageId);
+          if (directStage) {
+            stageId = milestone.sourceStageId;
+          }
         }
 
         // Priority 2: look up the milestone in DB and get its sourceStageId
@@ -815,7 +820,7 @@ export const saveContractorPaymentSchedule = mutation({
           const parsedId = ctx.db.normalizeId('contractorPaymentMilestones', milestone.milestoneId);
           if (parsedId) {
             const existingMilestone = await ctx.db.get(parsedId);
-            if (existingMilestone?.sourceStageId) {
+            if (existingMilestone?.sourceStageId && (await ctx.db.get(existingMilestone.sourceStageId))) {
               stageId = existingMilestone.sourceStageId;
             }
           }
@@ -943,7 +948,7 @@ export const saveContractorPaymentSchedule = mutation({
       for (const stage of existingStages) {
         if (!incomingStageIdsToKeep.has(stage._id) && stage.contractorId === contractor._id) {
            if (stage.progressPct > 0 || stage.payment.status === 'paid') {
-              throw new Error(`לא ניתן למחוק את השלב '${stage.name}' כי הוא כבר התחיל או שולם. יש לאפס את ההתקדמות והתשלומים שלו לפני המחיקה.`);
+              throw new ConvexError(`לא ניתן למחוק את השלב '${stage.name}' כי הוא כבר התחיל או שולם. יש לאפס את ההתקדמות והתשלומים שלו לפני המחיקה.`);
            }
            await deleteStageSafely(ctx, stage._id, contractor.projectId);
         }
@@ -1317,14 +1322,16 @@ export const deleteContractorPaymentMilestone = mutation({
   handler: async (ctx, args) => {
     const milestoneId = await resolveMilestoneId(ctx as any, args.milestoneId);
     const milestone = await ctx.db.get(milestoneId);
+    // ConvexError (not Error) so the message reaches the client in prod
+    // instead of being redacted to a generic "Server Error".
     if (!milestone) {
-      throw new Error('Payment milestone not found');
+      throw new ConvexError('אבן הדרך לתשלום לא נמצאה');
     }
     if (milestone.paid) {
-      throw new Error('Cannot remove a payment stage after it was paid');
+      throw new ConvexError('לא ניתן למחוק שלב תשלום שכבר שולם');
     }
     if (milestone.isLocked) {
-      throw new Error('Cannot remove a locked payment stage');
+      throw new ConvexError('לא ניתן למחוק שלב תשלום נעול');
     }
 
     const contractorId = milestone.contractorId;
@@ -1333,7 +1340,7 @@ export const deleteContractorPaymentMilestone = mutation({
       const stage = await ctx.db.get(milestone.sourceStageId);
       if (stage) {
         if (stage.progressPct > 0 || stage.payment.status === 'paid') {
-          throw new Error('לא ניתן למחוק את השלב כי הוא כבר התחיל או שולם');
+          throw new ConvexError('לא ניתן למחוק את השלב כי הוא כבר התחיל או שולם. יש לאפס את ההתקדמות והתשלומים שלו לפני המחיקה.');
         }
         await deleteStageSafely(ctx, stage._id, stage.projectId);
       }

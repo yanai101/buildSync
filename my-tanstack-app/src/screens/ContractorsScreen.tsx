@@ -8,10 +8,19 @@ import { ScreenBoundary } from '../components/ScreenBoundary';
 import { fmtMoney } from '../utils/mockData';
 import { useCurrentProject } from '../hooks/useCurrentProject';
 import { useMutation, useQuery } from 'convex/react';
+import { ConvexError } from 'convex/values';
 import { api } from '../../convex/_generated/api';
 import type { Id } from '../../convex/_generated/dataModel';
 import { useProjectFileUploader } from '../hooks/useProjectFileUploader';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
+
+// In prod Convex redacts plain Error messages to a generic "Server Error";
+// user-facing messages arrive only via ConvexError, on `.data`.
+const getErrorMessage = (err: unknown, fallback: string): string => {
+  if (err instanceof ConvexError && typeof err.data === 'string') return err.data;
+  if (err instanceof Error) return err.message;
+  return fallback;
+};
 
 const LockPaymentModal = ({
   milestone,
@@ -886,7 +895,7 @@ const PaymentSchedule = ({
     } catch (err) {
       // Keep the dialog open so the user sees the failure and can retry —
       // the mutation guards against deleting paid/locked stages.
-      setDeleteStageError(err instanceof Error ? err.message : "שגיאה במחיקת השלב");
+      setDeleteStageError(getErrorMessage(err, "שגיאה במחיקת השלב"));
     } finally {
       setDeletingStage(false);
     }
@@ -1539,7 +1548,7 @@ export const ContractorsScreen = () => {
     } catch (err) {
       setFeedback({
         title: "שגיאה",
-        message: err instanceof Error ? err.message : "לא הצלחנו לשמור את הקבלן. אנא נסו שוב.",
+        message: getErrorMessage(err, "לא הצלחנו לשמור את הקבלן. אנא נסו שוב."),
         type: "error",
       });
     } finally {
@@ -1598,7 +1607,7 @@ export const ContractorsScreen = () => {
     } catch (err) {
       setFeedback({
         title: "שגיאה",
-        message: err instanceof Error ? err.message : "לא הצלחנו לעדכן את התשלום. אנא נסו שוב.",
+        message: getErrorMessage(err, "לא הצלחנו לעדכן את התשלום. אנא נסו שוב."),
         type: "error",
       });
     } finally {
@@ -1694,7 +1703,7 @@ export const ContractorsScreen = () => {
     } catch (err) {
       setFeedback({
         title: "שגיאה",
-        message: err instanceof Error ? err.message : "לא הצלחנו לנעול את התשלום. אנא נסו שוב.",
+        message: getErrorMessage(err, "לא הצלחנו לנעול את התשלום. אנא נסו שוב."),
         type: "error",
       });
     } finally {
@@ -1715,7 +1724,7 @@ export const ContractorsScreen = () => {
     } catch (err) {
       setFeedback({
         title: "שגיאה",
-        message: err instanceof Error ? err.message : "לא הצלחנו לנעול את התשלום. אנא נסו שוב.",
+        message: getErrorMessage(err, "לא הצלחנו לנעול את התשלום. אנא נסו שוב."),
         type: "error",
       });
     } finally {
@@ -1742,7 +1751,7 @@ export const ContractorsScreen = () => {
     } catch (err) {
       setFeedback({
         title: "שגיאה",
-        message: err instanceof Error ? err.message : "לא הצלחנו להעלות קבצים. אנא נסו שוב.",
+        message: getErrorMessage(err, "לא הצלחנו להעלות קבצים. אנא נסו שוב."),
         type: "error",
       });
     } finally {
@@ -1788,7 +1797,7 @@ export const ContractorsScreen = () => {
       });
       setConfirmPaymentMode(null);
     } catch (err) {
-      setFeedback({ title: "שגיאה", message: err instanceof Error ? err.message : "לא הצלחנו לעדכן את מצב לוח התשלומים.", type: "error" });
+      setFeedback({ title: "שגיאה", message: getErrorMessage(err, "לא הצלחנו לעדכן את מצב לוח התשלומים."), type: "error" });
     } finally {
       setSavingPaymentMode(false);
     }
@@ -1821,7 +1830,7 @@ export const ContractorsScreen = () => {
     } catch (err) {
       setFeedback({
         title: "שגיאה",
-        message: err instanceof Error ? err.message : "לא הצלחנו למחוק את הקבלן. אנא נסו שוב.",
+        message: getErrorMessage(err, "לא הצלחנו למחוק את הקבלן. אנא נסו שוב."),
         type: "error",
       });
     } finally {
@@ -2174,7 +2183,7 @@ export const ContractorsScreen = () => {
                 setTaskBlockedPayment(null);
                 setFeedback({ title: 'תשלום אושר', message: 'המשימה סומנה כהושלמה והתשלום אושר בהצלחה.', type: 'success' });
               } catch (err) {
-                setFeedback({ title: 'שגיאה', message: err instanceof Error ? err.message : 'שגיאה בביצוע הפעולה.', type: 'error' });
+                setFeedback({ title: 'שגיאה', message: getErrorMessage(err, 'שגיאה בביצוע הפעולה.'), type: 'error' });
               } finally {
                 setSavingForcePayment(false);
               }
