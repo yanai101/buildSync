@@ -333,16 +333,20 @@ export const syncContractorStagePayments = async (
       .map((milestone) => [milestoneKey(milestone), milestone]),
   );
 
+  // Only stale stage_synced records are pruned here. Custom milestones are
+  // deliberate user data (e.g. a turnkey contractor's non-tracked payment
+  // milestone) and must survive resyncs — flows that convert a custom
+  // schedule into stages (payment-mode switch, smart sync) delete the
+  // superseded custom milestones themselves before calling this.
   for (const milestone of milestones) {
     const key = milestoneKey(milestone);
     const isSynced = milestone.sourceMode === 'stage_synced';
-    const isCustom = milestone.sourceMode !== 'stage_synced';
     const hasPartialPayments = milestone.partialPayments && milestone.partialPayments.length > 0;
     const shouldDelete =
       !milestone.paid &&
       !milestone.isLocked &&
       !hasPartialPayments &&
-      ((isSynced && !targetKeys.has(key)) || (isCustom && items.length > 0));
+      isSynced && !targetKeys.has(key);
     if (shouldDelete) {
       await deleteMilestoneCascade(ctx, milestone);
     }

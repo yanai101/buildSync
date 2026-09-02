@@ -1002,12 +1002,15 @@ const PaymentSchedule = ({
 
   const renderMilestoneAccordion = (m: DraftMilestone, i: number, isExpanded: boolean, toggleExpand: () => void, gripStarter?: (e: React.PointerEvent) => void) => {
     const isSyncedLocked = m.sourceMode === 'stage_synced' && contractor.role !== 'קבלן עד מפתח';
+    // A turnkey contractor's payment milestone that is deliberately NOT linked
+    // to a construction stage in the timeline — visually set apart on the board.
+    const isUntracked = m.sourceMode === 'custom' && contractor.role === 'קבלן עד מפתח';
     const partialsSum = ((m as any).partialPayments || []).reduce((sum: number, p: any) => sum + p.amount, 0);
     const totalFilesCount = (m.files?.length || 0) + ((m as any).partialPayments || []).reduce((acc: number, p: any) => acc + (p.files?.length || 0), 0);
     const mRemaining = Math.max(0, m.amount - partialsSum);
 
     return (
-      <div style={{ display: 'flex', flexDirection: 'column' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', ...(isUntracked ? { background: 'rgba(139, 92, 246, 0.07)', borderInlineStart: '3px solid #8B5CF6' } : {}) }}>
         {/* Accordion Header */}
         <div style={{ display: 'flex', alignItems: 'center', padding: '12px 16px', gap: 12, cursor: 'pointer', flexWrap: 'wrap' }} onClick={toggleExpand}>
           {gripStarter && (
@@ -1021,6 +1024,11 @@ const PaymentSchedule = ({
           <div style={{ flex: '1 1 150px', display: 'flex', flexDirection: 'column', minWidth: 150 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
               <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text1)' }}>{m.name || "שלב ללא שם"}</span>
+              {isUntracked && (
+                <span title="שלב תשלום שאינו מקושר לשלב בנייה בלוח הזמנים" style={{ fontSize: 10, background: '#EDE9FE', color: '#5B21B6', padding: '2px 6px', borderRadius: 4, fontWeight: 600 }}>
+                  לא במעקב בלוח הזמנים
+                </span>
+              )}
               <Icon n={isExpanded ? "chevron-up" : "chevron-down"} s={14} c="var(--text3)" />
               {((!m.paid && (m as any).partialPayments?.length > 0) || totalFilesCount > 0) && (
                 <div style={{ display: 'flex', gap: 6, marginInlineStart: 4, alignItems: 'center' }}>
