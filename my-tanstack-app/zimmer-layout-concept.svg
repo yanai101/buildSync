@@ -1,0 +1,90 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="1000" viewBox="0 0 1400 1000">
+  <style>
+    .title { font-family: Arial, sans-serif; font-size: 32px; font-weight: bold; fill: #193029; }
+    .sub { font-family: Arial, sans-serif; font-size: 18px; fill: #50645e; }
+    .label { font-family: Arial, sans-serif; font-size: 18px; font-weight: bold; fill: #193029; text-anchor: middle; }
+    .note { font-family: Arial, sans-serif; font-size: 16px; fill: #394b45; }
+    .small { font-family: Arial, sans-serif; font-size: 14px; fill: #65756f; }
+    .dim { font-family: Arial, sans-serif; font-size: 16px; fill: #567067; text-anchor: middle; }
+  </style>
+  <rect width="1400" height="1000" fill="#f7f5ef"/>
+  <text x="700" y="58" class="title" text-anchor="middle">GUEST SUITE LAYOUT — approx. 5.21 × 4.90 m</text>
+  <text x="700" y="88" class="sub" text-anchor="middle">Open circulation, daylight and sleeping for up to four guests</text>
+
+  <!-- Room shell -->
+  <rect x="110" y="150" width="920" height="730" rx="3" fill="#fffdf8" stroke="#24352f" stroke-width="12"/>
+  <!-- bathroom footprint / retained -->
+  <rect x="760" y="620" width="270" height="260" fill="#e8ece9" stroke="#24352f" stroke-width="8"/>
+  <text x="895" y="746" class="label">BATHROOM</text>
+  <text x="895" y="770" class="small" text-anchor="middle">existing — keep clear</text>
+  <!-- window lines -->
+  <line x1="365" y1="151" x2="745" y2="151" stroke="#75a8b4" stroke-width="18"/>
+  <line x1="112" y1="370" x2="112" y2="565" stroke="#75a8b4" stroke-width="18"/>
+  <text x="555" y="130" class="small" text-anchor="middle">WINDOW / GLAZING</text>
+  <text x="72" y="472" class="small" text-anchor="middle" transform="rotate(-90 72 472)">WINDOW</text>
+  <!-- entry -->
+  <path d="M110 215 L110 365 A150 150 0 0 0 260 215" fill="none" stroke="#b76b45" stroke-width="6"/>
+  <line x1="110" y1="215" x2="260" y2="215" stroke="#b76b45" stroke-width="8"/>
+  <text x="183" y="198" class="small" text-anchor="middle">ENTRY</text>
+  <!-- bathroom door zone -->
+  <path d="M760 620 L760 500 A120 120 0 0 1 880 620" fill="none" stroke="#b76b45" stroke-width="5"/>
+
+  <!-- Bed -->
+  <rect x="400" y="190" width="300" height="375" rx="18" fill="#dce9e2" stroke="#54816e" stroke-width="5"/>
+  <rect x="422" y="210" width="122" height="87" rx="9" fill="#fffdf8" stroke="#91a99d" stroke-width="3"/>
+  <rect x="557" y="210" width="122" height="87" rx="9" fill="#fffdf8" stroke="#91a99d" stroke-width="3"/>
+  <path d="M420 322 H680" stroke="#91a99d" stroke-width="3"/>
+  <text x="550" y="397" class="label">QUEEN BED 160×200</text>
+  <text x="550" y="423" class="small" text-anchor="middle">headboard to upper wall</text>
+
+  <!-- kitchenette -->
+  <rect x="140" y="650" width="380" height="85" rx="8" fill="#e8d9bd" stroke="#997544" stroke-width="5"/>
+  <circle cx="205" cy="692" r="25" fill="none" stroke="#997544" stroke-width="4"/>
+  <circle cx="205" cy="692" r="7" fill="#997544"/>
+  <rect x="290" y="671" width="75" height="43" rx="6" fill="#fffdf8" stroke="#997544" stroke-width="3"/>
+  <rect x="392" y="663" width="90" height="58" rx="4" fill="#bfc9c3"/>
+  <text x="330" y="790" class="label">KITCHENETTE 2.4 m</text>
+  <text x="330" y="814" class="small" text-anchor="middle">sink · undercounter fridge · microwave · worktop</text>
+
+  <!-- dining -->
+  <circle cx="245" cy="420" r="72" fill="#f3e5cb" stroke="#b99762" stroke-width="5"/>
+  <rect x="215" y="318" width="60" height="30" rx="12" fill="#c9a879"/>
+  <rect x="215" y="492" width="60" height="30" rx="12" fill="#c9a879"/>
+  <rect x="143" y="390" width="30" height="60" rx="12" fill="#c9a879"/>
+  <rect x="317" y="390" width="30" height="60" rx="12" fill="#c9a879"/>
+  <text x="245" y="425" class="label">TABLE Ø90</text>
+  <text x="245" y="449" class="small" text-anchor="middle">4 seats</text>
+
+  <!-- sofa bed -->
+  <rect x="430" y="755" width="265" height="100" rx="18" fill="#d9d7d0" stroke="#777c78" stroke-width="5"/>
+  <rect x="450" y="772" width="225" height="40" rx="12" fill="#f4f0e8" stroke="#999f98" stroke-width="3"/>
+  <text x="562" y="847" class="label">SOFA BED 140×200</text>
+  <text x="562" y="873" class="small" text-anchor="middle">lounge by day; sleeps 2 at night</text>
+
+  <!-- circulation -->
+  <path d="M300 570 C430 625 620 620 730 550" fill="none" stroke="#8ec3b0" stroke-width="22" stroke-linecap="round" opacity=".6"/>
+  <path d="M690 550 L727 550 L710 520" fill="none" stroke="#3c8b6d" stroke-width="6"/>
+  <text x="520" y="650" class="note" text-anchor="middle">CLEAR CIRCULATION 90–110 cm</text>
+
+  <!-- dimension -->
+  <line x1="110" y1="920" x2="1030" y2="920" stroke="#567067" stroke-width="2"/>
+  <line x1="110" y1="910" x2="110" y2="930" stroke="#567067" stroke-width="2"/>
+  <line x1="1030" y1="910" x2="1030" y2="930" stroke="#567067" stroke-width="2"/>
+  <text x="570" y="948" class="dim">5.21 m</text>
+  <line x1="65" y1="150" x2="65" y2="880" stroke="#567067" stroke-width="2"/>
+  <text x="42" y="530" class="dim" transform="rotate(-90 42 530)">4.90 m</text>
+
+  <!-- Legend -->
+  <rect x="1080" y="165" width="250" height="570" rx="16" fill="#fffdf8" stroke="#d8d2c5" stroke-width="3"/>
+  <text x="1205" y="215" class="title" text-anchor="middle" style="font-size:24px">LAYOUT PRINCIPLES</text>
+  <text x="1110" y="270" class="note">• Bed in the quiet zone</text>
+  <text x="1110" y="310" class="note">• One-wall kitchen, no bulk</text>
+  <text x="1110" y="350" class="note">• Round table keeps flow open</text>
+  <text x="1110" y="390" class="note">• Sofa adds flexible sleeping</text>
+  <text x="1110" y="430" class="note">• Door swings stay clear</text>
+  <text x="1110" y="470" class="note">• Windows and bath unobstructed</text>
+  <line x1="1105" y1="515" x2="1305" y2="515" stroke="#d8d2c5" stroke-width="2"/>
+  <text x="1205" y="555" class="label">NOTE</text>
+  <text x="1110" y="590" class="small">Furniture sizes are indicative.</text>
+  <text x="1110" y="614" class="small">Verify final dimensions on site.</text>
+</svg>

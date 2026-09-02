@@ -657,6 +657,7 @@ export const saveContractorPaymentSchedule = mutation({
       triggerText: v.string(),
       pct: v.number(),
       amount: v.optional(v.number()),
+      sourceMode: v.optional(v.union(v.literal('stage_synced'), v.literal('custom'))),
     })),
   },
   handler: async (ctx, args) => {
@@ -762,6 +763,30 @@ export const saveContractorPaymentSchedule = mutation({
       for (let i = 0; i < args.milestones.length; i++) {
         const milestone = args.milestones[i];
         const amount = milestone.amount !== undefined ? milestone.amount : Math.round((contractor.budget * milestone.pct) / 100);
+
+        if (milestone.sourceMode === 'custom') {
+          if (milestone.milestoneId && !milestone.milestoneId.includes('-')) {
+            const parsedMilestoneId = ctx.db.normalizeId('contractorPaymentMilestones', milestone.milestoneId);
+            if (parsedMilestoneId) {
+              const existingMilestoneDoc = await ctx.db.get(parsedMilestoneId);
+              if (existingMilestoneDoc) {
+                await ctx.db.patch(parsedMilestoneId, { sortOrder: i + 1, name: milestone.name, pct: milestone.pct, amount });
+              }
+            }
+          } else {
+            await ctx.db.insert('contractorPaymentMilestones', {
+              contractorId: contractor._id,
+              sortOrder: i + 1,
+              name: milestone.name,
+              triggerText: milestone.triggerText,
+              pct: milestone.pct,
+              amount,
+              paid: false,
+              sourceMode: 'custom',
+            });
+          }
+          continue;
+        }
 
         // Legacy/custom-mode milestones can coexist with stage_synced ones under a
         // turnkey contractor (e.g. imported historical payments alongside newly added
@@ -1136,6 +1161,7 @@ export const lockContractorPaymentMilestone = mutation({
   args: {
     milestoneId: v.string(),
     fileIds: v.optional(v.array(v.id('projectFiles'))),
+    forceCompleteTasks: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const milestoneId = await resolveMilestoneId(ctx as any, args.milestoneId);
@@ -1146,6 +1172,82 @@ export const lockContractorPaymentMilestone = mutation({
 
     if (!milestone.paid) {
       throw new Error('אפשר לנעול רק תשלום שסומן כשולם');
+    }
+
+    if (args.forceCompleteTasks) {
+      const taskIds: Id<'stageTasks'>[] = [];
+      if (milestone.sourceTaskId && !milestone.sourceStageMilestoneId) {
+        taskIds.push(milestone.sourceTaskId);
+      } else if (milestone.sourceStageMilestoneId) {
+        const taskLinks = await ctx.db
+          .query('stageMilestoneTasks')
+          .withIndex('by_milestone', (q) => q.eq('milestoneId', milestone.sourceStageMilestoneId!))
+          .take(100);
+        for (const link of taskLinks) {
+          const task = await ctx.db.get(link.taskId);
+          if (task && task.required !== false && !task.done) {
+            taskIds.push(link.taskId);
+          }
+        }
+        if (taskIds.length === 0 && milestone.sourceTaskId) {
+          taskIds.push(milestone.sourceTaskId);
+        }
+      } else if (milestone.sourceStageId) {
+        const stageTasks = await ctx.db
+          .query('stageTasks')
+          .withIndex('by_stage', (q) => q.eq('stageId', milestone.sourceStageId!))
+          .take(200);
+        for (const task of stageTasks) {
+          if (task.required !== false && !task.done) {
+            taskIds.push(task._id);
+          }
+        }
+      }
+
+      const updatedStages = new Set<Id<'stages'>>();
+      for (const taskId of taskIds) {
+        const task = await ctx.db.get(taskId);
+        if (!task || task.done) continue;
+        await ctx.db.patch(taskId, { done: true });
+        updatedStages.add(task.stageId);
+      }
+
+      for (const stageId of updatedStages) {
+        const stage = await ctx.db.get(stageId);
+        if (!stage) continue;
+        const allTasks = await ctx.db
+          .query('stageTasks')
+          .withIndex('by_stage', (q) => q.eq('stageId', stageId))
+          .collect();
+        const doneCount = allTasks.filter((t) => t.done).length;
+        const progressPct = allTasks.length > 0 ? Math.round((doneCount / allTasks.length) * 100) : 100;
+        const newStatus = progressPct === 100 ? 'done' : progressPct > 0 ? 'active' : 'pending';
+        
+        await ctx.db.patch(stageId, { 
+          progressPct, 
+          status: newStatus,
+          payment: { ...stage.payment, status: 'paid' }
+        });
+
+        const projectStages = await ctx.db
+          .query('stages')
+          .withIndex('by_project', (q) => q.eq('projectId', stage.projectId))
+          .collect();
+        const totalProgress = projectStages.reduce(
+          (sum, s) => sum + (s._id === stageId ? progressPct : s.progressPct),
+          0,
+        );
+        const projectProgress = Math.round(totalProgress / projectStages.length);
+        await ctx.db.patch(stage.projectId, {
+          progressPct: projectProgress,
+          currentStageName: await resolveCurrentStageName(ctx, stage.projectId),
+        });
+
+        await insertActivity(ctx, {
+          projectId: stage.projectId,
+          text: `משימות בשלב "${stage.name}" סומנו כהושלמו בעקבות נעילת תשלום קבלן`,
+        });
+      }
     }
 
     await ctx.db.patch(milestoneId, {

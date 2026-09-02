@@ -557,7 +557,10 @@ const emptyForm: ContractorForm = {
 const contractorDbId = (contractor: Contractor) => String(contractor._id ?? contractor.id);
 const stageDbId = (stage: { id?: unknown; _id?: unknown; stageId?: unknown }) => String(stage._id ?? stage.stageId ?? stage.id);
 
-type DraftMilestone = Milestone & { isNew?: boolean };
+type DraftMilestone = Milestone & { 
+  isNew?: boolean;
+  sourceMode?: 'stage_synced' | 'custom';
+};
 
 const clampPct = (pct: number) => Math.max(0, Math.min(100, Math.round((Number.isFinite(pct) ? pct : 0) * 10000) / 10000));
 const roundPct = (value: number) => Math.round(value * 100) / 100;
@@ -783,11 +786,15 @@ const PaymentSchedule = ({
   // doesn't receive a new `values` prop mid-drag (which causes snap-back).
   const isDragging = React.useRef(false);
   const [adding, setAdding] = React.useState(false);
-  const [newM, setNewM] = React.useState({name:"", pct:10, triggerText:""});
+  const [newM, setNewM] = React.useState({name:"", pct:10, triggerText:"", isTrackedAsStage: true});
   const [pendingId, setPendingId] = React.useState<string | null>(null);
   const [attachmentModalId, setAttachmentModalId] = React.useState<string | null>(null);
   const [savingNew, setSavingNew] = React.useState(false);
   const [addError, setAddError] = React.useState<string | null>(null);
+  const [pendingAutoBalance, setPendingAutoBalance] = React.useState<{
+    balanced: DraftMilestone[];
+    prev: DraftMilestone[];
+  } | null>(null);
   const [savingSchedule, setSavingSchedule] = React.useState(false);
   const [deleteStageIndex, setDeleteStageIndex] = React.useState<number | null>(null);
   const [deletingStage, setDeletingStage] = React.useState(false);
@@ -887,41 +894,72 @@ const PaymentSchedule = ({
 
   const addMilestone = async () => {
     if (!newM.name.trim()) return;
-    setSavingNew(true);
     setAddError(null);
     const prev = milestonesRef.current;
+    const newEntry: DraftMilestone = {
+      id: `new-${Date.now()}`,
+      name: newM.name.trim(),
+      triggerText: newM.triggerText.trim(),
+      pct: Number(newM.pct),
+      amount: Math.round(contractor.budget * Number(newM.pct) / 100),
+      taskIds: [],
+      status: 'pending',
+      paid: false,
+      paidAt: null,
+      isNew: true,
+      sourceMode: newM.isTrackedAsStage ? 'stage_synced' : 'custom',
+    };
+    const next = [...prev, newEntry];
+    const nextTotal = roundPct(next.reduce((a, m) => a + m.pct, 0));
+
+    if (nextTotal > 100) {
+      // Auto-balance: redistribute excess among unlocked/unpaid milestones
+      const balanced = balanceMilestones(next, next.length - 1, contractor);
+      const balancedTotal = roundPct(balanced.reduce((a, m) => a + m.pct, 0));
+      if (balancedTotal > 100) {
+        // Even after balancing, still over 100% — locked/paid milestones take up too much
+        setAddError('לא ניתן להוסיף את השלב — שלבים נעולים/שולמו תופסים מעל 100%. יש למחוק או לצמצם שלב קיים.');
+        return;
+      }
+      // Show confirmation dialog with balanced milestones
+      setPendingAutoBalance({ balanced, prev });
+      return;
+    }
+
+    // Total ≤ 100% — save directly
+    setSavingNew(true);
     try {
-      const newEntry: DraftMilestone = {
-        id: `new-${Date.now()}`,
-        name: newM.name.trim(),
-        triggerText: newM.triggerText.trim(),
-        pct: Number(newM.pct),
-        // Use user-entered amount directly — do NOT run balanceMilestones here.
-        // balanceMilestones would erroneously inflate the amount to fill the entire
-        // remaining budget when milestonesRef is stale/empty after a sync update.
-        amount: Math.round(contractor.budget * Number(newM.pct) / 100),
-        taskIds: [],
-        status: 'pending',
-        paid: false,
-        paidAt: null,
-        isNew: true,
-      };
-      // Append to the CURRENT ref (not state) to avoid stale-closure issues
-      const next = [...prev, newEntry];
       milestonesRef.current = next;
       setMilestones(next);
       await onSaveSchedule(contractor, next);
-      // Success: close form
-      setNewM({ name: "", pct: newM.pct, triggerText: "" });
+      setNewM({ name: '', pct: newM.pct, triggerText: '', isTrackedAsStage: true });
       setAdding(false);
     } catch (err) {
-      // Save failed (e.g. the schedule would exceed 100%) — revert the
-      // optimistic addition so no phantom stage is left in the UI, but keep
-      // the form open with the user's input so they can adjust and retry.
       milestonesRef.current = prev;
       setMilestones(prev);
-      setAddError("לא ניתן להוסיף את השלב — סך האחוזים חורג מ-100%. הקטן את האחוז או צמצם שלב אחר.");
-      console.warn("שגיאה בהוספת שלב תשלום:", err);
+      setAddError('שגיאה בהוספת שלב תשלום. אנא נסה שוב.');
+      console.warn('שגיאה בהוספת שלב תשלום:', err);
+    } finally {
+      setSavingNew(false);
+    }
+  };
+
+  const confirmAutoBalance = async () => {
+    if (!pendingAutoBalance) return;
+    setSavingNew(true);
+    try {
+      milestonesRef.current = pendingAutoBalance.balanced;
+      setMilestones(pendingAutoBalance.balanced);
+      await onSaveSchedule(contractor, pendingAutoBalance.balanced);
+      setNewM({ name: '', pct: 10, triggerText: '', isTrackedAsStage: true });
+      setAdding(false);
+      setPendingAutoBalance(null);
+    } catch (err) {
+      milestonesRef.current = pendingAutoBalance.prev;
+      setMilestones(pendingAutoBalance.prev);
+      setAddError('שגיאה בשמירת לוח התשלומים. אנא נסה שוב.');
+      setPendingAutoBalance(null);
+      console.warn('שגיאה בשמירת לוח תשלומים מאוזן:', err);
     } finally {
       setSavingNew(false);
     }
@@ -1165,7 +1203,7 @@ const PaymentSchedule = ({
               const remainingPct = contractor.budget > 0
                 ? Math.round((remainingAmount / contractor.budget) * 10000) / 100  // 2 decimal precision
                 : 10;
-              setNewM({ name: "", pct: remainingPct > 0 ? remainingPct : 10, triggerText: "" });
+              setNewM({ name: "", pct: remainingPct > 0 ? remainingPct : 10, triggerText: "", isTrackedAsStage: true });
               setAddError(null);
               setAdding(v => !v);
             }} disabled={locked}><Icon n="plus" s={12}/> הוסף שלב</Btn>
@@ -1226,9 +1264,22 @@ const PaymentSchedule = ({
                 }
               }} min={0} max={contractor.budget}/>
             </div>
-            <div style={{display:"flex",gap:6}}>
-              <Btn onClick={addMilestone} disabled={savingNew}><Icon n="plus" s={13}/> הוסף</Btn>
-              <Btn variant="ghost" onClick={()=>setAdding(false)} disabled={savingNew}>ביטול</Btn>
+            <div style={{display:"flex",gap:6, width: "100%", alignItems: "center", justifyContent: "space-between"}}>
+              {contractor.role === 'קבלן עד מפתח' ? (
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer', color: 'var(--text2)' }}>
+                  <input 
+                    type="checkbox" 
+                    checked={newM.isTrackedAsStage}
+                    onChange={e => setNewM(n => ({...n, isTrackedAsStage: e.target.checked}))}
+                    style={{ accentColor: 'var(--primary)' }}
+                  />
+                  עקוב כשלב בבנייה בלוח הזמנים
+                </label>
+              ) : <div/>}
+              <div style={{display:"flex",gap:6}}>
+                <Btn onClick={addMilestone} disabled={savingNew}><Icon n="plus" s={13}/> הוסף</Btn>
+                <Btn variant="ghost" onClick={()=>setAdding(false)} disabled={savingNew}>ביטול</Btn>
+              </div>
             </div>
           </div>
           {addError ? (
@@ -1241,6 +1292,19 @@ const PaymentSchedule = ({
             </div>
           )}
         </div>
+      )}
+
+      {pendingAutoBalance && (
+        <ConfirmDialog
+          title="התאמת אחוזים אוטומטית"
+          message={`סך כל האחוזים חורג מ-100%. כדי לאפשר את הוספת השלב החדש, המערכת תבצע התאמות אוטומטיות באחוזים של השלבים שלא ננעלו. האם להמשיך?`}
+          confirmText={savingNew ? "שומר..." : "המשך ושמור"}
+          cancelText="ביטול"
+          loading={savingNew}
+          type="warning"
+          onConfirm={confirmAutoBalance}
+          onClose={() => savingNew ? undefined : setPendingAutoBalance(null)}
+        />
       )}
 
       <div style={{padding:"10px 18px 0"}}>
@@ -1598,6 +1662,7 @@ export const ContractorsScreen = () => {
         triggerText: milestone.triggerText || '',
         pct: milestone.pct,
         amount: milestone.amount,
+        sourceMode: milestone.sourceMode,
       })),
     });
   };
@@ -1607,12 +1672,46 @@ export const ContractorsScreen = () => {
     setLockTarget(milestoneId);
   };
 
+  const [lockTaskWarning, setLockTaskWarning] = React.useState<{ milestoneId: string; fileIds?: Id<'projectFiles'>[] } | null>(null);
+
   const confirmLockPayment = async (fileIds?: Id<'projectFiles'>[]) => {
     if (mode !== 'db' || !lockTarget) return;
+    
+    const m = selected?.milestones?.find(m => String(m.id) === lockTarget || String((m as any)._id) === lockTarget);
+    if (m && m.readyToPay === false) {
+      setLockTaskWarning({ milestoneId: lockTarget, fileIds });
+      setLockTarget(null);
+      return;
+    }
+
     setLockingPayment(true);
     try {
-      await lockPaymentMilestone({ milestoneId: lockTarget as any, ...(fileIds?.length ? { fileIds } : {}) });
+      await lockPaymentMilestone({ 
+        milestoneId: lockTarget as any, 
+        ...(fileIds?.length ? { fileIds } : {}) 
+      });
       setLockTarget(null);
+    } catch (err) {
+      setFeedback({
+        title: "שגיאה",
+        message: err instanceof Error ? err.message : "לא הצלחנו לנעול את התשלום. אנא נסו שוב.",
+        type: "error",
+      });
+    } finally {
+      setLockingPayment(false);
+    }
+  };
+
+  const confirmLockTaskWarning = async () => {
+    if (mode !== 'db' || !lockTaskWarning) return;
+    setLockingPayment(true);
+    try {
+      await lockPaymentMilestone({
+        milestoneId: lockTaskWarning.milestoneId as any,
+        ...(lockTaskWarning.fileIds?.length ? { fileIds: lockTaskWarning.fileIds } : {}),
+        forceCompleteTasks: true
+      });
+      setLockTaskWarning(null);
     } catch (err) {
       setFeedback({
         title: "שגיאה",
