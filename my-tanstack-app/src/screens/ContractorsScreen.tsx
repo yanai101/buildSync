@@ -946,7 +946,7 @@ const PaymentSchedule = ({
     } catch (err) {
       milestonesRef.current = prev;
       setMilestones(prev);
-      setAddError('שגיאה בהוספת שלב תשלום. אנא נסה שוב.');
+      setAddError(getErrorMessage(err, 'שגיאה בהוספת שלב תשלום. אנא נסה שוב.'));
       console.warn('שגיאה בהוספת שלב תשלום:', err);
     } finally {
       setSavingNew(false);
@@ -966,7 +966,7 @@ const PaymentSchedule = ({
     } catch (err) {
       milestonesRef.current = pendingAutoBalance.prev;
       setMilestones(pendingAutoBalance.prev);
-      setAddError('שגיאה בשמירת לוח התשלומים. אנא נסה שוב.');
+      setAddError(getErrorMessage(err, 'שגיאה בשמירת לוח התשלומים. אנא נסה שוב.'));
       setPendingAutoBalance(null);
       console.warn('שגיאה בשמירת לוח תשלומים מאוזן:', err);
     } finally {

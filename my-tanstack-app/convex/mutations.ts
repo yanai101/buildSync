@@ -868,9 +868,12 @@ export const saveContractorPaymentSchedule = mutation({
           // relative order of sub-items belonging to the same stage — that's driven by
           // the sub-item's own sortOrder, so it must be patched too or a drag reorder
           // reverts once syncContractorStagePayments re-derives order from these fields.
-          if (milestone.sourceStageMilestoneId) {
+          // These ids come from client state and can be stale (the sub-item may
+          // have been cascade-deleted with its stage) — skip instead of failing
+          // the whole save on a nonexistent document.
+          if (milestone.sourceStageMilestoneId && (await ctx.db.get(milestone.sourceStageMilestoneId))) {
             await ctx.db.patch(milestone.sourceStageMilestoneId, { sortOrder: i });
-          } else if (milestone.sourceTaskId) {
+          } else if (milestone.sourceTaskId && (await ctx.db.get(milestone.sourceTaskId))) {
             await ctx.db.patch(milestone.sourceTaskId, { sortOrder: i });
           }
 
