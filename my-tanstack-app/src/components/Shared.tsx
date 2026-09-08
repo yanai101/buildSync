@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { createPortal } from 'react-dom';
 export const __CACHE_BUSTER = 'v4';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -163,19 +164,27 @@ export const Stars = ({rating}: any) => {
   );
 };
 
-export const Modal = ({onClose, title, children, width=660}: any) => (
-  <AnimatePresence>
-    <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} className="modal-overlay" onClick={(e: any)=>e.target===e.currentTarget&&onClose()}>
-      <motion.div initial={{scale:0.95,opacity:0,y:10}} animate={{scale:1,opacity:1,y:0}} exit={{scale:0.95,opacity:0,y:10}} transition={{type:"spring",stiffness:300,damping:30}} className="modal-box" style={{maxWidth:width}}>
-        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"20px 24px",borderBottom:"1px solid var(--border)"}}>
-          <span style={{fontWeight:800,fontSize:18}}>{title}</span>
-          <motion.button whileHover={{scale:1.1}} whileTap={{scale:0.9}} onClick={onClose} style={{background:"var(--bg)",border:"none",borderRadius:"50%",cursor:"pointer",color:"var(--text2)",padding:6,display:"flex"}}><Icon n="x" s={18}/></motion.button>
-        </div>
-        <div style={{padding:24}}>{children}</div>
+export const Modal = ({onClose, title, children, width=660, open=true}: any) => {
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => setMounted(true), []);
+
+  if (!mounted || !open) return null;
+
+  return createPortal(
+    <AnimatePresence>
+      <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} className="modal-overlay" onClick={(e: any)=>e.target===e.currentTarget&&onClose()}>
+        <motion.div initial={{scale:0.95,opacity:0,y:10}} animate={{scale:1,opacity:1,y:0}} exit={{scale:0.95,opacity:0,y:10}} transition={{type:"spring",stiffness:300,damping:30}} className="modal-box" style={{maxWidth:width}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"20px 24px",borderBottom:"1px solid var(--border)"}}>
+            <span style={{fontWeight:800,fontSize:18}}>{title}</span>
+            <motion.button type="button" whileHover={{scale:1.1}} whileTap={{scale:0.9}} onClick={onClose} style={{background:"var(--bg)",border:"none",borderRadius:"50%",cursor:"pointer",color:"var(--text2)",padding:6,display:"flex"}}><Icon n="x" s={18}/></motion.button>
+          </div>
+          <div style={{padding:24}}>{children}</div>
+        </motion.div>
       </motion.div>
-    </motion.div>
-  </AnimatePresence>
-);
+    </AnimatePresence>,
+    document.body
+  );
+};
 
 export const StatCard = ({label, value, sub, accent, icon, className}: any) => {
   const color = accent || "var(--accent)";

@@ -1219,3 +1219,43 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
 .icon-btn:hover { background: var(--border); color: var(--text1); transform: scale(1.05); }
 .icon-btn-danger:hover { background: var(--danger-light); color: var(--danger); }
 .icon-btn-accent:hover { background: var(--accent-light); color: var(--accent); }
+
+.financing-summary-sticky {
+  position: sticky;
+  top: 16px;
+  z-index: 10;
+  background: rgba(255,255,255,0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+}
+
+[data-theme="dark"] .financing-summary-sticky {
+  background: rgba(24, 24, 27, 0.85);
+  border: 1px solid rgba(255,255,255,0.1);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+}
+
+
+/* Scroll-Driven Animations */
+@media (prefers-reduced-motion: no-preference) {
+  @supports ((animation-timeline: view()) and (animation-range: entry)) {
+    @keyframes card-reveal {
+      from {
+        opacity: 0;
+        transform: translateY(20px) scale(0.96);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+    .funding-source-card {
+      animation: card-reveal linear both;
+      animation-timeline: view();
+      animation-range: entry 5% cover 20%;
+    }
+  }
+}
+

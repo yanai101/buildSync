@@ -502,6 +502,7 @@ function SourceCard({
   return (
     <motion.div
       variants={itemVariants}
+      className="funding-source-card"
       style={{
         background: 'var(--surface)', border: '1px solid var(--border)',
         borderRadius: 14, overflow: 'hidden', boxShadow: 'var(--shadow-sm)',
@@ -512,7 +513,15 @@ function SourceCard({
 
       {/* Header */}
       <div 
-        onClick={() => setIsExpanded(v => !v)}
+        onClick={() => {
+          if (!document.startViewTransition) {
+            setIsExpanded(v => !v);
+          } else {
+            document.startViewTransition(() => {
+              setIsExpanded(v => !v);
+            });
+          }
+        }}
         style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 12, borderBottom: isExpanded ? '1px solid var(--border)' : 'none', cursor: 'pointer', transition: 'background 0.2s' }}
         onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-2)'}
         onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
@@ -715,13 +724,7 @@ export const FinancingScreen: React.FC = () => {
               <>
 
                 {/* ── Global Summary Line ── */}
-                <motion.div variants={itemVariants} style={{ 
-                  position: 'sticky', 
-                  top: 16, 
-                  zIndex: 10,
-                  background: 'rgba(24, 24, 27, 0.85)', 
-                  backdropFilter: 'blur(12px)',
-                  WebkitBackdropFilter: 'blur(12px)',
+                <motion.div variants={itemVariants} className="financing-summary-sticky" style={{ 
                   padding: '12px 20px', 
                   borderRadius: 10, 
                   display: 'flex', 
@@ -729,9 +732,7 @@ export const FinancingScreen: React.FC = () => {
                   alignItems: 'center', 
                   justifyContent: 'center', 
                   flexWrap: 'wrap', 
-                  border: '1px solid rgba(255,255,255,0.1)', 
                   marginBottom: 24,
-                  boxShadow: '0 4px 24px rgba(0,0,0,0.4)'
                 }}>
                   <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text1)', whiteSpace: 'nowrap' }}>תקציב {fmtMoney(summary.projectBudget)}</span>
                   <span style={{ color: 'var(--border)', height: 4, width: 4, borderRadius: '50%', background: 'currentColor' }} />
