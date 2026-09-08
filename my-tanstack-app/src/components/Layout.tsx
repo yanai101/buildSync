@@ -39,6 +39,7 @@ export const NAV = [
   { id: "/notes",         label: "הודעות אישיות",      icon: "message",   section: "תיעוד",   roles: ALL_ROLES },
   { id: "/personal-files",label: "ארכיון הפרויקט",icon: "folder", section: "תיעוד",  roles: OWNER_MANAGER_INSPECTOR },
   { id: "/budget",        label: "תקציב",      icon: "chart",     section: "פיננסי",  roles: OWNER_ONLY },
+  { id: "/financing",    label: "מימון פרויקט", icon: "wallet",   section: "פיננסי",  roles: OWNER_ONLY },
   { id: "/analytics",     label: "דוחות ומדדים", icon: "pie-chart", section: "פיננסי",  roles: OWNER_MANAGER },
   { id: "/quotes",        label: "הצעות מחיר", icon: "clipboard", section: "פיננסי",  roles: OWNER_ONLY },
   { id: "/timeline",      label: "לוח זמנים", icon: "calendar",  section: "פיננסי",   roles: ALL_ROLES },
@@ -52,6 +53,7 @@ export const PREMIUM_ROUTES = [
   '/permits',
   '/daily-logs',
   '/personal-files',
+  '/financing',
   // Optional: add more like '/team' if needed
 ]
 
@@ -72,6 +74,7 @@ export const PAGE_TITLES: Record<string, string> = {
   "/personal-files": "ארכיון הפרויקט",
   "/team": "ניהול צוות",
   "/budget": "תקציב והוצאות",
+  "/financing": "מימון פרויקט",
   "/analytics": "דוחות וסטטיסטיקות",
   "/quotes": "הצעות מחיר והשוואה",
   "/timeline": "לוח זמנים",
@@ -87,6 +90,7 @@ export const PAGE_SUBTITLES: Record<string, string> = {
   "/daily-logs": "תיעוד יומי של התקדמות, כוח אדם, חריגות ואישורים",
   "/analytics": "תמונת מצב גרפית של תקציב, התקדמות וסטטוס משימות",
   "/quotes": "הוסיפו הצעות לפי נושא והשוו ביניהן",
+  "/financing": "תמונת המימון והכסף הזמין לפרויקט",
   "/account": "עדכון פרטים אישיים וסיסמה",
   "/guides": "למדו כיצד להפיק את המרב מ-BuildSync בעזרת מדריכי וידאו קצרים",
 }

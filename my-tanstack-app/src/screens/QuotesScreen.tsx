@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Icon, Btn, Select, Input, Badge, Modal, FeedbackModal, ConfirmDialog } from '../components/Shared';
+import { Icon, Btn, Select, Input, NumberInput, Badge, Modal, FeedbackModal, ConfirmDialog } from '../components/Shared';
 import { QUOTES_DATA, QUOTE_TOPICS, fmtMoney } from '../utils/mockData';
 import { useDataSource } from '../hooks/useDataSource';
 import { useDataMutation } from '../hooks/useDataMutation';
@@ -42,7 +42,7 @@ export const QuotesScreen = () => {
   const { isProOrPremium } = useSubscription();
   const { allowed, loading: roleLoading } = useRequireRole(['owner']);
   const { projectId } = useCurrentProject();
-  
+
   // DB Queries
   const dbQuotes = useQuery(api.quotes.listQuotes, projectId && allowed ? { projectId } : "skip");
   const dbTopics = useQuery(api.quotes.listTopics, projectId && allowed ? { projectId } : "skip");
@@ -50,7 +50,7 @@ export const QuotesScreen = () => {
   // Data Sources
   const { data: initialQuotes, loading: quotesLoading, error: quotesError, refetch: quotesRefetch } = useDataSource<any[]>('quotes', { db: dbQuotes as any });
   const { data: initialTopics, loading: topicsLoading, refetch: topicsRefetch } = useDataSource<any[]>('quote_topics', { db: dbTopics as any });
-  
+
   const { mutate } = useDataMutation('quotes');
   const uploadProjectFile = useProjectFileUploader();
 
@@ -113,32 +113,32 @@ export const QuotesScreen = () => {
   const emptyForm = { topicName: "", supplier: "", contact: "", phone: "", email: "", total: "", validity: "", notes: "", fileName: "", projectFileId: "" };
   const [form, setForm] = React.useState<Record<string, string>>(emptyForm);
 
-  const openAdd = () => { 
-    setEditing(null); 
+  const openAdd = () => {
+    setEditing(null);
     setSelectedFile(null);
     setRemoveFile(false);
     const initialTopic = filter !== "all" ? topicById(filter).name : (topics[0]?.name || "מטבח");
-    setForm({ ...emptyForm, topicName: initialTopic }); 
-    setAddOpen(true); 
+    setForm({ ...emptyForm, topicName: initialTopic });
+    setAddOpen(true);
   };
-  
-  const openEdit = (q: Quote) => { 
-    setEditing(q); 
-    setForm({ 
-      topicName: topicById(q.topicKey).name, 
-      supplier: q.supplier, 
-      contact: q.contact || "", 
-      phone: q.phone || "", 
-      email: q.email || "", 
-      total: String(q.total), 
-      validity: q.validity || "", 
-      notes: q.notes || "", 
+
+  const openEdit = (q: Quote) => {
+    setEditing(q);
+    setForm({
+      topicName: topicById(q.topicKey).name,
+      supplier: q.supplier,
+      contact: q.contact || "",
+      phone: q.phone || "",
+      email: q.email || "",
+      total: String(q.total),
+      validity: q.validity || "",
+      notes: q.notes || "",
       fileName: q.fileName || "",
       projectFileId: q.projectFileId || "",
-    }); 
+    });
     setSelectedFile(null);
     setRemoveFile(false);
-    setAddOpen(true); 
+    setAddOpen(true);
   };
 
   const closeModal = () => { setAddOpen(false); setEditing(null); setSelectedFile(null); setRemoveFile(false); };
@@ -165,7 +165,7 @@ export const QuotesScreen = () => {
     if (!tName || !form.supplier.trim() || !form.total || !projectId) return;
     const total = Number(form.total);
     if (Number.isNaN(total) || total <= 0) return;
-    
+
     setSaving(true);
     try {
       let projectFileId = form.projectFileId || undefined;
@@ -238,9 +238,9 @@ export const QuotesScreen = () => {
   const approveQuote = async (id: any) => {
     const target = quotes.find(q => q.id === id);
     if (!target) return;
-    
+
     const newStatus = target.status === "approved" ? "pending" : "approved";
-    
+
     try {
       await mutate('saveQuote', {
         id,
@@ -495,11 +495,11 @@ export const QuotesScreen = () => {
             <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
               <div style={{ gridColumn: "1 / -1" }}>
                 <div style={{ fontSize: 12, color: "var(--text2)", marginBottom: 4, fontWeight: 600 }}>נושא *</div>
-                <Input 
-                  list="topic-options" 
-                  value={form.topicName} 
-                  onChange={(v: string) => setForm((f) => ({ ...f, topicName: v }))} 
-                  placeholder='למשל: מטבח, ריצוף או הקלד נושא חדש...' 
+                <Input
+                  list="topic-options"
+                  value={form.topicName}
+                  onChange={(v: string) => setForm((f) => ({ ...f, topicName: v }))}
+                  placeholder='למשל: מטבח, ריצוף או הקלד נושא חדש...'
                 />
                 <datalist id="topic-options">
                   {topics.map(t => <option key={t?.key} value={t?.name} />)}
@@ -526,7 +526,7 @@ export const QuotesScreen = () => {
 
               <div>
                 <div style={{ fontSize: 12, color: "var(--text2)", marginBottom: 4, fontWeight: 600 }}>סה"כ הצעה (₪) *</div>
-                <Input type="number" value={form.total} onChange={(v: string) => setForm((f) => ({ ...f, total: v }))} placeholder="0" />
+                <NumberInput className="bp-input" value={Number(form.total) || undefined} onChange={(v: number | undefined) => setForm((f) => ({ ...f, total: v?.toString() || '' }))} placeholder="0" />
               </div>
               <div>
                 <div style={{ fontSize: 12, color: "var(--text2)", marginBottom: 4, fontWeight: 600 }}>תוקף ההצעה</div>
@@ -693,11 +693,11 @@ export const QuotesScreen = () => {
         )}
 
         {feedback && (
-          <FeedbackModal 
-            title={feedback.title} 
-            message={feedback.message} 
-            type={feedback.type} 
-            onClose={() => setFeedback(null)} 
+          <FeedbackModal
+            title={feedback.title}
+            message={feedback.message}
+            type={feedback.type}
+            onClose={() => setFeedback(null)}
           />
         )}
       </div>

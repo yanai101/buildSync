@@ -231,6 +231,53 @@ export const Input = ({value, onChange, placeholder, type="text", style:sx}: any
     placeholder={placeholder} style={sx}/>
 );
 
+export const NumberInput = ({value, onChange, placeholder, style:sx, disabled, className}: any) => {
+  const [internalVal, setInternalVal] = React.useState(value != null ? value.toLocaleString() : "");
+
+  React.useEffect(() => {
+    if (value == null) {
+      setInternalVal("");
+    } else {
+      const parsedInternal = Number(internalVal.replace(/,/g, ''));
+      if (parsedInternal !== value) {
+        setInternalVal(value.toLocaleString());
+      }
+    }
+  }, [value, internalVal]);
+
+  const handleChange = (e: any) => {
+    let raw = e.target.value;
+    raw = raw.replace(/[^0-9.]/g, '');
+    
+    const parts = raw.split('.');
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    const formatted = parts.join('.');
+    
+    setInternalVal(formatted);
+    
+    const rawNumStr = formatted.replace(/,/g, '');
+    const num = Number(rawNumStr);
+    if (rawNumStr === "") {
+      onChange(undefined);
+    } else if (!isNaN(num)) {
+      onChange(num);
+    }
+  };
+
+  return (
+    <input 
+      className={`bp-input ${className || ''}`}
+      type="text" 
+      inputMode="decimal"
+      value={internalVal} 
+      onChange={handleChange}
+      placeholder={placeholder} 
+      style={sx}
+      disabled={disabled}
+    />
+  );
+};
+
 export const STAGE_ICONS = [
   // Construction & Tools
   "📌","🏗️","🧱","🛠️","🚜","📏","🪚","🔨","🪛","🔧","🪜","🧰","🚧","👷","👷‍♂️","👷‍♀️",

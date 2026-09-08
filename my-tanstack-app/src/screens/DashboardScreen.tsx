@@ -76,6 +76,11 @@ export const DashboardScreen = () => {
     role === 'contractor' && projectId ? { projectId } : 'skip'
   );
 
+  const financingSummary = useQuery(
+    api.financing.getFundingSummary,
+    role === 'owner' && projectId ? { projectId } : 'skip'
+  );
+
   const [viewFile, setViewFile] = React.useState<{ url: string; name: string } | null>(null);
 
   if (!projectLoading && projects.length === 0) {
@@ -567,6 +572,46 @@ export const DashboardScreen = () => {
             {/* Budget Category Breakdown (lite) */}
             {canViewBudget && projectId && (
               <DashboardCategoryBreakdown projectId={projectId} />
+            )}
+
+            {/* Financing Tile — owner only */}
+            {role === 'owner' && financingSummary && financingSummary.sources.length > 0 && (
+              <motion.div variants={itemVariants} className="card">
+                <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <Icon n="wallet" s={16} c="var(--accent)" />
+                    מימון פרויקט
+                  </span>
+                  <Link to="/financing" style={{ fontSize: 12, color: 'var(--accent)', fontWeight: 600, textDecoration: 'none' }}>פרטים ←</Link>
+                </div>
+                <div className="card-body" style={{ paddingTop: 14 }}>
+                  <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 14 }}>
+                    {[
+                      { label: 'התקבל', v: financingSummary.totalFundingReceived, c: 'var(--success)' },
+                      { label: financingSummary.availableFunding >= 0 ? 'יתרה זמינה' : 'פער נוכחי', v: Math.abs(financingSummary.availableFunding), c: financingSummary.availableFunding >= 0 ? 'var(--text1)' : 'var(--danger)' },
+                      { label: 'עתידי מתוכנן', v: financingSummary.totalPlannedFunding, c: 'var(--accent)' },
+                    ].map(x => (
+                      <div key={x.label} style={{ flex: '1 1 80px' }}>
+                        <div style={{ fontSize: 19, fontWeight: 800, color: x.c, letterSpacing: '-0.4px' }}>{fmtMoney(x.v)}</div>
+                        <div style={{ fontSize: 11.5, color: 'var(--text3)', marginTop: 3, fontWeight: 600, textTransform: 'uppercase' }}>{x.label}</div>
+                      </div>
+                    ))}
+                  </div>
+                  {/* next planned draw — mortgage sources */}
+                  {financingSummary.sources.filter((s: any) => s.type === 'mortgage' && s.mortgageSummary?.nextPlannedDraw).map((s: any) => (
+                    <div key={s._id} style={{ padding: '10px 12px', background: 'var(--accent-light)', borderRadius: 8, fontSize: 13, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ color: 'var(--accent)', fontWeight: 600 }}>🎯 משיכה הבאה — {s.name}</span>
+                      <span style={{ fontWeight: 800, color: 'var(--accent)' }}>{fmtMoney(s.mortgageSummary.nextPlannedDraw.amount)}</span>
+                    </div>
+                  ))}
+                  {/* funding gap warning */}
+                  {financingSummary.projectFundingGap > 0 && (
+                    <div style={{ marginTop: 10, padding: '8px 12px', background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 8, fontSize: 12.5, color: 'var(--danger)', fontWeight: 600 }}>
+                      ⚠️ פער מימון צפוי: {fmtMoney(financingSummary.projectFundingGap)}
+                    </div>
+                  )}
+                </div>
+              </motion.div>
             )}
 
             {/* Top Overruns */}

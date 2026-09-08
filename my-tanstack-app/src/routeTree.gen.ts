@@ -20,6 +20,7 @@ import { Route as ChecklistsRouteImport } from './routes/checklists'
 import { Route as ContractorsRouteImport } from './routes/contractors'
 import { Route as DailyLogsRouteImport } from './routes/daily-logs'
 import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as FinancingRouteImport } from './routes/financing'
 import { Route as GuidesRouteImport } from './routes/guides'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as NotesRouteImport } from './routes/notes'
@@ -95,6 +96,11 @@ const DailyLogsRoute = DailyLogsRouteImport.update({
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FinancingRoute = FinancingRouteImport.update({
+  id: '/financing',
+  path: '/financing',
   getParentRoute: () => rootRouteImport,
 } as any)
 const GuidesRoute = GuidesRouteImport.update({
@@ -215,6 +221,7 @@ export interface FileRoutesByFullPath {
   '/contractors': typeof ContractorsRoute
   '/daily-logs': typeof DailyLogsRoute
   '/dashboard': typeof DashboardRoute
+  '/financing': typeof FinancingRoute
   '/guides': typeof GuidesRoute
   '/login': typeof LoginRoute
   '/notes': typeof NotesRoute
@@ -249,6 +256,7 @@ export interface FileRoutesByTo {
   '/contractors': typeof ContractorsRoute
   '/daily-logs': typeof DailyLogsRoute
   '/dashboard': typeof DashboardRoute
+  '/financing': typeof FinancingRoute
   '/guides': typeof GuidesRoute
   '/login': typeof LoginRoute
   '/notes': typeof NotesRoute
@@ -284,6 +292,7 @@ export interface FileRoutesById {
   '/contractors': typeof ContractorsRoute
   '/daily-logs': typeof DailyLogsRoute
   '/dashboard': typeof DashboardRoute
+  '/financing': typeof FinancingRoute
   '/guides': typeof GuidesRoute
   '/login': typeof LoginRoute
   '/notes': typeof NotesRoute
@@ -320,6 +329,7 @@ export interface FileRouteTypes {
     | '/contractors'
     | '/daily-logs'
     | '/dashboard'
+    | '/financing'
     | '/guides'
     | '/login'
     | '/notes'
@@ -354,6 +364,7 @@ export interface FileRouteTypes {
     | '/contractors'
     | '/daily-logs'
     | '/dashboard'
+    | '/financing'
     | '/guides'
     | '/login'
     | '/notes'
@@ -388,6 +399,7 @@ export interface FileRouteTypes {
     | '/contractors'
     | '/daily-logs'
     | '/dashboard'
+    | '/financing'
     | '/guides'
     | '/login'
     | '/notes'
@@ -423,6 +435,7 @@ export interface RootRouteChildren {
   ContractorsRoute: typeof ContractorsRoute
   DailyLogsRoute: typeof DailyLogsRoute
   DashboardRoute: typeof DashboardRoute
+  FinancingRoute: typeof FinancingRoute
   GuidesRoute: typeof GuidesRoute
   LoginRoute: typeof LoginRoute
   NotesRoute: typeof NotesRoute
@@ -523,6 +536,13 @@ declare module '@tanstack/react-router' {
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/financing': {
+      id: '/financing'
+      path: '/financing'
+      fullPath: '/financing'
+      preLoaderRoute: typeof FinancingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/guides': {
@@ -687,6 +707,7 @@ const rootRouteChildren: RootRouteChildren = {
   ContractorsRoute: ContractorsRoute,
   DailyLogsRoute: DailyLogsRoute,
   DashboardRoute: DashboardRoute,
+  FinancingRoute: FinancingRoute,
   GuidesRoute: GuidesRoute,
   LoginRoute: LoginRoute,
   NotesRoute: NotesRoute,

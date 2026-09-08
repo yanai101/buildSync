@@ -183,3 +183,14 @@ export const listByContractor = query({
     })));
   },
 });
+
+export const getProjectFileUrl = mutation({
+  args: { fileId: v.id('projectFiles') },
+  handler: async (ctx, args) => {
+    const file = await ctx.db.get(args.fileId);
+    if (!file) return { url: null };
+    await requireProjectFileUser(ctx, file.projectId);
+    const url = await ctx.storage.getUrl(file.storageId);
+    return { url };
+  },
+});

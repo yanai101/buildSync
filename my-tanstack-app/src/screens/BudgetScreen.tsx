@@ -1,5 +1,5 @@
 import React from 'react';
-import { Icon, ProgressBar, Btn, Badge, Modal, FeedbackModal } from '../components/Shared';
+import { Icon, ProgressBar, Btn, Badge, Modal, FeedbackModal, NumberInput } from '../components/Shared';
 import { fmtMoney } from '../utils/mockData';
 import { useDataSource } from '../hooks/useDataSource';
 import { useDataMutation } from '../hooks/useDataMutation';
@@ -283,12 +283,10 @@ export const BudgetScreen = () => {
             </div>
           </div>
           <div style={{display:'flex', gap:10, alignItems:'center'}}>
-            <input
+            <NumberInput
               className="bp-input"
-              type="number"
-              min={0}
-              value={budgetDraft}
-              onChange={e=>setBudgetDraft(e.target.value)}
+              value={Number(budgetDraft) || undefined}
+              onChange={(v: number | undefined) => setBudgetDraft(v?.toString() || '')}
               placeholder="0"
               style={{width:180, fontWeight:700, fontSize:16}}
               disabled={!isOwner}
@@ -347,7 +345,7 @@ export const BudgetScreen = () => {
                   {editingCatId === c._id ? (
                     <div style={{display: 'flex', flexDirection: 'column', gap: 12, padding:'18px 20px'}}>
                       <input className="bp-input" value={editCatState.name} onChange={e=>setEditCatState({...editCatState, name: e.target.value})} placeholder="שם קטגוריה" style={{width: '100%'}}/>
-                      <input className="bp-input" type="number" value={editCatState.budget} onChange={e=>setEditCatState({...editCatState, budget: e.target.value})} placeholder="תקציב" style={{width: '100%'}}/>
+                      <NumberInput className="bp-input" value={Number(editCatState.budget) || undefined} onChange={(v: number | undefined)=>setEditCatState({...editCatState, budget: v?.toString() || ''})} placeholder="תקציב" style={{width: '100%'}}/>
                       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                         {COLORS.map(color => (
                           <div 
@@ -430,7 +428,7 @@ export const BudgetScreen = () => {
                   </div>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 4 }}>תקציב (₪)</div>
-                    <input className="bp-input" type="number" value={newCat.budget} onChange={e=>setNewCat({...newCat, budget: e.target.value})} placeholder="0" style={{width:"100%"}}/>
+                    <NumberInput className="bp-input" value={Number(newCat.budget) || undefined} onChange={(v: number | undefined)=>setNewCat({...newCat, budget: v?.toString() || ''})} placeholder="0" style={{width:"100%"}}/>
                   </div>
                 </div>
                 <div>
@@ -476,11 +474,10 @@ export const BudgetScreen = () => {
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 4 }}>סכום (₪)</div>
-                  <input 
+                  <NumberInput 
                     className="bp-input" 
-                    type="number" 
-                    value={newExp.amount} 
-                    onChange={e => setNewExp({...newExp, amount: e.target.value})} 
+                    value={Number(newExp.amount) || undefined} 
+                    onChange={(v: number | undefined) => setNewExp({...newExp, amount: v?.toString() || ''})} 
                     placeholder="0" 
                     style={{ width: '100%' }}
                   />
@@ -703,7 +700,7 @@ export const BudgetScreen = () => {
               </div>
               <div>
                 <div style={{fontSize:12,color:"var(--text2)",marginBottom:4}}>תקציב מוקצה (₪)</div>
-                <input className="bp-input" type="number" value={newCat.budget} onChange={e=>setNewCat({...newCat, budget: e.target.value})} placeholder="0" style={{width:"100%"}}/>
+                <NumberInput className="bp-input" value={Number(newCat.budget) || undefined} onChange={(v: number | undefined)=>setNewCat({...newCat, budget: v?.toString() || ''})} placeholder="0" style={{width:"100%"}}/>
               </div>
               <div>
                 <div style={{fontSize:12,color:"var(--text2)",marginBottom:8}}>צבע מזהה</div>
@@ -771,7 +768,7 @@ export const BudgetScreen = () => {
               </div>
               <div>
                 <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 4 }}>סכום (₪)</div>
-                <input className="bp-input" type="number" value={editExpenseData.amount} onChange={e => setEditExpenseData({...editExpenseData, amount: e.target.value})} style={{ width: '100%' }} />
+                <NumberInput className="bp-input" value={Number(editExpenseData.amount) || undefined} onChange={(v: number | undefined) => setEditExpenseData({...editExpenseData, amount: v?.toString() || ''})} style={{ width: '100%' }} />
               </div>
               <div>
                 <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 4 }}>קטגוריה (אופציונלי)</div>

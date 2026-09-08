@@ -29,6 +29,7 @@ import type * as crons from "../crons.js";
 import type * as dailyLogs from "../dailyLogs.js";
 import type * as dashboard from "../dashboard.js";
 import type * as debugQuery from "../debugQuery.js";
+import type * as financing from "../financing.js";
 import type * as fix from "../fix.js";
 import type * as guides from "../guides.js";
 import type * as http from "../http.js";
@@ -85,6 +86,7 @@ declare const fullApi: ApiFromModules<{
   dailyLogs: typeof dailyLogs;
   dashboard: typeof dashboard;
   debugQuery: typeof debugQuery;
+  financing: typeof financing;
   fix: typeof fix;
   guides: typeof guides;
   http: typeof http;

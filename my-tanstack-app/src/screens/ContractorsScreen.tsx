@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, Reorder, useDragControls } from 'framer-motion';
-import { Icon, Avatar, Badge, Stars, Btn, Modal, ProgressBar, EmptyState, ConfirmDialog, FeedbackModal } from '../components/Shared';
+import { Icon, Avatar, Badge, Stars, Btn, Modal, ProgressBar, EmptyState, ConfirmDialog, FeedbackModal, NumberInput } from '../components/Shared';
 import { ContractorNotesAndDocs } from '../components/ContractorNotesAndDocs';
 import { Contractor, Milestone } from '../types';
 import { useDataSource } from '../hooks/useDataSource';
@@ -370,13 +370,12 @@ const PartialPaymentModal = ({
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <label style={{ fontSize: 12, fontWeight: 600 }}>סכום התשלום (₪)</label>
-          <input
-            type="number"
+          <NumberInput
             className="bp-input"
-            value={amount === 0 ? "" : amount}
-            max={remaining}
-            onChange={(e) => setAmount(Number(e.target.value))}
+            value={amount === 0 ? undefined : amount}
+            onChange={(v: number | undefined) => setAmount(v || 0)}
             style={{ fontSize: 14 }}
+            disabled={false}
           />
           <div style={{ fontSize: 11, color: 'var(--text3)' }}>
             נותרו לתשלום בשלב זה: {fmtMoney(remaining)}
@@ -1187,14 +1186,11 @@ const PaymentSchedule = ({
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                   <span style={{ fontSize: 11, color: 'var(--text3)' }}>סכום (₪)</span>
-                  <input className="bp-input" type="number" min={0} max={contractor.budget} placeholder="0" value={m.amount === 0 ? "" : m.amount} disabled={savingSchedule || locked || m.isLocked || m.paid || isSyncedLocked} onChange={e => {
-                    if (contractor.budget > 0) {
-                      const val = e.target.value;
-                      const newAmount = val === "" ? 0 : Number(val);
-                      const newPct = (newAmount / contractor.budget) * 100;
-                      updateMilestone(i, { amount: newAmount, pct: newPct }, false);
-                    }
-                  }} onBlur={()=>saveOnBlur(i)} style={{ fontSize: 13 }} />
+                  <NumberInput className="bp-input" placeholder="0" value={m.amount === 0 ? undefined : m.amount} disabled={savingSchedule || locked || m.isLocked || m.paid || isSyncedLocked} onChange={(v: number | undefined) => {
+                    const newAmount = v || 0;
+                    const newPct = contractor.budget > 0 ? (newAmount / contractor.budget) * 100 : 0;
+                    updateMilestone(i, { amount: newAmount, pct: newPct }, false);
+                  }} onBlur={() => saveOnBlur(i)} style={{ fontSize: 13 }} />
                 </div>
               </div>
             </div>
@@ -1274,12 +1270,11 @@ const PaymentSchedule = ({
             </div>
             <div style={{flex:"0 0 100px"}}>
               <div style={{fontSize:11,color:"var(--text2)",marginBottom:3}}>סכום ₪</div>
-              <input className="bp-input" type="number" placeholder="0" value={Math.round(contractor.budget * newM.pct / 100) === 0 ? "" : Math.round(contractor.budget * newM.pct / 100)} onChange={e=>{
+              <NumberInput className="bp-input" placeholder="0" value={Math.round(contractor.budget * newM.pct / 100) === 0 ? undefined : Math.round(contractor.budget * newM.pct / 100)} onChange={(v: number | undefined)=>{
                 if (contractor.budget > 0) {
-                  const val = e.target.value;
-                  setNewM(n=>({...n,pct:val === "" ? 0 : (Number(val) / contractor.budget) * 100}));
+                  setNewM(n=>({...n,pct:v === undefined ? 0 : (v / contractor.budget) * 100}));
                 }
-              }} min={0} max={contractor.budget}/>
+              }} disabled={false}/>
             </div>
             <div style={{display:"flex",gap:6, width: "100%", alignItems: "center", justifyContent: "space-between"}}>
               {contractor.role === 'קבלן עד מפתח' ? (
@@ -1899,7 +1894,7 @@ export const ContractorsScreen = () => {
           ))}
           <div>
             <div style={{fontSize:12,color:"var(--text2)",marginBottom:3,fontWeight:500}}>תקציב מוסכם (₪)</div>
-            <input className="bp-input" type="number" placeholder="0" value={form.budget === 0 ? "" : form.budget} onChange={e=>setForm(f=>({...f,budget:e.target.value === "" ? 0 : Number(e.target.value)}))}/>
+            <NumberInput className="bp-input" placeholder="0" value={form.budget === 0 ? undefined : form.budget} onChange={(v: number | undefined)=>setForm(f=>({...f,budget:v || 0}))}/>
           </div>
           <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", paddingTop: 18 }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>

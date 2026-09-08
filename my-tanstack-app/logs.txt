@@ -1,0 +1,26 @@
+9/2/2026, 5:14:06 PM [CONVEX A(pushActions:sendNotification)] [LOG] '[Push] sendNotification: sending to 2 subscription(s), payload title: "יומן עבודה חדש — 2026-09-01"'
+9/2/2026, 5:14:07 PM [CONVEX A(pushActions:sendNotification)] [LOG] '[Push] sendNotification complete — success: 2, expired: 0, errors: 0'
+9/2/2026, 5:15:19 PM [CONVEX M(dailyLogs:saveLog)] [LOG] '[Push] scheduleUserNotifications called — raw userIds: 1, unique valid: 1, tag: daily-log-n17e540pkjbv8q7esevbn9x4e587yxb7-2026-09-02'
+9/2/2026, 5:15:19 PM [CONVEX M(dailyLogs:saveLog)] [LOG] '[Push] User p1713dbpq2gbtsmfbr0a2shzm585pd1n: 2 subscription(s)'
+9/2/2026, 5:15:19 PM [CONVEX M(dailyLogs:saveLog)] [LOG] '[Push] Scheduling sendNotification — 2 subscription(s), title: "יומן עבודה חדש — 2026-09-02"'
+9/2/2026, 5:15:19 PM [CONVEX A(pushActions:sendNotification)] [LOG] '[Push] sendNotification: sending to 2 subscription(s), payload title: "יומן עבודה חדש — 2026-09-02"'
+9/2/2026, 5:15:19 PM [CONVEX A(pushActions:sendNotification)] [LOG] '[Push] sendNotification complete — success: 2, expired: 0, errors: 0'
+9/2/2026, 5:19:11 PM [CONVEX M(auth:store)] [INFO] '`auth:store` type: refreshSession'
+9/2/2026, 5:52:22 PM [CONVEX M(auth:store)] [INFO] '`auth:store` type: refreshSession'
+9/2/2026, 5:58:12 PM [CONVEX M(auth:store)] [INFO] '`auth:store` type: refreshSession'
+9/2/2026, 6:19:02 PM [CONVEX M(auth:store)] [INFO] '`auth:store` type: refreshSession'
+9/2/2026, 6:52:14 PM [CONVEX M(auth:store)] [INFO] '`auth:store` type: refreshSession'
+9/2/2026, 7:18:54 PM [CONVEX M(auth:store)] [INFO] '`auth:store` type: refreshSession'
+9/2/2026, 7:35:22 PM [CONVEX M(auth:store)] [INFO] '`auth:store` type: refreshSession'
+9/2/2026, 7:35:35 PM [CONVEX M(mutations:saveContractorPaymentSchedule)] Uncaught Error: Update on nonexistent document ID ns70xxqtyxzkncmtq7je2msx4n8a87ab
+    at async handler (../convex/mutations.ts:846:38)
+
+9/2/2026, 7:36:00 PM [CONVEX M(mutations:saveContractorPaymentSchedule)] Uncaught Error: Update on nonexistent document ID ns70xxqtyxzkncmtq7je2msx4n8a87ab
+    at async handler (../convex/mutations.ts:846:38)
+
+9/2/2026, 7:36:13 PM [CONVEX M(mutations:saveContractorPaymentSchedule)] Uncaught Error: Update on nonexistent document ID ns70xxqtyxzkncmtq7je2msx4n8a87ab
+    at async handler (../convex/mutations.ts:846:38)
+
+9/2/2026, 7:36:15 PM [CONVEX M(mutations:deleteContractorPaymentMilestone)] Uncaught Error: לא ניתן למחוק את השלב כי הוא כבר התחיל או שולם
+    at handler (../convex/mutations.ts:1337:32)
+

@@ -117,7 +117,8 @@ export async function performProjectDeletion(ctx: MutationCtx, projectId: Id<'pr
     'projectRooms', 'boqItems', 'expenses', 'messages',
     'budgetCategories', 'activityFeed', 'timelineBars', 
     'priceQuotes', 'projectInvitations', 'checklists',
-    'permits', 'dailyLogs', 'projectAlerts'
+    'permits', 'dailyLogs', 'projectAlerts',
+    'fundingSources', 'fundingTransactions', 'mortgageDraws', 'orders'
   ] as const;
 
   for (const table of projectTables) {

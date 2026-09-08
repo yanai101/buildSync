@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence, Reorder } from 'framer-motion';
-import { Icon, Btn, ProgressBar, Badge, Modal, ConfirmDialog, FeedbackModal, IconPicker } from '../components/Shared';
+import { Icon, Btn, ProgressBar, Badge, Modal, ConfirmDialog, FeedbackModal, IconPicker, NumberInput } from '../components/Shared';
 import { PaymentGatesPanel, PaymentBadge, computeGates, resolveStatus, aggregateStageStatus, ReleasePaymentModal } from '../components/PaymentControl';
 import { Stage, Milestone } from '../types';
 import { useDataMutation } from '../hooks/useDataMutation';
@@ -487,7 +487,7 @@ const StageCreationGuide = ({
                 <div style={{display:"flex",alignItems:"center",gap:16}}>
                   <label style={{display:"block",maxWidth:180}}>
                     <div style={{fontSize:11,color:"var(--text2)",marginBottom:3}}>סכום תשלום גלובלי</div>
-                    <input className="bp-input" type="number" placeholder="0" value={current.amount || ""} onChange={e=>updateStage({amount:Number(e.target.value)})}/>
+                    <NumberInput className="bp-input" placeholder="0" value={current.amount || undefined} onChange={(v: number | undefined)=>updateStage({amount:v || 0})}/>
                   </label>
                   <label style={{display:"flex",alignItems:"center",gap:8,fontSize:13,cursor:"pointer",marginTop:14}}>
                     <input type="checkbox" checked={current.paymentAtEnd} onChange={e=>{
@@ -553,14 +553,12 @@ const StageCreationGuide = ({
                           />
                           תשלום בסיום
                         </label>
-                        <input
+                        <NumberInput
                           className="bp-input"
-                          type="number"
-                          min={0}
                           placeholder="סכום ₪"
-                          value={task.paymentRequired ? (task.paymentAmount || '') : ''}
+                          value={task.paymentRequired ? (task.paymentAmount || undefined) : undefined}
                           disabled={!task.paymentRequired}
-                          onChange={e=>updateTask(taskIndex,{paymentAmount:Number(e.target.value) || 0})}
+                          onChange={(v: number | undefined)=>updateTask(taskIndex,{paymentAmount:v || 0})}
                           style={{flex:"1 1 80px"}}
                         />
                       </div>
@@ -1593,7 +1591,7 @@ export const StagesScreen = () => {
           </div>
           <label style={{flex:"1 1 100%"}}>
             <div style={{fontSize:12,color:"var(--text2)",marginBottom:4,fontWeight:600}}>סכום תשלום</div>
-            <input className="bp-input" type="number" placeholder="0" value={editForm.amount || ""} onChange={e=>setEditForm(f=>({...f,amount:Number(e.target.value)}))}/>
+            <NumberInput className="bp-input" placeholder="0" value={editForm.amount || undefined} onChange={(v: number | undefined)=>setEditForm(f=>({...f,amount:v || 0}))}/>
           </label>
           {editForm.contractorIds.length > 0 && (
             <div style={{
@@ -1676,7 +1674,7 @@ export const StagesScreen = () => {
                             <input type="checkbox" checked={task.paymentRequired} onChange={e=>updateEditTask(taskIndex,{paymentRequired:e.target.checked, paymentAmount:e.target.checked?task.paymentAmount:0})}/>
                             תשלום בסיום
                           </label>
-                          <input className="bp-input" type="number" min={0} placeholder="סכום ₪" value={task.paymentRequired ? (task.paymentAmount || '') : ''} disabled={!task.paymentRequired} onChange={e=>updateEditTask(taskIndex,{paymentAmount:Number(e.target.value)||0})} style={{flex:"1 1 80px"}}/>
+                          <NumberInput className="bp-input" placeholder="סכום ₪" value={task.paymentRequired ? (task.paymentAmount || undefined) : undefined} disabled={!task.paymentRequired} onChange={(v: number | undefined)=>updateEditTask(taskIndex,{paymentAmount:v||0})} style={{flex:"1 1 80px"}}/>
                         </div>
                       )}
                       <Btn size="sm" variant="ghost" onClick={()=>removeEditTask(taskIndex)} style={{flex:"0 0 auto",color:"var(--danger)"}}>מחק</Btn>

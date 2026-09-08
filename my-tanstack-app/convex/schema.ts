@@ -249,4 +249,18 @@ export default defineSchema({
   })
     .index('by_status', ['status'])
     .index('by_status_publish', ['status', 'publishAt']),
+
+  // ── Financing (מימון הבנייה) ──────────────────────────────────────────────
+  fundingSources: defineTable(zodToConvexFields(s.zFundingSource))
+    .index('by_project', ['projectId']),
+
+  fundingTransactions: defineTable(zodToConvexFields(s.zFundingTransaction))
+    .index('by_project', ['projectId'])
+    .index('by_source', ['fundingSourceId']),
+
+  mortgageDraws: defineTable(zodToConvexFields(s.zMortgageDraw))
+    .index('by_project', ['projectId'])
+    .index('by_source', ['fundingSourceId']),
+
 }, { schemaValidation: false });
+

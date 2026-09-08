@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Icon, Btn, FeedbackModal } from '../components/Shared';
+import { Icon, Btn, FeedbackModal, NumberInput } from '../components/Shared';
 import { ROOM_TYPE_OPTS } from '../utils/mockData';
 import { Room, Project } from '../types';
 import { useDataSource } from '../hooks/useDataSource';
@@ -313,7 +313,7 @@ export const ProjectSetupScreen = () => {
               </div>
               <div style={{flex:"1 1 250px"}}>
                 <div style={{fontSize:12,color:"var(--text2)",marginBottom:4,fontWeight:500}}>תקציב כולל כולל מע"מ (₪)</div>
-                <input className="bp-input" type="number" min={0} value={cfg.budgetTotal || ''} onChange={e=>setField("budgetTotal",Number(e.target.value))}/>
+                <NumberInput className="bp-input" value={cfg.budgetTotal || undefined} onChange={(v: number | undefined)=>setField("budgetTotal",v || 0)}/>
               </div>
               <div style={{flex:"1 1 250px"}}>
                 <div style={{fontSize:12,color:"var(--text2)",marginBottom:4,fontWeight:500}}>מע"מ נוכחי (%)</div>
@@ -369,7 +369,7 @@ export const ProjectSetupScreen = () => {
               </div>
               <div style={{flex:"1 1 150px"}}>
                 <div style={{fontSize:12,color:"var(--text2)",marginBottom:4,fontWeight:500}}>שטח כולל (מ"ר)</div>
-                <input className="bp-input" type="number" value={cfg.area} onChange={e=>setField("area",Number(e.target.value))} placeholder={`או חישוב אוטומטי: ${totalRoomArea}`} style={{width:100}}/>
+                <NumberInput className="bp-input" value={cfg.area === 0 ? undefined : cfg.area} onChange={(v: number | undefined)=>setField("area", v || 0)} placeholder={`אוטומטי: ${totalRoomArea}`} style={{width:130}}/>
                 {cfg.area === 0 && <div style={{fontSize:11,color:"var(--text3)",marginTop:4}}>מחושב לפי חדרים</div>}
               </div>
               <div style={{flex:"1 1 150px"}}>
@@ -398,11 +398,11 @@ export const ProjectSetupScreen = () => {
                   <div style={{marginTop:12, display:"flex", gap:10, flexWrap:"wrap", paddingRight:30}}>
                     <div style={{flex:1}}>
                       <div style={{fontSize:11,color:"var(--text3)",marginBottom:4}}>שטח מרוצף (מ"ר)</div>
-                      <input type="number" className="bp-input" value={cfg.yardPavedArea||''} onChange={e=>updateYardArea('yardPavedArea', Number(e.target.value))} style={{width:"100%"}} />
+                      <NumberInput className="bp-input" value={cfg.yardPavedArea === 0 ? undefined : cfg.yardPavedArea} onChange={(v: number | undefined)=>updateYardArea('yardPavedArea', v || 0)} style={{width:"100%"}} />
                     </div>
                     <div style={{flex:1}}>
                       <div style={{fontSize:11,color:"var(--text3)",marginBottom:4}}>שטח גינון (מ"ר)</div>
-                      <input type="number" className="bp-input" value={cfg.yardGardenArea||''} onChange={e=>updateYardArea('yardGardenArea', Number(e.target.value))} style={{width:"100%"}} />
+                      <NumberInput className="bp-input" value={cfg.yardGardenArea === 0 ? undefined : cfg.yardGardenArea} onChange={(v: number | undefined)=>updateYardArea('yardGardenArea', v || 0)} style={{width:"100%"}} />
                     </div>
                   </div>
                 )}
@@ -472,7 +472,7 @@ export const ProjectSetupScreen = () => {
                       </select>
                       <input className="bp-input" value={r.name} onChange={e=>setRoom(r.uid,"name",e.target.value)} placeholder="שם חדר" style={{flex:"1 1 120px",fontSize:12}}/>
                       <div style={{display:"flex",alignItems:"center",gap:4,flexShrink:0}}>
-                        <input className="bp-input" type="number" value={r.size} onChange={e=>setRoom(r.uid,"size",Number(e.target.value))} style={{width:60,fontSize:12}}/>
+                        <NumberInput className="bp-input" value={r.size === 0 ? undefined : r.size} onChange={(v: number | undefined)=>setRoom(r.uid,"size", v || 0)} style={{width:60,fontSize:12}}/>
                         <span style={{fontSize:11,color:"var(--text3)",whiteSpace:"nowrap"}}>מ"ר</span>
                       </div>
                       <select className="bp-input" value={r.floor} onChange={e=>setRoom(r.uid,"floor",Number(e.target.value))} style={{width:100,flexShrink:0,fontSize:12}}>

@@ -652,3 +652,76 @@ export const zPushSubscription = {
   p256dh: z.string(),
   auth: z.string(),
 };
+
+// ── Financing (מימון הבנייה) ──────────────────────────────────────────────────
+
+export const zFundingSourceType = z.enum([
+  'mortgage',
+  'equity',
+  'loan',
+  'asset_sale',
+  'investment_sale',
+  'family',
+  'other',
+]);
+
+// Embedded mortgage-specific details — only populated when type === 'mortgage'.
+export const zMortgageDetails = z.object({
+  bankName: z.string().optional(),
+  totalApprovedAmount: z.number(),
+  approvedAt: z.string().optional(),
+  startDate: z.string().optional(),
+  mortgageStatus: z
+    .enum(['planning', 'approved', 'active', 'closed'])
+    .optional(),
+  mortgageNotes: z.string().optional(),
+});
+
+export const zFundingSource = {
+  projectId: zid('projects'),
+  name: z.string(),                          // e.g. "משכנתא בנק לאומי"
+  type: zFundingSourceType,
+  // For non-mortgage sources: expected total to be received.
+  // For mortgage sources: use mortgageDetails.totalApprovedAmount instead.
+  plannedAmount: z.number().optional(),
+  notes: z.string().optional(),
+  // Only meaningful when type === 'mortgage'.
+  mortgageDetails: zMortgageDetails.optional(),
+  projectFileId: zid('projectFiles').optional(),
+  fileUrl: z.string().optional(),
+  fileName: z.string().optional(),
+};
+
+export const zFundingTransaction = {
+  projectId: zid('projects'),
+  fundingSourceId: zid('fundingSources'),
+  amount: z.number(),
+  date: z.string(),                          // ISO date string
+  notes: z.string().optional(),
+  reference: z.string().optional(),
+  // Set when auto-created from a MortgageDraw becoming 'received'.
+  // If set, direct edits/deletes are blocked — use the draw instead.
+  mortgageDrawId: zid('mortgageDraws').optional(),
+};
+
+export const zMortgageDrawStatus = z.enum(['planned', 'received']);
+
+export const zMortgageDraw = {
+  projectId: zid('projects'),
+  fundingSourceId: zid('fundingSources'),    // must be type='mortgage'
+  status: zMortgageDrawStatus,
+  amount: z.number(),                        // planned or received amount
+  // received
+  actualDrawDate: z.string().optional(),
+  actualProgressPct: z.number().optional(),
+  bankReference: z.string().optional(),
+  // planned
+  expectedDate: z.string().optional(),
+  targetProgressPct: z.number().optional(),
+  stageId: zid('stages').optional(),         // validated server-side to same project
+  estimatedExpensesUntilDraw: z.number().optional(),
+  notes: z.string().optional(),
+  // Link to auto-created FundingTransaction (set when status='received').
+  fundingTransactionId: zid('fundingTransactions').optional(),
+};
+
