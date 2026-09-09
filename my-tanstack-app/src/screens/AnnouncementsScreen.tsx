@@ -13,7 +13,8 @@ export function AnnouncementsScreen() {
     try {
       const stored = localStorage.getItem('buildsync:announcements_read');
       if (stored) {
-        setReadAnnouncementsMap(JSON.parse(stored));
+        const parsed = JSON.parse(stored);
+        setReadAnnouncementsMap(parsed || {});
       }
     } catch (e) {}
   }, []);
@@ -39,7 +40,9 @@ export function AnnouncementsScreen() {
 
       {activeAnnouncements.length === 0 ? (
         <div style={{ padding: 40, textAlign: 'center', background: 'var(--surface)', borderRadius: 12, border: '1px solid var(--border)', color: 'var(--text3)' }}>
-          אין הודעות מערכת זמינות כרגע.
+          <div style={{ fontSize: 24, marginBottom: 12 }}>📬</div>
+          <div style={{ fontWeight: 600, fontSize: 16, color: 'var(--text1)', marginBottom: 8 }}>אין הודעות חדשות כרגע</div>
+          <div>אם ציפיתם לראות כאן הודעה, ייתכן שיקח לה כמה דקות להסתנכרן. מוזמנים לבדוק שוב קצת יותר מאוחר!</div>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
