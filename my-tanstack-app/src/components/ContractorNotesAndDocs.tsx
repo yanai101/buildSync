@@ -49,6 +49,7 @@ export const ContractorNotesAndDocs = ({ projectId, contractorId, contractorName
   const addNote = useMutation(api.contractorNotes.addNote);
   const removeNote = useMutation(api.contractorNotes.removeNote);
   const deleteProjectFile = useMutation(api.projectFiles.deleteProjectFile);
+  const renameFile = useMutation(api.projectFiles.renameProjectFile);
   const uploadFile = useProjectFileUploader();
 
   const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -60,7 +61,9 @@ export const ContractorNotesAndDocs = ({ projectId, contractorId, contractorName
   const [error, setError] = React.useState<string | null>(null);
   const [isDragOver, setIsDragOver] = React.useState(false);
   const [previewDocument, setPreviewDocument] = React.useState<{url: string, kind: string} | null>(null);
-
+  const [editingFileId, setEditingFileId] = React.useState<string | null>(null);
+  const [editingFileName, setEditingFileName] = React.useState('');
+  const [savingFileName, setSavingFileName] = React.useState(false);
   const submitNote = async () => {
     const trimmed = text.trim();
     if (!trimmed) return;
@@ -134,6 +137,25 @@ export const ContractorNotesAndDocs = ({ projectId, contractorId, contractorName
       setError('מחיקת הקובץ נכשלה');
     } finally {
       setPendingFileId(null);
+    }
+  };
+
+  const startEditingFile = (fileId: string, currentName: string) => {
+    setEditingFileId(fileId);
+    setEditingFileName(currentName);
+  };
+
+  const submitRenameFile = async () => {
+    if (!editingFileId || !editingFileName.trim()) return;
+    setError(null);
+    setSavingFileName(true);
+    try {
+      await renameFile({ fileId: editingFileId as Id<'projectFiles'>, newName: editingFileName.trim() });
+      setEditingFileId(null);
+    } catch (err) {
+      setError('שינוי שם הקובץ נכשל');
+    } finally {
+      setSavingFileName(false);
     }
   };
 
@@ -243,13 +265,66 @@ export const ContractorNotesAndDocs = ({ projectId, contractorId, contractorName
                 <div key={String(file.id)} style={{display:"flex",alignItems:"center",gap:10,border:"1px solid var(--border)",borderRadius:8,padding:"8px 10px",background:"var(--surface)"}}>
                   <Icon n={fileIconName(file.kind)} s={16} c="var(--text2)"/>
                   <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontSize:13,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
-                      {file.originalName}
-                    </div>
+                    {editingFileId === String(file.id) ? (
+                      <div style={{display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2}}>
+                        <input
+                          type="text"
+                          value={editingFileName}
+                          onChange={(e) => setEditingFileName(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') void submitRenameFile();
+                            if (e.key === 'Escape') setEditingFileId(null);
+                          }}
+                          autoFocus
+                          style={{
+                            flex: 1,
+                            padding: '4px 8px',
+                            border: '1px solid var(--accent)',
+                            borderRadius: 4,
+                            fontSize: 13,
+                            fontFamily: 'inherit',
+                            minWidth: 0,
+                            outline: 'none',
+                            background: 'var(--surface-2)',
+                            color: 'var(--text1)'
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => void submitRenameFile()}
+                          disabled={savingFileName}
+                          style={{background: 'var(--success)', border: 'none', borderRadius: 4, padding: '4px 8px', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center'}}
+                        >
+                          <Icon n="check" s={14}/>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditingFileId(null)}
+                          disabled={savingFileName}
+                          style={{background: 'var(--surface-3)', border: 'none', borderRadius: 4, padding: '4px 8px', color: 'var(--text2)', cursor: 'pointer', display: 'flex', alignItems: 'center'}}
+                        >
+                          <Icon n="x" s={14}/>
+                        </button>
+                      </div>
+                    ) : (
+                      <div style={{fontSize:13,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                        {file.originalName}
+                      </div>
+                    )}
                     <div style={{fontSize:11,color:"var(--text3)"}}>
                       {formatBytes(file.originalSize)} · {formatRelative(file._creationTime)}
                     </div>
                   </div>
+                  {editingFileId !== String(file.id) && (
+                    <button
+                      type="button"
+                      onClick={() => startEditingFile(String(file.id), file.originalName)}
+                      title="שנה שם"
+                      style={{padding:6,color:"var(--text2)",display:"flex",alignItems:"center",background:"none",border:"none",cursor:"pointer"}}
+                    >
+                      <Icon n="edit" s={14}/>
+                    </button>
+                  )}
                   {file.url && (
                     <button
                       type="button"
@@ -260,15 +335,26 @@ export const ContractorNotesAndDocs = ({ projectId, contractorId, contractorName
                       <Icon n="eye" s={14}/>
                     </button>
                   )}
-                  <button
-                    type="button"
-                    onClick={() => void handleRemoveFile(file.id)}
-                    disabled={pendingFileId === String(file.id)}
-                    title="מחק קובץ"
-                    style={{background:"none",border:"none",padding:6,cursor:"pointer",color:"var(--danger)",display:"flex",alignItems:"center"}}
-                  >
-                    <Icon n="trash" s={14}/>
-                  </button>
+                  {(file as any).isLocked ? (
+                    <button
+                      type="button"
+                      title="קובץ זה משויך לתשלום נעול ולא ניתן למחיקה"
+                      disabled
+                      style={{background:"none",border:"none",padding:6,color:"var(--text3)",display:"flex",alignItems:"center",opacity:0.5,cursor:"not-allowed"}}
+                    >
+                      <Icon n="trash" s={14}/>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => void handleRemoveFile(file.id as Id<'projectFiles'>)}
+                      disabled={pendingFileId === String(file.id)}
+                      title="מחק קובץ"
+                      style={{background:"none",border:"none",padding:6,cursor:"pointer",color:"var(--danger)",display:"flex",alignItems:"center"}}
+                    >
+                      <Icon n="trash" s={14}/>
+                    </button>
+                  )}
                 </div>
               ))}
             </div>

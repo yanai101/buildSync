@@ -1439,6 +1439,27 @@ const PaymentSchedule = ({
   );
 };
 
+
+
+const ZoomableViewer = ({ url }: { url: string }) => {
+  const [scale, setScale] = React.useState(1);
+  return (
+    <TransformWrapper 
+      initialScale={1}
+      minScale={1}
+      maxScale={8}
+      doubleClick={{ step: 2 }}
+      wheel={{ step: 0.2 }}
+      onTransform={(ref: any) => setScale(ref.state.scale)}
+      panning={{ disabled: scale <= 1 }}
+    >
+      <TransformComponent wrapperStyle={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }} contentStyle={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <img src={url} draggable={false} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} alt="Preview" />
+      </TransformComponent>
+    </TransformWrapper>
+  );
+};
+
 import { useSearch } from '@tanstack/react-router';
 
 export const ContractorsScreen = () => {
@@ -1463,6 +1484,7 @@ export const ContractorsScreen = () => {
   const uploadProjectFile = useProjectFileUploader();
   const setContractorStages = useMutation(api.stages.setContractorStages);
   const setContractorPaymentMode = useMutation(api.stages.setContractorPaymentMode);
+  const renameFileMutation = useMutation(api.projectFiles.renameProjectFile);
   const [selectedId, setSelectedId] = React.useState<string | null>(search?.contractorId ?? null);
   const [adding, setAdding] = React.useState(false);
   const [editingContractor, setEditingContractor] = React.useState<Contractor | null>(null);
@@ -1481,12 +1503,18 @@ export const ContractorsScreen = () => {
   const [deletingPartial, setDeletingPartial] = React.useState(false);
   const [lockTarget, setLockTarget] = React.useState<string | null>(null);
   const [lockingPayment, setLockingPayment] = React.useState(false);
-  const [feedback, setFeedback] = React.useState<{ title: string; message: string; type: 'success' | 'error' | 'info' } | null>(null);
+  const [feedback, setFeedback] = React.useState<{title: string, message: string, type: 'success' | 'error' | 'info' | 'warning'} | null>(null);
+  
+  // File viewer rename state
+  const [editingViewFileName, setEditingViewFileName] = React.useState(false);
+  const [newViewFileName, setNewViewFileName] = React.useState('');
   const [savingStageLinks, setSavingStageLinks] = React.useState(false);
   const [savingPaymentMode, setSavingPaymentMode] = React.useState(false);
   const [uploadingFilesToMilestone, setUploadingFilesToMilestone] = React.useState<string | null>(null);
+
   const [form, setForm] = React.useState<ContractorForm>(emptyForm);
   const [viewFile, setViewFile] = React.useState<{ id: string; url: string; name: string; milestoneId: string } | null>(null);
+  
   const [fileToDelete, setFileToDelete] = React.useState<{ id: Id<'projectFiles'>; milestoneId: string } | null>(null);
   const [deletingFile, setDeletingFile] = React.useState(false);
 
@@ -2257,23 +2285,105 @@ export const ContractorsScreen = () => {
           onClose={() => deletingPartial ? undefined : setDeletePartialTarget(null)}
         />
       )}
+
       {viewFile && (() => {
         let currentMilestoneFiles: any[] = [];
+        let currentMilestone: any = null;
         for (const c of contractors) {
           if (!c.milestones) continue;
-          const milestone = c.milestones.find((m: any) => m.id === viewFile.milestoneId);
-          if (milestone && milestone.files) {
-            currentMilestoneFiles = milestone.files;
+          const m = c.milestones.find((m: any) => m.id === viewFile.milestoneId);
+          if (m && m.files) {
+            currentMilestone = m;
+            currentMilestoneFiles = m.files;
             break;
           }
         }
+        
+        const submitRenameViewFile = async () => {
+          if (!newViewFileName || newViewFileName.trim() === viewFile.name) {
+            setEditingViewFileName(false);
+            return;
+          }
+          try {
+            await renameFileMutation({ fileId: viewFile.id as Id<'projectFiles'>, newName: newViewFileName.trim() });
+            setViewFile({ ...viewFile, name: newViewFileName.trim() });
+            setEditingViewFileName(false);
+            setFeedback({ title: "נשמר בהצלחה", message: "שם הקובץ עודכן", type: "success" });
+          } catch (err) {
+            console.error("Rename failed", err);
+            setFeedback({ title: "שגיאה", message: "לא הצלחנו לשנות את שם הקובץ", type: "error" });
+          }
+        };
+
+        const renderTitle = () => {
+          if (editingViewFileName) {
+            return (
+              <div style={{display: 'flex', alignItems: 'center', gap: 6}}>
+                <input
+                  type="text"
+                  value={newViewFileName}
+                  onChange={(e) => setNewViewFileName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') void submitRenameViewFile();
+                    if (e.key === 'Escape') setEditingViewFileName(false);
+                  }}
+                  autoFocus
+                  style={{
+                    padding: '4px 8px',
+                    border: '1px solid var(--accent)',
+                    borderRadius: 4,
+                    fontSize: 16,
+                    fontWeight: 700,
+                    fontFamily: 'inherit',
+                    outline: 'none',
+                    minWidth: 200,
+                    background: 'var(--surface-2)',
+                    color: 'var(--text1)'
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => void submitRenameViewFile()}
+                  style={{background: 'var(--success)', border: 'none', borderRadius: 4, padding: '4px 8px', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center'}}
+                >
+                  <Icon n="check" s={14}/>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditingViewFileName(false)}
+                  style={{background: 'var(--surface-3)', border: 'none', borderRadius: 4, padding: '4px 8px', color: 'var(--text2)', cursor: 'pointer', display: 'flex', alignItems: 'center'}}
+                >
+                  <Icon n="x" s={14}/>
+                </button>
+              </div>
+            );
+          }
+
+          const baseName = currentMilestoneFiles.length > 1 ? `${viewFile.name} (${currentFileIndex + 1}/${currentMilestoneFiles.length})` : viewFile.name;
+          return (
+            <div style={{display: 'flex', alignItems: 'center', gap: 8}}>
+              <span>{baseName}</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setNewViewFileName(viewFile.name);
+                  setEditingViewFileName(true);
+                }}
+                title="שנה שם"
+                style={{background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent)', display: 'flex', alignItems: 'center', padding: 4}}
+              >
+                <Icon n="edit" s={16}/>
+              </button>
+            </div>
+          );
+        };
         
         const currentFileIndex = currentMilestoneFiles.findIndex(f => f.id === viewFile.id);
         const hasNextFile = currentFileIndex >= 0 && currentFileIndex < currentMilestoneFiles.length - 1;
         const hasPrevFile = currentFileIndex > 0;
 
         return (
-          <Modal title={currentMilestoneFiles.length > 1 ? `${viewFile.name} (${currentFileIndex + 1}/${currentMilestoneFiles.length})` : viewFile.name} onClose={() => setViewFile(null)}>
+          <Modal title={renderTitle()} onClose={() => { setViewFile(null); setEditingViewFileName(false); }}>
             <div style={{ height: '70vh', minHeight: 400, width: '100%', position: 'relative' }}>
               {hasPrevFile && (
                 <button 
@@ -2287,19 +2397,7 @@ export const ContractorsScreen = () => {
                 </button>
               )}
               {/\.(jpg|jpeg|png|gif|webp)$/i.test(viewFile.name) ? (
-                <TransformWrapper 
-                  initialScale={1} 
-                  minScale={1} 
-                  maxScale={8} 
-                  centerOnInit
-                  doubleClick={{ step: 2 }}
-                  wheel={{ step: 0.2 }}
-                  pinch={{ step: 5 }}
-                >
-                  <TransformComponent wrapperStyle={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--surface-2)', borderRadius: 8 }} contentStyle={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <img src={viewFile.url} draggable={false} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} alt="Preview" />
-                  </TransformComponent>
-                </TransformWrapper>
+                <ZoomableViewer url={viewFile.url} />
               ) : (
                 <iframe 
                   src={viewFile.url} 
@@ -2320,10 +2418,12 @@ export const ContractorsScreen = () => {
               )}
             </div>
             <div style={{ marginTop: 12, display: 'flex', justifyContent: 'center', gap: 12 }}>
-              <Btn variant="ghost" onClick={() => setViewFile(null)}>סגור</Btn>
-              <Btn variant="ghost" style={{ color: 'var(--danger)', border: '1px solid var(--danger)', background: 'transparent' }} onClick={() => setFileToDelete({ id: viewFile.id as Id<'projectFiles'>, milestoneId: viewFile.milestoneId })}>
-                <Icon n="trash-2" s={14} /> מחק קובץ
-              </Btn>
+              <Btn variant="ghost" onClick={() => { setViewFile(null); setEditingViewFileName(false); }}>סגור</Btn>
+              {!currentMilestone?.isLocked && (
+                <Btn variant="ghost" style={{ color: 'var(--danger)', border: '1px solid var(--danger)', background: 'transparent' }} onClick={() => setFileToDelete({ id: viewFile.id as Id<'projectFiles'>, milestoneId: viewFile.milestoneId })}>
+                  <Icon n="trash-2" s={14} /> מחק קובץ
+                </Btn>
+              )}
             </div>
           </Modal>
         );

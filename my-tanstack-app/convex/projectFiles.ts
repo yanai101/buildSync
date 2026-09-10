@@ -176,10 +176,36 @@ export const listByContractor = query({
       .withIndex('by_contractor', (q) => q.eq('contractorId', args.contractorId))
       .take(200);
 
+    const milestones = await ctx.db
+      .query('contractorPaymentMilestones')
+      .withIndex('by_contractor', (q) => q.eq('contractorId', args.contractorId))
+      .collect();
+
+    const lockedFileIds = new Set<string>();
+    for (const milestone of milestones) {
+      if (milestone.isLocked) {
+        if (milestone.fileIds) {
+          for (const id of milestone.fileIds) {
+            lockedFileIds.add(id);
+          }
+        }
+        if (milestone.partialPayments) {
+          for (const pp of milestone.partialPayments) {
+            if (pp.fileIds) {
+              for (const id of pp.fileIds) {
+                lockedFileIds.add(id);
+              }
+            }
+          }
+        }
+      }
+    }
+
     return await Promise.all(files.map(async (file) => ({
       ...file,
       id: file._id,
       url: await ctx.storage.getUrl(file.storageId),
+      isLocked: lockedFileIds.has(file._id),
     })));
   },
 });
@@ -193,4 +219,22 @@ export const getProjectFileUrl = mutation({
     const url = await ctx.storage.getUrl(file.storageId);
     return { url };
   },
+});
+
+export const renameProjectFile = mutation({
+  args: {
+    fileId: v.id('projectFiles'),
+    newName: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const file = await ctx.db.get(args.fileId);
+    if (!file) throw new Error("File not found");
+    const { userId, user, project } = await requireProjectFileUser(ctx, file.projectId);
+    const isUploader = file.uploaderUserId === userId;
+    const isProjectManager = project.ownerUserId === userId || project.managerUserId === userId;
+    if (!isUploader && !isProjectManager && !user?.isSuperAdmin) {
+      throw new Error('Only the uploader, owner, or manager can rename this file');
+    }
+    await ctx.db.patch(args.fileId, { originalName: args.newName });
+  }
 });
