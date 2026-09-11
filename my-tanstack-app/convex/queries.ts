@@ -4,7 +4,7 @@ import { paginationOptsValidator } from 'convex/server';
 import type { Id } from './_generated/dataModel';
 import { getAuthUserId } from '@convex-dev/auth/server';
 import { getSyncedPaymentReadiness } from './_lib/contractorPaymentSync';
-import { requireProjectScheduleView, requireProjectMember, requireProjectBudgetView, requireProjectFileUser } from './_lib/projectAccess';
+import { requireProjectScheduleView, requireProjectMember, requireProjectBudgetView, requireProjectFileUser, canUserViewSchedule } from './_lib/projectAccess';
 
 const formatMessageDate = (creationTime: number) => {
   const date = new Date(creationTime);
@@ -17,7 +17,8 @@ const formatMessageDate = (creationTime: number) => {
 export const listStages = query({
   args: { projectId: v.id('projects') },
   handler: async (ctx, args) => {
-    await requireProjectScheduleView(ctx, args.projectId);
+    const allowed = await canUserViewSchedule(ctx, args.projectId);
+    if (!allowed) return null;
     const stages = await ctx.db
       .query('stages')
       .withIndex('by_project', (q) => q.eq('projectId', args.projectId))

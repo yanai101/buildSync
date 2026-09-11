@@ -1,6 +1,6 @@
 import { v } from 'convex/values';
 import { query, mutation } from './_generated/server';
-import { requireProjectOwner } from './_lib/projectAccess';
+import { requireProjectOwner, requireProjectBudgetView, canUserViewBudget } from './_lib/projectAccess';
 import { getFinancialSummary } from './_lib/financialSummary';
 import { zodToConvex } from 'convex-helpers/server/zod3';
 import {
@@ -66,7 +66,8 @@ async function createTransactionForDraw(
 export const getFundingSummary = query({
   args: { projectId: v.id('projects') },
   handler: async (ctx, args) => {
-    await requireProjectOwner(ctx, args.projectId);
+    const allowed = await canUserViewBudget(ctx, args.projectId);
+    if (!allowed) return null;
     const project = await ctx.db.get(args.projectId);
     if (!project) return null;
 
@@ -135,7 +136,8 @@ export const getFundingSummary = query({
 export const listSources = query({
   args: { projectId: v.id('projects') },
   handler: async (ctx, args) => {
-    await requireProjectOwner(ctx, args.projectId);
+    const allowed = await canUserViewBudget(ctx, args.projectId);
+    if (!allowed) return [];
     return ctx.db.query('fundingSources').withIndex('by_project', (q) => q.eq('projectId', args.projectId)).collect();
   },
 });
@@ -145,7 +147,8 @@ export const listTransactions = query({
   handler: async (ctx, args) => {
     const source = await ctx.db.get(args.fundingSourceId);
     if (!source) return [];
-    await requireProjectOwner(ctx, source.projectId);
+    const allowed = await canUserViewBudget(ctx, source.projectId);
+    if (!allowed) return [];
     return ctx.db.query('fundingTransactions').withIndex('by_source', (q) => q.eq('fundingSourceId', args.fundingSourceId)).collect();
   },
 });
@@ -155,7 +158,8 @@ export const listDraws = query({
   handler: async (ctx, args) => {
     const source = await ctx.db.get(args.fundingSourceId);
     if (!source) return [];
-    await requireProjectOwner(ctx, source.projectId);
+    const allowed = await canUserViewBudget(ctx, source.projectId);
+    if (!allowed) return [];
     return ctx.db.query('mortgageDraws').withIndex('by_source', (q) => q.eq('fundingSourceId', args.fundingSourceId)).collect();
   },
 });

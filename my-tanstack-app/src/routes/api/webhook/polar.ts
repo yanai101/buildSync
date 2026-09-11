@@ -1,6 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { Webhooks } from "@polar-sh/tanstack-start";
 import { Polar } from "@polar-sh/sdk";
+import { HTTPClient } from "@polar-sh/sdk/lib/http";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "../../../../convex/_generated/api";
 
@@ -8,9 +9,19 @@ import { api } from "../../../../convex/_generated/api";
 const getConvexUrl = () => process.env.CONVEX_URL || process.env.VITE_CONVEX_URL || "http://127.0.0.1:3210";
 const convex = new ConvexHttpClient(getConvexUrl());
 
+// Pin to 2026-04 API version so the contract doesn't change when the
+// default rolls to 2026-10 on Oct 1. Migrate to the new versioned SDK
+// import before Jan 2027, when 2026-04 is removed.
+const httpClient = new HTTPClient();
+httpClient.addHook("beforeRequest", (req) => {
+  req.headers.set("Polar-Version", "2026-04");
+  return req;
+});
+
 const polar = new Polar({
   accessToken: process.env.POLAR_ACCESS_TOKEN,
   server: (process.env.POLAR_SERVER as "sandbox" | "production") || "sandbox",
+  httpClient,
 });
 
 // Billing cadence of the subscription ('month' | 'year'), so plan switches

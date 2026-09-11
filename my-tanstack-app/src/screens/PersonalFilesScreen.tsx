@@ -1042,6 +1042,10 @@ export const PersonalFilesScreen = () => {
       title="ניהול מסמכים ותמונות"
       description={isOwner ? "גיבוי, שמירה וניהול של כל הקבצים, התמונות והמסמכים החשובים של הפרויקט. שדרג ל-Pro כדי לקבל גישה." : "הארכיון זמין כאשר בעל הפרויקט הוא מנוי Pro או Premium."}
     >
+      {files === null ? (
+        <AccessDenied message="בעל הפרויקט לא הגדיר עבורך הרשאות גישה לתמונות ומסמכים בארכיון." />
+      ) : (
+      <>
       <div className="page-content" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         {permission === 'default' && (
           <div className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: '10px 14px', background: 'var(--surface)' }}>
@@ -1267,7 +1271,7 @@ export const PersonalFilesScreen = () => {
           onClose={() => {
             viewGallery.images.forEach(img => URL.revokeObjectURL(img.url));
             setViewGallery(null);
-          }} 
+          }}
           onSaveNote={async (index, newNote, imageId) => {
             if (!imageId) return;
             const fileId = imageId as Id<'personalFiles'>;
@@ -1392,6 +1396,8 @@ export const PersonalFilesScreen = () => {
           }}
           onConfirm={() => void handleDeleteSection(sectionToDelete.id, sectionToDelete.name, sectionToDelete.count)}
         />
+      )}
+      </>
       )}
     </PremiumLock>
   );

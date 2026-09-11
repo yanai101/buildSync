@@ -186,11 +186,13 @@ export const createPersonalFile = mutation({
 export const listMyPersonalFiles = query({
   args: { projectId: v.id('projects') },
   handler: async (ctx, args) => {
-    const { ownerUserId, canPhotos, canDocs, isOwner } = await requireArchiveAccess(
-      ctx,
-      args.projectId,
-      'any',
-    );
+    let access;
+    try {
+      access = await requireArchiveAccess(ctx, args.projectId, 'any');
+    } catch {
+      return null;
+    }
+    const { ownerUserId, canPhotos, canDocs, isOwner } = access;
 
     const files = await ctx.db
       .query('personalFiles')
