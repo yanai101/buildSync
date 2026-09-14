@@ -430,6 +430,9 @@ function RegisterPage() {
           <p style={{ textAlign: 'center', marginTop: 12, fontSize: 12, color: 'var(--text3)' }}>
             מנהל עבודה, מפקח או קבלן? יש לבקש מבעל הפרויקט לצרף אותך.
           </p>
+          <p style={{ textAlign: 'center', marginTop: 16, fontSize: 11, color: 'var(--text3)' }}>
+            בהרשמה למערכת, את/ה מסכים/ה ל<Link to="/terms" style={{ color: 'var(--text2)', textDecoration: 'underline' }}>תנאי השימוש</Link> ול<Link to="/privacy" style={{ color: 'var(--text2)', textDecoration: 'underline' }}>מדיניות הפרטיות</Link> שלנו.
+          </p>
             </>
           )}
         </div>

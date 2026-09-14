@@ -1272,6 +1272,25 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                     תנאי שימוש
                   </Link>
 
+                  <Link
+                    to="/privacy"
+                    onClick={() => setMenuOpen(false)}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      padding: "8px 10px",
+                      borderRadius: 8,
+                      color: "var(--text3)",
+                      fontSize: 13,
+                      fontWeight: 600,
+                      textDecoration: "none",
+                    }}
+                  >
+                    <Icon n="lock" s={14} />
+                    מדיניות פרטיות
+                  </Link>
+
                   <div style={{ height: 1, background: "var(--border)", margin: "6px 0" }} />
                   {/* Dev-only Data Source Toggle */}
                   {import.meta.env.DEV && (

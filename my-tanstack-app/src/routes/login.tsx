@@ -190,6 +190,9 @@ function LoginPage() {
           <p style={{ textAlign: 'center', marginTop: 28, fontSize: 13, color: 'var(--text3)' }}>
             עדיין אין לך חשבון? <Link to="/register" style={{ color: 'var(--accent)', fontWeight: 600, textDecoration: 'none' }}>צור חשבון חדש</Link>
           </p>
+          <p style={{ textAlign: 'center', marginTop: 16, fontSize: 11, color: 'var(--text3)' }}>
+            בהתחברות למערכת, את/ה מסכים/ה ל<Link to="/terms" style={{ color: 'var(--text2)', textDecoration: 'underline' }}>תנאי השימוש</Link> ול<Link to="/privacy" style={{ color: 'var(--text2)', textDecoration: 'underline' }}>מדיניות הפרטיות</Link> שלנו.
+          </p>
         </div>
       </div>
 

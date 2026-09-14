@@ -64,6 +64,14 @@ function PrivacyScreen() {
             אנו עשויים לעדכן את מדיניות הפרטיות מעת לעת. במקרה של שינוי מהותי, נודיע על כך למשתמשים דרך המערכת או באמצעות דוא"ל.
           </p>
 
+          <h2 style={{ fontSize: '1.5rem', color: '#fff', marginTop: 30, marginBottom: 15 }}>6. צור קשר</h2>
+          <p style={{ marginBottom: 20 }}>
+            אם יש לך שאלות או בקשות בנוגע למדיניות פרטיות זו, תוכל לפנות אלינו באמצעות דוא"ל לכתובת:{' '}
+            <a href="mailto:support@buildsync.co.il" style={{ color: '#3B82F6', textDecoration: 'none' }}>
+              support@buildsync.co.il
+            </a>
+          </p>
+
           <p style={{ marginTop: 40, color: '#888', fontSize: '0.9rem' }}>
             עודכן לאחרונה: 4 ביולי, 2026
           </p>
