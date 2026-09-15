@@ -84,7 +84,7 @@ export const PAGE_TITLES: Record<string, string> = {
 }
 
 export const PAGE_SUBTITLES: Record<string, string> = {
-  "/setup": "הגדרת מבנה הבית, חדרים וצוות",
+  "/setup": "הגדרת מבנה הבית, אזורים וצוות",
   "/boqwizard": "עבור חדר-חדר ובנה רשימת כמויות לרכישה / יבוא",
   "/checklists": "רשימות תיוג מקצועיות לכל שלב בבנייה",
   "/daily-logs": "תיעוד יומי של התקדמות, כוח אדם, חריגות ואישורים",

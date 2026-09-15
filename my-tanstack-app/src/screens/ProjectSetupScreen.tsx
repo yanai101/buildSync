@@ -95,7 +95,7 @@ export const ProjectSetupScreen = () => {
   const setRoom = (uid: string, k: keyof Room, v: any) => setCfg((c)=> c ? ({...c,rooms:(c.rooms || []).map((r)=>r.uid===uid?{...r,[k]:v}:r)}) : c);
   const addRoom = (floor: number = 1, type = "bedroom", name = "חדר שינה חדש", size = 16) => {
     if (!isProOrPremium) {
-      notify({ title: 'שדרוג נדרש', body: 'הוספת חדרים מותאמים אישית זמינה במסלול Pro.', kind: 'error' });
+      notify({ title: 'שדרוג נדרש', body: 'הוספת אזורים מותאמים אישית זמינה במסלול Pro.', kind: 'error' });
       return;
     }
     const uid = `r${Date.now()}_${Math.random().toString(36).substring(7)}`;
@@ -139,7 +139,7 @@ export const ProjectSetupScreen = () => {
   
   const removeRoom = (uid: string) => setCfg((c)=> c ? ({...c,rooms:(c.rooms || []).filter((r)=>r.uid!==uid)}) : c);
 
-  const STEPS = ["פרטי הפרויקט","מבנה הבית","חדרים","צוות","סיכום"];
+  const STEPS = ["פרטי הפרויקט","מבנה הבית","אזורים","צוות","סיכום"];
   const totalRoomArea = cfg ? (cfg.rooms || []).reduce((a: number,r) => {
     if (['yard', 'pool', 'balcony', 'parking'].includes(r.type)) return a;
     return a + Number(r.size || 0);
@@ -199,7 +199,7 @@ export const ProjectSetupScreen = () => {
               </div>
               <div>
                 <h1 style={{fontSize:22,fontWeight:800,margin:0}}>הגדרות הבית</h1>
-                <div style={{fontSize:13,color:"var(--text3)",marginTop:2}}>ניהול פרטי הפרויקט, מבנה הקומות והחדרים</div>
+                <div style={{fontSize:13,color:"var(--text3)",marginTop:2}}>ניהול פרטי הפרויקט, מבנה הקומות והאזורים</div>
               </div>
             </div>
             <Btn onClick={() => { setIsEditing(true); setStep(0); }}><Icon n="edit" s={14}/> ערוך הגדרות</Btn>
@@ -233,7 +233,7 @@ export const ProjectSetupScreen = () => {
                    ["מרתף", cfg.hasBasement ? "יש" : "אין"],
                    ["חצר", cfg.hasYard ? "יש" : "אין"],
                    ["יחידות דיור / צימרים", cfg.housingUnits || 0],
-                   ["חדרים", cfg.rooms.length],
+                   ["אזורים", cfg.rooms.length],
                    ["שטח כולל", `${displayArea} מ"ר`]
                  ].map(([k,v]) => (
                    <div key={k} style={{display:"flex",justifyContent:"space-between",padding:"10px 0",borderBottom:"1px solid var(--border)",fontSize:14}}>
@@ -273,7 +273,7 @@ export const ProjectSetupScreen = () => {
             </div>
             <div>
               <h1 style={{fontSize:22,fontWeight:800,margin:0}}>הגדרות הבית</h1>
-              <div style={{fontSize:13,color:"var(--text3)",marginTop:2}}>ניהול פרטי הפרויקט, מבנה הקומות והחדרים</div>
+              <div style={{fontSize:13,color:"var(--text3)",marginTop:2}}>ניהול פרטי הפרויקט, מבנה הקומות והאזורים</div>
             </div>
           </div>
         </div>
@@ -370,10 +370,10 @@ export const ProjectSetupScreen = () => {
               <div style={{flex:"1 1 150px"}}>
                 <div style={{fontSize:12,color:"var(--text2)",marginBottom:4,fontWeight:500}}>שטח כולל (מ"ר)</div>
                 <NumberInput className="bp-input" value={cfg.area === 0 ? undefined : cfg.area} onChange={(v: number | undefined)=>setField("area", v || 0)} placeholder={`אוטומטי: ${totalRoomArea}`} style={{width:130}}/>
-                {cfg.area === 0 && <div style={{fontSize:11,color:"var(--text3)",marginTop:4}}>מחושב לפי חדרים</div>}
+                {cfg.area === 0 && <div style={{fontSize:11,color:"var(--text3)",marginTop:4}}>מחושב לפי אזורים</div>}
               </div>
               <div style={{flex:"1 1 150px"}}>
-                <div style={{fontSize:12,color:"var(--text2)",marginBottom:4,fontWeight:500}}>שטח מוגדר (חדרים)</div>
+                <div style={{fontSize:12,color:"var(--text2)",marginBottom:4,fontWeight:500}}>שטח מוגדר (אזורים)</div>
                 <div style={{fontSize:22,fontWeight:800,color:"var(--accent)"}}>{totalRoomArea} <span style={{fontSize:14,fontWeight:400,color:"var(--text2)"}}>מ"ר</span></div>
               </div>
             </div>
@@ -436,7 +436,7 @@ export const ProjectSetupScreen = () => {
                 {label:"חדר שינה",count:(cfg.rooms || []).filter((r)=>r.type==="bedroom"||r.type==="master").length},
                 {label:"חדרי אמבטיה",count:(cfg.rooms || []).filter((r)=>r.type==="bathroom").length},
                 {label:"שירותים",count:(cfg.rooms || []).filter((r)=>r.type==="toilet").length},
-                {label:"סה\"כ חדרים",count:(cfg.rooms || []).length},
+                {label:"סה\"כ אזורים",count:(cfg.rooms || []).length},
               ].map(({label,count})=>(
                 <div key={label} style={{background:"var(--bg)",borderRadius:8,padding:"12px 14px",textAlign:"center"}}>
                   <div style={{fontSize:24,fontWeight:800}}>{count}</div>
@@ -451,16 +451,16 @@ export const ProjectSetupScreen = () => {
         {step===2 && (
           <div>
             <div style={{padding:"14px 18px",borderBottom:"1px solid var(--border)",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
-              <span style={{fontWeight:700,fontSize:15}}>הגדרת חדרים</span>
+              <span style={{fontWeight:700,fontSize:15}}>הגדרת אזורים</span>
             </div>
             {getFloorList(cfg.floors, cfg.hasBasement, cfg.hasYard, cfg.housingUnits).map((f)=>(
               <div key={f} style={{padding:"14px 18px 8px",borderBottom:"1px solid var(--border)"}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
                   <div style={{fontSize:12,fontWeight:700,color:"var(--text3)",textTransform:"uppercase",letterSpacing:".5px"}}>{getFloorLabel(f)}</div>
-                  <Btn size="sm" variant="ghost" onClick={() => addRoom(f)}><Icon n="plus" s={13}/> הוסף חדר</Btn>
+                  <Btn size="sm" variant="ghost" onClick={() => addRoom(f)}><Icon n="plus" s={13}/> הוסף אזור</Btn>
                 </div>
                 <div style={{display:"flex",flexDirection:"column",gap:8}}>
-                  {floorRooms(f).length===0 && <div style={{fontSize:13,color:"var(--text3)",padding:"8px 0"}}>אין חדרים באזור זה</div>}
+                  {floorRooms(f).length===0 && <div style={{fontSize:13,color:"var(--text3)",padding:"8px 0"}}>אין אזורים מוגדרים כאן</div>}
                   {floorRooms(f).map((r)=>(
                     <div key={r.uid} style={{display:"flex",flexWrap:"wrap",gap:10,alignItems:"center",padding:"8px 10px",background:"var(--bg)",borderRadius:8}}>
                       <select className="bp-input" value={r.type} onChange={e=>{
@@ -470,7 +470,7 @@ export const ProjectSetupScreen = () => {
                       }} style={{flex:"1 1 120px",fontSize:12}}>
                         {ROOM_TYPE_OPTS.map(t=><option key={t.id} value={t.id}>{t.label}</option>)}
                       </select>
-                      <input className="bp-input" value={r.name} onChange={e=>setRoom(r.uid,"name",e.target.value)} placeholder="שם חדר" style={{flex:"1 1 120px",fontSize:12}}/>
+                      <input className="bp-input" value={r.name} onChange={e=>setRoom(r.uid,"name",e.target.value)} placeholder="שם אזור" style={{flex:"1 1 120px",fontSize:12}}/>
                       <div style={{display:"flex",alignItems:"center",gap:4,flexShrink:0}}>
                         <NumberInput className="bp-input" value={r.size === 0 ? undefined : r.size} onChange={(v: number | undefined)=>setRoom(r.uid,"size", v || 0)} style={{width:60,fontSize:12}}/>
                         <span style={{fontSize:11,color:"var(--text3)",whiteSpace:"nowrap"}}>מ"ר</span>
@@ -487,9 +487,9 @@ export const ProjectSetupScreen = () => {
               </div>
             ))}
             <div style={{padding:'10px 18px',background:'var(--surface-2)',borderRadius:'0 0 10px 10px',display:'flex',flexWrap:'wrap',gap:20,fontSize:12,color:'var(--text2)'}}>
-              <span>סה"כ חדרים: <strong>{(cfg.rooms || []).length}</strong></span>
+              <span>סה"כ אזורים: <strong>{(cfg.rooms || []).length}</strong></span>
               <span>שטח מוגדר: <strong>{totalRoomArea} מ"ר</strong></span>
-              <span>ממוצע לחדר: <strong>{(cfg.rooms || []).length?Math.round(totalRoomArea/(cfg.rooms || []).length):0} מ"ר</strong></span>
+              <span>ממוצע לאזור: <strong>{(cfg.rooms || []).length?Math.round(totalRoomArea/(cfg.rooms || []).length):0} מ"ר</strong></span>
             </div>
           </div>
         )}
@@ -524,7 +524,7 @@ export const ProjectSetupScreen = () => {
               </div>
               <div style={{flex:"1 1 250px"}}>
                 <div style={{fontSize:12,fontWeight:700,color:"var(--text3)",marginBottom:10,textTransform:"uppercase",letterSpacing:".5px"}}>מבנה הבית</div>
-                {[["קומות",cfg.floors],["מרתף",cfg.hasBasement?"יש":"אין"],["חצר",cfg.hasYard?"יש":"אין"],["יחידות דיור / צימרים",cfg.housingUnits||0],["חדרים",(cfg.rooms || []).length],["שטח כולל",`${displayArea} מ"ר`]].map(([k,v])=>(
+                {[["קומות",cfg.floors],["מרתף",cfg.hasBasement?"יש":"אין"],["חצר",cfg.hasYard?"יש":"אין"],["יחידות דיור / צימרים",cfg.housingUnits||0],["אזורים",(cfg.rooms || []).length],["שטח כולל",`${displayArea} מ"ר`]].map(([k,v])=>(
                   <div key={k} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:"1px solid var(--border)",fontSize:13}}>
                     <span style={{color:"var(--text2)"}}>{k}</span><span style={{fontWeight:600}}>{v as any}</span>
                   </div>
