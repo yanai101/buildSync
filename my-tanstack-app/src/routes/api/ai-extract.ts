@@ -1,7 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { ConvexHttpClient } from 'convex/browser';
 import { api } from '../../../convex/_generated/api';
-import { MarkItDown } from 'markitdown-ts';
 import { chat } from '@tanstack/ai';
 import { openaiText } from '@tanstack/ai-openai';
 import { z } from 'zod';
@@ -81,6 +80,11 @@ export const Route = createFileRoute('/api/ai-extract')({
           // ── Convert to Markdown ────────────────────────────────────────────
           let markdown: string;
           try {
+            // Imported lazily: markitdown-ts drags in jsdom, whose module-level
+            // require.resolve fails under some bundlers. A module-scope import
+            // would crash the entire server on startup instead of failing just
+            // this request.
+            const { MarkItDown } = await import('markitdown-ts');
             const mid = new MarkItDown();
             // markitdown-ts accepts a buffer + file_extension hint for format detection
             const file_extension = fileName ? fileName.split('.').pop() : undefined;

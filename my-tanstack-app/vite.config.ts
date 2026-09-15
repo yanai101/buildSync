@@ -19,9 +19,14 @@ export default defineConfig({
   // We keep it external in SSR so Node never requires it.
   // Do NOT exclude from optimizeDeps — Vite must pre-bundle it so
   // the browser dynamic import resolves correctly.
+  //
+  // markitdown-ts pulls in jsdom, which does
+  // `require.resolve('./xhr-sync-worker.js')` at load time. Bundling jsdom
+  // drops that file and the require throws, taking down the whole server.
+  // Keeping both external makes Node resolve them from node_modules instead.
   ssr: {
     noExternal: [],
-    external: ['html2pdf.js'],
+    external: ['html2pdf.js', 'markitdown-ts', 'jsdom'],
   },
   build: {
     cssMinify: true,
