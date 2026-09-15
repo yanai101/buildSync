@@ -3,6 +3,7 @@ import { getAuthUserId } from '@convex-dev/auth/server';
 import { v } from 'convex/values';
 import { performProjectDeletion } from './_lib/projectDeletion';
 import { scheduleUserNotifications } from './notifications';
+import { getActiveTier, AI_MONTHLY_LIMITS } from './_lib/entitlements';
 
 async function checkSuperAdmin(ctx: any) {
   const userId = await getAuthUserId(ctx);
@@ -21,10 +22,22 @@ export const getAllUsers = query({
     await checkSuperAdmin(ctx);
     const users = await ctx.db.query('users').collect();
 
+    // Global AI monthly quota override (applies to paid tiers)
+    const aiGlobalSetting = await ctx.db
+      .query('appSettings')
+      .withIndex('by_key', (q) => q.eq('key', 'aiMonthlyLimit'))
+      .first();
+    const globalAiLimit = aiGlobalSetting?.numberValue;
+
+    const startOfMonth = new Date();
+    startOfMonth.setDate(1);
+    startOfMonth.setHours(0, 0, 0, 0);
+    const monthStartMs = startOfMonth.getTime();
+
     // Fetch per-user stats in parallel
     const usersWithStats = await Promise.all(
       users.map(async (u) => {
-        const [projects, lastActivityEntry, sessions, pushSubs] = await Promise.all([
+        const [projects, lastActivityEntry, sessions, pushSubs, authAccounts] = await Promise.all([
           // Projects owned by this user
           ctx.db
             .query('projects')
@@ -46,6 +59,11 @@ export const getAllUsers = query({
           ctx.db
             .query('pushSubscriptions')
             .withIndex('by_user', (q) => q.eq('userId', u._id))
+            .collect(),
+          // Auth accounts — to know if there's a password account to verify
+          ctx.db
+            .query('authAccounts' as any)
+            .filter((q: any) => q.eq(q.field('userId'), u._id))
             .collect(),
         ]);
 
@@ -94,8 +112,32 @@ export const getAllUsers = query({
           }
         }
 
+        // AI usage this calendar month (all features)
+        const aiLogs = await ctx.db
+          .query('aiUsageLogs')
+          .withIndex('by_user_feature_at', (q) => q.eq('userId', u._id))
+          .collect();
+        const aiUsedThisMonth = aiLogs.filter((l) => l.at >= monthStartMs).length;
+
+        const tier = getActiveTier(u);
+        const baseLimit =
+          tier !== 'free' && globalAiLimit !== undefined
+            ? globalAiLimit
+            : (AI_MONTHLY_LIMITS[tier] ?? 0);
+        const aiLimitPerMonth = u.isSuperAdmin
+          ? 9999
+          : baseLimit + (u.aiLimitOverride ?? 0);
+
+        const passwordAccount = (authAccounts as any[]).find((a) => a.provider === 'password');
+
         return {
           ...u,
+          hasPasswordAccount: !!passwordAccount,
+          // Verified = user-level timestamp OR the password account itself is marked verified
+          emailVerified: !!u.emailVerificationTime || !!passwordAccount?.emailVerified,
+          aiUsedThisMonth,
+          aiLimitPerMonth,
+          aiRemaining: Math.max(0, aiLimitPerMonth - aiUsedThisMonth),
           projectCount: projects.length,
           lastActivityAt: lastActivityEntry?.createdAt ?? null,
           lastSessionAt,
@@ -435,5 +477,103 @@ export const sendTestPushNotification = mutation({
     });
 
     return { subscriptionCount: subscriptions.length };
+  },
+});
+
+// Manually mark a user's email as verified, without sending a verification
+// email — for test accounts and support cases. Mirrors exactly what
+// @convex-dev/auth does after a successful OTP verification: sets
+// `emailVerified` on the password authAccount (the field Password's sign-in
+// gate checks) and `emailVerificationTime` on the user.
+// NOTE: touches the library's internal authAccounts/authVerificationCodes
+// tables — revisit if @convex-dev/auth changes its internal format.
+export const verifyUserEmail = mutation({
+  args: { userId: v.id('users') },
+  handler: async (ctx, args) => {
+    await checkSuperAdmin(ctx);
+
+    const user = await ctx.db.get(args.userId);
+    if (!user) throw new Error('User not found');
+    if (!user.email) throw new Error('למשתמש אין כתובת אימייל');
+
+    const accounts = await ctx.db
+      .query('authAccounts' as any)
+      .filter((q: any) => q.eq(q.field('userId'), args.userId))
+      .collect();
+    const passwordAccount = (accounts as any[]).find((a) => a.provider === 'password');
+    if (!passwordAccount) {
+      throw new Error('למשתמש אין חשבון סיסמה — הוא נרשם עם Google ומאומת אוטומטית.');
+    }
+
+    await ctx.db.patch(passwordAccount._id, { emailVerified: user.email } as any);
+    if (!user.emailVerificationTime) {
+      await ctx.db.patch(args.userId, { emailVerificationTime: Date.now() });
+    }
+
+    // Pending OTP codes are now moot — clean them up
+    const codes = await ctx.db
+      .query('authVerificationCodes' as any)
+      .filter((q: any) => q.eq(q.field('accountId'), passwordAccount._id))
+      .collect();
+    for (const c of codes) {
+      await ctx.db.delete(c._id);
+    }
+  },
+});
+
+// Global monthly AI request quota for paid (pro/premium) subscribers.
+// Returns null when no override is set (the code default applies).
+export const getGlobalAiLimit = query({
+  args: {},
+  handler: async (ctx) => {
+    await checkSuperAdmin(ctx);
+    const setting = await ctx.db
+      .query('appSettings')
+      .withIndex('by_key', (q) => q.eq('key', 'aiMonthlyLimit'))
+      .first();
+    return {
+      value: setting?.numberValue ?? null,
+      defaultValue: AI_MONTHLY_LIMITS.pro,
+    };
+  },
+});
+
+export const setGlobalAiLimit = mutation({
+  args: {
+    // null clears the override and falls back to the code default
+    limit: v.union(v.number(), v.null()),
+  },
+  handler: async (ctx, args) => {
+    await checkSuperAdmin(ctx);
+    if (args.limit !== null && (args.limit < 0 || !Number.isFinite(args.limit))) {
+      throw new Error('Limit must be a non-negative number');
+    }
+
+    const existing = await ctx.db
+      .query('appSettings')
+      .withIndex('by_key', (q) => q.eq('key', 'aiMonthlyLimit'))
+      .first();
+
+    if (args.limit === null) {
+      if (existing) await ctx.db.delete(existing._id);
+      return;
+    }
+
+    if (existing) {
+      await ctx.db.patch(existing._id, { numberValue: args.limit });
+    } else {
+      await ctx.db.insert('appSettings', { key: 'aiMonthlyLimit', numberValue: args.limit });
+    }
+  },
+});
+
+export const updateAiLimitOverride = mutation({
+  args: {
+    userId: v.id('users'),
+    override: v.number(),
+  },
+  handler: async (ctx, args) => {
+    await checkSuperAdmin(ctx);
+    await ctx.db.patch(args.userId, { aiLimitOverride: args.override });
   },
 });

@@ -38,6 +38,8 @@ import { Route as SuperAdminRouteImport } from './routes/super-admin'
 import { Route as TeamRouteImport } from './routes/team'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as TimelineRouteImport } from './routes/timeline'
+import { Route as ApiAiCompareRouteImport } from './routes/api/ai-compare'
+import { Route as ApiAiExtractRouteImport } from './routes/api/ai-extract'
 import { Route as ApiCheckoutRouteImport } from './routes/api/checkout'
 import { Route as ApiPortalRouteImport } from './routes/api/portal'
 import { Route as JoinCodeRouteImport } from './routes/join.$code'
@@ -188,6 +190,16 @@ const TimelineRoute = TimelineRouteImport.update({
   path: '/timeline',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAiCompareRoute = ApiAiCompareRouteImport.update({
+  id: '/api/ai-compare',
+  path: '/api/ai-compare',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAiExtractRoute = ApiAiExtractRouteImport.update({
+  id: '/api/ai-extract',
+  path: '/api/ai-extract',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiCheckoutRoute = ApiCheckoutRouteImport.update({
   id: '/api/checkout',
   path: '/api/checkout',
@@ -239,6 +251,8 @@ export interface FileRoutesByFullPath {
   '/team': typeof TeamRoute
   '/terms': typeof TermsRoute
   '/timeline': typeof TimelineRoute
+  '/api/ai-compare': typeof ApiAiCompareRoute
+  '/api/ai-extract': typeof ApiAiExtractRoute
   '/api/checkout': typeof ApiCheckoutRoute
   '/api/portal': typeof ApiPortalRoute
   '/join/$code': typeof JoinCodeRoute
@@ -274,6 +288,8 @@ export interface FileRoutesByTo {
   '/team': typeof TeamRoute
   '/terms': typeof TermsRoute
   '/timeline': typeof TimelineRoute
+  '/api/ai-compare': typeof ApiAiCompareRoute
+  '/api/ai-extract': typeof ApiAiExtractRoute
   '/api/checkout': typeof ApiCheckoutRoute
   '/api/portal': typeof ApiPortalRoute
   '/join/$code': typeof JoinCodeRoute
@@ -310,6 +326,8 @@ export interface FileRoutesById {
   '/team': typeof TeamRoute
   '/terms': typeof TermsRoute
   '/timeline': typeof TimelineRoute
+  '/api/ai-compare': typeof ApiAiCompareRoute
+  '/api/ai-extract': typeof ApiAiExtractRoute
   '/api/checkout': typeof ApiCheckoutRoute
   '/api/portal': typeof ApiPortalRoute
   '/join/$code': typeof JoinCodeRoute
@@ -347,6 +365,8 @@ export interface FileRouteTypes {
     | '/team'
     | '/terms'
     | '/timeline'
+    | '/api/ai-compare'
+    | '/api/ai-extract'
     | '/api/checkout'
     | '/api/portal'
     | '/join/$code'
@@ -382,6 +402,8 @@ export interface FileRouteTypes {
     | '/team'
     | '/terms'
     | '/timeline'
+    | '/api/ai-compare'
+    | '/api/ai-extract'
     | '/api/checkout'
     | '/api/portal'
     | '/join/$code'
@@ -417,6 +439,8 @@ export interface FileRouteTypes {
     | '/team'
     | '/terms'
     | '/timeline'
+    | '/api/ai-compare'
+    | '/api/ai-extract'
     | '/api/checkout'
     | '/api/portal'
     | '/join/$code'
@@ -453,6 +477,8 @@ export interface RootRouteChildren {
   TeamRoute: typeof TeamRoute
   TermsRoute: typeof TermsRoute
   TimelineRoute: typeof TimelineRoute
+  ApiAiCompareRoute: typeof ApiAiCompareRoute
+  ApiAiExtractRoute: typeof ApiAiExtractRoute
   ApiCheckoutRoute: typeof ApiCheckoutRoute
   ApiPortalRoute: typeof ApiPortalRoute
   JoinCodeRoute: typeof JoinCodeRoute
@@ -664,6 +690,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TimelineRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/ai-compare': {
+      id: '/api/ai-compare'
+      path: '/api/ai-compare'
+      fullPath: '/api/ai-compare'
+      preLoaderRoute: typeof ApiAiCompareRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/ai-extract': {
+      id: '/api/ai-extract'
+      path: '/api/ai-extract'
+      fullPath: '/api/ai-extract'
+      preLoaderRoute: typeof ApiAiExtractRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/checkout': {
       id: '/api/checkout'
       path: '/api/checkout'
@@ -725,6 +765,8 @@ const rootRouteChildren: RootRouteChildren = {
   TeamRoute: TeamRoute,
   TermsRoute: TermsRoute,
   TimelineRoute: TimelineRoute,
+  ApiAiCompareRoute: ApiAiCompareRoute,
+  ApiAiExtractRoute: ApiAiExtractRoute,
   ApiCheckoutRoute: ApiCheckoutRoute,
   ApiPortalRoute: ApiPortalRoute,
   JoinCodeRoute: JoinCodeRoute,

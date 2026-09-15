@@ -74,6 +74,14 @@ function AccountPage() {
   const [portalLoading, setPortalLoading] = React.useState(false)
   const [portalMsg, setPortalMsg] = React.useState<{ kind: 'ok' | 'err'; text: string } | null>(null)
   const { isProOrPremium, tier, isSuperAdmin } = useSubscription()
+  const aiQuota = useQuery(api.aiQuotes.myAiQuota, {})
+
+  // A paid tier whose expiry date passed — the user is effectively free, and
+  // should see that plainly instead of a stale "renewal date".
+  const subscriptionExpired =
+    !!user && !isSuperAdmin &&
+    (user.subscriptionTier === 'pro' || user.subscriptionTier === 'premium') &&
+    !!user.subscriptionExpiresAt && user.subscriptionExpiresAt < Date.now()
   const { role: resolvedRole } = useRequireRole(['owner', 'manager', 'inspector', 'contractor'])
   const userRole = (resolvedRole ?? 'owner') as 'owner' | 'manager' | 'inspector' | 'contractor'
 
@@ -313,19 +321,47 @@ function AccountPage() {
                   ? user.subscriptionInterval === 'year' ? 'מנוי שנתי פעיל'
                     : user.subscriptionInterval === 'month' ? 'מנוי חודשי פעיל'
                     : 'מנוי פעיל'
-                  : 'חשבון חינמי (Free)'
+                  : subscriptionExpired
+                    ? 'המנוי הסתיים — החשבון חזר למסלול חינמי'
+                    : 'חשבון חינמי (Free)'
               }
-              color={isProOrPremium || isSuperAdmin ? 'var(--accent)' : 'var(--text2)'}
+              color={
+                isProOrPremium || isSuperAdmin ? 'var(--accent)'
+                : subscriptionExpired ? 'var(--danger)'
+                : 'var(--text2)'
+              }
             />
           </div>
+
+          {aiQuota && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: -4 }}>
+              <ReadOnlyField
+                label="בקשות AI החודש (השוואת הצעות מחיר)"
+                value={
+                  aiQuota.tier === 'superAdmin' ? 'ללא הגבלה'
+                  : aiQuota.limitPerMonth === 0 ? 'לא כלול במסלול — שדרג כדי לקבל'
+                  : `נותרו ${aiQuota.remaining} מתוך ${aiQuota.limitPerMonth} · מתאפס בתחילת החודש`
+                }
+                color={
+                  aiQuota.tier === 'superAdmin' || aiQuota.remaining > 0
+                    ? 'var(--accent)'
+                    : 'var(--danger)'
+                }
+              />
+            </div>
+          )}
 
           {user.subscriptionExpiresAt && (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: -4 }}>
               <ReadOnlyField
-                label={user.subscriptionAutoRenew === false ? 'תאריך סיום המנוי' : 'תאריך חידוש המנוי'}
-                value={new Date(user.subscriptionExpiresAt).toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                label={subscriptionExpired ? 'המנוי הסתיים בתאריך' : user.subscriptionAutoRenew === false ? 'תאריך סיום המנוי' : 'תאריך חידוש המנוי'}
+                value={
+                  new Date(user.subscriptionExpiresAt).toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit', year: 'numeric' })
+                  + (subscriptionExpired ? ' — פג תוקף' : '')
+                }
+                color={subscriptionExpired ? 'var(--danger)' : undefined}
               />
-              {user.subscriptionAutoRenew !== undefined && (
+              {!subscriptionExpired && user.subscriptionAutoRenew !== undefined && (
                 <ReadOnlyField
                   label="חידוש אוטומטי"
                   value={user.subscriptionAutoRenew ? 'פעיל' : 'מבוטל — המנוי יסתיים בתאריך הסיום'}

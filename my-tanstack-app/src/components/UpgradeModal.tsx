@@ -6,6 +6,7 @@ import { checkoutUrl, type BillingPlan } from '../billing'
 import { useNavigate } from '@tanstack/react-router'
 
 const PRO_BENEFITS = [
+  '✨ השוואת הצעות מחיר חכמה עם AI',
   'פרויקטים ללא הגבלה',
   'מעקב עלויות רכש והזמנות',
   'ניהול צוות ומפקחים',

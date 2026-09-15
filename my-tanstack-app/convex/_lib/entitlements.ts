@@ -81,3 +81,14 @@ export function tierAllows(tier: Tier, feature: keyof Omit<Capabilities, 'maxOwn
 
 /** Stable error code the client can detect to show the upgrade modal. */
 export const PROJECT_LIMIT_ERROR = 'FREE_PROJECT_LIMIT';
+
+/**
+ * Default monthly AI request quota per tier. A super-admin can override the
+ * paid-tier default globally via the 'aiMonthlyLimit' app setting, and add
+ * extra requests per user via users.aiLimitOverride.
+ */
+export const AI_MONTHLY_LIMITS: Record<Tier, number> = {
+  free: 0,
+  pro: 10,
+  premium: 10,
+};

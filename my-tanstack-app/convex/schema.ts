@@ -34,6 +34,7 @@ export default defineSchema({
     avatarColor: v.optional(v.string()),
     isSuperAdmin: v.optional(v.boolean()),
     isSuspended: v.optional(v.boolean()),
+    aiLimitOverride: v.optional(v.number()),
     subscriptionTier: v.optional(
       v.union(v.literal('free'), v.literal('pro'), v.literal('premium')),
     ),
@@ -261,6 +262,51 @@ export default defineSchema({
   mortgageDraws: defineTable(zodToConvexFields(s.zMortgageDraw))
     .index('by_project', ['projectId'])
     .index('by_source', ['fundingSourceId']),
+
+  // ── AI Quote Comparison ───────────────────────────────────────────────────
+
+  // Normalized JSON extracted from a quote file (PDF/Word) — saved once per file,
+  // reused for all future comparisons. Never expires (file content doesn't change).
+  quoteExtractions: defineTable({
+    quoteId: v.id('priceQuotes'),
+    projectId: v.id('projects'),
+    extractedJson: v.string(),       // JSON.stringify(QuoteExtraction)
+    modelUsed: v.string(),           // e.g. 'gpt-4o-mini'
+    extractedAt: v.number(),         // Date.now()
+    sourceFileId: v.optional(v.id('projectFiles')),
+  })
+    .index('by_quote', ['quoteId'])
+    .index('by_project', ['projectId']),
+
+  // Cached AI comparison result for a topic — expires after 24h or when
+  // any quote in the topic changes (cache key changes).
+  aiQuoteCache: defineTable({
+    projectId: v.id('projects'),
+    topicKey: v.string(),
+    cacheKey: v.string(),            // hash of sorted quoteIds + extractionIds
+    result: v.string(),              // JSON.stringify(ComparisonResult)
+    createdAt: v.number(),
+  })
+    .index('by_project_topic', ['projectId', 'topicKey']),
+
+  // Per-user AI usage log for rate limiting (one row per API call).
+  // Cache hits are NOT logged here (they're free).
+  aiUsageLogs: defineTable({
+    userId: v.id('users'),
+    projectId: v.id('projects'),
+    feature: v.string(),             // 'quoteCompare'
+    at: v.number(),                  // Date.now()
+    tokensUsed: v.optional(v.number()),
+  })
+    .index('by_user_feature_at', ['userId', 'feature', 'at']),
+
+  // Global key-value settings managed from the Super Admin screen.
+  // Currently: 'aiMonthlyLimit' — monthly AI request quota for paid tiers.
+  appSettings: defineTable({
+    key: v.string(),
+    numberValue: v.optional(v.number()),
+  })
+    .index('by_key', ['key']),
 
 }, { schemaValidation: false });
 

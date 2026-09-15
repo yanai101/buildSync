@@ -19,6 +19,7 @@ import type * as _lib_projectDeletion from "../_lib/projectDeletion.js";
 import type * as _lib_resolveCurrentStageName from "../_lib/resolveCurrentStageName.js";
 import type * as _lib_stageSchedule from "../_lib/stageSchedule.js";
 import type * as accountMerge from "../accountMerge.js";
+import type * as aiQuotes from "../aiQuotes.js";
 import type * as announcements from "../announcements.js";
 import type * as auth from "../auth.js";
 import type * as budget from "../budget.js";
@@ -76,6 +77,7 @@ declare const fullApi: ApiFromModules<{
   "_lib/resolveCurrentStageName": typeof _lib_resolveCurrentStageName;
   "_lib/stageSchedule": typeof _lib_stageSchedule;
   accountMerge: typeof accountMerge;
+  aiQuotes: typeof aiQuotes;
   announcements: typeof announcements;
   auth: typeof auth;
   budget: typeof budget;

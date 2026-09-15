@@ -21,6 +21,10 @@ export function SuperAdminScreen() {
   const identity = useQuery(api.users.currentIdentity);
   const isSuperAdmin = identity?.isSuperAdmin;
   const users = useQuery(api.superAdmin.getAllUsers, isSuperAdmin ? {} : 'skip');
+  const updateAiLimit = useMutation(api.superAdmin.updateAiLimitOverride);
+  const globalAiLimit = useQuery(api.superAdmin.getGlobalAiLimit, isSuperAdmin ? {} : 'skip');
+  const setGlobalAiLimit = useMutation(api.superAdmin.setGlobalAiLimit);
+  const verifyUserEmail = useMutation(api.superAdmin.verifyUserEmail);
   const updateUserStatus = useMutation(api.superAdmin.updateUserStatus);
   const cancelUserSubscription = useAction(api.superAdmin.cancelUserSubscription);
   const deleteUserCascade = useMutation(api.superAdmin.deleteUserCascade);
@@ -417,6 +421,37 @@ export function SuperAdminScreen() {
             כאן תוכל לראות את כל המשתמשים הרשומים, לנהל מנויים, להשעות משתמשים ולמחוק פרויקטים במידת הצורך. סה"כ משתמשים: {filteredUsers.length}
           </p>
 
+          {/* ── Global AI monthly quota ── */}
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
+            background: 'var(--surface)', padding: '14px 20px', borderRadius: 12,
+            border: '1px solid var(--border)', marginBottom: 20,
+          }}>
+            <Icon n="activity" s={18} c="var(--accent)" />
+            <div style={{ flex: '1 1 240px' }}>
+              <div style={{ fontSize: 13, fontWeight: 700 }}>מכסת AI חודשית גלובלית (מנויים בתשלום)</div>
+              <div style={{ fontSize: 12, color: 'var(--text3)' }}>
+                {globalAiLimit?.value != null
+                  ? `מוגדר: ${globalAiLimit.value} בקשות לחודש`
+                  : `ברירת מחדל: ${globalAiLimit?.defaultValue ?? 10} בקשות לחודש`}
+                {' · '}מתאפס בתחילת כל חודש. תוספת אישית ליוזר נוספת מעל המכסה.
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                const current = globalAiLimit?.value ?? globalAiLimit?.defaultValue ?? 10;
+                const ans = window.prompt('מכסת בקשות AI חודשית לכל מנוי בתשלום (ריק = חזרה לברירת מחדל):', String(current));
+                if (ans === null) return;
+                if (ans.trim() === '') { setGlobalAiLimit({ limit: null }); return; }
+                const n = Number(ans);
+                if (!isNaN(n) && n >= 0) setGlobalAiLimit({ limit: n });
+              }}
+              style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface-2)', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}
+            >
+              ערוך מכסה
+            </button>
+          </div>
+
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 24, background: 'var(--surface)', padding: 20, borderRadius: 12, border: '1px solid var(--border)', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
             
             {/* Top row: Search, Sort, Clear */}
@@ -564,7 +599,15 @@ export function SuperAdminScreen() {
                     const isCurrentAdmin = u._id === identity?.userId;
                     const isExpanded = expandedUserId === u._id;
 
-                    const tierBadge = u.subscriptionTier === 'premium'
+                    // A paid tier whose expiry date has passed is effectively free —
+                    // show that clearly instead of a misleading Pro/Premium badge.
+                    const tierExpired =
+                      (u.subscriptionTier === 'pro' || u.subscriptionTier === 'premium') &&
+                      !!u.subscriptionExpiresAt && u.subscriptionExpiresAt < Date.now();
+
+                    const tierBadge = tierExpired
+                      ? <span style={{ fontSize: 11, background: 'rgba(239,68,68,0.08)', color: 'var(--danger)', fontWeight: 700, padding: '2px 8px', borderRadius: 10, whiteSpace: 'nowrap' }}>{u.subscriptionTier === 'premium' ? 'פרימיום' : 'Pro'} · פג תוקף</span>
+                      : u.subscriptionTier === 'premium'
                       ? <span style={{ fontSize: 11, background: 'rgba(245,158,11,0.12)', color: 'var(--warning)', fontWeight: 700, padding: '2px 8px', borderRadius: 10, whiteSpace: 'nowrap' }}>⭐ פרימיום</span>
                       : u.subscriptionTier === 'pro'
                       ? <span style={{ fontSize: 11, background: 'var(--accent-light, #EFF6FF)', color: 'var(--accent)', fontWeight: 700, padding: '2px 8px', borderRadius: 10 }}>Pro</span>
@@ -686,6 +729,32 @@ export function SuperAdminScreen() {
                                 <div style={{ color: 'var(--text1)', wordBreak: 'break-all' }}>{u.email || '—'}</div>
                               </div>
                               <div>
+                                <div style={{ fontSize: 11, color: 'var(--text3)', fontWeight: 600, marginBottom: 4 }}>אימות אימייל</div>
+                                {(u as any).emailVerified ? (
+                                  <div style={{ color: 'var(--success)', fontWeight: 600, fontSize: 12 }}>✓ מאומת</div>
+                                ) : (u as any).hasPasswordAccount ? (
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                    <span style={{ color: 'var(--danger)', fontWeight: 600, fontSize: 12 }}>✗ לא מאומת</span>
+                                    <button
+                                      onClick={async (e) => {
+                                        e.stopPropagation();
+                                        if (!window.confirm(`לאשר ידנית את האימייל ${u.email}?\nלא יישלח מייל — המשתמש יוכל להתחבר מיד עם הסיסמה שלו.`)) return;
+                                        try {
+                                          await verifyUserEmail({ userId: u._id as Id<'users'> });
+                                        } catch (err: any) {
+                                          window.alert(err?.data ?? err?.message ?? 'שגיאה באישור האימייל');
+                                        }
+                                      }}
+                                      style={{ background: 'var(--accent-light, #EFF6FF)', color: 'var(--accent)', border: 'none', borderRadius: 4, padding: '2px 8px', fontSize: 10, cursor: 'pointer', fontWeight: 700 }}
+                                    >
+                                      אשר ידנית
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <div style={{ color: 'var(--text3)', fontSize: 12 }}>— (חשבון Google)</div>
+                                )}
+                              </div>
+                              <div>
                                 <div style={{ fontSize: 11, color: 'var(--text3)', fontWeight: 600, marginBottom: 4 }}>טלפון</div>
                                 <div>{u.phone || '—'}</div>
                               </div>
@@ -716,6 +785,42 @@ export function SuperAdminScreen() {
                               <div>
                                 <div style={{ fontSize: 11, color: 'var(--text3)', fontWeight: 600, marginBottom: 4 }}>הצטרפות</div>
                                 <div>{new Date(u._creationTime).toLocaleDateString('he-IL')}</div>
+                              </div>
+                              <div>
+                                <div style={{ fontSize: 11, color: 'var(--text3)', fontWeight: 600, marginBottom: 4 }}>בקשות AI החודש</div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                                  {((u as any).aiLimitPerMonth ?? 0) === 0 ? (
+                                    <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text3)' }}>ללא מנוי</span>
+                                  ) : (
+                                    <>
+                                      <span style={{ fontWeight: 600 }}>
+                                        {(u as any).aiUsedThisMonth ?? 0} / {(u as any).aiLimitPerMonth ?? 0}
+                                      </span>
+                                      <span style={{
+                                        fontSize: 11,
+                                        fontWeight: 700,
+                                        color: ((u as any).aiRemaining ?? 0) > 0 ? 'var(--success)' : 'var(--danger)',
+                                      }}>
+                                        ({(u as any).aiRemaining ?? 0} נותרו)
+                                      </span>
+                                      {(u.aiLimitOverride || 0) > 0 && (
+                                        <span style={{ fontSize: 10, color: 'var(--text3)' }}>כולל תוספת {u.aiLimitOverride}</span>
+                                      )}
+                                    </>
+                                  )}
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      const ans = window.prompt('הזן כמות בקשות AI נוספות (0 לאיפוס):', String(u.aiLimitOverride || 0));
+                                      if (ans !== null && !isNaN(Number(ans))) {
+                                        updateAiLimit({ userId: u._id as Id<'users'>, override: Number(ans) });
+                                      }
+                                    }}
+                                    style={{ background: 'var(--border)', border: 'none', borderRadius: 4, padding: '2px 6px', fontSize: 10, cursor: 'pointer' }}
+                                  >
+                                    ערוך
+                                  </button>
+                                </div>
                               </div>
                             </div>
 
