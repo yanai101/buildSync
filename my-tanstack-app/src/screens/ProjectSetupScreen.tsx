@@ -501,6 +501,11 @@ export const ProjectSetupScreen = () => {
                     </div>
                   ))}
                 </div>
+                {floorRooms(f).length > 0 && (
+                  <div style={{marginTop: 10, display: "flex"}}>
+                    <Btn size="sm" variant="ghost" onClick={() => addRoom(f)}><Icon n="plus" s={13}/> הוסף אזור</Btn>
+                  </div>
+                )}
               </div>
             ))}
             <div style={{padding:'10px 18px',background:'var(--surface-2)',borderRadius:'0 0 10px 10px',display:'flex',flexWrap:'wrap',gap:20,fontSize:12,color:'var(--text2)'}}>
