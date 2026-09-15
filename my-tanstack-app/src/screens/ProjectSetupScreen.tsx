@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Icon, Btn, FeedbackModal, NumberInput } from '../components/Shared';
+import { Icon, Btn, FeedbackModal, NumberInput, Modal } from '../components/Shared';
 import { ROOM_TYPE_OPTS } from '../utils/mockData';
 import { Room, Project } from '../types';
 import { useDataSource } from '../hooks/useDataSource';
@@ -66,6 +66,7 @@ export const ProjectSetupScreen = () => {
   const [cfg, setCfg] = React.useState<ProjectConfig | null>(null);
   const [saving, setSaving] = React.useState(false);
   const [feedback, setFeedback] = React.useState<{ title: string; message: string; type: 'success' | 'error' | 'info' } | null>(null);
+  const [floorRemovalConfirm, setFloorRemovalConfirm] = React.useState<{ newFloors: number; roomsToRemove: Room[] } | null>(null);
 
   React.useEffect(() => {
     if (project) {
@@ -147,6 +148,22 @@ export const ProjectSetupScreen = () => {
   const displayArea = cfg?.area || totalRoomArea;
 
   const floorRooms = (f: number) => cfg ? (cfg.rooms || []).filter((r)=>Number(r.floor)===f) : [];
+
+  const applyFloorCount = (n: number) => {
+    const roomsToRemove = (cfg?.rooms || []).filter((r)=>Number(r.floor) > n);
+    if (roomsToRemove.length > 0) {
+      setFloorRemovalConfirm({ newFloors: n, roomsToRemove });
+      return;
+    }
+    setField("floors", n);
+  };
+
+  const confirmFloorRemoval = () => {
+    if (!floorRemovalConfirm) return;
+    const { newFloors } = floorRemovalConfirm;
+    setCfg((c)=> c ? ({...c, floors: newFloors, rooms: (c.rooms || []).filter((r)=>Number(r.floor) <= newFloors)}) : c);
+    setFloorRemovalConfirm(null);
+  };
 
   const handleSave = async () => {
     if (!cfg || !project) return;
@@ -337,7 +354,7 @@ export const ProjectSetupScreen = () => {
                         notify({ title: 'שדרוג נדרש', body: 'שינוי מספר קומות זמין במסלול Pro.', kind: 'error' });
                         return;
                       }
-                      setField("floors",n);
+                      applyFloorCount(n);
                     }} style={{width:44,height:44,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:16,cursor:"pointer",border:"2px solid",borderColor:cfg.floors===n?"var(--accent)":"var(--border)",background:cfg.floors===n?"var(--accent-light)":"var(--surface)",color:cfg.floors===n?"var(--accent)":"var(--text2)",transition:"all .15s"}}>
                       {n}
                     </div>
@@ -561,12 +578,27 @@ export const ProjectSetupScreen = () => {
       </div>
       
       {feedback && (
-        <FeedbackModal 
-          title={feedback.title} 
-          message={feedback.message} 
-          type={feedback.type} 
-          onClose={() => setFeedback(null)} 
+        <FeedbackModal
+          title={feedback.title}
+          message={feedback.message}
+          type={feedback.type}
+          onClose={() => setFeedback(null)}
         />
+      )}
+
+      {floorRemovalConfirm && (
+        <Modal title="הקטנת מספר קומות" onClose={()=>setFloorRemovalConfirm(null)} width={420}>
+          <div style={{display:"flex",flexDirection:"column",gap:20}}>
+            <p style={{fontSize:14,color:"var(--text1)",lineHeight:1.6,margin:0}}>
+              בקומות שתוסרו יש {floorRemovalConfirm.roomsToRemove.length} אזורים מוגדרים: {floorRemovalConfirm.roomsToRemove.map(r=>r.name).join(', ')}.
+              המשך יימחק אותם לצמיתות עם השמירה הבאה. להמשיך?
+            </p>
+            <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
+              <Btn variant="ghost" onClick={()=>setFloorRemovalConfirm(null)}>ביטול</Btn>
+              <Btn variant="danger" onClick={confirmFloorRemoval} style={{background:"var(--danger)",color:"#fff"}}>הסר אזורים והמשך</Btn>
+            </div>
+          </div>
+        </Modal>
       )}
     </ScreenBoundary>
   );
