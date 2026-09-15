@@ -1,54 +1,15 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { ConvexHttpClient } from 'convex/browser';
 import { api } from '../../../convex/_generated/api';
-import { chat } from '@tanstack/ai';
-import { openaiText } from '@tanstack/ai-openai';
-import { z } from 'zod';
-import { zodToJsonSchema } from 'zod-to-json-schema';
+import {
+  buildNormalizedQuote,
+  isSupportedQuoteFile,
+  UnreadableDocumentError,
+  UnsupportedFileTypeError,
+} from '../../server/quotes';
 
 const getConvexUrl = () =>
   process.env.CONVEX_URL || process.env.VITE_CONVEX_URL || 'http://127.0.0.1:3210';
-
-// ── Zod schema for the extraction result ────────────────────────────────────
-
-const QuoteExtractionSchema = z.object({
-  items: z.array(
-    z.object({
-      name: z.string(),
-      quantity: z.number().nullable(),
-      unit: z.string().nullable(),
-      pricePerUnit: z.number().nullable(),
-      total: z.number().nullable(),
-    }),
-  ),
-  paymentTerms: z
-    .object({
-      upfrontPercent: z.number().nullable(),
-      milestones: z.array(z.string()),
-      finalPercent: z.number().nullable(),
-    })
-    .nullable(),
-  warranty: z.string().nullable(),
-  validUntil: z.string().nullable(),
-  inclusions: z.array(z.string()),
-  exclusions: z.array(z.string()),
-  redFlags: z.array(z.string()),
-  rawSummary: z.string(),
-});
-
-const SYSTEM_PROMPT = `אתה מנתח מסמכי הצעות מחיר לפרויקטי בנייה בישראל.
-תפקידך לחלץ מידע מובנה מהצעות מחיר ולהחזיר אותו בפורמט JSON בלבד.
-
-חלץ את הנתונים הבאים:
-- פירוט עבודות/פריטים (שם, כמות, יחידה, מחיר ליחידה, סה"כ)
-- תנאי תשלום (אחוז מקדמה, תשלומי ביניים, תשלום סופי)
-- אחריות על העבודה
-- תוקף ההצעה
-- מה כלול ומה לא כלול
-- דגלים אדומים (תשלום גבוה מראש מעל 30%, תניות חריגות, אי-בהירויות)
-
-אם שדה לא קיים במסמך, החזר null או מערך ריק בהתאם לסכמה.
-החזר JSON בלבד, ללא טקסט נוסף.`;
 
 export const Route = createFileRoute('/api/ai-extract')({
   server: {
@@ -56,15 +17,25 @@ export const Route = createFileRoute('/api/ai-extract')({
       POST: async (ctx) => {
         try {
           const body = await ctx.request.json();
-          const { quoteId, fileUrl, fileName, projectId, convexToken } = body;
+          const { quoteId, fileUrl, fileName, projectId, convexToken, supplier } = body;
 
           if (!quoteId || !fileUrl || !projectId) {
             return Response.json({ error: 'Missing required fields' }, { status: 400 });
           }
 
-          const apiKey = process.env.OPENAI_API_KEY;
-          if (!apiKey) {
+          if (!process.env.OPENAI_API_KEY) {
             return Response.json({ error: 'AI service not configured' }, { status: 503 });
+          }
+
+          const name = fileName ?? 'quote.pdf';
+          if (!isSupportedQuoteFile(name)) {
+            return Response.json(
+              {
+                error: 'UNSUPPORTED_TYPE',
+                message: 'ניתן לקרוא קבצי PDF, Word ותמונות (JPG/PNG) בלבד',
+              },
+              { status: 422 },
+            );
           }
 
           // ── Fetch the file ─────────────────────────────────────────────────
@@ -73,101 +44,85 @@ export const Route = createFileRoute('/api/ai-extract')({
             const fileRes = await fetch(fileUrl);
             if (!fileRes.ok) throw new Error(`Failed to fetch file: ${fileRes.status}`);
             fileBuffer = Buffer.from(await fileRes.arrayBuffer());
-          } catch (err) {
+          } catch {
             return Response.json({ error: 'Could not download file' }, { status: 422 });
           }
 
-          // ── Convert to Markdown ────────────────────────────────────────────
-          let markdown: string;
+          // ── Read it ────────────────────────────────────────────────────────
+          let quote;
           try {
-            // Imported lazily: markitdown-ts drags in jsdom, whose module-level
-            // require.resolve fails under some bundlers. A module-scope import
-            // would crash the entire server on startup instead of failing just
-            // this request.
-            const { MarkItDown } = await import('markitdown-ts');
-            const mid = new MarkItDown();
-            // markitdown-ts accepts a buffer + file_extension hint for format detection
-            const file_extension = fileName ? fileName.split('.').pop() : undefined;
-            const result = await mid.convert(fileBuffer as any, { file_extension });
-            markdown = result?.markdown ?? '';
-            if (!markdown.trim()) {
+            quote = await buildNormalizedQuote(fileBuffer, name, {
+              idPrefix: String(quoteId).slice(-4),
+              ...(supplier ? { supplierName: supplier } : {}),
+            });
+          } catch (err: any) {
+            if (err instanceof UnsupportedFileTypeError) {
               return Response.json(
-                { error: 'Could not extract text from file — is it a scanned image?' },
+                { error: 'UNSUPPORTED_TYPE', message: 'סוג הקובץ אינו נתמך' },
                 { status: 422 },
               );
             }
-          } catch (err) {
+            if (err instanceof UnreadableDocumentError) {
+              return Response.json(
+                {
+                  error: 'UNREADABLE',
+                  message: 'לא הצלחנו לקרוא את הקובץ — ייתכן שהוא מטושטש או ריק',
+                },
+                { status: 422 },
+              );
+            }
+            console.error('[ai-extract] read failed for', name, '-', err?.message);
             return Response.json(
-              { error: 'File conversion failed. Only PDF and Word files are supported.' },
+              { error: 'READ_FAILED', message: 'שגיאה בקריאת הקובץ' },
               { status: 422 },
             );
           }
 
-          // Limit to ~12K tokens worth of text (≈48K chars) to stay cost-efficient
-          const MAX_CHARS = 48_000;
-          if (markdown.length > MAX_CHARS) {
-            markdown = markdown.slice(0, MAX_CHARS) + '\n\n[מסמך קוצר בגלל אורכו]';
+          quote.meta.sourceUrl = fileUrl;
+          const itemCount = quote.sections.reduce((n, s) => n + s.items.length, 0);
+          const t = quote.terms;
+
+          console.log(
+            `[ai-extract] ${name}: ${itemCount} items (${quote.meta.source})` +
+              `, total=${quote.computedTotal ?? quote.total ?? '—'}` +
+              (quote.meta.lumpSum ? ' LUMP-SUM' : '') +
+              (quote.meta.incomplete ? ' INCOMPLETE' : ''),
+          );
+
+          // A quote with no priced lines is not a failed read. A whole-build
+          // quote is often a scope plus one number, and its scope, exclusions
+          // and payment terms are exactly what a comparison needs.
+          const hasContent =
+            itemCount > 0 ||
+            quote.total !== undefined ||
+            !!t.scopeSummary ||
+            t.workScope.length > 0 ||
+            t.inclusions.length > 0 ||
+            t.exclusions.length > 0;
+
+          if (!hasContent) {
+            return Response.json(
+              {
+                error: 'NO_CONTENT',
+                message: 'לא הצלחנו לחלץ מהקובץ מידע להשוואה',
+                meta: quote.meta,
+              },
+              { status: 422 },
+            );
           }
-
-          // ── Extract with TanStack AI ─────────────────────────────────────────
-          process.env.OPENAI_API_KEY = apiKey;
-          const prompt = `מסמך להלן (מומר לטקסט):
-${markdown}
-
-עליך להחזיר אובייקט JSON תקין לחלוטין העונה לסכמה הבאה:
-{
-  "items": [{ "name": "string", "quantity": "number|null", "unit": "string|null", "pricePerUnit": "number|null", "total": "number|null" }],
-  "paymentTerms": { "upfrontPercent": "number|null", "milestones": ["string"], "finalPercent": "number|null" } | null,
-  "warranty": "string|null",
-  "validUntil": "string|null",
-  "inclusions": ["string"],
-  "exclusions": ["string"],
-  "redFlags": ["string"],
-  "rawSummary": "string"
-}
-החזר אך ורק את ה-JSON ללא טקסט עוטף, ללא בלוקים של קוד (ללא \`\`\`json) וללא הסברים.`;
-
-          // chat() takes an `adapter` and returns a stream by default;
-          // stream: false makes it resolve to the full text response.
-          const responseText = await chat({
-            adapter: openaiText('gpt-4o-mini'),
-            messages: [{ role: 'user', content: prompt }],
-            systemPrompts: [SYSTEM_PROMPT],
-            stream: false,
-          });
-
-          if (!responseText) {
-            return Response.json({ error: 'AI failed to produce extraction' }, { status: 500 });
-          }
-
-          let parsedExtraction;
-          try {
-            // Remove markdown code blocks if the model accidentally included them
-            const rawContent = responseText.replace(/^```json\n?/, '').replace(/```$/, '').trim();
-            parsedExtraction = JSON.parse(rawContent);
-          } catch (e) {
-            return Response.json({ error: 'AI returned invalid JSON format' }, { status: 500 });
-          }
-
-          const tokensUsed = 0; // Usage metrics optionalable directly when using outputSchema in this version
 
           // ── Save to Convex ─────────────────────────────────────────────────
-          // Use the token from the request for authenticated Convex calls
           const convex = new ConvexHttpClient(getConvexUrl());
           if (convexToken) convex.setAuth(convexToken);
 
           await convex.mutation(api.aiQuotes.saveQuoteExtraction, {
             quoteId,
             projectId,
-            extractedJson: JSON.stringify(parsedExtraction),
-            modelUsed: 'gpt-4o-mini',
+            extractedJson: JSON.stringify(quote),
+            modelUsed: 'gpt-5.6-luna',
           });
 
-          return Response.json({
-            success: true,
-            extraction: parsedExtraction,
-            tokensUsed,
-          });
+          return Response.json({ success: true, extraction: quote, itemCount });
         } catch (err: any) {
           console.error('[ai-extract] Error:', err);
           return Response.json(

@@ -34,7 +34,7 @@
     "html2pdf.js": "^0.14.0",
     "jszip": "^3.10.1",
     "lucide-react": "^1.8.0",
-    "markitdown-ts": "^0.0.10",
+    "mammoth": "^1.12.3",
     "openai": "^7.15.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

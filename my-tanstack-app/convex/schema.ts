@@ -297,6 +297,9 @@ export default defineSchema({
     feature: v.string(),             // 'quoteCompare'
     at: v.number(),                  // Date.now()
     tokensUsed: v.optional(v.number()),
+    // How much of the monthly allowance this call consumed. Absent on rows
+    // written before deep analysis existed, which each counted as one.
+    credits: v.optional(v.number()),
   })
     .index('by_user_feature_at', ['userId', 'feature', 'at']),
 

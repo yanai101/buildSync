@@ -332,14 +332,39 @@ export const QuotesScreen = () => {
 
   const compareTopic = compareTopicId ? topicById(compareTopicId) : null;
   const compareRows = compareTopic ? [...quotes.filter(q => q.topicKey === compareTopic.key)].sort((a, b) => a.total - b.total) : [];
+  // Readings already stored for this topic's quotes. Reusing them is what keeps
+  // a repeat comparison from paying to read the same unchanged files again.
+  const storedExtractions = useQuery(
+    api.aiQuotes.getQuoteExtractions,
+    projectId && allowed && compareRows.length > 0
+      ? { projectId, quoteIds: compareRows.map(q => q.id as Id<'priceQuotes'>) }
+      : "skip",
+  );
+
   const cmpMin = compareRows.length ? Math.min(...compareRows.map(q => q.total)) : 0;
   const cmpMax = compareRows.length ? Math.max(...compareRows.map(q => q.total)) : 0;
   const cmpAvg = compareRows.length ? compareRows.reduce((a, q) => a + q.total, 0) / compareRows.length : 0;
 
-  // Build a stable cache key from the sorted quote IDs.
-  // The version prefix invalidates cached results when the analysis format changes.
-  const buildCacheKey = (rows: Quote[]) =>
-    'v2:' + rows.map(q => q.id).sort().join(',');
+  /**
+   * Cache key for a comparison. It has to describe what the analysis was
+   * actually built from, not just which quotes took part: a quote whose file
+   * finally parsed produces a different key, so the stale "file skipped"
+   * answer is never served again.
+   */
+  const buildCacheKey = (rows: Quote[], extractions: Record<string, any>) =>
+    'v4:' +
+    rows
+      .map(q => {
+        const e = extractions[q.id];
+        if (!e) return `${q.id}:none`;
+        const items = (e.sections ?? []).reduce(
+          (n: number, s: any) => n + (s.items?.length ?? 0),
+          0,
+        );
+        return `${q.id}:${e.meta?.source ?? 'x'}:${items}`;
+      })
+      .sort()
+      .join(',');
 
   // Reset AI state when the comparison topic changes
   React.useEffect(() => {
@@ -349,7 +374,11 @@ export const QuotesScreen = () => {
     setAiStep('');
   }, [compareTopicId]);
 
-  const runAiComparison = async () => {
+  /**
+   * @param force Re-run from scratch, ignoring the stored comparison — what
+   *   "עדכן ניתוח" does. A plain run may still be answered from the cache.
+   */
+  const runAiComparison = async (force = false) => {
     if (!projectId || !compareTopic || compareRows.length < 2) return;
     setAiLoading(true);
     setAiError(null);
@@ -359,48 +388,105 @@ export const QuotesScreen = () => {
 
     try {
       // --- Step 1: Extract files for quotes that have PDFs/Word docs ---
+      // Everything the extraction endpoint can read: documents are parsed
+      // locally, photos and scans go through the vision model.
+      const READABLE = /\.(pdf|docx|png|jpe?g|webp|gif)$/i;
       const quotesWithFiles = compareRows.filter(
-        q => q.fileUrl && q.fileName && !/\.(jpe?g|png|webp|gif|avif)$/i.test(q.fileName)
+        q => q.fileUrl && q.fileName && READABLE.test(q.fileName)
       );
 
       const extractions: Record<string, any> = {};
+      // Why each file could not be read, keyed by quote id, so the result panel
+      // can say "scanned document" instead of a bare "skipped".
+      const skipReasons: Record<string, string> = {};
 
-      for (let i = 0; i < quotesWithFiles.length; i++) {
-        const q = quotesWithFiles[i];
-        setAiStep(`מחלץ נתונים מ-${q.fileName}... (${i + 1}/${quotesWithFiles.length})`);
-
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 20000); // 20s timeout
-
-        try {
-          const res = await fetch('/api/ai-extract', {
-            method: 'POST',
-            signal: controller.signal,
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              quoteId: q.id,
-              fileUrl: q.fileUrl,
-              fileName: q.fileName,
-              projectId,
-              convexToken,
-            }),
-          });
-
-          if (res.ok) {
-            const data = await res.json();
-            extractions[q.id] = data.extraction;
-          }
-        } catch {
-          // Non-fatal — compare without this file
-        } finally {
-          clearTimeout(timeoutId);
+      for (const q of compareRows) {
+        if (!q.fileUrl || !q.fileName) continue;
+        if (!READABLE.test(q.fileName)) {
+          skipReasons[q.id] = /\.(heic|heif|avif)$/i.test(q.fileName)
+            ? 'פורמט תמונה שאינו נתמך — שמרו כ-JPG'
+            : 'סוג קובץ שאינו נתמך';
         }
       }
+
+      // Files are read in parallel: a scanned quote goes through a vision
+      // model and can take most of a minute on its own, so reading three of
+      // them one after another is what used to blow past the timeout.
+      // Reuse a stored reading when it came from the same file. A forced
+      // refresh re-reads, since that is what the user asked for.
+      const toRead = quotesWithFiles.filter((q) => {
+        if (force) return true;
+        const stored = storedExtractions?.[q.id];
+        if (!stored) return true;
+        try {
+          const parsed = JSON.parse(stored.extractedJson);
+          if (parsed?.meta?.sourceUrl && parsed.meta.sourceUrl === q.fileUrl) {
+            extractions[q.id] = parsed;
+            return false;
+          }
+        } catch {
+          // Unreadable stored value — read the file again.
+        }
+        return true;
+      });
+
+      const reused = quotesWithFiles.length - toRead.length;
+      let done = 0;
+      setAiStep(
+        reused > 0 && toRead.length === 0
+          ? 'משתמש בקריאות שמורות...'
+          : `קורא ${toRead.length} קבצים...`,
+      );
+
+      await Promise.all(
+        toRead.map(async (q) => {
+          const controller = new AbortController();
+          // Generous: a multi-page scan is rendered and read by the model.
+          const timeoutId = setTimeout(() => controller.abort(), 120000);
+
+          try {
+            const res = await fetch('/api/ai-extract', {
+              method: 'POST',
+              signal: controller.signal,
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                quoteId: q.id,
+                fileUrl: q.fileUrl,
+                fileName: q.fileName,
+                supplier: q.supplier,
+                projectId,
+                convexToken,
+              }),
+            });
+
+            const data = await res.json().catch(() => null);
+
+            if (res.ok && data?.extraction) {
+              extractions[q.id] = data.extraction;
+              setAiStep(
+                `נקראו ${data.itemCount ?? 0} סעיפים מ-${q.fileName} (${++done}/${toRead.length})`,
+              );
+            } else {
+              skipReasons[q.id] = data?.message ?? 'לא הצלחנו לקרוא את הקובץ';
+              setAiStep(`קורא קבצים... (${++done}/${toRead.length})`);
+            }
+          } catch (err: any) {
+            skipReasons[q.id] =
+              err?.name === 'AbortError'
+                ? 'קריאת הקובץ ארכה מעל שתי דקות'
+                : 'שגיאה בקריאת הקובץ';
+            done++;
+          } finally {
+            clearTimeout(timeoutId);
+          }
+        }),
+      );
 
       // --- Step 2: Compare ---
       setAiStep('מנתח ומשווה הצעות...');
 
-      const cacheKey = buildCacheKey(compareRows);
+      // Built after extraction, so it reflects what was actually read.
+      const cacheKey = buildCacheKey(compareRows, extractions);
       const quotesPayload = compareRows.map(q => ({
         id: q.id,
         supplier: q.supplier,
@@ -411,10 +497,11 @@ export const QuotesScreen = () => {
         hasFile: !!(q.fileUrl && q.fileName),
         fileName: q.fileName,
         extraction: extractions[q.id] ?? null,
+        skipReason: skipReasons[q.id] ?? null,
       }));
 
       const controller = new AbortController();
-      compareTimeoutId = setTimeout(() => controller.abort(), 45000); // 45s timeout for OpenAI
+      compareTimeoutId = setTimeout(() => controller.abort(), 90000);
 
       const res = await fetch('/api/ai-compare', {
         method: 'POST',
@@ -426,6 +513,8 @@ export const QuotesScreen = () => {
           projectId,
           topicKey: compareTopic.key,
           cacheKey,
+          // "עדכן ניתוח" must produce a new analysis, not replay the stored one.
+          skipCache: force,
           convexToken,
         }),
       });
@@ -829,7 +918,7 @@ export const QuotesScreen = () => {
                     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                       <button
-                        onClick={runAiComparison}
+                        onClick={() => runAiComparison()}
                         disabled={aiLoading}
                         style={{
                           display: "inline-flex", alignItems: "center", gap: 8,
@@ -848,6 +937,7 @@ export const QuotesScreen = () => {
                           </span>
                         )}
                       </button>
+
                       <span style={{ fontSize: 11, color: "var(--text3)" }}>ניתוח חכם + קריאת מסמכים</span>
                     </div>
                     <span style={{ fontSize: 10.5, color: "var(--text3)", display: "flex", alignItems: "center", gap: 4 }}>
@@ -860,13 +950,58 @@ export const QuotesScreen = () => {
                   <AnimatePresence>
                     {aiLoading && (
                       <motion.div
-                        initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                        style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 0" }}
+                        initial={{ opacity: 0, height: 0, marginBottom: 0 }}
+                        animate={{ opacity: 1, height: 'auto', marginBottom: 16 }}
+                        exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+                        style={{ overflow: "hidden" }}
                       >
-                        <div style={{ width: 24, height: 24, border: "3px solid rgba(99,102,241,.2)", borderTop: "3px solid #6366f1", borderRadius: "50%", animation: "spin-main 1s linear infinite", flexShrink: 0 }} />
-                        <div>
-                          <div style={{ fontSize: 13, fontWeight: 600, color: "#6366f1" }}>{aiStep || 'מעבד...'}</div>
-                          <div style={{ fontSize: 11, color: "var(--text3)" }}>אנא המתן</div>
+                        <div style={{
+                          display: "flex", alignItems: "center", gap: 16, padding: "16px 20px",
+                          background: "linear-gradient(90deg, rgba(99,102,241,0.05), rgba(168,85,247,0.05))",
+                          borderRadius: 12, border: "1px solid rgba(99,102,241,0.15)",
+                          marginTop: 16
+                        }}>
+                          {/* Animated Icon Area */}
+                          <div style={{ position: "relative", display: "flex", justifyContent: "center", alignItems: "center", width: 44, height: 44, flexShrink: 0 }}>
+                            <motion.div
+                              animate={{ scale: [1, 1.4, 1], opacity: [0.4, 0.1, 0.4] }}
+                              transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                              style={{ position: "absolute", width: "100%", height: "100%", borderRadius: "50%", background: "#6366f1" }}
+                            />
+                            <motion.div
+                              animate={{ rotate: 360 }}
+                              transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
+                              style={{ position: "absolute", width: 34, height: 34, borderRadius: "50%", border: "2px dashed rgba(99,102,241,0.4)" }}
+                            />
+                            <motion.div
+                              animate={{ scale: [1, 1.15, 1], rotate: [0, -5, 5, 0] }}
+                              transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
+                              style={{ fontSize: 20, position: "relative", zIndex: 1 }}
+                            >
+                              ✨
+                            </motion.div>
+                          </div>
+                          
+                          {/* Text Content */}
+                          <div style={{ flex: 1 }}>
+                            <motion.div 
+                              key={aiStep} // Changing key forces animation on text change
+                              initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
+                              style={{ fontSize: 14, fontWeight: 700, background: "linear-gradient(90deg, #6366f1, #a855f7)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", marginBottom: 4 }}
+                            >
+                              {aiStep || 'מעבד הצעות...'}
+                            </motion.div>
+                            <div style={{ fontSize: 12, color: "var(--text3)", display: "flex", alignItems: "center" }}>
+                              ה-AI שלנו קורא ומנתח את הנתונים, זה יכול לקחת דקה או שתיים
+                              <motion.span
+                                animate={{ opacity: [0, 1, 0] }}
+                                transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+                                style={{ marginLeft: 2 }}
+                              >
+                                ...
+                              </motion.span>
+                            </div>
+                          </div>
                         </div>
                       </motion.div>
                     )}
@@ -876,7 +1011,7 @@ export const QuotesScreen = () => {
                   {aiError && aiError !== 'FREE_PLAN' && !aiError.includes('הגעת למגבלת') && (
                     <div style={{ background: "rgba(239,68,68,.07)", border: "1px solid rgba(239,68,68,.25)", borderRadius: 10, padding: "12px 14px", fontSize: 13, color: "var(--danger)", marginTop: 8 }}>
                       ⚠️ {aiError}
-                      <button onClick={runAiComparison} style={{ marginRight: 10, background: "transparent", border: "none", color: "var(--accent)", cursor: "pointer", fontWeight: 700, fontSize: 12 }}>נסה שוב</button>
+                      <button onClick={() => runAiComparison(true)} style={{ marginRight: 10, background: "transparent", border: "none", color: "var(--accent)", cursor: "pointer", fontWeight: 700, fontSize: 12 }}>נסה שוב</button>
                     </div>
                   )}
 
@@ -905,7 +1040,7 @@ export const QuotesScreen = () => {
                             {aiRemaining !== null && aiLimitPerMonth !== null && (
                               <span style={{ fontSize: 11, color: "var(--text3)" }}>{aiRemaining} מתוך {aiLimitPerMonth} קריאות נותרו</span>
                             )}
-                            <button onClick={runAiComparison} title="רענן ניתוח" style={{ background: "transparent", border: "none", cursor: "pointer", color: "var(--text3)", display: "flex", padding: 4 }}>
+                            <button onClick={() => runAiComparison(true)} title="רענן ניתוח — מתעלם מתוצאה שמורה" style={{ background: "transparent", border: "none", cursor: "pointer", color: "var(--text3)", display: "flex", padding: 4 }}>
                               <Icon n="refresh-cw" s={13} />
                             </button>
                           </div>
@@ -954,6 +1089,12 @@ export const QuotesScreen = () => {
                                     {s.cons?.map((c: string, j: number) => (
                                       <div key={j} style={{ fontSize: 12, color: "var(--danger)", display: "flex", gap: 6 }}><span>❌</span><span>{c}</span></div>
                                     ))}
+                                    {s.servicesIncluded?.length > 0 && (
+                                      <div style={{ fontSize: 12, color: "var(--text2)", display: "flex", gap: 6, marginTop: 4 }}>
+                                        <span>🎁</span>
+                                        <span>כולל: {s.servicesIncluded.join(', ')}</span>
+                                      </div>
+                                    )}
                                     {(s.priceAssessment || s.paymentTermsSummary || s.warrantySummary) && (
                                       <div style={{ display: "flex", flexDirection: "column", gap: 3, marginTop: 6, paddingTop: 6, borderTop: "1px dashed var(--border)" }}>
                                         {s.priceAssessment && (
@@ -984,6 +1125,16 @@ export const QuotesScreen = () => {
                               <div style={{ fontSize: 11, fontWeight: 700, color: "var(--danger)", marginBottom: 6 }}>🚩 דגלים אדומים</div>
                               {aiResult.redFlags.map((f: string, i: number) => (
                                 <div key={i} style={{ fontSize: 12, color: "var(--text2)", display: "flex", gap: 6, marginBottom: 3 }}><span>⚠️</span><span>{f}</span></div>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Scope differences — why a price gap may not be real */}
+                          {aiResult.scopeDifferences?.length > 0 && (
+                            <div style={{ background: "rgba(245,158,11,.06)", border: "1px solid rgba(245,158,11,.25)", borderRadius: 10, padding: "10px 14px" }}>
+                              <div style={{ fontSize: 11, fontWeight: 700, color: "#d97706", marginBottom: 6 }}>⚖️ הבדלים בהיקף העבודה</div>
+                              {aiResult.scopeDifferences.map((d: string, i: number) => (
+                                <div key={i} style={{ fontSize: 12, color: "var(--text2)", display: "flex", gap: 6, marginBottom: 3, lineHeight: 1.5 }}><span>•</span><span>{d}</span></div>
                               ))}
                             </div>
                           )}
@@ -1033,7 +1184,8 @@ export const QuotesScreen = () => {
                   {aiResult && !aiLoading && (
                     <div style={{ marginTop: 10, display: "flex", justifyContent: "flex-end" }}>
                       <button
-                        onClick={runAiComparison}
+                        onClick={() => runAiComparison(true)}
+                        title="מריץ ניתוח חדש ומתעלם מהתוצאה השמורה"
                         style={{ background: "transparent", border: "1px solid var(--border)", borderRadius: 8, padding: "6px 12px", fontSize: 12, color: "var(--text2)", cursor: "pointer", fontFamily: "'Heebo',sans-serif", display: "flex", alignItems: "center", gap: 6 }}
                       >
                         <Icon n="refresh-cw" s={11} /> עדכן ניתוח

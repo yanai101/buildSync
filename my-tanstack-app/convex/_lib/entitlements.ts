@@ -89,6 +89,6 @@ export const PROJECT_LIMIT_ERROR = 'FREE_PROJECT_LIMIT';
  */
 export const AI_MONTHLY_LIMITS: Record<Tier, number> = {
   free: 0,
-  pro: 10,
-  premium: 10,
+  pro: 30,
+  premium: 100,
 };

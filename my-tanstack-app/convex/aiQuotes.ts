@@ -57,7 +57,9 @@ async function computeAiQuota(ctx: any, feature: string) {
     )
     .collect();
 
-  const used = logs.length;
+  // Counted in credits rather than rows so a future action can cost more than
+  // one without a migration. Every call currently costs one.
+  const used = logs.reduce((sum: number, l: any) => sum + (l.credits ?? 1), 0);
   const remaining = Math.max(0, limitPerMonth - used);
   return { allowed: remaining > 0, used, remaining, limitPerMonth, tier: tier as string };
 }
@@ -92,6 +94,7 @@ export const logAiUsage = mutation({
     projectId: v.id('projects'),
     feature: v.string(),
     tokensUsed: v.optional(v.number()),
+    credits: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -103,6 +106,7 @@ export const logAiUsage = mutation({
       projectId: args.projectId,
       feature: args.feature,
       at: Date.now(),
+      credits: Math.max(1, Math.round(args.credits ?? 1)),
       ...(args.tokensUsed !== undefined ? { tokensUsed: args.tokensUsed } : {}),
     });
   },
