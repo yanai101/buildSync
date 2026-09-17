@@ -83,6 +83,26 @@ export const QuotesScreen = () => {
   const [aiFromCache, setAiFromCache] = React.useState(false);
   const [aiRemaining, setAiRemaining] = React.useState<number | null>(null);
   const [aiLimitPerMonth, setAiLimitPerMonth] = React.useState<number | null>(null);
+  const [aiRotatingMsgIdx, setAiRotatingMsgIdx] = React.useState(0);
+
+  const AI_ROTATING_MESSAGES = [
+    'מנתח את ההצעות שלך...',
+    'משווה מחירים ותנאים...',
+    'קורא מסמכים מצורפים...',
+    'מחפש דגלים אדומים...',
+    'בודק היקף עבודה...',
+    'מכין המלצות...',
+    'עוד רגע קטן, כמעט סיימנו...',
+    'ה-AI עובד קשה בשבילך...',
+    'מנתח תנאי תשלום...',
+    'בודק ערבויות ואחריות...',
+  ];
+
+  React.useEffect(() => {
+    if (!aiLoading) { setAiRotatingMsgIdx(0); return; }
+    const iv = setInterval(() => setAiRotatingMsgIdx(i => (i + 1) % AI_ROTATING_MESSAGES.length), 2800);
+    return () => clearInterval(iv);
+  }, [aiLoading]);
 
   React.useEffect(() => {
     if (initialQuotes) {
@@ -830,13 +850,13 @@ export const QuotesScreen = () => {
         {compareTopic && (
           <Modal onClose={() => setCompareTopicId(null)} title={`השוואת הצעות — ${compareTopic.name}`} width={900}>
             <div style={{ overflowX: "auto" }}>
-              <table className="bp-table" style={{ width: "100%", minWidth: 760 }}>
+                <table className="bp-table" style={{ width: "100%", minWidth: 460 }}>
                 <thead>
                   <tr>
                     <th>ספק</th>
-                    <th>איש קשר</th>
-                    <th>טלפון</th>
-                    <th>תוקף</th>
+                    <th className="hide-mobile">איש קשר</th>
+                    <th className="hide-mobile">טלפון</th>
+                    <th className="hide-mobile">תוקף</th>
                     <th>סה"כ</th>
                     <th>סטטוס</th>
                     <th style={{ textAlign: "center" }}>בחירה</th>
@@ -857,9 +877,9 @@ export const QuotesScreen = () => {
                             <span title={q.fileName} style={{ marginRight: 6, color: "var(--text3)" }}><Icon n="file-text" s={11} /></span>
                           )}
                         </td>
-                        <td style={{ fontSize: 13, color: "var(--text2)" }}>{q.contact || "—"}</td>
-                        <td style={{ fontSize: 13, color: "var(--text2)" }}>{q.phone || "—"}</td>
-                        <td style={{ fontSize: 13, color: "var(--text2)" }}>{q.validity || "—"}</td>
+                        <td className="hide-mobile" style={{ fontSize: 13, color: "var(--text2)" }}>{q.contact || "—"}</td>
+                        <td className="hide-mobile" style={{ fontSize: 13, color: "var(--text2)" }}>{q.phone || "—"}</td>
+                        <td className="hide-mobile" style={{ fontSize: 13, color: "var(--text2)" }}>{q.validity || "—"}</td>
                         <td style={{ fontWeight: 800, fontSize: 15, color: isCheapest ? "var(--success)" : "var(--text1)" }}>{fmtMoney(q.total)}</td>
                         <td><Badge type={statusBadgeType(q.status)}>{q.status === "approved" ? "נבחר" : q.status === "rejected" ? "נדחה" : "ממתין"}</Badge></td>
                         <td style={{ textAlign: "center" }}>
@@ -880,7 +900,7 @@ export const QuotesScreen = () => {
             </div>
 
             {/* Stats row */}
-            <div style={{ marginTop: 16, display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10 }}>
+            <div style={{ marginTop: 16, display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))", gap: 10 }}>
               <div style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 10, padding: "10px 12px" }}>
                 <div style={{ fontSize: 11, color: "var(--text3)", fontWeight: 600 }}>הצעה זולה</div>
                 <div style={{ fontSize: 15, fontWeight: 800, color: "var(--success)", marginTop: 2 }}>{fmtMoney(cmpMin)}</div>
@@ -983,23 +1003,29 @@ export const QuotesScreen = () => {
                           </div>
                           
                           {/* Text Content */}
-                          <div style={{ flex: 1 }}>
-                            <motion.div 
-                              key={aiStep} // Changing key forces animation on text change
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <motion.div
+                              key={aiStep || 'default'}
                               initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
-                              style={{ fontSize: 14, fontWeight: 700, background: "linear-gradient(90deg, #6366f1, #a855f7)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", marginBottom: 4 }}
+                              style={{ fontSize: 14, fontWeight: 700, background: "linear-gradient(90deg, #6366f1, #a855f7)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", marginBottom: 6 }}
                             >
                               {aiStep || 'מעבד הצעות...'}
                             </motion.div>
-                            <div style={{ fontSize: 12, color: "var(--text3)", display: "flex", alignItems: "center" }}>
-                              ה-AI שלנו קורא ומנתח את הנתונים, זה יכול לקחת דקה או שתיים
+                            <motion.div
+                              key={aiRotatingMsgIdx}
+                              initial={{ opacity: 0, x: 6 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -6 }}
+                              transition={{ duration: 0.4 }}
+                              style={{ fontSize: 12, color: "var(--text2)", marginBottom: 6, fontWeight: 500 }}
+                            >
+                              {AI_ROTATING_MESSAGES[aiRotatingMsgIdx]}
+                            </motion.div>
+                            <div style={{ fontSize: 11, color: "var(--text3)", display: "flex", alignItems: "center", gap: 4 }}>
+                              <span>⏱️</span>
+                              <span>זה יכול לקחת דקה-שתיים, אל תרענן את הדף</span>
                               <motion.span
                                 animate={{ opacity: [0, 1, 0] }}
                                 transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
-                                style={{ marginLeft: 2 }}
-                              >
-                                ...
-                              </motion.span>
+                              >...</motion.span>
                             </div>
                           </div>
                         </div>

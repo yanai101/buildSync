@@ -857,6 +857,17 @@ body {
   border: 1px solid var(--border);
   animation: fade-in-up 0.25s var(--transition-spring) both;
 }
+@media (max-width: 640px) {
+  .modal-overlay {
+    padding: 0;
+    align-items: flex-end;
+  }
+  .modal-box {
+    border-radius: 22px 22px 0 0;
+    max-height: 92vh;
+    width: 100%;
+  }
+}
 
 /* ─── Inputs ─────────────────────────────────────────────────────────────────── */
 .bp-input {
