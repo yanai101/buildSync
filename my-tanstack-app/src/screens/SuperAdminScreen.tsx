@@ -160,7 +160,13 @@ export function SuperAdminScreen() {
 
       let matchesLastActivity = true;
       if (filterLastActivity !== 'all') {
-        const ts = u.lastActivityAt as number | null;
+        // Use the latest timestamp between activityFeed entry and last login session
+        const activityTs = u.lastActivityAt as number | null;
+        const sessionTs = u.lastSessionAt as number | null;
+        const ts = activityTs && sessionTs
+          ? Math.max(activityTs, sessionTs)
+          : (activityTs ?? sessionTs ?? null);
+
         if (filterLastActivity === 'never') {
           matchesLastActivity = !ts;
         } else if (ts) {
@@ -206,7 +212,11 @@ export function SuperAdminScreen() {
       if (sortBy === 'newest') return (b._creationTime || 0) - (a._creationTime || 0);
       if (sortBy === 'oldest') return (a._creationTime || 0) - (b._creationTime || 0);
       if (sortBy === 'projects') return (b.projectCount || 0) - (a.projectCount || 0);
-      if (sortBy === 'activity') return (b.lastActivityAt || 0) - (a.lastActivityAt || 0);
+      if (sortBy === 'activity') {
+        const aTs = Math.max(a.lastActivityAt || 0, a.lastSessionAt || 0);
+        const bTs = Math.max(b.lastActivityAt || 0, b.lastSessionAt || 0);
+        return bTs - aTs;
+      }
       return 0;
     });
 

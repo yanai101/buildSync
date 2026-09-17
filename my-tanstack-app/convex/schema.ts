@@ -166,7 +166,8 @@ export default defineSchema({
     .index('by_topic', ['projectId', 'topicKey']),
 
   activityFeed: defineTable(zodToConvexFields(s.zActivityFeedItem))
-    .index('by_project', ['projectId']),
+    .index('by_project', ['projectId'])
+    .index('by_actor', ['actorUserId']),
 
   checklists: defineTable(zodToConvexFields(s.zChecklist))
     .index('by_project', ['projectId']),

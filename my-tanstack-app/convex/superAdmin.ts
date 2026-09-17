@@ -43,10 +43,10 @@ export const getAllUsers = query({
             .query('projects')
             .withIndex('by_ownerUserId', (q) => q.eq('ownerUserId', u._id))
             .collect(),
-          // Most recent activity this user performed (as actor)
+          // Most recent activity this user performed (as actor) — uses by_actor index
           ctx.db
             .query('activityFeed')
-            .filter((q) => q.eq(q.field('actorUserId'), u._id))
+            .withIndex('by_actor', (q) => q.eq('actorUserId', u._id))
             .order('desc')
             .first(),
           // Auth sessions — proxy for last login
