@@ -681,8 +681,8 @@ export const DashboardScreen = () => {
                     initial={{ opacity: 0, x: 12 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: i * 0.06, type: 'spring', stiffness: 300, damping: 28 }}
-                    whileHover={{ background: 'var(--surface-2)' }}
-                    style={{ display: 'flex', gap: 12, padding: '12px 22px', borderBottom: i < recentActivity.length - 1 ? '1px solid var(--border)' : 'none', cursor: 'pointer', transition: 'background 0.15s' }}
+                    whileHover={{ backgroundColor: 'var(--surface-2)' }}
+                    style={{ backgroundColor: 'transparent', display: 'flex', gap: 12, padding: '12px 22px', borderBottom: i < recentActivity.length - 1 ? '1px solid var(--border)' : 'none', cursor: 'pointer' }}
                   >
                     <Avatar letter={a.actorName[0]} color={rc[a.role as keyof typeof rc]} size={34} />
                     <div style={{ flex: 1, minWidth: 0 }}>
