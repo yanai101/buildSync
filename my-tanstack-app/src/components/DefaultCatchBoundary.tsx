@@ -8,6 +8,8 @@ import {
 import type { ErrorComponentProps } from '@tanstack/react-router'
 import * as React from 'react'
 
+import { AppLoadingScreen } from './Layout';
+
 // Detect stale JS chunk errors that happen after a new deploy.
 // The browser tries to load an old asset URL that no longer exists on the CDN.
 function isStaleChunkError(error: unknown): boolean {
@@ -44,13 +46,7 @@ export function DefaultCatchBoundary({ error }: ErrorComponentProps) {
   }, [error]);
 
   if (isStaleChunkError(error)) {
-    return (
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', gap: 12, fontFamily: "'Heebo', sans-serif" }}>
-        <div style={{ fontSize: 32 }}>🔄</div>
-        <div style={{ fontWeight: 700, fontSize: 16 }}>עדכון זמין</div>
-        <div style={{ fontSize: 13, color: '#888', textAlign: 'center' }}>טוען גרסה חדשה של האפליקציה...</div>
-      </div>
-    );
+    return <AppLoadingScreen title="עדכון זמין" subtitle="טוען גרסה חדשה של האפליקציה..." />;
   }
 
   return (

@@ -165,7 +165,7 @@ const GearSVG = ({ size, teeth, duration, direction, color, style, isMain }: any
   );
 };
 
-function AppLoadingScreen() {
+export function AppLoadingScreen({ title, subtitle }: { title?: string, subtitle?: string }) {
   return (
     <div style={{ 
       position: 'fixed',
@@ -234,25 +234,33 @@ function AppLoadingScreen() {
       </div>
       
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, marginTop: -20 }}>
-        <div className="sidebar-logo-text" dir="ltr" style={{ margin: 0, fontSize: 24, color: 'var(--text1)' }}>Build<span>Sync</span></div>
+        {title ? (
+          <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--text1)' }}>{title}</div>
+        ) : (
+          <div className="sidebar-logo-text" dir="ltr" style={{ margin: 0, fontSize: 24, color: 'var(--text1)' }}>Build<span>Sync</span></div>
+        )}
         <div style={{ position: 'relative', height: 20, width: '100%', display: 'flex', justifyContent: 'center' }}>
-          {LOADING_PHRASES.map((phrase, i) => (
-            <div 
-              key={i}
-              style={{
-                position: 'absolute',
-                opacity: 0,
-                animation: `fadePhrase 25s linear infinite`,
-                animationDelay: `${i * 2.5}s`,
-                fontSize: 15, 
-                color: 'var(--text2)', 
-                fontWeight: 500,
-                whiteSpace: 'nowrap'
-              }}
-            >
-              {phrase}
-            </div>
-          ))}
+          {subtitle ? (
+            <div style={{ fontSize: 15, color: 'var(--text2)', fontWeight: 500 }}>{subtitle}</div>
+          ) : (
+            LOADING_PHRASES.map((phrase, i) => (
+              <div 
+                key={i}
+                style={{
+                  position: 'absolute',
+                  opacity: 0,
+                  animation: `fadePhrase 25s linear infinite`,
+                  animationDelay: `${i * 2.5}s`,
+                  fontSize: 15, 
+                  color: 'var(--text2)', 
+                  fontWeight: 500,
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                {phrase}
+              </div>
+            ))
+          )}
         </div>
       </div>
     </div>
