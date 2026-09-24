@@ -32,21 +32,71 @@ export function DefaultCatchBoundary({ error }: ErrorComponentProps) {
 
   console.error('DefaultCatchBoundary Error:', error)
 
+  const [showManualReload, setShowManualReload] = React.useState(false);
+
   // Auto-reload once on stale chunk errors (new deploy → old hash no longer on CDN)
   React.useEffect(() => {
     if (!isStaleChunkError(error)) return;
+    
+    // If it stays on this error screen for >3 seconds, show a fallback button
+    const timer = setTimeout(() => setShowManualReload(true), 3000);
+    
     const reloadKey = 'chunk_reload_attempted';
     if (sessionStorage.getItem(reloadKey)) {
       // Already tried once — avoid infinite reload loop
       sessionStorage.removeItem(reloadKey);
-      return;
+      
+      // On mobile PWAs (iOS especially), window.location.reload() doesn't clear SW cache.
+      // We must forcefully unregister it so the next manual tap will work.
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(regs => {
+          for (let reg of regs) reg.unregister();
+        });
+      }
+      return () => clearTimeout(timer);
     }
+    
     sessionStorage.setItem(reloadKey, '1');
+    // First attempt: soft reload
     window.location.reload();
+    return () => clearTimeout(timer);
   }, [error]);
 
   if (isStaleChunkError(error)) {
-    return <AppLoadingScreen title="עדכון זמין" subtitle="טוען גרסה חדשה של האפליקציה..." />;
+    return (
+      <div style={{ position: 'fixed', inset: 0, zIndex: 99999 }}>
+        <AppLoadingScreen title="עדכון זמין" subtitle="טוען גרסה חדשה של האפליקציה..." />
+        {showManualReload && (
+          <div style={{ position: 'absolute', bottom: '15%', left: 0, right: 0, display: 'flex', justifyContent: 'center', zIndex: 100000 }}>
+            <button 
+              onClick={() => {
+                if ('serviceWorker' in navigator) {
+                  navigator.serviceWorker.getRegistrations().then(regs => {
+                    for (let reg of regs) reg.unregister();
+                    window.location.href = window.location.pathname + '?t=' + Date.now();
+                  });
+                } else {
+                  window.location.href = window.location.pathname + '?t=' + Date.now();
+                }
+              }}
+              style={{
+                padding: '12px 24px',
+                background: 'var(--accent)',
+                color: '#fff',
+                border: 'none',
+                borderRadius: 8,
+                fontSize: 16,
+                fontWeight: 600,
+                cursor: 'pointer',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
+              }}
+            >
+              לחץ כאן לרענון האפליקציה
+            </button>
+          </div>
+        )}
+      </div>
+    );
   }
 
   return (
