@@ -150,6 +150,7 @@ export const saveLog = mutation({
         projectId: args.projectId,
         text: `הוסיף/ה יומן עבודה חדש לתאריך ${args.date}`,
         notifyOwner: false, // We send a targeted push below instead
+        entityRef: { table: 'dailyLogs', id: newId }
       });
 
       // Send a direct deep-link push to the project owner and manager

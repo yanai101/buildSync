@@ -11,6 +11,7 @@ export async function insertActivity(
     role?: 'owner' | 'manager' | 'inspector' | 'contractor';
     // Set to false for noisy/system events that shouldn't push-notify the owner.
     notifyOwner?: boolean;
+    entityRef?: { table: string; id: string };
   },
 ) {
   const userId = await getAuthUserId(ctx);
@@ -36,6 +37,7 @@ export async function insertActivity(
     role,
     text: args.text,
     createdAt: now,
+    ...(args.entityRef ? { entityRef: args.entityRef } : {}),
   });
 
   // Notify the project owner about the latest activity, unless they're the

@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Link, Navigate } from '@tanstack/react-router';
+import { Link, Navigate, useNavigate } from '@tanstack/react-router';
 import { Icon, ProgressBar, Badge, Avatar, Btn, Modal } from '../components/Shared';
 import { ROLE_COLORS, fmtMoney } from '../utils/mockData';
 import { useDataSource } from '../hooks/useDataSource';
@@ -27,6 +27,7 @@ const itemVariants = {
 
 export const DashboardScreen = () => {
   const { role } = useRequireRole(['owner', 'manager', 'inspector', 'contractor']);
+  const navigate = useNavigate();
   const { projects, isLoading: projectLoading, setCurrentProject } = useCurrentProject();
   const [showAllStages, setShowAllStages] = React.useState(false);
   const [showAllAlerts, setShowAllAlerts] = React.useState(false);
@@ -670,6 +671,13 @@ export const DashboardScreen = () => {
                 {recentActivity.map((a: any, i: number) => (
                   <motion.div
                     key={a.id}
+                    onClick={() => {
+                      if (a.link && projectId) {
+                        const url = new URL(a.link, window.location.origin);
+                        const search = Object.fromEntries(url.searchParams);
+                        navigate({ to: url.pathname as any, search: { project: projectId, ...search } as any });
+                      }
+                    }}
                     initial={{ opacity: 0, x: 12 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: i * 0.06, type: 'spring', stiffness: 300, damping: 28 }}

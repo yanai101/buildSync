@@ -1,4 +1,5 @@
 import { query } from './_generated/server';
+import { Id } from './_generated/dataModel';
 import { v } from 'convex/values';
 import { getFinancialSummary } from './_lib/financialSummary';
 import { getAuthUserId } from '@convex-dev/auth/server';
@@ -191,6 +192,51 @@ export const getOverview = query({
       });
     });
 
+    const resolvedRecentActivity = await Promise.all(
+      recentActivity.map(async (item) => {
+        let link = undefined;
+        if (item.entityRef) {
+          switch (item.entityRef.table) {
+            case 'dailyLogs': {
+              const log = (await ctx.db.get(item.entityRef.id as Id<'dailyLogs'>)) as any;
+              if (log) {
+                link = `/daily-logs?date=${log.date}`;
+              }
+              break;
+            }
+            case 'orders':
+              link = '/orders';
+              break;
+            case 'photos':
+              link = '/photos';
+              break;
+            case 'checklists':
+              link = '/checklists';
+              break;
+            case 'timeline':
+            case 'stages':
+              link = '/timeline';
+              break;
+          }
+        } else if (item.text.includes('יומן עבודה חדש')) {
+          const match = item.text.match(/לתאריך\s+([\d-]+)/);
+          if (match && match[1]) {
+            link = `/daily-logs?date=${match[1]}`;
+          } else {
+            link = `/daily-logs`;
+          }
+        }
+        return {
+          id: item._id,
+          actorName: item.actorName,
+          role: item.role,
+          text: item.text,
+          createdAt: item.createdAt,
+          link,
+        };
+      })
+    );
+
     return {
       project,
       stats: {
@@ -214,13 +260,7 @@ export const getOverview = query({
           }
         : null,
       topOverruns,
-      recentActivity: recentActivity.map((item) => ({
-        id: item._id,
-        actorName: item.actorName,
-        role: item.role,
-        text: item.text,
-        createdAt: item.createdAt,
-      })),
+      recentActivity: resolvedRecentActivity,
       alerts: [...dynamicAlerts, ...projectAlerts.map((alert) => ({
         id: alert._id,
         type: alert.type,
