@@ -223,6 +223,18 @@ export const deleteLog = mutation({
     await requireProjectMember(ctx, log.projectId);
     await requireProjectFeature(ctx, log.projectId, 'dailyLogs');
 
+    // Mark chat messages that reference images from this daily log as deleted
+    const linkedMessages = await ctx.db
+      .query('messages')
+      .withIndex('by_sourceDailyLog', (q) => q.eq('sourceDailyLogId', args.logId))
+      .collect();
+    for (const msg of linkedMessages) {
+      await ctx.db.patch(msg._id, {
+        attachmentDeleted: true,
+        attachmentUrl: undefined,
+      });
+    }
+
     // Delete associated images
     if (log.images) {
       for (const img of log.images) {

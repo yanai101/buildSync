@@ -427,6 +427,13 @@ export const zMessage = {
   // Directed 1:1 message between two internal users (e.g. owner <-> inspector).
   // When set, the message is a private DM and only visible to fromUserId/recipientUserId.
   recipientUserId: zid('users').optional(),
+  // Image attachment from daily log "Reply to image" feature
+  attachmentStorageId: zid('_storage').optional(),
+  attachmentUrl: z.string().optional(),
+  // Reference to the source daily log (for cleanup on deletion)
+  sourceDailyLogId: zid('dailyLogs').optional(),
+  // Set to true when the source daily log (and its images) were deleted
+  attachmentDeleted: z.boolean().optional(),
 };
 
 export const zBudgetCategory = {

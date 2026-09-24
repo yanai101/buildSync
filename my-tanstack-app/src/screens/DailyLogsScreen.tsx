@@ -12,9 +12,11 @@ import { useSubscription } from '../hooks/useSubscription';
 import { useProjectFileUploader } from '../hooks/useProjectFileUploader';
 import type { Id } from '../../convex/_generated/dataModel';
 
+const MAX_DAILY_LOG_IMAGES = 8;
+
 export const DailyLogsScreen = () => {
   const { role, allowed, loading: roleLoading } = useRequireRole(['owner', 'manager', 'inspector', 'contractor']);
-  const { projectId, projects, setCurrentProject } = useCurrentProject();
+  const { project, projectId, projects, setCurrentProject } = useCurrentProject();
   const { isProOrPremium } = useSubscription();
   const search = useSearch({ from: '/daily-logs', shouldThrow: false }) as { project?: string; date?: string } | undefined;
   const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split('T')[0]);
@@ -95,6 +97,13 @@ export const DailyLogsScreen = () => {
   const [viewGallery, setViewGallery] = useState<{ images: { url: string }[], initialIndex: number } | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
+  // Image reply to chat state
+  const [replyImage, setReplyImage] = useState<{ storageId: string; url: string } | null>(null);
+  const [replyText, setReplyText] = useState('');
+  const [replyRecipient, setReplyRecipient] = useState('');
+  const [sendingReply, setSendingReply] = useState(false);
+  const saveNote = useMutation(api.mutations.saveNote);
+
   const lastLoadedLogId = React.useRef<string | null>(null);
 
   // Handle push-notification deep links: ?project=<id>&date=<date>
@@ -135,7 +144,7 @@ export const DailyLogsScreen = () => {
           deliveries: log.deliveries || [],
           issues: log.issues || [],
           instructions: log.instructions || [],
-          images: log.images || [],
+          images: (log.images || []).filter((img: any) => img.url),
         });
       } else {
         setForm({ weather: '', temperature: '', workforce: [], activities: [], deliveries: [], issues: [], instructions: [], images: [] });
@@ -177,14 +186,46 @@ export const DailyLogsScreen = () => {
     }
   };
 
+  const handleSendImageReply = async () => {
+    if (!replyImage || !replyRecipient || !projectId || !log) return;
+    setSendingReply(true);
+    try {
+      // Determine if recipient is an internal user or a contractor
+      const isInternalUser = replyRecipient === String(project?.inspectorUserId) ||
+                             replyRecipient === String(project?.managerUserId) ||
+                             replyRecipient === String(project?.ownerUserId);
+
+      await saveNote({
+        projectId,
+        text: replyText.trim() || '📷 תמונה מהדוח היומי',
+        thread: isInternalUser ? 'internal' : 'contractor',
+        ...(isInternalUser
+          ? { recipientUserId: replyRecipient as Id<'users'> }
+          : { recipientContractorId: replyRecipient as Id<'contractors'> }),
+        attachmentStorageId: replyImage.storageId as Id<'_storage'>,
+        attachmentUrl: replyImage.url,
+        sourceDailyLogId: log._id,
+      });
+
+      setReplyImage(null);
+      setReplyText('');
+      setReplyRecipient('');
+      setFeedback({ title: 'נשלח!', message: 'ההודעה עם התמונה נשלחה בהצלחה לצ\'אט', type: 'success' });
+    } catch (err: any) {
+      setFeedback({ title: 'שגיאה', message: err.message || 'שגיאה בשליחת ההודעה', type: 'error' });
+    } finally {
+      setSendingReply(false);
+    }
+  };
+
   const processImageFiles = async (files: File[]) => {
     if (!projectId || files.length === 0) return;
 
     const currentCount = form.images.length;
-    const availableSlots = 4 - currentCount;
+    const availableSlots = MAX_DAILY_LOG_IMAGES - currentCount;
 
     if (availableSlots <= 0) {
-      setFeedback({ title: "הגבלת תמונות", message: "ניתן להעלות עד 4 תמונות ליומן.", type: "error" });
+      setFeedback({ title: "הגבלת תמונות", message: `ניתן להעלות עד ${MAX_DAILY_LOG_IMAGES} תמונות ליומן.`, type: "error" });
       return;
     }
 
@@ -718,40 +759,65 @@ export const DailyLogsScreen = () => {
               <div style={{ background: "var(--surface)", borderRadius: 12, border: "1px solid var(--border)", overflow: "hidden" }}>
                 {renderSectionHeader("תמונות מהשטח", "image")}
                 <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
-                  <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(100px, 1fr))", gap: 12 }}>
                     {form.images.map((img, i) => {
                       const isDeleting = deletingImages.has(img.storageId);
                       return (
-                        <div key={i} style={{ position: "relative", width: 100, height: 100, borderRadius: 8, overflow: "hidden", border: "1px solid var(--border)" }}>
-                          <img src={img.url} onClick={() => setViewGallery({ images: form.images.filter(img => img.url).map(img => ({ url: img.url! })), initialIndex: i })} style={{ width: "100%", height: "100%", objectFit: "cover", opacity: isDeleting ? 0.5 : 1, transition: "opacity 0.2s", cursor: "pointer" }} />
+                        <div key={i} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                          <div style={{ position: "relative", width: "100%", aspectRatio: "1/1", borderRadius: 8, overflow: "hidden", border: "1px solid var(--border)" }}>
+                            <img src={img.url} onClick={() => setViewGallery({ images: form.images.filter(img => img.url).map(img => ({ url: img.url! })), initialIndex: i })} style={{ width: "100%", height: "100%", objectFit: "cover", opacity: isDeleting ? 0.5 : 1, transition: "opacity 0.2s", cursor: "pointer" }} />
 
-                          {isDeleting && (
-                            <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.3)" }}>
-                              <style>{`@keyframes spin { 100% { transform: rotate(360deg); } }`}</style>
-                              <div style={{ animation: 'spin 1s linear infinite', color: "#fff" }}>
-                                <Icon n="loader" s={24} />
+                            {isDeleting && (
+                              <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.3)" }}>
+                                <style>{`@keyframes spin { 100% { transform: rotate(360deg); } }`}</style>
+                                <div style={{ animation: 'spin 1s linear infinite', color: "#fff" }}>
+                                  <Icon n="loader" s={24} />
+                                </div>
                               </div>
-                            </div>
-                          )}
+                            )}
 
-                          {canEditBasic && !isDeleting && (
-                            <button onClick={async () => {
-                              setDeletingImages(prev => new Set(prev).add(img.storageId));
-                              try {
-                                await deleteFile({ storageId: img.storageId as Id<'_storage'> });
-                                const newArr = [...form.images]; newArr.splice(i, 1); setForm({ ...form, images: newArr });
-                              } catch (e) {
-                                console.error("Failed to delete file from storage", e);
-                                setFeedback({ title: "שגיאה", message: "שגיאה במחיקת התמונה.", type: "error" });
-                              } finally {
-                                setDeletingImages(prev => {
-                                  const next = new Set(prev);
-                                  next.delete(img.storageId);
-                                  return next;
-                                });
-                              }
-                            }} style={{ position: "absolute", top: 4, right: 4, background: "rgba(0,0,0,0.6)", color: "#fff", border: "none", borderRadius: "50%", width: 24, height: 24, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                              <Icon n="x" s={14} />
+                            {canEditBasic && !isDeleting && (
+                              <button onClick={async () => {
+                                setDeletingImages(prev => new Set(prev).add(img.storageId));
+                                try {
+                                  await deleteFile({ storageId: img.storageId as Id<'_storage'> });
+                                  const newArr = [...form.images]; newArr.splice(i, 1); 
+                                  setForm({ ...form, images: newArr });
+                                  if (log?._id && projectId) {
+                                    await saveLog({
+                                      logId: log._id,
+                                      projectId,
+                                      date: selectedDate,
+                                      ...form,
+                                      images: newArr.map(img => ({ storageId: img.storageId as Id<'_storage'>, url: img.url })),
+                                    });
+                                  }
+                                } catch (e) {
+                                  console.error("Failed to delete file from storage", e);
+                                  setFeedback({ title: "שגיאה", message: "שגיאה במחיקת התמונה.", type: "error" });
+                                } finally {
+                                  setDeletingImages(prev => {
+                                    const next = new Set(prev);
+                                    next.delete(img.storageId);
+                                    return next;
+                                  });
+                                }
+                              }} style={{ position: "absolute", top: 4, right: 4, background: "rgba(0,0,0,0.6)", color: "#fff", border: "none", borderRadius: "50%", width: 24, height: 24, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                <Icon n="x" s={14} />
+                              </button>
+                            )}
+                          </div>
+                          {(isOwner || isInspectorOrManager) && !isDeleting && img.storageId && (
+                            <button
+                              onClick={() => setReplyImage({ storageId: img.storageId, url: img.url! })}
+                              title="הגב לתמונה בצ'אט"
+                              style={{
+                                background: "none", border: "none", color: "var(--accent)", fontSize: 12, cursor: "pointer",
+                                display: "flex", alignItems: "center", gap: 4, padding: "2px 4px", alignSelf: "flex-start",
+                                fontWeight: 500
+                              }}
+                            >
+                              <Icon n="message-circle" s={14} /> הגב
                             </button>
                           )}
                         </div>
@@ -760,7 +826,7 @@ export const DailyLogsScreen = () => {
 
                     {/* Uploading Placeholders */}
                     {Array.from({ length: uploadingImagesCount }).map((_, i) => (
-                      <div key={`uploading-${i}`} style={{ width: 100, height: 100, borderRadius: 8, border: "1px solid var(--border)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "var(--surface)", color: "var(--accent)" }}>
+                      <div key={`uploading-${i}`} style={{ width: "100%", aspectRatio: "1/1", borderRadius: 8, border: "1px solid var(--border)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "var(--surface)", color: "var(--accent)" }}>
                         <style>{`@keyframes spin { 100% { transform: rotate(360deg); } }`}</style>
                         <div style={{ animation: 'spin 1s linear infinite' }}>
                           <Icon n="loader" s={24} />
@@ -769,14 +835,14 @@ export const DailyLogsScreen = () => {
                       </div>
                     ))}
 
-                    {canEditBasic && (form.images.length + uploadingImagesCount) < 4 && (
+                    {canEditBasic && (form.images.length + uploadingImagesCount) < MAX_DAILY_LOG_IMAGES && (
                       <>
                         {/* Camera tile — only on touch devices; capture forces the camera in the PWA */}
                         <style>{`.dl-camera-tile{display:none} @media (pointer: coarse){.dl-camera-tile{display:flex}}`}</style>
                         <label
                           className="dl-camera-tile"
                           style={{
-                            width: 100, height: 100, borderRadius: 8, border: "2px dashed var(--border)",
+                            width: "100%", aspectRatio: "1/1", borderRadius: 8, border: "2px dashed var(--border)",
                             flexDirection: "column", alignItems: "center", justifyContent: "center",
                             cursor: uploadingImage ? "not-allowed" : "pointer", background: "var(--bg)",
                             color: "var(--text2)", transition: "all 0.2s"
@@ -788,7 +854,7 @@ export const DailyLogsScreen = () => {
                         </label>
                         <label
                           style={{
-                            width: 100, height: 100, borderRadius: 8, border: isDragging ? "2px dashed var(--accent)" : "2px dashed var(--border)",
+                            width: "100%", aspectRatio: "1/1", borderRadius: 8, border: isDragging ? "2px dashed var(--accent)" : "2px dashed var(--border)",
                             display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
                             cursor: uploadingImage ? "not-allowed" : "pointer", background: isDragging ? "rgba(255, 149, 0, 0.1)" : "var(--bg)",
                             color: isDragging ? "var(--accent)" : "var(--text2)", transition: "all 0.2s"
@@ -806,7 +872,7 @@ export const DailyLogsScreen = () => {
                       </>
                     )}
                   </div>
-                  <div style={{ fontSize: 12, color: "var(--text3)" }}>{form.images.length} מתוך 4 תמונות הועלו. (עד 4 תמונות לדוח).</div>
+                  <div style={{ fontSize: 12, color: "var(--text3)" }}>{form.images.length} מתוך {MAX_DAILY_LOG_IMAGES} תמונות הועלו. (עד {MAX_DAILY_LOG_IMAGES} תמונות לדוח).</div>
                 </div>
               </div>
             </div>
@@ -1096,6 +1162,80 @@ export const DailyLogsScreen = () => {
             </div>
           )}
         </div>
+
+        {replyImage && (
+          <Modal onClose={() => { setReplyImage(null); setReplyText(''); setReplyRecipient(''); }}>
+            <div style={{ padding: 24, display: "flex", flexDirection: "column", gap: 16 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "var(--text1)", display: "flex", alignItems: "center", gap: 8 }}>
+                  <Icon n="message-circle" s={20} c="var(--accent)" /> הגב לתמונה
+                </h3>
+                <button onClick={() => { setReplyImage(null); setReplyText(''); setReplyRecipient(''); }} style={{ background: "none", border: "none", color: "var(--text3)", cursor: "pointer", display: "flex" }}>
+                  <Icon n="x" s={20} />
+                </button>
+              </div>
+
+              <img src={replyImage.url} alt="תמונה לתגובה" style={{ width: '100%', maxHeight: 200, objectFit: 'cover', borderRadius: 8, border: "1px solid var(--border)" }} />
+
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <label style={{ fontSize: 13, fontWeight: 600, color: "var(--text2)" }}>שלח אל:</label>
+                <select 
+                  value={replyRecipient}
+                  onChange={(e) => setReplyRecipient(e.target.value)}
+                  style={{
+                    width: '100%', boxSizing: 'border-box',
+                    padding: "10px 14px", borderRadius: 8, border: "1px solid var(--border)",
+                    background: "var(--bg)", color: "var(--text1)", fontSize: 14, outline: "none", fontFamily: "inherit"
+                  }}
+                >
+                  <option value="" disabled>בחר נמען...</option>
+                  {project?.inspectorUserId && (
+                    <option value={project.inspectorUserId}>
+                      🔍 מפקח ({project.inspectorName || 'ללא שם'})
+                    </option>
+                  )}
+                  {project?.managerUserId && (
+                    <option value={project.managerUserId}>
+                      👷 מנהל עבודה ({project.managerName || 'ללא שם'})
+                    </option>
+                  )}
+                  {contractors?.map((c: any) => (
+                    <option key={c._id} value={c._id}>
+                      🔧 {c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <textarea
+                value={replyText}
+                onChange={(e) => setReplyText(e.target.value)}
+                placeholder="הוסף הערה לתמונה..."
+                rows={3}
+                style={{
+                  width: '100%', boxSizing: 'border-box',
+                  padding: "12px 14px", borderRadius: 8, border: "1px solid var(--border)",
+                  background: "var(--bg)", color: "var(--text1)", fontSize: 14, outline: "none",
+                  fontFamily: "inherit", resize: "vertical"
+                }}
+              />
+
+              <Btn onClick={handleSendImageReply} disabled={!replyRecipient || sendingReply} style={{ marginTop: 8 }}>
+                {sendingReply ? (
+                  <>
+                    <style>{`@keyframes spin { 100% { transform: rotate(360deg); } }`}</style>
+                    <div style={{ animation: 'spin 1s linear infinite' }}><Icon n="loader" s={14} /></div>
+                    שולח...
+                  </>
+                ) : (
+                  <>
+                    <Icon n="send" s={14} /> שלח הודעה לצ'אט
+                  </>
+                )}
+              </Btn>
+            </div>
+          </Modal>
+        )}
 
         {feedback && <FeedbackModal {...feedback} onClose={() => setFeedback(null)} />}
         {confirmDelete && (

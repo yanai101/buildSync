@@ -473,11 +473,18 @@ export const listNotes = query({
           recipientUserName = ru?.name ?? ru?.email;
         }
       }
+      // Resolve fresh signed URL for image attachments from daily logs
+      let attachmentUrl = (n as any).attachmentUrl;
+      if ((n as any).attachmentStorageId && !(n as any).attachmentDeleted) {
+        const freshUrl = await ctx.storage.getUrl((n as any).attachmentStorageId);
+        attachmentUrl = freshUrl ?? undefined;
+      }
       resultNotes.push({
         ...n,
         id: n._id,
         recipientName,
         recipientUserName,
+        attachmentUrl,
         ...formatMessageDate(n._creationTime),
       });
     }

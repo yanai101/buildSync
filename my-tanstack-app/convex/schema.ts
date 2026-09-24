@@ -146,7 +146,8 @@ export default defineSchema({
   messages: defineTable(zodToConvexFields(s.zMessage))
     .index('by_project', ['projectId'])
     .index('by_project_thread', ['projectId', 'thread'])
-    .index('by_project_recipientUser', ['projectId', 'recipientUserId']),
+    .index('by_project_recipientUser', ['projectId', 'recipientUserId'])
+    .index('by_sourceDailyLog', ['sourceDailyLogId']),
 
   budgetCategories: defineTable(zodToConvexFields(s.zBudgetCategory))
     .index('by_project', ['projectId']),

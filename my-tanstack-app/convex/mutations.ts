@@ -1841,6 +1841,10 @@ export const saveNote = mutation({
     recipientContractorId: v.optional(v.id('contractors')),
     // Directed 1:1 message to another internal user (e.g. owner <-> inspector).
     recipientUserId: v.optional(v.id('users')),
+    // Image attachment from daily log reply
+    attachmentStorageId: v.optional(v.id('_storage')),
+    attachmentUrl: v.optional(v.string()),
+    sourceDailyLogId: v.optional(v.id('dailyLogs')),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -1902,6 +1906,9 @@ export const saveNote = mutation({
       resolved: false,
       recipientContractorId: finalRecipientId,
       recipientUserId: finalRecipientUserId,
+      ...(args.attachmentStorageId ? { attachmentStorageId: args.attachmentStorageId } : {}),
+      ...(args.attachmentUrl ? { attachmentUrl: args.attachmentUrl } : {}),
+      ...(args.sourceDailyLogId ? { sourceDailyLogId: args.sourceDailyLogId } : {}),
     });
 
     // --- Web Push Notifications Logic ---
@@ -1957,7 +1964,7 @@ export const saveNote = mutation({
         await scheduleUserNotifications(ctx, {
           userIds: group.userIds,
           title: `הודעה חדשה מאת ${senderName}`,
-          body: args.text.substring(0, 100) + (args.text.length > 100 ? '...' : ''),
+          body: (args.attachmentStorageId ? '📷 ' : '') + args.text.substring(0, 100) + (args.text.length > 100 ? '...' : ''),
           url: `/notes?project=${args.projectId}&peer=${group.peer}`,
           tag: `notes-${args.projectId}-${group.peer}`,
         });

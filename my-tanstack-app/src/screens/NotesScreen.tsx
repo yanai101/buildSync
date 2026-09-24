@@ -9,7 +9,7 @@ import { useCurrentProject } from '../hooks/useCurrentProject';
 import { useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { ScreenBoundary } from '../components/ScreenBoundary';
-
+import { ImageGalleryViewer } from '../components/ImageGalleryViewer';
 export interface Note {
   id: number;
   fromName: string;
@@ -76,6 +76,7 @@ export const NotesScreen = () => {
   const [myRole, setMyRole] = React.useState<string>("manager");
   const [activeKey, setActiveKey] = React.useState<string>("internal-team");
   const [feedback, setFeedback] = React.useState<{ title: string; message: string; type: 'error' | 'info' | 'success' } | null>(null);
+  const [galleryImage, setGalleryImage] = React.useState<string | null>(null);
   const endRef = React.useRef<HTMLDivElement>(null);
   const composeRef = React.useRef<HTMLTextAreaElement>(null);
 
@@ -432,7 +433,45 @@ export const NotesScreen = () => {
                     <div>
                       <div style={{fontSize:11,color:"var(--text3)",marginBottom:5,textAlign:isMe?"left":"right"}}>{n.fromName} · {(ROLE_LABELS as any)[n.role]} · {n.date} {n.time}</div>
                       <div style={{padding:"13px 17px",borderRadius:16,fontSize:14,lineHeight:1.65,background:isMe?"linear-gradient(135deg, var(--accent) 0%, #c96b30 100%)":"var(--surface)",color:isMe?"#fff":"var(--text1)",border:isMe?"none":"1px solid var(--border)",boxShadow:isMe?"0 3px 12px rgba(224,122,56,0.28)":"var(--shadow-sm)",borderTopLeftRadius:isMe?16:4,borderTopRightRadius:isMe?4:16}}>
+                        {/* Image attachment from daily log */}
+                        {(n as any).attachmentUrl && !(n as any).attachmentDeleted && (
+                          <img
+                            src={(n as any).attachmentUrl}
+                            alt="תמונה מדוח יומי"
+                            onClick={() => setGalleryImage((n as any).attachmentUrl)}
+                            style={{
+                              width: '100%',
+                              maxHeight: 200,
+                              objectFit: 'cover',
+                              borderRadius: 8,
+                              marginBottom: 8,
+                              cursor: 'pointer',
+                            }}
+                          />
+                        )}
+                        {/* Deleted image placeholder */}
+                        {/* Deleted image placeholder */}
+                        {((n as any).attachmentDeleted || ((n as any).attachmentStorageId && !(n as any).attachmentUrl)) && (
+                          <div style={{
+                            padding: '12px 16px',
+                            background: isMe ? 'rgba(255,255,255,0.15)' : 'var(--bg)',
+                            borderRadius: 8,
+                            marginBottom: 8,
+                            fontSize: 12,
+                            color: isMe ? 'rgba(255,255,255,0.7)' : 'var(--text3)',
+                            border: `1px dashed ${isMe ? 'rgba(255,255,255,0.3)' : 'var(--border)'}`,
+                            textAlign: 'center',
+                          }}>
+                            🗑️ התמונה נמחקה מהדוח היומי
+                          </div>
+                        )}
                         {n.text}
+                        {/* Source badge for daily log images */}
+                        {(n as any).sourceDailyLogId && !(n as any).attachmentDeleted && (n as any).attachmentUrl && (
+                          <div style={{ fontSize: 11, color: isMe ? 'rgba(255,255,255,0.6)' : 'var(--text3)', display: 'flex', alignItems: 'center', gap: 4, marginTop: 6 }}>
+                            📋 מתוך דוח יומי
+                          </div>
+                        )}
                       </div>
                       <div style={{marginTop:4,display:"flex",gap:6,justifyContent:isMe?"flex-end":"flex-start",flexWrap:"wrap",alignItems:"center"}}>
                         {/* Read receipt tick — only for messages I sent, in db mode */}
@@ -483,6 +522,13 @@ export const NotesScreen = () => {
             message={feedback.message}
             type={feedback.type}
             onClose={() => setFeedback(null)}
+          />
+        )}
+        {galleryImage && (
+          <ImageGalleryViewer
+            images={[{ url: galleryImage }]}
+            initialIndex={0}
+            onClose={() => setGalleryImage(null)}
           />
         )}
       </div>
