@@ -638,9 +638,8 @@ const StageCreationGuide = ({
 };
 
 export const StagesScreen = () => {
-  const { projectId } = useCurrentProject();
+  const { projectId, user, identity, accessInfo } = useCurrentProject();
   const navigate = useNavigate();
-  const accessInfo = useQuery(api.projects.getProjectAccessInfo, projectId ? { projectId } : "skip");
   const canViewBudget = accessInfo?.canViewBudget ?? false;
   const canViewSchedule = accessInfo?.canViewSchedule ?? false;
 
@@ -661,7 +660,6 @@ export const StagesScreen = () => {
   const lockStageMilestone = useMutation(api.stages.lockStageMilestone);
   const requestStagePaymentReview = useMutation(api.stages.requestStagePaymentReview);
   const setStageSupervisorApproval = useMutation(api.stages.setStageSupervisorApproval);
-  const currentUser = useQuery(api.users.me, {});
 
   const [stages, setStages] = React.useState<Stage[]>([]);
   const [expanded, setExpanded] = React.useState<number | null>(null);
@@ -673,7 +671,6 @@ export const StagesScreen = () => {
   const { role } = useRequireRole(['owner', 'manager', 'inspector', 'contractor']);
   const isContractor = role === 'contractor';
   const { isProOrPremium } = useSubscription();
-  const currentIdentity = useQuery(api.users.currentIdentity, {});
   const [savingGuide, setSavingGuide] = React.useState(false);
   const [editingStage, setEditingStage] = React.useState<Stage | null>(null);
   const [isAdvancedEdit, setIsAdvancedEdit] = React.useState(false);
@@ -749,9 +746,9 @@ export const StagesScreen = () => {
   }, [initialData]);
 
   const myContractorRecord = React.useMemo(() => {
-    if (!isContractor || !currentIdentity?.userId || !contractors) return null;
-    return contractors.find(c => c.userId === currentIdentity.userId);
-  }, [isContractor, currentIdentity, contractors]);
+    if (!isContractor || !identity?.userId || !contractors) return null;
+    return contractors.find(c => c.userId === identity.userId);
+  }, [isContractor, identity, contractors]);
 
   const visibleStages = React.useMemo(() => {
     if (!isContractor) return stages;
@@ -811,7 +808,7 @@ export const StagesScreen = () => {
 
   const supervisorApprove = async (stageId: number, dbId?: string) => {
     const today = new Date().toLocaleDateString('he-IL');
-    const approverName = currentUser?.name ?? currentUser?.email ?? 'מאשר';
+    const approverName = user?.name ?? user?.email ?? 'מאשר';
     updateStageState(stageId, s => ({
       ...s,
       supervisorApproval: { by: approverName, at: today },

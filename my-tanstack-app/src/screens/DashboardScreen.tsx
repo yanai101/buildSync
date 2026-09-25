@@ -28,10 +28,9 @@ const itemVariants = {
 export const DashboardScreen = () => {
   const { role } = useRequireRole(['owner', 'manager', 'inspector', 'contractor']);
   const navigate = useNavigate();
-  const { projects, isLoading: projectLoading, setCurrentProject } = useCurrentProject();
+  const { projects, isLoading: projectLoading, setCurrentProject, identity, accessInfo } = useCurrentProject();
   const [showAllStages, setShowAllStages] = React.useState(false);
   const [showAllAlerts, setShowAllAlerts] = React.useState(false);
-  const identity = useQuery(api.users.currentIdentity);
 
   // Free-tier retention warning — dismissed state via localStorage (7 days)
   const DISMISS_KEY = 'free_retention_warning_dismissed_at';
@@ -69,7 +68,6 @@ export const DashboardScreen = () => {
   const deleteAllAlerts = useMutation(api.dashboard.deleteAllAlerts);
 
   const projectId = dashboard?.project?._id;
-  const accessInfo = useQuery(api.projects.getProjectAccessInfo, projectId ? { projectId } : "skip");
   const canViewBudget = accessInfo?.canViewBudget ?? false;
 
   const contractorDashboard = useQuery(

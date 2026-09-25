@@ -1225,7 +1225,7 @@ export const PhotosScreen = () => {
           onConfirm={deleteSelectedPhoto}
         />
       )}
-      {projectId && (
+      {exportModalOpen && projectId && (
         <ExportToArchiveModal
           isOpen={exportModalOpen}
           onClose={() => setExportModalOpen(false)}

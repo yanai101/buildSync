@@ -19,11 +19,10 @@ const COLORS = ['#E07A38', '#10B981', '#3B82F6', '#8B5CF6', '#EC4899', '#F59E0B'
 
 export const AnalyticsScreen = () => {
   const { allowed, loading: roleLoading } = useRequireRole(['owner', 'manager', 'inspector', 'contractor']);
-  const { projectId } = useCurrentProject();
+  const { projectId, accessInfo } = useCurrentProject();
   const { isProOrPremium } = useSubscription();
   const [expandedChart, setExpandedChart] = React.useState<string | null>(null);
   
-  const accessInfo = useQuery(api.projects.getProjectAccessInfo, projectId ? { projectId } : "skip");
   const canViewBudget = accessInfo?.canViewBudget ?? false;
 
   const { summary, isPending: summaryPending } = useProjectBudgetSummary();

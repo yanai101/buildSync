@@ -57,7 +57,7 @@ function AccountPage() {
   const [isMobile, setIsMobile] = React.useState(false)
   const [shortcuts] = useBottomNavShortcuts()
   const [showExportModal, setShowExportModal] = React.useState(false)
-  const { projectId, project } = useCurrentProject()
+  const { projectId, project, user } = useCurrentProject()
 
   React.useEffect(() => {
     const check = () => setIsMobile(window.innerWidth <= 768)
@@ -65,8 +65,7 @@ function AccountPage() {
     window.addEventListener('resize', check)
     return () => window.removeEventListener('resize', check)
   }, [])
-
-  const user = useQuery(api.users.me, {})
+  
   const updateProfile = useMutation(api.users.updateProfile)
   const updatePassword = useAction(api.users.updatePassword)
   const toggleSubscription = useMutation(api.users.toggleSubscription)

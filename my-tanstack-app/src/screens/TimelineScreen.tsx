@@ -154,7 +154,7 @@ const clampScrollLeft = (container: HTMLDivElement, value: number) => {
 
 export const TimelineScreen = () => {
   const navigate = useNavigate();
-  const { projectId } = useCurrentProject();
+  const { projectId, accessInfo } = useCurrentProject();
   const dbStages = useQuery(api.queries.listStages, projectId ? { projectId } : 'skip');
   const project = useQuery(api.queries.getProject, projectId ? { projectId } : 'skip');
   const updateStageDates = useMutation(api.timeline.updateStageDates);
@@ -191,7 +191,6 @@ export const TimelineScreen = () => {
     }
   }, [dbStages]);
 
-  const accessInfo = useQuery(api.projects.getProjectAccessInfo, projectId ? { projectId } : "skip");
   const canViewSchedule = accessInfo?.canViewSchedule ?? false;
   const accessLoading = accessInfo === undefined;
 

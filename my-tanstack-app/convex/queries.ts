@@ -493,16 +493,6 @@ export const listNotes = query({
   },
 });
 
-export const listExpenses = query({
-  args: { projectId: v.id('projects') },
-  handler: async (ctx, args) => {
-    await requireProjectBudgetView(ctx, args.projectId);
-    return await ctx.db
-      .query('expenses')
-      .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
-      .collect();
-  },
-});
 
 export const listContractors = query({
   args: { projectId: v.id('projects') },
@@ -651,16 +641,7 @@ export const listContractors = query({
   },
 });
 
-export const listBudgetCategories = query({
-  args: { projectId: v.id('projects') },
-  handler: async (ctx, args) => {
-    await requireProjectBudgetView(ctx, args.projectId);
-    return await ctx.db
-      .query('budgetCategories')
-      .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
-      .collect();
-  },
-});
+
 export const getProject = query({
   args: { projectId: v.id('projects') },
   handler: async (ctx, args) => {

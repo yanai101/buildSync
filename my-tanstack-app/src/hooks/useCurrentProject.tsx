@@ -4,13 +4,59 @@ import { useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import type { Id } from '../../convex/_generated/dataModel';
 import { PROJECT } from '../utils/mockData';
+import { getActiveTier } from '../../convex/_lib/entitlements';
+
+// ── Shared identity type (mirrors the shape of api.users.currentIdentity) ──
+export type Identity = {
+  userId: string;
+  email: string | null;
+  name: string | null;
+  role: string | null;
+  isSuperAdmin: boolean;
+  subscriptionTier: string | undefined;
+  subscriptionExpiresAt: number | undefined;
+  isSubscriptionExpired: boolean;
+};
+
+export type SubscriptionInfo = {
+  isLoaded: boolean;
+  tier: string;
+  isProOrPremium: boolean;
+  isSelfProOrPremium: boolean;
+  isPremium: boolean;
+  isSuperAdmin: boolean;
+};
+
+export type AccessInfo = {
+  canViewBudget: boolean;
+  canViewSchedule: boolean;
+} | undefined;
 
 type ProjectContextType = {
+  // ── Auth / user ──
+  user: any; // raw user doc from api.users.me
+  identity: Identity | null; // computed identity (same shape as currentIdentity)
+  guardedUserId: string | null | undefined;
+
+  // ── Project selection ──
   selectedProjectId: string | null;
   setSelectedProjectId: (id: string | null) => void;
   isInitialized: boolean;
-  user: any; // shared — avoids second api.users.me subscription
-  guardedUserId: string | null | undefined;
+
+  // ── Project data (hoisted from useCurrentProject) ──
+  projects: any[];
+  project: any | null;
+  projectId: Id<'projects'> | null;
+  hasMultipleProjects: boolean;
+  setCurrentProject: (projectId: string) => void;
+  isMock: boolean;
+  isLoading: boolean;
+
+  // ── Subscription (hoisted from useSubscription) ──
+  subscription: SubscriptionInfo;
+
+  // ── Access info (hoisted — avoids per-screen duplication) ──
+  accessInfo: AccessInfo;
 };
 
 const ProjectContext = React.createContext<ProjectContextType | undefined>(undefined);
@@ -76,27 +122,27 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     }
   }, [storageKey]);
 
-  return (
-    <ProjectContext.Provider value={{ selectedProjectId, setSelectedProjectId, isInitialized, user, guardedUserId }}>
-      {children}
-    </ProjectContext.Provider>
-  );
-}
+  // ── Computed identity (same shape as api.users.currentIdentity) ──
+  // Avoids a separate WebSocket subscription while providing the exact same
+  // fields that consumers of currentIdentity expect.
+  const identity = React.useMemo<Identity | null>(() => {
+    if (!user) return null;
+    const isExpired = !!(user.subscriptionExpiresAt && Date.now() > user.subscriptionExpiresAt);
+    return {
+      userId: user._id,
+      email: user.email ?? null,
+      name: user.name ?? null,
+      role: user.role ?? null,
+      isSuperAdmin: user.isSuperAdmin ?? false,
+      subscriptionTier: isExpired ? undefined : user.subscriptionTier,
+      subscriptionExpiresAt: user.subscriptionExpiresAt,
+      isSubscriptionExpired: isExpired,
+    };
+  }, [user]);
 
-export function useCurrentProject() {
-  const context = React.useContext(ProjectContext);
-  if (!context) {
-    throw new Error('useCurrentProject must be used within a ProjectProvider');
-  }
-  const { selectedProjectId, setSelectedProjectId, isInitialized, user, guardedUserId } = context;
-
-  const isMock = typeof window !== 'undefined' && localStorage.getItem('buildsync:ds:project') === 'mock';
+  // ── Hoist project list query — called ONCE instead of per-consumer ──
   const dbProjects = useQuery(api.projects.listMine, {});
-  // user is already subscribed in ProjectProvider — reuse from context (no second useQuery)
 
-  // guardedUserId lags one batch behind user?._id during an account switch.
-  // While they differ, treat the project list as empty so stale Convex cache
-  // data from the PREVIOUS account cannot leak into the new user's session.
   const userSwitchInProgress = guardedUserId !== (user?._id ?? null);
 
   const projects = React.useMemo(() => {
@@ -117,6 +163,7 @@ export function useCurrentProject() {
 
   const isLoading = userSwitchInProgress || !isInitialized || (!isMock && (dbProjects === undefined || user === undefined));
 
+  // Auto-selection effect — runs ONCE in the Provider instead of per-consumer
   React.useEffect(() => {
     if (typeof window === 'undefined' || isLoading) return;
     
@@ -145,18 +192,70 @@ export function useCurrentProject() {
       ? (projects.find((candidate: any) => candidate._id === selectedProjectId) ?? projects[0] ?? null)
       : projects[0] ?? null;
 
+  const projectId = (project?._id ?? null) as Id<'projects'> | null;
+
   const setCurrentProject = React.useCallback((projectId: string) => {
     setSelectedProjectId(projectId);
   }, [setSelectedProjectId]);
 
-  return {
-    user,
-    projects,
-    project: project as any | null,
-    projectId: (project?._id ?? null) as Id<'projects'> | null,
+  // ── Hoist subscription query — called ONCE ──
+  const ownerSubscription = useQuery(
+    api.projects.getOwnerSubscription,
+    projectId ? { projectId } : 'skip'
+  );
+
+  const subscription = React.useMemo<SubscriptionInfo>(() => {
+    if (!user) {
+      return { isLoaded: false, tier: 'free', isProOrPremium: false, isSelfProOrPremium: false, isPremium: false, isSuperAdmin: false };
+    }
+    const selfActiveTier = getActiveTier(user);
+    const selfProOrPremium = selfActiveTier !== 'free';
+    const activeTier = projectId ? (ownerSubscription?.tier || 'free') : selfActiveTier;
+    const isProOrPremium = projectId ? !!ownerSubscription?.isProOrPremium : selfProOrPremium;
+    const isPremium = activeTier === 'premium';
+    return {
+      isLoaded: user !== undefined && user !== null && (projectId ? ownerSubscription !== undefined : true),
+      tier: activeTier,
+      isProOrPremium,
+      isSelfProOrPremium: selfProOrPremium,
+      isPremium,
+      isSuperAdmin: !!user.isSuperAdmin,
+    };
+  }, [user, projectId, ownerSubscription]);
+
+  // ── Hoist access info query — called ONCE ──
+  const accessInfo = useQuery(
+    api.projects.getProjectAccessInfo,
+    projectId ? { projectId } : 'skip'
+  );
+
+  const contextValue = React.useMemo<ProjectContextType>(() => ({
+    user, identity, guardedUserId,
+    selectedProjectId, setSelectedProjectId, isInitialized,
+    projects, project: project as any | null, projectId,
     hasMultipleProjects: projects.length > 1,
-    setCurrentProject,
-    isMock,
-    isLoading
-  };
+    setCurrentProject, isMock, isLoading,
+    subscription, accessInfo,
+  }), [
+    user, identity, guardedUserId,
+    selectedProjectId, setSelectedProjectId, isInitialized,
+    projects, project, projectId,
+    setCurrentProject, isMock, isLoading,
+    subscription, accessInfo,
+  ]);
+
+  return (
+    <ProjectContext.Provider value={contextValue}>
+      {children}
+    </ProjectContext.Provider>
+  );
+}
+
+export function useCurrentProject() {
+  const context = React.useContext(ProjectContext);
+  if (!context) {
+    throw new Error('useCurrentProject must be used within a ProjectProvider');
+  }
+  // Simply return the context — all data is computed in the Provider
+  return context;
 }

@@ -129,8 +129,7 @@ const ArchiveImageThumbnail: React.FC<{
 
 export const PersonalFilesScreen = () => {
   const { allowed, loading: roleLoading } = useRequireRole(['owner', 'manager', 'inspector']);
-  const { project, projectId, isLoading: projectLoading } = useCurrentProject();
-  const identity = useQuery(api.users.currentIdentity, {});
+  const { project, projectId, isLoading: projectLoading, identity } = useCurrentProject();
   const { isProOrPremium } = useSubscription();
 
   const archivePerms = useQuery(
@@ -631,7 +630,7 @@ export const PersonalFilesScreen = () => {
     }
   };
 
-  if (identity === undefined || roleLoading || projectLoading || (projectId && archivePerms === undefined)) return <AccessLoading />;
+  if (!identity || roleLoading || projectLoading || (projectId && archivePerms === undefined)) return <AccessLoading />;
   if (!allowed) return <AccessDenied message="המסמכים האישיים זמינים לבעל הפרויקט, מנהל עבודה ומפקח בלבד." />;
   if (!projectId) return <AccessDenied message="יש לבחור פרויקט פעיל לפני ניהול ארכיון הפרויקט." />;
   if (!isOwner && !canPhotos && !canDocs) {

@@ -295,10 +295,9 @@ import { useAppNotify } from '../hooks/useAppNotify';
 export const BOQScreen = () => {
   const navigate = useNavigate();
   const { allowed, loading: roleLoading } = useRequireRole(['owner', 'manager', 'inspector', 'contractor']);
-  const { projectId } = useCurrentProject();
+  const { projectId, accessInfo } = useCurrentProject();
   const { notify } = useAppNotify();
   const { isProOrPremium } = useSubscription();
-  const accessInfo = useQuery(api.projects.getProjectAccessInfo, projectId ? { projectId } : "skip");
   const canViewBudget = accessInfo?.canViewBudget ?? false;
 
   const dbBoq = useQuery(api.queries.listBoq, projectId && allowed ? { projectId } : "skip");

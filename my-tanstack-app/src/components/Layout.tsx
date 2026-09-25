@@ -10,7 +10,6 @@ import { useConvexAuth, useQuery, useMutation } from 'convex/react'
 import { useAuthActions } from '@convex-dev/auth/react'
 import { api } from '../../convex/_generated/api'
 import { useRequireRole } from '~/hooks/useRequireRole'
-import { useSubscription } from '~/hooks/useSubscription'
 import { useBottomNavShortcuts } from '~/hooks/useBottomNavShortcuts'
 import { SupportModal } from './SupportModal'
 import { UpgradeModalHost, openUpgradeModal } from './UpgradeModalHost'
@@ -272,7 +271,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const currentPath = routerState.location.pathname
   const navigate = useNavigate()
   const [tweaksOpen, setTweaksOpen] = React.useState(false)
-  const { project, projects, hasMultipleProjects, isLoading: isProjectLoading } = useCurrentProject()
+  const { project, projects, hasMultipleProjects, isLoading: isProjectLoading, accessInfo, subscription } = useCurrentProject()
   const { isAuthenticated, isLoading } = useConvexAuth()
   // Track whether auth has fully initialized — prevents flash-redirect to login
   // on cold start (e.g. when opening from a push notification with no open tab).
@@ -286,7 +285,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       return () => clearTimeout(timer)
     }
   }, [isLoading, authStabilized])
-  const { role: resolvedRole } = useRequireRole(ALL_ROLES)
+  const { role: resolvedRole, identity } = useRequireRole(ALL_ROLES)
   const userRole = resolvedRole ?? 'owner'
   const [shortcuts] = useBottomNavShortcuts()
   const currentBottomNav = React.useMemo(() => {
@@ -298,13 +297,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       .filter(Boolean) as typeof NAV;
     return [...fixed.map(id => NAV.find(n => n.id === id)!), ...custom];
   }, [userRole, shortcuts]);
-  const { isProOrPremium } = useSubscription()
+  const isProOrPremium = subscription?.isProOrPremium ?? false;
   const { signOut } = useAuthActions()
-  const identity = useQuery(api.users.currentIdentity, {})
-  const accessInfo = useQuery(
-    api.projects.getProjectAccessInfo,
-    project?._id ? { projectId: project._id } : "skip"
-  )
   const canViewBudget = accessInfo?.canViewBudget ?? false
   const canViewSchedule = accessInfo?.canViewSchedule ?? false
   const [menuOpen, setMenuOpen] = React.useState(false)

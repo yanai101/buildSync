@@ -1462,7 +1462,18 @@ const ZoomableViewer = ({ url }: { url: string }) => {
 
 import { useSearch } from '@tanstack/react-router';
 
+const useIsDesktop = () => {
+  const [isDesktop, setIsDesktop] = React.useState(window.innerWidth >= 768);
+  React.useEffect(() => {
+    const handleResize = () => setIsDesktop(window.innerWidth >= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+  return isDesktop;
+};
+
 export const ContractorsScreen = () => {
+  const isDesktop = useIsDesktop();
   const { projectId, project } = useCurrentProject();
   const search = useSearch({ from: '/contractors', shouldThrow: false }) as { contractorId?: string } | undefined;
   const dbContractors = useQuery(api.queries.listContractors, projectId ? { projectId } : "skip");
@@ -2047,7 +2058,7 @@ export const ContractorsScreen = () => {
                 })()}
               </div>
             
-            {projectId && c._id && (
+            {isDesktop && projectId && c._id && (
               <div className="desktop-only">
                 <ContractorNotesAndDocs
                   projectId={projectId}
@@ -2176,7 +2187,7 @@ export const ContractorsScreen = () => {
               onPartialPayment={(milestone) => setPendingPartial({ contractor: c, milestone })}
               onDeletePartialPayment={handleDeletePartialPayment}
             />
-            {projectId && c._id && (
+            {!isDesktop && projectId && c._id && (
               <div id="mobile-notes-section" className="mobile-block-only">
                 <ContractorNotesAndDocs
                   projectId={projectId}

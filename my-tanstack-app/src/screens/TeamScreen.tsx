@@ -44,13 +44,12 @@ const formatExpiresIn = (ms: number): string => {
 
 export const TeamScreen = () => {
   const { allowed, loading: roleLoading } = useRequireRole(['owner']);
-  const { project } = useCurrentProject();
+  const { project, identity } = useCurrentProject();
   const projectId = project?._id as Id<'projects'> | undefined;
   const { notify } = useAppNotify();
   const { isProOrPremium } = useSubscription();
-  const currentIdentity = useQuery(api.users.currentIdentity, {});
   
-  const isProjectOwner = project ? (project as any).ownerUserId === currentIdentity?.userId || currentIdentity?.isSuperAdmin : true;
+  const isProjectOwner = project ? (project as any).ownerUserId === identity?.userId || identity?.isSuperAdmin : true;
 
   const members = useQuery(
     api.invitations.listProjectMembers,

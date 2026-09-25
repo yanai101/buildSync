@@ -15,18 +15,16 @@ import { AccessDenied, AccessLoading } from '../components/AccessDenied';
 import { useProjectFileUploader } from '../hooks/useProjectFileUploader';
 
 export const BudgetScreen = () => {
-  const { project, projectId } = useCurrentProject();
-  const currentIdentity = useQuery(api.users.currentIdentity, {});
-  const accessInfo = useQuery(api.projects.getProjectAccessInfo, projectId ? { projectId } : "skip");
+  const { project, projectId, identity, accessInfo } = useCurrentProject();
   const canView = accessInfo?.canViewBudget ?? false;
-  const accessLoading = accessInfo === undefined || currentIdentity === undefined;
+  const accessLoading = accessInfo === undefined || identity === null;
 
   const dbCats = useQuery(api.budget.listCategories, projectId && canView ? { projectId } : "skip");
   const dbExps = useQuery(api.budget.listExpenses, projectId && canView ? { projectId } : "skip");
   const updateBudgetTotal = useMutation(api.projects.updateBudgetTotal);
   const { summary, isPending: summaryPending } = useProjectBudgetSummary();
 
-  const isOwner = project ? (project as any).ownerUserId === currentIdentity?.userId || currentIdentity?.isSuperAdmin : false;
+  const isOwner = project ? (project as any).ownerUserId === identity?.userId || identity?.isSuperAdmin : false;
 
   const { data: categories, loading: catsLoading, error: catsError, refetch: catsRefetch } = useDataSource<any[]>('budget_cats', { db: dbCats as any });
   const { data: expenses, loading: expLoading, error: expError, refetch: expRefetch } = useDataSource<any[]>('expenses', { db: dbExps as any });
