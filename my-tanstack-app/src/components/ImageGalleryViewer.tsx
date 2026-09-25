@@ -236,6 +236,7 @@ export const ImageGalleryViewer: React.FC<ImageGalleryViewerProps> = ({
         </div>
 
         {/* Bottom Panel (Note display & in-viewer editor) */}
+        {(isEditingNote || currentImage?.title || currentImage?.description || onSaveNote) && (
         <div 
           style={{ 
             position: 'absolute', 
@@ -376,6 +377,7 @@ export const ImageGalleryViewer: React.FC<ImageGalleryViewerProps> = ({
             </>
           )}
         </div>
+        )}
       </motion.div>
     </AnimatePresence>
   );
