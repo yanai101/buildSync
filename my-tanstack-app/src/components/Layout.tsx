@@ -833,9 +833,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             <div>
               <div className="sidebar-project-name" style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                 <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{project?.name || "ללא פרויקט"}</span>
-                {project && identity?.role && (
+                {project?.myRole && (
                   <span style={{ fontSize: 10, background: 'rgba(255,255,255,0.1)', padding: '2px 6px', borderRadius: 4, fontWeight: 'normal', color: 'rgba(255,255,255,0.7)', whiteSpace: 'nowrap' }}>
-                    {ROLE_LABEL[identity.role] || identity.role}
+                    {ROLE_LABEL[project.myRole] || project.myRole}
                   </span>
                 )}
               </div>
@@ -891,9 +891,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                   {project?.name || "בחירת פרויקט"}
                 </span>
-                {project && identity?.role && (
+                {project?.myRole && (
                   <span style={{ flexShrink: 0, fontSize: 10, background: 'var(--border)', padding: '2px 5px', borderRadius: 6, fontWeight: 'normal', color: 'var(--text2)', whiteSpace: 'nowrap' }}>
-                    {ROLE_LABEL[identity.role] || identity.role}
+                    {ROLE_LABEL[project.myRole] || project.myRole}
                   </span>
                 )}
               </Link>
@@ -917,9 +917,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                   {project.name}
                 </span>
-                {identity?.role && (
+                {project.myRole && (
                   <span style={{ flexShrink: 0, fontSize: 10, background: 'var(--border)', padding: '2px 5px', borderRadius: 6, fontWeight: 'normal', color: 'var(--text2)', whiteSpace: 'nowrap' }}>
-                    {ROLE_LABEL[identity.role] || identity.role}
+                    {ROLE_LABEL[project.myRole] || project.myRole}
                   </span>
                 )}
               </span>
