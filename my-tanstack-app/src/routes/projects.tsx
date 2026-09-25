@@ -221,6 +221,18 @@ function ProjectsRoute() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: '1 1 250px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <div style={{ fontSize: 20, fontWeight: 800 }}>{project.name}</div>
+                    {(project as any).myRole && (
+                      <span style={{ fontSize: 11, background: 'var(--border)', padding: '2px 6px', borderRadius: 6, color: 'var(--text2)' }}>
+                        {
+                          ({
+                            owner: 'יזם',
+                            manager: 'מנהל פרויקט',
+                            inspector: 'מפקח',
+                            contractor: 'קבלן',
+                          } as Record<string, string>)[(project as any).myRole] || (project as any).myRole
+                        }
+                      </span>
+                    )}
                     {isActive ? <span className="badge badge-active">פעיל</span> : null}
                   </div>
                   <div style={{ fontSize: 13, color: 'var(--text3)' }}>
