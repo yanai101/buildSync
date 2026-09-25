@@ -368,13 +368,9 @@ export const ImageGalleryViewer: React.FC<ImageGalleryViewerProps> = ({
                 )}
               </div>
 
-              {currentImage?.description ? (
+              {currentImage?.description && (
                 <div style={{ fontSize: 13.5, lineHeight: 1.5, color: 'rgba(255,255,255,0.92)', whiteSpace: 'pre-wrap', maxHeight: '18vh', overflowY: 'auto', paddingRight: 2 }}>
                   {currentImage.description}
-                </div>
-              ) : (
-                <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', fontStyle: 'italic' }}>
-                  אין הערה לתמונה זו
                 </div>
               )}
             </>
