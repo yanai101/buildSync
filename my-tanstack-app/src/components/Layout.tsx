@@ -272,6 +272,13 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate()
   const [tweaksOpen, setTweaksOpen] = React.useState(false)
   const { project, projects, hasMultipleProjects, isLoading: isProjectLoading, accessInfo, subscription } = useCurrentProject()
+  
+  const ROLE_LABEL: Record<string, string> = {
+    owner: 'יזם',
+    manager: 'מנהל פרויקט',
+    inspector: 'מפקח',
+    contractor: 'קבלן',
+  };
   const { isAuthenticated, isLoading } = useConvexAuth()
   // Track whether auth has fully initialized — prevents flash-redirect to login
   // on cold start (e.g. when opening from a push notification with no open tab).
@@ -824,7 +831,14 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           <Link to={hasMultipleProjects ? "/projects" : "/"} className="sidebar-project" style={{ textDecoration: "none" }}>
             <div className="sidebar-project-dot" />
             <div>
-              <div className="sidebar-project-name">{project?.name || "ללא פרויקט"}</div>
+              <div className="sidebar-project-name" style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{project?.name || "ללא פרויקט"}</span>
+                {project && identity?.role && (
+                  <span style={{ fontSize: 10, background: 'rgba(255,255,255,0.1)', padding: '2px 6px', borderRadius: 4, fontWeight: 'normal', color: 'rgba(255,255,255,0.7)', whiteSpace: 'nowrap' }}>
+                    {ROLE_LABEL[identity.role] || identity.role}
+                  </span>
+                )}
+              </div>
               <div className="sidebar-project-sub">
                 {project ? `${project.address} · ${project.currentStageName || 'בביצוע'}` : 'בחר פרויקט'}
               </div>
@@ -863,21 +877,25 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                   textDecoration: "none",
                   border: "1px solid var(--border)",
                   borderRadius: 10,
-                  padding: "8px 12px",
+                  padding: "6px 10px",
                   fontSize: 13,
                   color: "var(--text2)",
                   display: "inline-flex",
                   alignItems: "center",
-                  gap: 8,
+                  gap: 6,
                   background: "var(--surface)",
-                  maxWidth: 160,
-                  overflow: "hidden",
-                  whiteSpace: "nowrap",
-                  textOverflow: "ellipsis",
+                  maxWidth: 180,
                 }}
               >
-                <Icon n="layers" s={14} />
-                <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{project?.name || "בחירת פרויקט"}</span>
+                <Icon n="layers" s={14} style={{ flexShrink: 0 }} />
+                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {project?.name || "בחירת פרויקט"}
+                </span>
+                {project && identity?.role && (
+                  <span style={{ flexShrink: 0, fontSize: 10, background: 'var(--border)', padding: '2px 5px', borderRadius: 6, fontWeight: 'normal', color: 'var(--text2)', whiteSpace: 'nowrap' }}>
+                    {ROLE_LABEL[identity.role] || identity.role}
+                  </span>
+                )}
               </Link>
             ) : project ? (
               <span
@@ -885,20 +903,25 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 style={{
                   border: "1px solid var(--border)",
                   borderRadius: 10,
-                  padding: "8px 12px",
+                  padding: "6px 10px",
                   fontSize: 13,
                   color: "var(--text2)",
+                  display: "inline-flex",
                   alignItems: "center",
-                  gap: 8,
+                  gap: 6,
                   background: "var(--surface)",
-                  maxWidth: 160,
-                  overflow: "hidden",
-                  whiteSpace: "nowrap",
-                  textOverflow: "ellipsis",
+                  maxWidth: 180,
                 }}
               >
-                <Icon n="layers" s={14} />
-                <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{project.name}</span>
+                <Icon n="layers" s={14} style={{ flexShrink: 0 }} />
+                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {project.name}
+                </span>
+                {identity?.role && (
+                  <span style={{ flexShrink: 0, fontSize: 10, background: 'var(--border)', padding: '2px 5px', borderRadius: 6, fontWeight: 'normal', color: 'var(--text2)', whiteSpace: 'nowrap' }}>
+                    {ROLE_LABEL[identity.role] || identity.role}
+                  </span>
+                )}
               </span>
             ) : null}
             {!isProOrPremium && (
