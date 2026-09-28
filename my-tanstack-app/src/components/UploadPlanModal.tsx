@@ -22,7 +22,7 @@ export function UploadPlanModal({ onClose }: { onClose: () => void }) {
   const { notify } = useAppNotify();
   const uploadPlan = usePlanUploader(projectId);
   
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [name, setName] = useState('');
   const [category, setCategory] = useState(CATEGORIES[0].value);
   const [stageIds, setStageIds] = useState<string[]>([]);
@@ -34,36 +34,47 @@ export function UploadPlanModal({ onClose }: { onClose: () => void }) {
   const contractors = useQuery(api.queries.listContractors, projectId ? { projectId } : 'skip') || [];
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0];
-    if (selectedFile) {
-      setFile(selectedFile);
-      // Auto-fill name from file
-      const nameWithoutExt = selectedFile.name.split('.').slice(0, -1).join('.');
-      if (!name) {
-        setName(nameWithoutExt);
+    if (e.target.files && e.target.files.length > 0) {
+      const selectedFiles = Array.from(e.target.files);
+      setFiles(selectedFiles);
+      
+      if (selectedFiles.length === 1) {
+        const nameWithoutExt = selectedFiles[0].name.split('.').slice(0, -1).join('.');
+        if (!name) setName(nameWithoutExt);
       }
     }
   };
 
   const handleUpload = async () => {
-    if (!file || !name) {
-      notify({ kind: 'error', title: 'יש למלא שם ולבחור קובץ' });
+    if (files.length === 0 || (files.length === 1 && !name)) {
+      notify({ kind: 'error', title: 'יש לבחור קבצים (ושם לתוכנית)' });
       return;
     }
     try {
       setIsUploading(true);
-      await uploadPlan({
-        file,
-        name,
-        category,
-        stageIds: stageIds as any,
-        sharedWithContractorIds: sharedWithContractorIds as any,
-        onProgress: setProgress
-      });
-      notify({ kind: 'success', title: 'התוכנית הועלתה בהצלחה' });
+      let successCount = 0;
+      for (let i = 0; i < files.length; i++) {
+        const currentFile = files[i];
+        const planName = files.length === 1 ? name : currentFile.name.replace(/\.[^/.]+$/, "");
+        
+        await uploadPlan({
+          file: currentFile,
+          name: planName,
+          category,
+          stageIds: stageIds as any,
+          sharedWithContractorIds: sharedWithContractorIds as any,
+          onProgress: (pct) => {
+             const baseProgress = (i / files.length) * 100;
+             const currentProgress = (pct / files.length);
+             setProgress(baseProgress + currentProgress);
+          }
+        });
+        successCount++;
+      }
+      notify({ kind: 'success', title: `הועלו ${successCount} תוכניות בהצלחה` });
       onClose();
     } catch (err: any) {
-      notify({ kind: 'error', title: err.message || 'שגיאה בהעלאת התוכנית' });
+      notify({ kind: 'error', title: err.message || 'שגיאה בהעלאת התוכניות' });
       setIsUploading(false);
     }
   };
@@ -92,17 +103,18 @@ export function UploadPlanModal({ onClose }: { onClose: () => void }) {
             borderRadius: 12,
             padding: 24,
             cursor: isUploading ? 'not-allowed' : 'pointer',
-            background: file ? 'var(--accent-light)' : 'var(--surface-2)',
+            background: files.length > 0 ? 'var(--accent-light)' : 'var(--surface-2)',
             transition: 'all 0.2s',
             opacity: isUploading ? 0.7 : 1
           }}>
-            <Icon n={file ? "check-circle" : "upload-cloud"} s={32} c={file ? "var(--accent)" : "var(--text3)"} />
+            <Icon n={files.length > 0 ? "check-circle" : "upload-cloud"} s={32} c={files.length > 0 ? "var(--accent)" : "var(--text3)"} />
             <div style={{ marginTop: 12, fontWeight: 600, color: 'var(--text1)' }}>
-              {file ? file.name : "לחץ לבחירת קובץ"}
+              {files.length === 1 ? files[0].name : files.length > 1 ? `נבחרו ${files.length} קבצים` : "לחץ לבחירת קבצים"}
             </div>
-            {!file && <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 4 }}>עד 25MB</div>}
+            {files.length === 0 && <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 4 }}>ניתן לבחור מספר קבצים ביחד (עד 25MB לקובץ)</div>}
             <input 
               type="file" 
+              multiple
               accept="image/*,application/pdf" 
               onChange={handleFileChange}
               disabled={isUploading}
@@ -111,15 +123,22 @@ export function UploadPlanModal({ onClose }: { onClose: () => void }) {
           </label>
         </div>
 
-        <div>
-          <label style={{ display: 'block', marginBottom: 6, fontWeight: 600, fontSize: 13, color: 'var(--text2)' }}>שם התוכנית</label>
-          <Input 
-            value={name} 
-            onChange={(e: any) => setName(e.target.value)} 
-            placeholder="לדוגמה: תוכנית אדריכלית קומת קרקע" 
-            disabled={isUploading}
-          />
-        </div>
+        {files.length <= 1 && (
+          <div>
+            <label style={{ display: 'block', marginBottom: 6, fontWeight: 600, fontSize: 13, color: 'var(--text2)' }}>שם התוכנית</label>
+            <Input 
+              value={name} 
+              onChange={(e: any) => setName(e.target.value)} 
+              placeholder="לדוגמה: תוכנית אדריכלית קומת קרקע" 
+              disabled={isUploading}
+            />
+          </div>
+        )}
+        {files.length > 1 && (
+          <div style={{ fontSize: 13, color: 'var(--text3)', background: 'var(--surface-2)', padding: '8px 12px', borderRadius: 8 }}>
+            💡 שמות התוכניות יוגדרו אוטומטית לפי שמות הקבצים המקוריים.
+          </div>
+        )}
 
         <div>
           <label style={{ display: 'block', marginBottom: 6, fontWeight: 600, fontSize: 13, color: 'var(--text2)' }}>קטגוריה</label>
@@ -231,7 +250,7 @@ export function UploadPlanModal({ onClose }: { onClose: () => void }) {
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 12 }}>
           <Btn variant="outline" onClick={onClose} disabled={isUploading}>ביטול</Btn>
-          <Btn variant="primary" onClick={handleUpload} disabled={isUploading || !file || !name}>
+          <Btn variant="primary" onClick={handleUpload} disabled={isUploading || files.length === 0 || (files.length === 1 && !name)}>
             {isUploading ? 'מעלה...' : 'העלה תוכנית'}
           </Btn>
         </div>
