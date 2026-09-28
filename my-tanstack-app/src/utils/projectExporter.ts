@@ -9,6 +9,7 @@ import {
 
 export type ExportSections = {
   dailyLogs: boolean;
+  plans: boolean;
   photos: boolean;
   stages: boolean;
   contractors: boolean;

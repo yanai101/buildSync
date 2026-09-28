@@ -14,6 +14,7 @@ import { useRequireRole } from '../hooks/useRequireRole';
 import { useSubscription } from '../hooks/useSubscription';
 import { useAppNotify } from '../hooks/useAppNotify';
 import { AccessDenied, AccessLoading } from '../components/AccessDenied';
+import { StagePlans } from '../components/StagePlans';
 
 import { useNavigate } from '@tanstack/react-router';
 
@@ -1425,6 +1426,8 @@ export const StagesScreen = () => {
                               );
                             })}
                           </div>
+                          
+                          <StagePlans stageId={(s as any)._id as Id<'stages'>} />
                         </div>
 
                         {canViewBudget && (

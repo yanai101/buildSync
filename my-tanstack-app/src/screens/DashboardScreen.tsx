@@ -10,6 +10,7 @@ import { BudgetSummaryCards } from '../components/BudgetSummaryCards';
 import { useRequireRole } from '../hooks/useRequireRole';
 import { useCurrentProject } from '../hooks/useCurrentProject';
 import { DashboardCategoryBreakdown } from '../components/DashboardCategoryBreakdown';
+import { DashboardPlansWidget } from '../components/DashboardPlansWidget';
 
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
@@ -658,6 +659,13 @@ export const DashboardScreen = () => {
                 ))}
               </div>
             </motion.div>
+
+            {/* Plans Widget */}
+            {projectId && (
+              <motion.div variants={itemVariants}>
+                <DashboardPlansWidget projectId={projectId} />
+              </motion.div>
+            )}
 
             {/* Activity Feed — Timeline Style */}
             <motion.div variants={itemVariants} className="card">

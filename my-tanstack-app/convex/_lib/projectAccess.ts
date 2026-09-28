@@ -236,3 +236,41 @@ export const requireProjectFeature = async (
     throw new Error(`לבעל הפרויקט אין מנוי המאפשר שימוש בפיצ'ר זה (${feature})`);
   }
 };
+
+export const canUserViewPlans = async (ctx: Ctx, projectId: Id<'projects'>): Promise<boolean> => {
+  const userId = await getAuthUserId(ctx);
+  if (!userId) return false;
+
+  const [user, project] = await Promise.all([
+    ctx.db.get(userId),
+    ctx.db.get(projectId),
+  ]);
+
+  if (!project) return false;
+
+  // Owner and SuperAdmin always have full access
+  if (project.ownerUserId === userId || user?.isSuperAdmin) return true;
+
+  // Manager (default: true)
+  if (project.managerUserId === userId) {
+    return project.managerCanViewPlans !== false;
+  }
+
+  // Inspector (default: true)
+  if (project.inspectorUserId === userId) {
+    return project.inspectorCanViewPlans !== false;
+  }
+
+  // Contractor (default: false — must be explicitly granted)
+  const contractorRecord = await ctx.db
+    .query('contractors')
+    .withIndex('by_project', (q) => q.eq('projectId', projectId))
+    .filter((q) => q.eq(q.field('userId'), userId))
+    .first();
+
+  if (contractorRecord) {
+    return contractorRecord.canViewPlans === true;
+  }
+
+  return false;
+};

@@ -130,6 +130,8 @@ export const zProject = {
   inspectorCanViewArchiveDocs: z.boolean().optional(),
   managerCanViewArchivePhotos: z.boolean().optional(),
   managerCanViewArchiveDocs: z.boolean().optional(),
+  managerCanViewPlans: z.boolean().optional(),
+  inspectorCanViewPlans: z.boolean().optional(),
 };
 
 export const zProjectRoom = {
@@ -230,6 +232,7 @@ export const zContractor = {
   includesVat: z.boolean().optional(),
   canViewBudget: z.boolean().optional(),
   canViewSchedule: z.boolean().optional(),
+  canViewPlans: z.boolean().optional(),
 };
 
 export const zContractorPaymentMilestone = {
@@ -347,6 +350,7 @@ export const zProjectInvitation = {
   allowScheduleView: z.boolean().optional(),
   allowArchivePhotos: z.boolean().optional(),
   allowArchiveDocs: z.boolean().optional(),
+  allowPlansView: z.boolean().optional(),
 };
 
 export const zPersonalFile = {
@@ -730,5 +734,51 @@ export const zMortgageDraw = {
   notes: z.string().optional(),
   // Link to auto-created FundingTransaction (set when status='received').
   fundingTransactionId: zid('fundingTransactions').optional(),
+};
+
+// ── Project Plans (תוכניות בנייה) ─────────────────────────────────────────────
+
+export const zPlanCategory = z.enum([
+  'architectural',   // אדריכלות
+  'structural',      // קונסטרוקציה
+  'electrical',      // חשמל
+  'plumbing',        // אינסטלציה
+  'mechanical',      // מיזוג אוויר
+  'landscape',       // פיתוח וגינון
+  'general',         // כללי
+  'other',           // אחר
+]);
+
+export const zProjectPlan = {
+  projectId: zid('projects'),
+  storageId: zid('_storage'),
+  name: z.string(),
+  description: z.string().optional(),
+  category: zPlanCategory,
+  stageIds: z.array(zid('stages')),
+
+  // File metadata
+  originalName: z.string(),
+  storedName: z.string(),
+  originalMimeType: z.string(),
+  storedMimeType: z.string(),
+  originalSize: z.number(),
+  storedSize: z.number(),
+  pageCount: z.number().optional(),
+
+  // Versioning
+  version: z.number(),
+  parentPlanId: zid('projectPlans').optional(),
+  isLatest: z.boolean(),
+
+  // Thumbnail (first page of PDF rendered as WebP)
+  thumbnailStorageId: zid('_storage').optional(),
+
+  // Metadata
+  uploaderUserId: zid('users'),
+  uploadedAt: z.number(),
+
+  // Granular sharing to contractors (empty = none shared)
+  sharedWithContractorIds: z.array(zid('contractors')).optional(),
 };
 

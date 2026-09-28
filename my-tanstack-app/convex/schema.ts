@@ -265,6 +265,13 @@ export default defineSchema({
     .index('by_project', ['projectId'])
     .index('by_source', ['fundingSourceId']),
 
+  // ── Project Plans (תוכניות בנייה) ──────────────────────────────────────────
+  projectPlans: defineTable(zodToConvexFields(s.zProjectPlan))
+    .index('by_project', ['projectId'])
+    .index('by_project_category', ['projectId', 'category'])
+    .index('by_project_latest', ['projectId', 'isLatest'])
+    .index('by_parent', ['parentPlanId']),
+
   // ── AI Quote Comparison ───────────────────────────────────────────────────
 
   // Normalized JSON extracted from a quote file (PDF/Word) — saved once per file,

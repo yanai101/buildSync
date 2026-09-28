@@ -28,6 +28,7 @@ import { Route as OrdersRouteImport } from './routes/orders'
 import { Route as PermitsRouteImport } from './routes/permits'
 import { Route as PersonalFilesRouteImport } from './routes/personal-files'
 import { Route as PhotosRouteImport } from './routes/photos'
+import { Route as PlansRouteImport } from './routes/plans'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as ProjectsRouteImport } from './routes/projects'
 import { Route as QuotesRouteImport } from './routes/quotes'
@@ -140,6 +141,11 @@ const PhotosRoute = PhotosRouteImport.update({
   path: '/photos',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PlansRoute = PlansRouteImport.update({
+  id: '/plans',
+  path: '/plans',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PrivacyRoute = PrivacyRouteImport.update({
   id: '/privacy',
   path: '/privacy',
@@ -241,6 +247,7 @@ export interface FileRoutesByFullPath {
   '/permits': typeof PermitsRoute
   '/personal-files': typeof PersonalFilesRoute
   '/photos': typeof PhotosRoute
+  '/plans': typeof PlansRoute
   '/privacy': typeof PrivacyRoute
   '/projects': typeof ProjectsRoute
   '/quotes': typeof QuotesRoute
@@ -278,6 +285,7 @@ export interface FileRoutesByTo {
   '/permits': typeof PermitsRoute
   '/personal-files': typeof PersonalFilesRoute
   '/photos': typeof PhotosRoute
+  '/plans': typeof PlansRoute
   '/privacy': typeof PrivacyRoute
   '/projects': typeof ProjectsRoute
   '/quotes': typeof QuotesRoute
@@ -316,6 +324,7 @@ export interface FileRoutesById {
   '/permits': typeof PermitsRoute
   '/personal-files': typeof PersonalFilesRoute
   '/photos': typeof PhotosRoute
+  '/plans': typeof PlansRoute
   '/privacy': typeof PrivacyRoute
   '/projects': typeof ProjectsRoute
   '/quotes': typeof QuotesRoute
@@ -355,6 +364,7 @@ export interface FileRouteTypes {
     | '/permits'
     | '/personal-files'
     | '/photos'
+    | '/plans'
     | '/privacy'
     | '/projects'
     | '/quotes'
@@ -392,6 +402,7 @@ export interface FileRouteTypes {
     | '/permits'
     | '/personal-files'
     | '/photos'
+    | '/plans'
     | '/privacy'
     | '/projects'
     | '/quotes'
@@ -429,6 +440,7 @@ export interface FileRouteTypes {
     | '/permits'
     | '/personal-files'
     | '/photos'
+    | '/plans'
     | '/privacy'
     | '/projects'
     | '/quotes'
@@ -467,6 +479,7 @@ export interface RootRouteChildren {
   PermitsRoute: typeof PermitsRoute
   PersonalFilesRoute: typeof PersonalFilesRoute
   PhotosRoute: typeof PhotosRoute
+  PlansRoute: typeof PlansRoute
   PrivacyRoute: typeof PrivacyRoute
   ProjectsRoute: typeof ProjectsRoute
   QuotesRoute: typeof QuotesRoute
@@ -620,6 +633,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PhotosRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/plans': {
+      id: '/plans'
+      path: '/plans'
+      fullPath: '/plans'
+      preLoaderRoute: typeof PlansRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/privacy': {
       id: '/privacy'
       path: '/privacy'
@@ -755,6 +775,7 @@ const rootRouteChildren: RootRouteChildren = {
   PermitsRoute: PermitsRoute,
   PersonalFilesRoute: PersonalFilesRoute,
   PhotosRoute: PhotosRoute,
+  PlansRoute: PlansRoute,
   PrivacyRoute: PrivacyRoute,
   ProjectsRoute: ProjectsRoute,
   QuotesRoute: QuotesRoute,

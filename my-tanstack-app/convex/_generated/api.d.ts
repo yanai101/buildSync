@@ -43,6 +43,7 @@ import type * as personalFiles from "../personalFiles.js";
 import type * as photos from "../photos.js";
 import type * as projectExport from "../projectExport.js";
 import type * as projectFiles from "../projectFiles.js";
+import type * as projectPlans from "../projectPlans.js";
 import type * as projects from "../projects.js";
 import type * as push from "../push.js";
 import type * as pushActions from "../pushActions.js";
@@ -100,6 +101,7 @@ declare const fullApi: ApiFromModules<{
   photos: typeof photos;
   projectExport: typeof projectExport;
   projectFiles: typeof projectFiles;
+  projectPlans: typeof projectPlans;
   projects: typeof projects;
   push: typeof push;
   pushActions: typeof pushActions;

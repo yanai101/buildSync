@@ -383,6 +383,31 @@ export const TeamScreen = () => {
     );
   };
 
+  const handleTogglePlansPermission = async (
+    role: 'manager' | 'inspector',
+    canView: boolean
+  ) => {
+    if (!projectId) return;
+    try {
+      await updateArchivePermission({
+        projectId,
+        role,
+        canViewPlans: canView,
+      });
+      await notify({
+        title: 'הרשאה עודכנה בהצלחה',
+        body: 'הרשאת צפייה בתוכניות עודכנה',
+        kind: 'success',
+      });
+    } catch (err) {
+      await notify({
+        title: 'עדכון הרשאה נכשל',
+        body: err instanceof Error ? err.message : 'אירעה שגיאה',
+        kind: 'error',
+      });
+    }
+  };
+
   const handleRemoveMember = (role: 'manager' | 'inspector', name: string) => {
     openConfirmDialog(
       'הסרת חבר צוות',
@@ -472,6 +497,12 @@ export const TeamScreen = () => {
                 ? (val) => void handleToggleArchiveDocsPermission('manager', val)
                 : undefined
             }
+            canViewPlans={members?.manager?.canViewPlans}
+            onTogglePlans={
+              members?.manager
+                ? (val) => void handleTogglePlansPermission('manager', val)
+                : undefined
+            }
             onRemove={
               members?.manager
                 ? () => handleRemoveMember('manager', members.manager!.name)
@@ -504,6 +535,12 @@ export const TeamScreen = () => {
             onToggleArchiveDocs={
               members?.inspector
                 ? (val) => void handleToggleArchiveDocsPermission('inspector', val)
+                : undefined
+            }
+            canViewPlans={members?.inspector?.canViewPlans}
+            onTogglePlans={
+              members?.inspector
+                ? (val) => void handleTogglePlansPermission('inspector', val)
                 : undefined
             }
             onRemove={
@@ -999,6 +1036,8 @@ const MemberRow = ({
   onToggleArchivePhotos,
   canViewArchiveDocs,
   onToggleArchiveDocs,
+  canViewPlans,
+  onTogglePlans,
   onRemove,
 }: {
   roleLabel: string;
@@ -1012,6 +1051,8 @@ const MemberRow = ({
   onToggleArchivePhotos?: (val: boolean) => void;
   canViewArchiveDocs?: boolean;
   onToggleArchiveDocs?: (val: boolean) => void;
+  canViewPlans?: boolean;
+  onTogglePlans?: (val: boolean) => void;
   onRemove?: () => void;
 }) => (
   <div
@@ -1075,6 +1116,17 @@ const MemberRow = ({
             style={{ width: 14, height: 14, cursor: 'pointer' }}
           />
           מסמכי ארכיון
+        </label>
+      )}
+      {name && onTogglePlans !== undefined && (
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, cursor: 'pointer', userSelect: 'none', color: 'var(--text2)' }}>
+          <input
+            type="checkbox"
+            checked={canViewPlans}
+            onChange={(e) => onTogglePlans(e.target.checked)}
+            style={{ width: 14, height: 14, cursor: 'pointer' }}
+          />
+          תוכניות
         </label>
       )}
       {onRemove && (

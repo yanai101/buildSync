@@ -35,6 +35,7 @@ export const NAV = [
   { id: "/permits",       label: "רישוי והיתרים",     icon: "folder", section: "ניהול", roles: OWNER_MANAGER_INSPECTOR },
   { id: "/daily-logs",    label: "יומן עבודה", icon: "calendar",  section: "תיעוד",   roles: ALL_ROLES },
   { id: "/photos",        label: "תמונות",     icon: "camera",    section: "תיעוד",   roles: ALL_ROLES },
+  { id: "/plans",         label: "תוכניות",    icon: "layers",    section: "תיעוד",   roles: ALL_ROLES },
   { id: "/notes",         label: "הודעות אישיות",      icon: "message",   section: "תיעוד",   roles: ALL_ROLES },
   { id: "/personal-files",label: "ארכיון הפרויקט",icon: "folder", section: "תיעוד",  roles: OWNER_MANAGER_INSPECTOR },
   { id: "/budget",        label: "תקציב",      icon: "chart",     section: "פיננסי",  roles: OWNER_ONLY },

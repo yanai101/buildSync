@@ -511,6 +511,7 @@ export const listProjectMembers = query({
             canViewSchedule: project.managerCanViewSchedule !== false,
             canViewArchivePhotos: project.managerCanViewArchivePhotos === true,
             canViewArchiveDocs: project.managerCanViewArchiveDocs === true,
+            canViewPlans: project.managerCanViewPlans !== false,
           }
         : null,
       inspector: inspector
@@ -522,6 +523,7 @@ export const listProjectMembers = query({
             canViewSchedule: project.inspectorCanViewSchedule !== false,
             canViewArchivePhotos: project.inspectorCanViewArchivePhotos === true,
             canViewArchiveDocs: project.inspectorCanViewArchiveDocs === true,
+            canViewPlans: project.inspectorCanViewPlans !== false,
           }
         : null,
       contractors: contractors.map((c) => ({
@@ -612,6 +614,7 @@ export const updateMemberArchivePermission = mutation({
     role: v.union(v.literal('manager'), v.literal('inspector')),
     canViewArchivePhotos: v.optional(v.boolean()),
     canViewArchiveDocs: v.optional(v.boolean()),
+    canViewPlans: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     await requireProjectOwner(ctx, args.projectId);
@@ -624,12 +627,18 @@ export const updateMemberArchivePermission = mutation({
       if (args.canViewArchiveDocs !== undefined) {
         patchData.managerCanViewArchiveDocs = args.canViewArchiveDocs;
       }
+      if (args.canViewPlans !== undefined) {
+        patchData.managerCanViewPlans = args.canViewPlans;
+      }
     } else if (args.role === 'inspector') {
       if (args.canViewArchivePhotos !== undefined) {
         patchData.inspectorCanViewArchivePhotos = args.canViewArchivePhotos;
       }
       if (args.canViewArchiveDocs !== undefined) {
         patchData.inspectorCanViewArchiveDocs = args.canViewArchiveDocs;
+      }
+      if (args.canViewPlans !== undefined) {
+        patchData.inspectorCanViewPlans = args.canViewPlans;
       }
     }
 
