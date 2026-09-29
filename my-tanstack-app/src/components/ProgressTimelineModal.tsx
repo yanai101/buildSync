@@ -4,6 +4,7 @@ import { api } from '../../convex/_generated/api';
 import type { Id } from '../../convex/_generated/dataModel';
 import { Modal, Icon, Btn, FeedbackModal, ConfirmDialog } from './Shared';
 import { useProjectFileUploader } from '../hooks/useProjectFileUploader';
+import { useRequireRole } from '../hooks/useRequireRole';
 
 interface ProgressTimelineModalProps {
   projectId: Id<'projects'>;
@@ -18,6 +19,7 @@ export const ProgressTimelineModal: React.FC<ProgressTimelineModalProps> = ({
   onClose,
   onCoverChanged,
 }) => {
+  const { allowed: isOwner } = useRequireRole(['owner']);
   const photos = useQuery(api.photos.getProgressPhotos, { projectId });
   const setCoverPhoto = useMutation(api.projects.setCoverPhoto);
   const uploadHeroProgressPhoto = useMutation(api.photos.uploadHeroProgressPhoto);
@@ -140,77 +142,79 @@ export const ProgressTimelineModal: React.FC<ProgressTimelineModalProps> = ({
       <Modal title="יומן התקדמות הבנייה בתמונות" onClose={onClose} width={740}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           {/* Quick upload bar */}
-          <div
-            style={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: 12,
-              padding: '14px 18px',
-              background: 'var(--surface-2)',
-              borderRadius: 14,
-              border: '1px solid var(--border)',
-            }}
-          >
-            <div style={{ flex: '1 1 240px' }}>
-              <input
-                type="text"
-                placeholder={currentStageName ? `תיאור קצר (לדוגמה: "סיום יציקה ב-${currentStageName}")` : 'תיאור קצר לתמונה (שלט, יציקה, שלד...)'}
-                value={photoLabel}
-                onChange={(e) => setPhotoLabel(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '9px 12px',
-                  borderRadius: 8,
-                  border: '1px solid var(--border)',
-                  background: 'var(--surface)',
-                  color: 'var(--text1)',
-                  fontSize: 13,
-                  outline: 'none',
-                }}
-              />
+          {isOwner && (
+            <div
+              style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 12,
+                padding: '14px 18px',
+                background: 'var(--surface-2)',
+                borderRadius: 14,
+                border: '1px solid var(--border)',
+              }}
+            >
+              <div style={{ flex: '1 1 240px' }}>
+                <input
+                  type="text"
+                  placeholder={currentStageName ? `תיאור קצר (לדוגמה: "סיום יציקה ב-${currentStageName}")` : 'תיאור קצר לתמונה (שלט, יציקה, שלד...)'}
+                  value={photoLabel}
+                  onChange={(e) => setPhotoLabel(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '9px 12px',
+                    borderRadius: 8,
+                    border: '1px solid var(--border)',
+                    background: 'var(--surface)',
+                    color: 'var(--text1)',
+                    fontSize: 13,
+                    outline: 'none',
+                  }}
+                />
+              </div>
+              <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+                <input
+                  ref={cameraInputRef}
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  style={{ display: 'none' }}
+                  onChange={handleFileChange}
+                />
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  style={{ display: 'none' }}
+                  onChange={handleFileChange}
+                />
+                {/* Camera snap option — strictly visible on MOBILE ONLY */}
+                <Btn
+                  size="sm"
+                  className="mobile-only"
+                  onClick={() => cameraInputRef.current?.click()}
+                  disabled={uploading}
+                  style={{ alignItems: 'center', gap: 6 }}
+                >
+                  <Icon n="camera" s={14} />
+                  <span>{uploading ? 'מעלה...' : 'צלם כעת'}</span>
+                </Btn>
+                {/* File upload option — visible on both desktop & mobile */}
+                <Btn
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                >
+                  <Icon n="image" s={14} />
+                  <span>{uploading ? 'מעלה...' : 'בחר תמונה'}</span>
+                </Btn>
+              </div>
             </div>
-            <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-              <input
-                ref={cameraInputRef}
-                type="file"
-                accept="image/*"
-                capture="environment"
-                style={{ display: 'none' }}
-                onChange={handleFileChange}
-              />
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                style={{ display: 'none' }}
-                onChange={handleFileChange}
-              />
-              {/* Camera snap option — strictly visible on MOBILE ONLY */}
-              <Btn
-                size="sm"
-                className="mobile-only"
-                onClick={() => cameraInputRef.current?.click()}
-                disabled={uploading}
-                style={{ alignItems: 'center', gap: 6 }}
-              >
-                <Icon n="camera" s={14} />
-                <span>{uploading ? 'מעלה...' : 'צלם כעת'}</span>
-              </Btn>
-              {/* File upload option — visible on both desktop & mobile */}
-              <Btn
-                size="sm"
-                variant="secondary"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploading}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
-              >
-                <Icon n="image" s={14} />
-                <span>{uploading ? 'מעלה...' : 'בחר תמונה'}</span>
-              </Btn>
-            </div>
-          </div>
+          )}
 
           {/* Timeline Photos List */}
           {photos === undefined ? (
@@ -361,42 +365,46 @@ export const ProgressTimelineModal: React.FC<ProgressTimelineModalProps> = ({
                       <span>צפה</span>
                     </button>
 
-                    {p.isCover ? (
-                      <Btn
-                        size="sm"
-                        variant="outline"
-                        onClick={handleRemoveCover}
-                        style={{ color: 'var(--text3)' }}
-                        title="בטל קיבוע כתמונת שער"
-                      >
-                        הסר קיבוע
-                      </Btn>
-                    ) : (
-                      <Btn size="sm" variant="secondary" onClick={() => handleSetCover(p._id)}>
-                        קבע כשער
-                      </Btn>
-                    )}
+                    {isOwner && (
+                      <>
+                        {p.isCover ? (
+                          <Btn
+                            size="sm"
+                            variant="outline"
+                            onClick={handleRemoveCover}
+                            style={{ color: 'var(--text3)' }}
+                            title="בטל קיבוע כתמונת שער"
+                          >
+                            הסר קיבוע
+                          </Btn>
+                        ) : (
+                          <Btn size="sm" variant="secondary" onClick={() => handleSetCover(p._id)}>
+                            קבע כשער
+                          </Btn>
+                        )}
 
-                    {/* Delete Photo Button */}
-                    <button
-                      onClick={() => setPhotoToDelete(p._id)}
-                      title="מחק תמונה זו"
-                      style={{
-                        background: 'transparent',
-                        border: '1px solid var(--border)',
-                        color: 'var(--danger)',
-                        borderRadius: 8,
-                        width: 30,
-                        height: 30,
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        cursor: 'pointer',
-                        transition: 'all 0.15s',
-                      }}
-                    >
-                      <Icon n="trash" s={14} />
-                    </button>
+                        {/* Delete Photo Button */}
+                        <button
+                          onClick={() => setPhotoToDelete(p._id)}
+                          title="מחק תמונה זו"
+                          style={{
+                            background: 'transparent',
+                            border: '1px solid var(--border)',
+                            color: 'var(--danger)',
+                            borderRadius: 8,
+                            width: 30,
+                            height: 30,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            transition: 'all 0.15s',
+                          }}
+                        >
+                          <Icon n="trash" s={14} />
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               ))}

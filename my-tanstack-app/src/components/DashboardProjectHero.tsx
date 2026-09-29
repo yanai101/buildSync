@@ -6,6 +6,7 @@ import type { Id } from '../../convex/_generated/dataModel';
 import { Icon, ProgressBar, Btn, FeedbackModal } from './Shared';
 import { ProgressTimelineModal } from './ProgressTimelineModal';
 import { useProjectFileUploader } from '../hooks/useProjectFileUploader';
+import { useRequireRole } from '../hooks/useRequireRole';
 
 interface DashboardProjectHeroProps {
   project: {
@@ -45,6 +46,8 @@ export const DashboardProjectHero: React.FC<DashboardProjectHeroProps> = ({ proj
       return next;
     });
   };
+
+  const { allowed: isOwner } = useRequireRole(['owner']);
 
   const [showTimelineModal, setShowTimelineModal] = React.useState(false);
   const [currentPhotoIdx, setCurrentPhotoIdx] = React.useState<number | null>(null);
@@ -232,26 +235,28 @@ export const DashboardProjectHero: React.FC<DashboardProjectHeroProps> = ({ proj
                 <Icon n="home" s={24} />
 
                 {/* Subtle pencil edit badge */}
-                <div
-                  style={{
-                    position: 'absolute',
-                    bottom: -3,
-                    left: -3,
-                    background: 'var(--accent)',
-                    color: '#fff',
-                    borderRadius: '50%',
-                    width: 20,
-                    height: 20,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    boxShadow: '0 2px 6px rgba(0,0,0,0.25)',
-                    border: '2px solid var(--surface)',
-                  }}
-                  title="ערוך / הוסף תמונת בית"
-                >
-                  <Icon n="edit" s={11} />
-                </div>
+                {isOwner && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      bottom: -3,
+                      left: -3,
+                      background: 'var(--accent)',
+                      color: '#fff',
+                      borderRadius: '50%',
+                      width: 20,
+                      height: 20,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      boxShadow: '0 2px 6px rgba(0,0,0,0.25)',
+                      border: '2px solid var(--surface)',
+                    }}
+                    title="ערוך / הוסף תמונת בית"
+                  >
+                    <Icon n="edit" s={11} />
+                  </div>
+                )}
               </div>
 
               <div>
@@ -339,27 +344,29 @@ export const DashboardProjectHero: React.FC<DashboardProjectHeroProps> = ({ proj
                     </div>
 
                     {/* Subtle pencil edit badge */}
-                    <div
-                      style={{
-                        position: 'absolute',
-                        bottom: -3,
-                        left: -3,
-                        background: 'var(--accent)',
-                        color: '#fff',
-                        borderRadius: '50%',
-                        width: 20,
-                        height: 20,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        boxShadow: '0 2px 6px rgba(0,0,0,0.25)',
-                        border: '2px solid var(--surface)',
-                        zIndex: 2,
-                      }}
-                      title="ערוך תמונת שער"
-                    >
-                      <Icon n="edit" s={11} />
-                    </div>
+                    {isOwner && (
+                      <div
+                        style={{
+                          position: 'absolute',
+                          bottom: -3,
+                          left: -3,
+                          background: 'var(--accent)',
+                          color: '#fff',
+                          borderRadius: '50%',
+                          width: 20,
+                          height: 20,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          boxShadow: '0 2px 6px rgba(0,0,0,0.25)',
+                          border: '2px solid var(--surface)',
+                          zIndex: 2,
+                        }}
+                        title="ערוך תמונת שער"
+                      >
+                        <Icon n="edit" s={11} />
+                      </div>
+                    )}
                   </div>
 
                   <div>
@@ -505,25 +512,27 @@ export const DashboardProjectHero: React.FC<DashboardProjectHeroProps> = ({ proj
 
                     {/* Actions: Edit (Pencil) + Collapse */}
                     <div style={{ display: 'flex', gap: 6, marginRight: 'auto' }}>
-                      <button
-                        onClick={() => setShowTimelineModal(true)}
-                        title="ערוך תמונת שער / פתח יומן התקדמות"
-                        style={{
-                          background: 'rgba(0,0,0,0.65)',
-                          backdropFilter: 'blur(8px)',
-                          color: '#fff',
-                          border: '1px solid rgba(255,255,255,0.2)',
-                          borderRadius: '50%',
-                          width: 28,
-                          height: 28,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          cursor: 'pointer',
-                        }}
-                      >
-                        <Icon n="edit" s={13} />
-                      </button>
+                      {isOwner && (
+                        <button
+                          onClick={() => setShowTimelineModal(true)}
+                          title="ערוך תמונת שער / פתח יומן התקדמות"
+                          style={{
+                            background: 'rgba(0,0,0,0.65)',
+                            backdropFilter: 'blur(8px)',
+                            color: '#fff',
+                            border: '1px solid rgba(255,255,255,0.2)',
+                            borderRadius: '50%',
+                            width: 28,
+                            height: 28,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          <Icon n="edit" s={13} />
+                        </button>
+                      )}
                       <button
                         onClick={toggleCollapsed}
                         title="כווץ לתצוגה קומפקטית"
