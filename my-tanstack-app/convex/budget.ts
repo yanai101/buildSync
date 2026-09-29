@@ -99,6 +99,76 @@ export const addCategory = mutation({
   },
 });
 
+// Adds selected "commonly forgotten" costs as pending expenses (the estimate),
+// creating their phase categories when missing. Existing category budgets are
+// left untouched, and items already present (same description) are skipped.
+export const addPlannedCosts = mutation({
+  args: {
+    projectId: v.id('projects'),
+    items: v.array(
+      v.object({
+        category: v.string(),
+        color: v.string(),
+        description: v.string(),
+        amount: v.number(),
+      }),
+    ),
+  },
+  handler: async (ctx, args) => {
+    await requireProjectBudgetView(ctx, args.projectId);
+    if (args.items.length > 100) throw new ConvexError('Too many items');
+
+    const categories = await ctx.db
+      .query('budgetCategories')
+      .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
+      .take(500);
+    const existingDescriptions = new Set<string>();
+    for await (const expense of ctx.db
+      .query('expenses')
+      .withIndex('by_project', (q) => q.eq('projectId', args.projectId))) {
+      existingDescriptions.add(expense.description);
+    }
+
+    const categoryIds = new Map(categories.map((c) => [c.name, c._id]));
+    let sortOrder = categories.length;
+    const today = new Date().toISOString().slice(0, 10);
+    let added = 0;
+
+    for (const item of args.items) {
+      if (existingDescriptions.has(item.description)) continue;
+      existingDescriptions.add(item.description);
+
+      let categoryId = categoryIds.get(item.category);
+      if (!categoryId) {
+        const phaseBudget = args.items
+          .filter((i) => i.category === item.category)
+          .reduce((sum, i) => sum + Math.max(0, i.amount), 0);
+        categoryId = await ctx.db.insert('budgetCategories', {
+          projectId: args.projectId,
+          name: item.category,
+          budget: phaseBudget,
+          spent: 0,
+          color: item.color,
+          sortOrder: sortOrder++,
+        });
+        categoryIds.set(item.category, categoryId);
+      }
+
+      await ctx.db.insert('expenses', {
+        projectId: args.projectId,
+        description: item.description,
+        amount: Math.max(0, item.amount),
+        expenseDate: today,
+        status: 'ממתין',
+        categoryId,
+      });
+      added++;
+    }
+
+    return { added };
+  },
+});
+
 export const addExpense = mutation({
   args: {
     projectId: v.id('projects'),
