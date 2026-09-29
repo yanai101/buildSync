@@ -44,7 +44,9 @@ export function DefaultCatchBoundary({ error }: ErrorComponentProps) {
     const reloadKey = 'chunk_reload_attempted';
     if (sessionStorage.getItem(reloadKey)) {
       // Already tried once — avoid infinite reload loop
-      sessionStorage.removeItem(reloadKey);
+      // We purposefully DO NOT remove the key here. If we remove it, the next manual refresh
+      // will trigger an auto-reload again, causing a confusing loop.
+      // sessionStorage is cleared when the tab is closed anyway.
       
       // On mobile PWAs (iOS especially), window.location.reload() doesn't clear SW cache.
       // We must forcefully unregister it so the next manual tap will work.
