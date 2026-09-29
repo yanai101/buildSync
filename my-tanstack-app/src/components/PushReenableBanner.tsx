@@ -35,6 +35,7 @@ export function PushReenableBanner({ show, onReenable, onDismiss }: { show: bool
           </div>
           <div style={{ flex: 1, fontSize: 13, color: 'var(--text1)', lineHeight: 1.5 }}>
             ההתראות כובו בעקבות עדכון האפליקציה
+            <div style={{ fontSize: 11, color: 'var(--text2)' }}>סגירה תסתיר את ההודעה ל-30 יום</div>
           </div>
           <button
             onClick={onReenable}
@@ -44,7 +45,8 @@ export function PushReenableBanner({ show, onReenable, onDismiss }: { show: bool
           </button>
           <button
             onClick={onDismiss}
-            aria-label="סגור"
+            aria-label="הסתר ל-30 יום"
+            title="הסתר ל-30 יום"
             style={{ background: 'none', border: 'none', color: 'var(--text2)', cursor: 'pointer', padding: 4, flexShrink: 0 }}
           >
             <X size={18} />

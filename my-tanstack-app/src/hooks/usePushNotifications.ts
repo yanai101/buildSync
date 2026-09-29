@@ -35,7 +35,17 @@ function subscriptionToSaveArgs(subscription: PushSubscription) {
 // unregistered by an older stale-chunk recovery), since both leave
 // permission === 'granted' with no subscription.
 const PUSH_OPTED_OUT_KEY = 'buildsync:push-opted-out';
-const PUSH_REENABLE_DISMISSED_KEY = 'buildsync:push-reenable-dismissed';
+// Stores the timestamp until which the re-enable banner stays hidden.
+const PUSH_REENABLE_SNOOZE_KEY = 'buildsync:push-reenable-snoozed-until';
+const PUSH_REENABLE_SNOOZE_MS = 30 * 24 * 60 * 60 * 1000;
+
+function isReenableSnoozed() {
+  try {
+    return Date.now() < Number(localStorage.getItem(PUSH_REENABLE_SNOOZE_KEY) || '0');
+  } catch {
+    return false;
+  }
+}
 
 function readFlag(key: string) {
   try {
@@ -109,7 +119,7 @@ export function usePushSubscriptionSync() {
             if (args) await saveSubscription(args);
           } catch (e) {
             console.warn('Silent push re-subscribe failed; asking user', e);
-            if (!readFlag(PUSH_REENABLE_DISMISSED_KEY)) setNeedsReenable(true);
+            if (!isReenableSnoozed()) setNeedsReenable(true);
           }
           return;
         }
@@ -135,7 +145,9 @@ export function usePushSubscriptionSync() {
   };
 
   const dismiss = () => {
-    writeFlag(PUSH_REENABLE_DISMISSED_KEY, true);
+    try {
+      localStorage.setItem(PUSH_REENABLE_SNOOZE_KEY, String(Date.now() + PUSH_REENABLE_SNOOZE_MS));
+    } catch {}
     setNeedsReenable(false);
   };
 
