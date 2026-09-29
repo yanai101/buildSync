@@ -30,16 +30,50 @@ function subscriptionToSaveArgs(subscription: PushSubscription) {
   };
 }
 
+// Device-level flag set when the user deliberately turns push off via the
+// toggle. Distinguishes "opted out" from "subscription lost" (e.g. the SW was
+// unregistered by an older stale-chunk recovery), since both leave
+// permission === 'granted' with no subscription.
+const PUSH_OPTED_OUT_KEY = 'buildsync:push-opted-out';
+const PUSH_REENABLE_DISMISSED_KEY = 'buildsync:push-reenable-dismissed';
+
+function readFlag(key: string) {
+  try {
+    return localStorage.getItem(key) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function writeFlag(key: string, on: boolean) {
+  try {
+    if (on) localStorage.setItem(key, '1');
+    else localStorage.removeItem(key);
+  } catch {}
+}
+
+function subscribeRegistration(registration: ServiceWorkerRegistration) {
+  return registration.pushManager.subscribe({
+    userVisibleOnly: true,
+    applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+  });
+}
+
 /**
  * Re-claims this browser's push subscription for the currently logged-in user.
  * Without this, on a shared device the subscription stays tied to whoever
  * enabled it first, and their notifications keep arriving after they log out.
  * Mount once at the app root, inside ConvexAuthProvider.
+ *
+ * Also recovers subscriptions that were lost while permission is still
+ * granted: tries to re-subscribe silently, and if the browser requires a user
+ * gesture (iOS), returns `needsReenable` so the caller can show a prompt.
  */
 export function usePushSubscriptionSync() {
   const { isAuthenticated } = useConvexAuth();
   const saveSubscription = useMutation(api.push.saveSubscription);
   const removeSubscription = useMutation(api.push.removeSubscription);
+  const [needsReenable, setNeedsReenable] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -47,8 +81,8 @@ export function usePushSubscriptionSync() {
 
     navigator.serviceWorker
       .getRegistration('/sw.js')
-      .then(async (registration) => {
-        if (!registration) return;
+      .then(async (existing) => {
+        const registration = existing ?? (await navigator.serviceWorker.register('/sw.js'));
 
         const subscription = await registration.pushManager.getSubscription();
 
@@ -66,7 +100,19 @@ export function usePushSubscriptionSync() {
           return;
         }
 
-        if (!subscription) return;
+        if (!subscription) {
+          if (Notification.permission !== 'granted' || readFlag(PUSH_OPTED_OUT_KEY)) return;
+          try {
+            await navigator.serviceWorker.ready;
+            const restored = await subscribeRegistration(registration);
+            const args = subscriptionToSaveArgs(restored);
+            if (args) await saveSubscription(args);
+          } catch (e) {
+            console.warn('Silent push re-subscribe failed; asking user', e);
+            if (!readFlag(PUSH_REENABLE_DISMISSED_KEY)) setNeedsReenable(true);
+          }
+          return;
+        }
         const args = subscriptionToSaveArgs(subscription);
         if (args) return saveSubscription(args);
       })
@@ -74,6 +120,26 @@ export function usePushSubscriptionSync() {
         console.error('Failed to sync push subscription to current user', err);
       });
   }, [isAuthenticated, saveSubscription, removeSubscription]);
+
+  // Must be called from a user gesture (tap) for iOS to allow it.
+  const reenable = async () => {
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      const subscription = await subscribeRegistration(registration);
+      const args = subscriptionToSaveArgs(subscription);
+      if (args) await saveSubscription(args);
+      setNeedsReenable(false);
+    } catch (e) {
+      console.error('Failed to re-enable push notifications', e);
+    }
+  };
+
+  const dismiss = () => {
+    writeFlag(PUSH_REENABLE_DISMISSED_KEY, true);
+    setNeedsReenable(false);
+  };
+
+  return { needsReenable, reenable, dismiss };
 }
 
 export function usePushNotifications() {
@@ -112,10 +178,7 @@ export function usePushNotifications() {
 
       const registration = await navigator.serviceWorker.ready;
       
-      const subscription = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
-      });
+      const subscription = await subscribeRegistration(registration);
 
       const args = subscriptionToSaveArgs(subscription);
       if (!args) {
@@ -124,6 +187,7 @@ export function usePushNotifications() {
 
       await saveSubscription(args);
 
+      writeFlag(PUSH_OPTED_OUT_KEY, false);
       setIsSubscribed(true);
     } catch (err) {
       console.error('Failed to subscribe to push notifications', err);
@@ -143,6 +207,7 @@ export function usePushNotifications() {
       if (subscription) {
         await removeSubscription({ endpoint: subscription.endpoint });
         await subscription.unsubscribe();
+        writeFlag(PUSH_OPTED_OUT_KEY, true);
         setIsSubscribed(false);
       }
     } catch (err) {

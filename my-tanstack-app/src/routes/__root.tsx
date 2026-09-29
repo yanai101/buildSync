@@ -50,11 +50,12 @@ export const Route = createRootRoute({
 
 import { ProjectProvider } from '~/hooks/useCurrentProject'
 import { usePushSubscriptionSync } from '~/hooks/usePushNotifications'
+import { PushReenableBanner } from '~/components/PushReenableBanner'
 import { usePendingInviteRedeem } from '~/hooks/usePendingInviteRedeem'
 
 function PushSubscriptionSync() {
-  usePushSubscriptionSync()
-  return null
+  const { needsReenable, reenable, dismiss } = usePushSubscriptionSync()
+  return <PushReenableBanner show={needsReenable} onReenable={reenable} onDismiss={dismiss} />
 }
 
 function PendingInviteRedeem() {
