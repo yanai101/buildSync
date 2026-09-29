@@ -19,7 +19,7 @@ function PrivacyScreen() {
         
         <div style={{ fontSize: '1.1rem', lineHeight: 1.8, color: '#ccc' }}>
           <p style={{ marginBottom: 20 }}>
-            ברוכים הבאים למערכת BuildSync. פרטיות המשתמשים שלנו חשובה לנו מאוד. מסמך זה מפרט כיצד אנו אוספים, משתמשים ושומרים על המידע שלך בעת השימוש באפליקציה.
+            ברוכים הבאים למערכת BuildSync. המערכת מופעלת ומנוהלת ע״י ינאי אדרי ונריה זמירי (ירוחם, ישראל). פרטיות המשתמשים שלנו עומדת בראש סדר העדיפויות שלנו. מסמך זה מפרט כיצד אנו אוספים, משתמשים ושומרים על המידע שלך בעת השימוש באפליקציה ובשירותים הנלווים.
           </p>
 
           <h2 style={{ fontSize: '1.5rem', color: '#fff', marginTop: 30, marginBottom: 15 }}>1. איסוף מידע</h2>
@@ -64,16 +64,27 @@ function PrivacyScreen() {
             אנו עשויים לעדכן את מדיניות הפרטיות מעת לעת. במקרה של שינוי מהותי, נודיע על כך למשתמשים דרך המערכת או באמצעות דוא"ל.
           </p>
 
-          <h2 style={{ fontSize: '1.5rem', color: '#fff', marginTop: 30, marginBottom: 15 }}>6. צור קשר</h2>
-          <p style={{ marginBottom: 20 }}>
-            אם יש לך שאלות או בקשות בנוגע למדיניות פרטיות זו, תוכל לפנות אלינו באמצעות דוא"ל לכתובת:{' '}
-            <a href="mailto:support@buildsync.co.il" style={{ color: '#3B82F6', textDecoration: 'none' }}>
-              support@buildsync.co.il
-            </a>
+          <h2 style={{ fontSize: '1.5rem', color: '#fff', marginTop: 30, marginBottom: 15 }}>6. יצירת קשר ובירורים</h2>
+          <p style={{ marginBottom: 12 }}>
+            אם יש לך שאלות או בקשות בנוגע למדיניות פרטיות זו, מימוש זכויותיך או בקשה למחיקת מידע, ניתן לפנות אלינו ישירות:
           </p>
+          <ul style={{ paddingRight: 20, margin: '0 0 20px', listStyleType: 'disc' }}>
+            <li style={{ marginBottom: 8 }}>
+              דוא"ל תמיכה ופרטיות:{' '}
+              <a href="mailto:support@buildsync.co.il" style={{ color: '#3B82F6', textDecoration: 'none' }}>
+                support@buildsync.co.il
+              </a>
+            </li>
+            <li>
+              פניות ובירורים (נריה זמירי):{' '}
+              <a href="https://wa.me/972505074064" style={{ color: '#3B82F6', textDecoration: 'none' }}>
+                050-5074064 (טלפון / וואטסאפ)
+              </a>
+            </li>
+          </ul>
 
           <p style={{ marginTop: 40, color: '#888', fontSize: '0.9rem' }}>
-            עודכן לאחרונה: 4 ביולי, 2026
+            עודכן לאחרונה: {new Date().toLocaleDateString('he-IL')}
           </p>
         </div>
       </div>

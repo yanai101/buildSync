@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>אודות BuildSync - האנשים שמאחורי הפלטפורמה</title>
+  <meta name="description" content="הכירו את ינאי אדרי ונריה זמירי, היזמים מירוחם שמאחורי מערכת BuildSync לניהול פרויקטי בנייה ושיפוצים.">
+  <link rel="icon" type="image/png" href="/favicon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0a0a0c;
+      --card-bg: rgba(19, 19, 24, 0.7);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --accent: #E07A38;
+      --accent-hover: #c96525;
+      --accent-gradient: linear-gradient(135deg, #E07A38 0%, #B45309 100%);
+      --text1: #ffffff;
+      --text2: #cccccc;
+      --text3: #888888;
+      --success: #10B981;
+      --blue: #3B82F6;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg);
+      background-image: 
+        radial-gradient(circle at 15% 15%, rgba(224, 122, 56, 0.08) 0%, transparent 40%),
+        radial-gradient(circle at 85% 75%, rgba(59, 130, 246, 0.06) 0%, transparent 40%),
+        linear-gradient(180deg, rgba(10,10,12,0.85) 0%, rgba(10,10,12,0.98) 100%);
+      background-attachment: fixed;
+      color: var(--text1);
+      font-family: 'Heebo', sans-serif;
+      line-height: 1.6;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    /* HEADER */
+    header {
+      padding: 24px 5%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      background: rgba(10, 10, 12, 0.8);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand img {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      object-fit: cover;
+    }
+
+    .brand-name {
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      direction: ltr;
+    }
+
+    .brand-name span {
+      color: var(--accent);
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .nav-link {
+      color: var(--text2);
+      font-size: 14px;
+      font-weight: 600;
+      transition: color 0.2s;
+    }
+
+    .nav-link:hover {
+      color: #fff;
+    }
+
+    .btn-login {
+      color: #fff;
+      font-size: 14px;
+      font-weight: 700;
+      padding: 8px 18px;
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      transition: all 0.2s;
+    }
+
+    .btn-login:hover {
+      background: rgba(255, 255, 255, 0.12);
+      border-color: rgba(255, 255, 255, 0.3);
+    }
+
+    /* MAIN CONTENT */
+    main {
+      flex: 1;
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 60px 20px 100px;
+      width: 100%;
+    }
+
+    /* HERO */
+    .hero {
+      text-align: center;
+      margin-bottom: 60px;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(224, 122, 56, 0.12);
+      border: 1px solid rgba(224, 122, 56, 0.3);
+      color: var(--accent);
+      padding: 6px 16px;
+      border-radius: 30px;
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 24px;
+    }
+
+    .hero-title {
+      font-size: clamp(2.2rem, 5vw, 3.8rem);
+      font-weight: 900;
+      line-height: 1.15;
+      margin-bottom: 20px;
+      letter-spacing: -0.02em;
+    }
+
+    .hero-subtitle {
+      font-size: clamp(1.1rem, 2vw, 1.35rem);
+      color: var(--text2);
+      max-width: 750px;
+      margin: 0 auto;
+      line-height: 1.7;
+    }
+
+    /* CARDS */
+    .card {
+      background: var(--card-bg);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--card-border);
+      border-radius: 24px;
+      padding: 40px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+      margin-bottom: 36px;
+    }
+
+    .section-title {
+      font-size: 1.8rem;
+      font-weight: 800;
+      color: #fff;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .section-desc {
+      font-size: 1.15rem;
+      color: var(--text2);
+      line-height: 1.8;
+      margin-bottom: 24px;
+    }
+
+    /* FOUNDERS GRID */
+    .founders-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      margin-bottom: 36px;
+    }
+
+    .founder-card {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      border-radius: 20px;
+      padding: 32px;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.2s, border-color 0.2s;
+    }
+
+    .founder-card:hover {
+      transform: translateY(-4px);
+      border-color: rgba(255, 255, 255, 0.18);
+    }
+
+    .founder-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      right: 0;
+      left: 0;
+      height: 4px;
+      background: var(--accent-gradient);
+    }
+
+    .founder-card.neri::before {
+      background: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%);
+    }
+
+    .founder-avatar {
+      width: 68px;
+      height: 68px;
+      border-radius: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 26px;
+      font-weight: 800;
+      margin-bottom: 20px;
+      color: #fff;
+    }
+
+    .founder-avatar.yanai {
+      background: var(--accent-gradient);
+      box-shadow: 0 8px 20px rgba(224, 122, 56, 0.3);
+    }
+
+    .founder-avatar.neri {
+      background: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%);
+      box-shadow: 0 8px 20px rgba(59, 130, 246, 0.3);
+    }
+
+    .founder-name {
+      font-size: 1.5rem;
+      font-weight: 800;
+      margin-bottom: 4px;
+    }
+
+    .founder-role {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--accent);
+      margin-bottom: 16px;
+    }
+
+    .founder-card.neri .founder-role {
+      color: var(--blue);
+    }
+
+    .founder-bio {
+      color: var(--text2);
+      font-size: 1.05rem;
+      line-height: 1.65;
+      flex: 1;
+    }
+
+    .contact-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 20px;
+      padding: 10px 16px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      color: #fff;
+      transition: background 0.2s;
+    }
+
+    .contact-badge:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    /* VISION QUOTE */
+    .quote-box {
+      border-right: 4px solid var(--accent);
+      background: rgba(224, 122, 56, 0.05);
+      padding: 24px 28px;
+      border-radius: 0 16px 16px 0;
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: #fff;
+      line-height: 1.7;
+      margin: 30px 0;
+    }
+
+    /* BULLET LIST */
+    .feature-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      margin-top: 20px;
+    }
+
+    .feature-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      font-size: 1.1rem;
+      color: var(--text2);
+    }
+
+    .check-icon {
+      width: 22px;
+      height: 22px;
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: var(--success);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: bold;
+      flex-shrink: 0;
+      margin-top: 3px;
+    }
+
+    /* PRICING & TERMS HIGHLIGHT */
+    .pricing-banner {
+      background: linear-gradient(135deg, rgba(224,122,56,0.12) 0%, rgba(19,19,24,0.8) 100%);
+      border: 1px solid rgba(224, 122, 56, 0.3);
+      border-radius: 20px;
+      padding: 32px;
+      margin-top: 24px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 24px;
+    }
+
+    .price-tag {
+      font-size: 2.2rem;
+      font-weight: 900;
+      color: #fff;
+    }
+
+    .price-period {
+      font-size: 1.1rem;
+      color: var(--text3);
+      font-weight: 500;
+    }
+
+    .action-buttons {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+
+    .btn-cta {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--accent-gradient);
+      color: #fff;
+      padding: 14px 28px;
+      border-radius: 12px;
+      font-size: 1.05rem;
+      font-weight: 700;
+      transition: all 0.2s;
+      box-shadow: 0 8px 20px rgba(224, 122, 56, 0.3);
+    }
+
+    .btn-cta:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 28px rgba(224, 122, 56, 0.45);
+    }
+
+    .btn-whatsapp {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: #25D366;
+      color: #fff;
+      padding: 14px 28px;
+      border-radius: 12px;
+      font-size: 1.05rem;
+      font-weight: 700;
+      transition: all 0.2s;
+      box-shadow: 0 8px 20px rgba(37, 211, 102, 0.25);
+    }
+
+    .btn-whatsapp:hover {
+      background: #20bd5a;
+      transform: translateY(-2px);
+      box-shadow: 0 12px 28px rgba(37, 211, 102, 0.4);
+    }
+
+    /* FOOTER */
+    footer {
+      padding: 40px 5%;
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+      background: #08080a;
+      text-align: center;
+      color: var(--text3);
+      font-size: 0.95rem;
+    }
+
+    .footer-links {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      margin-top: 14px;
+      flex-wrap: wrap;
+    }
+
+    .footer-links a {
+      color: var(--text2);
+      transition: color 0.2s;
+    }
+
+    .footer-links a:hover {
+      color: var(--accent);
+    }
+
+    @media (max-width: 768px) {
+      .founders-grid {
+        grid-template-columns: 1fr;
+      }
+      .card {
+        padding: 24px;
+      }
+      .pricing-banner {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      .action-buttons {
+        width: 100%;
+      }
+      .btn-cta, .btn-whatsapp {
+        width: 100%;
+        justify-content: center;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header>
+    <a href="/" class="brand">
+      <img src="/logo.png" alt="BuildSync Logo">
+      <div class="brand-name">Build<span>Sync</span></div>
+    </a>
+    <div class="nav-actions">
+      <a href="/" class="nav-link">דף הבית</a>
+      <a href="/login" class="btn-login">כניסה למערכת</a>
+    </div>
+  </header>
+
+  <!-- MAIN -->
+  <main>
+    <!-- HERO -->
+    <div class="hero">
+      <div class="hero-badge">האנשים שמאחורי BuildSync</div>
+      <h1 class="hero-title">טכנולוגיה מתקדמת שמבינה את השטח.</h1>
+      <p class="hero-subtitle">
+        ינאי אדרי ונריה זמירי, יזמים תושבי ירוחם שבנגב. מחברים בין עולמות התוכנה והבינה המלאכותית לבין המקומות שבהם נפגשים הטיח והמלט עם ניירות השרטוט.
+      </p>
+    </div>
+
+    <!-- FOUNDERS CARDS -->
+    <div class="founders-grid">
+      <!-- YANAI -->
+      <div class="founder-card">
+        <div class="founder-avatar yanai">י</div>
+        <div class="founder-name">ינאי אדרי</div>
+        <div class="founder-role">מוביל טכנולוגי וארכיטקטורת תוכנה</div>
+        <p class="founder-bio">
+          מביא עמו ניסיון עשיר מעולמות פיתוח התוכנה, תשתיות ענן ובינה מלאכותית (AI). אחראי על תכנון המערכת, יציבותה, אבטחת המידע ופיתוח כלים דיגיטליים חכמים שפותרים את מורכבות ניהול הפרויקט בלחיצת כפתור.
+        </p>
+      </div>
+
+      <!-- NERIA -->
+      <div class="founder-card neri">
+        <div class="founder-avatar neri">נ</div>
+        <div class="founder-name">נריה זמירי</div>
+        <div class="founder-role">שיווק, תוכן וקשרי לקוחות</div>
+        <p class="founder-bio">
+          מגיע מעולמות התוכן, האינטראקציה האנושית והחיבור לשטח. אמון על הפעילות העסקית, ההדרכות, תיאום ההדגמות והקשר הישיר מול מפקחי הבנייה, הקבלנים ובעלי הנכסים.
+        </p>
+        <a href="https://wa.me/972505074064" target="_blank" rel="noopener noreferrer" class="contact-badge">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="#25D366" style="flex-shrink: 0;"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.335-1.662c1.746.953 3.71 1.456 5.711 1.457h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+          <span>שיחה ישירה עם נריה: 050-5074064</span>
+        </a>
+      </div>
+    </div>
+
+    <!-- VISION SECTION -->
+    <div class="card">
+      <h2 class="section-title">מה החזון שלנו?</h2>
+      <p class="section-desc">
+        להפוך את עולם הבנייה והשיפוצים לנגיש, יעיל, מדויק ומבוסס נתונים. לראשונה, כל הפרויקט מתועד, מפוקח ומנוהל במקום אחד — תקציב, רכש, תקלות, תיקונים, פיקוח ובקרה.
+      </p>
+
+      <div class="quote-box">
+        "אין יותר צורך לרוץ אחרי הודעות בוואטסאפ, קבצים מגובבים במחשב, במייל ובעוד 1001 מקומות. מהיום נכנסים ל-BuildSync ומנהלים הכל, מכל מקום."
+      </div>
+
+      <h3 style="font-size: 1.3rem; margin-top: 30px; margin-bottom: 12px; color: #fff;">מה תקבלו במערכת?</h3>
+      <ul class="feature-list">
+        <li>
+          <div class="check-icon">✓</div>
+          <div><strong>ממשק מלא וסלקטיבי:</strong> חיבור ישיר בין הקבלן בשטח, המפקח והלקוח — כל אחד רואה בדיוק מה שרלוונטי אליו.</div>
+        </li>
+        <li>
+          <div class="check-icon">✓</div>
+          <div><strong>מעקב תקציב חכם:</strong> שליטה בהוצאות מול אבני דרך, התראות על חריגות ונעילת תשלומים עד לאישור איכות.</div>
+        </li>
+        <li>
+          <div class="check-icon">✓</div>
+          <div><strong>תיעוד תשתיות מלא בתמונות:</strong> צילום וסימון צנרת וחשמל לפני סגירת טיח — כי לחצוב ולפגוע בצנרת שלא ידעת עליה זה לא נעים ולא משתלם.</div>
+        </li>
+        <li>
+          <div class="check-icon">✓</div>
+          <div><strong>סדר וראש שקט:</strong> יומני עבודה נעולים, מוגנים משינויים, ומופקים ל-PDF משפטי בכל רגע נתון.</div>
+        </li>
+      </ul>
+    </div>
+
+    <!-- TARGET AUDIENCE -->
+    <div class="card">
+      <h2 class="section-title">למי המערכת מיועדת?</h2>
+      <ul class="feature-list">
+        <li>
+          <div class="check-icon">✓</div>
+          <div><strong>מפקחי בנייה:</strong> לניהול שטח מדויק, הפקת יומני עבודה יומיים ופיקוח קפדני על התקדמות הקבלנים.</div>
+        </li>
+        <li>
+          <div class="check-icon">✓</div>
+          <div><strong>לקוחות שבונים או משפצים בית:</strong> לשקיפות מלאה על הכסף, פיקוח על איכות העבודה ושקט נפשי בפרויקט של החיים.</div>
+        </li>
+        <li>
+          <div class="check-icon">✓</div>
+          <div><strong>קבלנים ומנהלי עבודה:</strong> לניהול המשימות, אישורי ביצוע מהירים ומניעת ויכוחים בסוף הפרויקט.</div>
+        </li>
+        <li>
+          <div class="check-icon">✓</div>
+          <div><strong>לכל מי שמנהל פרויקט מורכב:</strong> ורוצה סדר, ארגון ושליטה מלאה.</div>
+        </li>
+      </ul>
+    </div>
+
+    <!-- PRICING & COMMERCIAL TERMS -->
+    <div class="card">
+      <h2 class="section-title">הסדר עסקי שקוף והוגן</h2>
+      <p class="section-desc">
+        אנחנו מאמינים בשקיפות מלאה — ללא אותיות קטנות, ללא התחייבויות דרקוניות, ועם התיישרות מלאה לפי חוק הגנת הצרכן.
+      </p>
+
+      <div class="pricing-banner">
+        <div>
+          <div style="color: var(--accent); font-weight: 700; font-size: 0.95rem; margin-bottom: 4px;">גרסת BuildSync Pro</div>
+          <div class="price-tag">149 ₪ <span class="price-period">/ חודש</span></div>
+          <div style="color: #aaa; font-size: 0.95rem; margin-top: 4px;">
+            או <strong>1,490 ₪ בלבד</strong> במסלול שנתי (חודשיים מתנה!)
+          </div>
+        </div>
+        <div class="action-buttons">
+          <a href="https://wa.me/972505074064?text=%D7%94%D7%99%D7%99%20%D7%A0%D7%A8%D7%99%D7%94,%20%D7%90%D7%A9%D7%9E%D7%97%20%D7%9C%D7%A7%D7%91%D7%9C%20%D7%94%D7%93%D7%92%D7%9E%D7%94%20%D7%A2%D7%9C%20BuildSync" target="_blank" rel="noopener noreferrer" class="btn-whatsapp">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink: 0;"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.335-1.662c1.746.953 3.71 1.456 5.711 1.457h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+            <span>תיאום הדגמה בוואטסאפ</span>
+          </a>
+          <a href="/login" class="btn-cta">
+            התחילו עכשיו
+          </a>
+        </div>
+      </div>
+
+      <div style="margin-top: 24px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.06); font-size: 0.95rem; color: #999; line-height: 1.7;">
+        <p>• <strong>ביטול בכל עת:</strong> ניתן לבטל את המנוי בכל שלב בקלות וללא קנסות יציאה.</p>
+        <p>• <strong>14 ימי החזר כספי מלא:</strong> בהתאם לחוק הגנת הצרכן הישראלי, ניתן לבטל את העסקה תוך 14 יום ולקבל החזר כספי מלא.</p>
+        <p>• <strong>הנתונים שייכים לכם:</strong> כל המידע, התמונות, החוזים והיומנים שמוזנים במערכת הינם בבעלותכם המלאה, מאובטחים ומוגנים.</p>
+      </div>
+    </div>
+
+    <!-- DIRECT CONTACT -->
+    <div class="card" style="text-align: center;">
+      <h2 class="section-title" style="justify-content: center;">רוצים לראות איך זה עובד?</h2>
+      <p class="section-desc" style="max-width: 600px; margin: 0 auto 30px;">
+        נשמח לערוך לכם הדגמה אישית קצרה בשיחת זום או טלפון, ולהראות לכם איך המערכת יכולה לחסוך עשרות שעות וכסף כבר בפרויקט הקרוב.
+      </p>
+      <div style="display: flex; justify-content: center; gap: 16px; flex-wrap: wrap;">
+        <a href="tel:0505074064" class="btn-cta" style="background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); box-shadow: none;">
+          📞 חייגו לנריה: 050-5074064
+        </a>
+        <a href="mailto:support@buildsync.co.il" class="btn-cta" style="background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); box-shadow: none;">
+          ✉️ דוא"ל: support@buildsync.co.il
+        </a>
+      </div>
+    </div>
+  </main>
+
+  <!-- FOOTER -->
+  <footer>
+    <div>
+      © BuildSync — פותח בישראל ע״י ינאי אדרי ונריה זמירי (ירוחם, הנגב). כל הזכויות שמורות.
+    </div>
+    <div class="footer-links">
+      <a href="/">דף הבית</a>
+      <span>|</span>
+      <a href="/terms">תנאי שימוש והסדר עסקי</a>
+      <span>|</span>
+      <a href="/privacy">מדיניות פרטיות</a>
+      <span>|</span>
+      <a href="mailto:support@buildsync.co.il">תמיכה ושירות</a>
+    </div>
+  </footer>
+
+</body>
+</html>

@@ -34,13 +34,13 @@ export const TermsScreen = () => {
           transition={{ duration: 0.5 }}
           style={{ background: '#fff', padding: '40px', borderRadius: 16, boxShadow: '0 4px 24px rgba(0,0,0,0.06)', border: '1px solid var(--border)' }}
         >
-          <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 32, color: 'var(--text1)' }}>תנאי שימוש והגבלת אחריות</h1>
+          <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 32, color: 'var(--text1)' }}>תנאי שימוש, הגבלת אחריות והסדר עסקי</h1>
           
           <div style={{ display: 'flex', flexDirection: 'column', gap: 24, color: 'var(--text2)', lineHeight: 1.6, fontSize: 15 }}>
             <section>
-              <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text1)', marginBottom: 12 }}>1. מטרת המערכת</h2>
+              <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text1)', marginBottom: 12 }}>1. זהות המפעילים ומטרת המערכת</h2>
               <p>
-                מערכת BuildSync הינה פלטפורמה טכנולוגית שנועדה לייעל, לשקף ולהקל על תהליכי ניהול ותיעוד הבנייה עבור יזמים, מפקחים, קבלנים ובעלי נכסים. המערכת נועדה לספק כלים דיגיטליים מתקדמים, אך היא אינה מהווה תחליף לייעוץ או שירות מקצועי, הנדסי, בטיחותי או משפטי.
+                מערכת BuildSync (להלן: "המערכת" או "השירות") הינה פלטפורמה טכנולוגית שנועדה לייעל, לשקף ולהקל על תהליכי ניהול ותיעוד הבנייה עבור יזמים, מפקחים, קבלנים ובעלי נכסים. המערכת מופעלת ומנוהלת ע״י ינאי אדרי ונריה זמירי (ירוחם, ישראל). המערכת נועדה לספק כלים דיגיטליים מתקדמים, אך היא אינה מהווה תחליף לייעוץ או שירות מקצועי, הנדסי, בטיחותי או משפטי.
               </p>
             </section>
 
@@ -56,6 +56,49 @@ export const TermsScreen = () => {
               <p>
                 למרות שהחומר, התמונות, יומני העבודה וההודעות מתועדים, נשמרים וזמינים לאורך הפרויקט, מפעילי BuildSync אינם, ולא יהיו, צד בשום עניין או סכסוך משפטי, מסחרי או חוזי שיתגלע בין המשתמשים במערכת (קבלנים, מפקחים, יזמים או לקוחות). המידע נשמר לצורך נוחות המשתמשים בלבד ואינו מהווה ערובה לתקינותו המשפטית בבית משפט. המערכת משמשת ככלי תיעוד ניטרלי בלבד.
               </p>
+            </section>
+
+            <section>
+              <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text1)', marginBottom: 12 }}>4. הסדר עסקי, מנויים ותשלומים</h2>
+              <p style={{ marginBottom: 10 }}>
+                המערכת מציעה מסלול שימוש בסיסי ללא תשלום (Free), וכן מסלולי פרימיום מתקדמים (Pro) הכוללים ניהול פרויקטים ללא הגבלה, הפקת יומני עבודה ל-PDF, ניהול עלויות רכש וכלים נוספים.
+              </p>
+              <ul style={{ paddingRight: 20, margin: '8px 0', listStyleType: 'disc' }}>
+                <li style={{ marginBottom: 6 }}>
+                  <strong>דמי מנוי:</strong> עלות מנוי Pro הינה 149 ₪ לחודש, או 1,490 ₪ למנוי שנתי (כולל מע״מ כחוק ככל שחל).
+                </li>
+                <li style={{ marginBottom: 6 }}>
+                  <strong>אבטחת תשלומים וחשבוניות:</strong> החיוב מבוצע בסליקה מאובטחת בהתאם לתקני האבטחה המחמירים ביותר. כנגד כל תשלום מופקת קבלה / חשבונית מס כחוק הנשלחת לכתובת הדוא״ל של המשתמש.
+                </li>
+                <li style={{ marginBottom: 6 }}>
+                  <strong>ביטול עסקה והחזר כספי (חוק הגנת הצרכן):</strong> משתמש רשאי לבטל את המנוי בכל עת. בהתאם לחוק הגנת הצרכן, ביטול עסקה שייעשה בתוך 14 ימים ממועד ההצטרפות יזכה את המשתמש בהחזר כספי מלא. לאחר 14 יום, ביטול מנוי יחול בסיום תקופת החיוב השוטפת ללא חיובים נוספים.
+                </li>
+              </ul>
+            </section>
+
+            <section>
+              <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text1)', marginBottom: 12 }}>5. בעלות על המידע ואבטחה</h2>
+              <p>
+                כלל התכנים, התמונות, המסמכים, נתוני התקציב ויומני העבודה שמועלים ע״י המשתמש למערכת הינם בבעלותו הבלעדית של המשתמש. מפעילי המערכת מתחייבים שלא לעשות כל שימוש מסחרי במידע של המשתמש, לא למכור אותו ולא להעבירו לצדדים שלישיים שלא לצורך מתן השירות הטכנולוגי השוטף.
+              </p>
+            </section>
+
+            <section>
+              <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text1)', marginBottom: 12 }}>6. שירות לקוחות ופרטי התקשרות</h2>
+              <p style={{ marginBottom: 8 }}>
+                לכל שאלה, בירור עסקי, תיאום הדגמה או בקשת תמיכה טכנית, ניתן לפנות אלינו באחד מערוצי הקשר הבאים:
+              </p>
+              <ul style={{ paddingRight: 20, margin: 0, listStyleType: 'disc' }}>
+                <li style={{ marginBottom: 6 }}>
+                  <strong>שיווק, מכירות ותיאום הדגמות:</strong> נריה זמירי – טלפון / וואטסאפ: <a href="https://wa.me/972505074064" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>050-5074064</a>
+                </li>
+                <li style={{ marginBottom: 6 }}>
+                  <strong>תמיכה טכנית ופניות שירות בדוא"ל:</strong> <a href="mailto:support@buildsync.co.il" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>support@buildsync.co.il</a>
+                </li>
+                <li>
+                  <strong>פניות ישירות במערכת:</strong> משתמשים רשומים יכולים לשלוח פנייה ישירה בכל עת באמצעות כפתור "תמיכה / יצירת קשר" המובנה במערכת.
+                </li>
+              </ul>
             </section>
             
             <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '16px 0' }} />

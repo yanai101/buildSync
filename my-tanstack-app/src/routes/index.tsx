@@ -204,7 +204,26 @@ function LandingPage() {
               />
               <div className="sidebar-logo-text" dir="ltr" style={{ fontSize: 28, color: '#fff', margin: 0 }}>Build<span style={{ color: 'var(--accent)' }}>Sync</span></div>
             </div>
-            <div style={{ display: 'flex', gap: 24, alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: 20, alignItems: 'center' }}>
+              <a
+                href="/about"
+                style={{
+                  color: '#ddd',
+                  fontWeight: 600,
+                  fontSize: 14,
+                  textDecoration: 'none',
+                  transition: 'color 0.2s',
+                  padding: '6px 12px',
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.color = 'var(--accent)';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.color = '#ddd';
+                }}
+              >
+                מי אנחנו
+              </a>
               <Link
                 to="/login"
                 style={{
@@ -785,52 +804,135 @@ function LandingPage() {
 
             <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-100px" }} variants={staggerContainer} className="card-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '30px', maxWidth: 1200, margin: '0 auto' }}>
               {/* Free Tier */}
-              <motion.div variants={fadeIn} className="info-card" style={{ background: 'linear-gradient(180deg, rgba(20,20,25,0.8) 0%, rgba(20,20,25,0.4) 100%)', border: '1px solid rgba(255,255,255,0.1)', position: 'relative', overflow: 'hidden' }}>
+              <motion.div variants={fadeIn} className="info-card" style={{ background: 'linear-gradient(180deg, rgba(20,20,25,0.8) 0%, rgba(20,20,25,0.4) 100%)', border: '1px solid rgba(255,255,255,0.1)', position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                 <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 4, background: 'var(--text3)' }} />
-                <h3 style={{ fontSize: '1.8rem', fontWeight: 800, color: '#fff', marginBottom: 8 }}>Free</h3>
-                <div style={{ color: '#aaa', marginBottom: 24, fontSize: '1.1rem' }}>מעולה כדי להתחיל וללמוד את המערכת</div>
-                <ul className="bullet-list" style={{ gap: 16 }}>
+                <h3 style={{ fontSize: '1.8rem', fontWeight: 800, color: '#fff', marginBottom: 6 }}>Free</h3>
+                <div style={{ color: '#aaa', marginBottom: 16, fontSize: '0.95rem', minHeight: 42 }}>
+                  מעולה כדי להתחיל ולהתנסות במערכת
+                </div>
+                
+                <div style={{ marginBottom: 20 }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                    <span style={{ fontSize: '2.5rem', fontWeight: 900, color: '#fff', lineHeight: 1 }}>0 ₪</span>
+                    <span style={{ fontSize: '1rem', color: '#888', fontWeight: 500 }}>/ חינם לתמיד</span>
+                  </div>
+                  <div style={{ marginTop: 8 }}>
+                    <span style={{ display: 'inline-block', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#aaa', padding: '3px 10px', borderRadius: 6, fontSize: '0.82rem', fontWeight: 600 }}>
+                      ללא צורך בכרטיס אשראי
+                    </span>
+                  </div>
+                </div>
+
+                <ul className="bullet-list" style={{ gap: 16, flex: 1, borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 20 }}>
                   <li className="bullet-item" style={{ fontSize: '1rem' }}><Icon n="check" s={20} c="var(--success)" /> <div>פרויקט אחד בלבד</div></li>
                   <li className="bullet-item" style={{ fontSize: '1rem' }}><Icon n="check" s={20} c="var(--success)" /> <div>ניהול תקציב, משימות וצ'אט בסיסי</div></li>
                   <li className="bullet-item" style={{ fontSize: '1rem', opacity: 0.5 }}><Icon n="x" s={20} c="#888" /> <div>ללא ניהול עלויות רכש</div></li>
                   <li className="bullet-item" style={{ fontSize: '1rem', opacity: 0.5 }}><Icon n="x" s={20} c="#888" /> <div>ללא יומני עבודה (Daily Logs)</div></li>
                   <li className="bullet-item" style={{ fontSize: '1rem', opacity: 0.5 }}><Icon n="x" s={20} c="#888" /> <div>ללא מעקב הזמנות מול ספקים</div></li>
                 </ul>
+
+                <div style={{ marginTop: 24 }}>
+                  <Link to="/login" className="cta-secondary" style={{ width: '100%', textAlign: 'center', display: 'block', padding: '14px', fontSize: '1.05rem', background: 'rgba(255,255,255,0.06)' }}>
+                    התחל בחינם
+                  </Link>
+                </div>
               </motion.div>
 
               {/* Pro Tier */}
-              <motion.div variants={fadeIn} className="info-card pro-tier-card" style={{ background: 'linear-gradient(180deg, rgba(224,122,56,0.15) 0%, rgba(20,20,25,0.8) 100%)', border: '1px solid rgba(224,122,56,0.3)', position: 'relative', overflow: 'hidden', transform: 'scale(1.05)', zIndex: 2 }}>
+              <motion.div variants={fadeIn} className="info-card pro-tier-card" style={{ background: 'linear-gradient(180deg, rgba(224,122,56,0.15) 0%, rgba(20,20,25,0.8) 100%)', border: '1px solid rgba(224,122,56,0.3)', position: 'relative', overflow: 'hidden', transform: 'scale(1.05)', zIndex: 2, display: 'flex', flexDirection: 'column' }}>
                 <div style={{ position: 'absolute', top: 16, left: -30, background: 'var(--accent)', color: '#fff', padding: '4px 40px', transform: 'rotate(-45deg)', fontSize: 12, fontWeight: 'bold', letterSpacing: 1, boxShadow: '0 5px 15px rgba(0,0,0,0.3)' }}>מומלץ</div>
                 <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 4, background: 'var(--accent)' }} />
-                <h3 style={{ fontSize: '1.8rem', fontWeight: 800, color: '#fff', marginBottom: 8 }}>Pro</h3>
-                <div style={{ color: '#aaa', marginBottom: 24, fontSize: '1.1rem' }}>למפקחים, קבלנים ויזמים שמנהלים שטח</div>
-                <ul className="bullet-list" style={{ gap: 16 }}>
+                
+                <h3 style={{ fontSize: '1.8rem', fontWeight: 800, color: '#fff', marginBottom: 6 }}>Pro</h3>
+                <div style={{ color: '#aaa', marginBottom: 16, fontSize: '0.95rem', minHeight: 42 }}>
+                  למפקחים, קבלנים ויזמים שמנהלים שטח
+                </div>
+
+                <div style={{ marginBottom: 20 }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                    <span style={{ fontSize: '2.5rem', fontWeight: 900, color: 'var(--accent)', lineHeight: 1 }}>149 ₪</span>
+                    <span style={{ fontSize: '1rem', color: '#ccc', fontWeight: 500 }}>/ חודש</span>
+                  </div>
+                  <div style={{ marginTop: 8 }}>
+                    <span style={{ display: 'inline-block', background: 'rgba(224,122,56,0.15)', border: '1px solid rgba(224,122,56,0.35)', color: '#FDE68A', padding: '3px 10px', borderRadius: 6, fontSize: '0.82rem', fontWeight: 700 }}>
+                      או 1,490 ₪ לשנה (חודשיים מתנה!)
+                    </span>
+                  </div>
+                </div>
+
+                <ul className="bullet-list" style={{ gap: 16, flex: 1, borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: 20 }}>
                   <li className="bullet-item" style={{ fontSize: '1rem' }}><Icon n="check" s={20} c="var(--accent)" /> <div>פרויקטים ללא הגבלה</div></li>
                   <li className="bullet-item" style={{ fontSize: '1rem' }}><Icon n="check" s={20} c="var(--accent)" /> <div>ניהול עלויות רכש אינטראקטיבי והצעות מחיר</div></li>
                   <li className="bullet-item" style={{ fontSize: '1rem' }}><Icon n="check" s={20} c="var(--accent)" /> <div>מעקב קבלת סחורות ושטרי מטען מהשטח</div></li>
                   <li className="bullet-item" style={{ fontSize: '1rem' }}><Icon n="check" s={20} c="var(--accent)" /> <div>הפקת יומני עבודה ל-PDF</div></li>
                 </ul>
-                <div style={{ marginTop: 32 }}>
-                  <Link to="/login" className="cta-btn" style={{ width: '100%', textAlign: 'center', display: 'block', padding: '16px', fontSize: '1.1rem' }}>
+
+                <div style={{ marginTop: 24, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <Link to="/login" className="cta-btn" style={{ width: '100%', textAlign: 'center', display: 'block', padding: '14px', fontSize: '1.05rem' }}>
                     הירשם עכשיו
                   </Link>
+                  <a
+                    href="https://wa.me/972505074064?text=%D7%94%D7%99%D7%99%20%D7%A0%D7%A8%D7%99%D7%94,%20%D7%90%D7%A9%D7%9E%D7%97%20%D7%9C%D7%A7%D7%91%D7%9C%20%D7%94%D7%93%D7%92%D7%9E%D7%94%20%D7%A2%D7%9C%20BuildSync"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      width: '100%',
+                      textAlign: 'center',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 8,
+                      padding: '12px',
+                      fontSize: '0.92rem',
+                      fontWeight: 700,
+                      borderRadius: 14,
+                      background: 'rgba(37, 211, 102, 0.12)',
+                      border: '1px solid rgba(37, 211, 102, 0.35)',
+                      color: '#25D366',
+                      textDecoration: 'none',
+                      transition: 'all 0.2s',
+                    }}
+                    onMouseOver={(e) => { e.currentTarget.style.background = 'rgba(37, 211, 102, 0.22)'; }}
+                    onMouseOut={(e) => { e.currentTarget.style.background = 'rgba(37, 211, 102, 0.12)'; }}
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style={{ flexShrink: 0 }}>
+                      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.335-1.662c1.746.953 3.71 1.456 5.711 1.457h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+                    </svg>
+                    <span>תיאום הדגמה עם נריה (050-5074064)</span>
+                  </a>
                 </div>
               </motion.div>
 
               {/* Premium Tier */}
-              <motion.div variants={fadeIn} className="info-card" style={{ background: 'linear-gradient(180deg, rgba(59,130,246,0.1) 0%, rgba(20,20,25,0.8) 100%)', border: '1px solid rgba(59,130,246,0.2)', position: 'relative', overflow: 'hidden' }}>
+              <motion.div variants={fadeIn} className="info-card" style={{ background: 'linear-gradient(180deg, rgba(59,130,246,0.1) 0%, rgba(20,20,25,0.8) 100%)', border: '1px solid rgba(59,130,246,0.2)', position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                 <div style={{ position: 'absolute', top: 16, left: -30, background: '#3B82F6', color: '#fff', padding: '4px 40px', transform: 'rotate(-45deg)', fontSize: 12, fontWeight: 'bold', letterSpacing: 1, boxShadow: '0 5px 15px rgba(0,0,0,0.3)' }}>בקרוב</div>
                 <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 4, background: '#3B82F6' }} />
-                <h3 style={{ fontSize: '1.8rem', fontWeight: 800, color: '#fff', marginBottom: 8 }}>Premium</h3>
-                <div style={{ color: '#aaa', marginBottom: 24, fontSize: '1.1rem' }}>למפקחים וקבלנים שרוצים לנהל חכם עם AI</div>
-                <ul className="bullet-list" style={{ gap: 16 }}>
+                
+                <h3 style={{ fontSize: '1.8rem', fontWeight: 800, color: '#fff', marginBottom: 6 }}>Premium</h3>
+                <div style={{ color: '#aaa', marginBottom: 16, fontSize: '0.95rem', minHeight: 42 }}>
+                  למפקחים וקבלנים שרוצים לנהל חכם עם AI
+                </div>
+
+                <div style={{ marginBottom: 20 }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                    <span style={{ fontSize: '2.5rem', fontWeight: 900, color: '#3B82F6', lineHeight: 1 }}>בקרוב</span>
+                  </div>
+                  <div style={{ marginTop: 8 }}>
+                    <span style={{ display: 'inline-block', background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.25)', color: '#93C5FD', padding: '3px 10px', borderRadius: 6, fontSize: '0.82rem', fontWeight: 600 }}>
+                      כולל עוזר AI מתקדם
+                    </span>
+                  </div>
+                </div>
+
+                <ul className="bullet-list" style={{ gap: 16, flex: 1, borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 20 }}>
                   <li className="bullet-item" style={{ fontSize: '1rem' }}><Icon n="check" s={20} c="#3B82F6" /> <div>כל היכולות של מסלול ה-Pro</div></li>
                   <li className="bullet-item" style={{ fontSize: '1rem' }}><Icon n="cpu" s={20} c="#3B82F6" /> <div>עוזר AI אישי שמסכם יומנים ופגישות</div></li>
                   <li className="bullet-item" style={{ fontSize: '1rem' }}><Icon n="cpu" s={20} c="#3B82F6" /> <div>תובנות אוטומטיות והמלצות לחיסכון</div></li>
                   <li className="bullet-item" style={{ fontSize: '1rem' }}><Icon n="check" s={20} c="#3B82F6" /> <div>גישה מוקדמת ליכולות AI חדשות</div></li>
                 </ul>
-                <div style={{ marginTop: 32 }}>
-                  <Link to="/login" className="cta-secondary" style={{ width: '100%', textAlign: 'center', display: 'block', padding: '16px', background: '#3B82F6', color: '#fff', border: 'none', fontSize: '1.1rem' }}>
+
+                <div style={{ marginTop: 24 }}>
+                  <Link to="/login" className="cta-secondary" style={{ width: '100%', textAlign: 'center', display: 'block', padding: '14px', background: '#3B82F6', color: '#fff', border: 'none', fontSize: '1.05rem' }}>
                     הירשם עכשיו
                   </Link>
                 </div>
@@ -873,16 +975,47 @@ function LandingPage() {
           </motion.div>
         </section>
       </main>
-      <footer style={{ padding: '60px 5%', textAlign: 'center', color: '#666', background: '#08080a', fontSize: '1rem', borderTop: '1px solid rgba(255,255,255,0.03)' }}>
-        © {new Date().getFullYear()} BuildSync. פותח במטרה לייעל את הבנייה בעולם היזמות, הקבלנות והשיפוצים. כל הזכויות שמורות.
-        <div style={{ marginTop: '16px', display: 'flex', gap: '16px', justifyContent: 'center' }}>
-          <Link to="/terms" style={{ color: '#888', textDecoration: 'none', fontSize: '0.9rem' }}>
-            תנאי שימוש והגבלת אחריות
-          </Link>
-          <span style={{ color: '#555' }}>|</span>
-          <Link to="/privacy" style={{ color: '#888', textDecoration: 'none', fontSize: '0.9rem' }}>
-            מדיניות פרטיות
-          </Link>
+      <footer style={{ padding: '60px 5%', textAlign: 'center', color: '#888', background: '#08080a', fontSize: '0.95rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+        <div style={{ maxWidth: 850, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div>
+            © {new Date().getFullYear()} BuildSync. כל הזכויות שמורות.
+          </div>
+          <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap', fontSize: '0.9rem' }}>
+            <a href="/about" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 700 }}>
+              מי אנחנו (אודות)
+            </a>
+            <span style={{ color: '#444' }}>|</span>
+            <Link to="/terms" style={{ color: '#aaa', textDecoration: 'none' }}>
+              תנאי שימוש והסדר עסקי
+            </Link>
+            <span style={{ color: '#444' }}>|</span>
+            <Link to="/privacy" style={{ color: '#aaa', textDecoration: 'none' }}>
+              מדיניות פרטיות
+            </Link>
+            <span style={{ color: '#444' }}>|</span>
+            <a
+              href="https://wa.me/972505074064"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                color: '#25D366',
+                textDecoration: 'none',
+                fontWeight: 600,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6
+              }}
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" style={{ flexShrink: 0 }}>
+                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.335-1.662c1.746.953 3.71 1.456 5.711 1.457h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+              </svg>
+              <span>וואטסאפ: 050-5074064</span>
+            </a>
+            <span style={{ color: '#444' }}>|</span>
+            <a href="mailto:support@buildsync.co.il" style={{ color: '#aaa', textDecoration: 'none' }}>
+              support@buildsync.co.il
+            </a>
+          </div>
         </div>
       </footer>
     </div>
