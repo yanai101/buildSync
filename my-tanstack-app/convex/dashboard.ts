@@ -237,8 +237,40 @@ export const getOverview = query({
       })
     );
 
+    // Resolve cover photo ONLY if explicitly set by user on project
+    let coverPhotoDoc = project.coverPhotoId ? await ctx.db.get(project.coverPhotoId) : null;
+    const progressPhotos = await ctx.db
+      .query('photos')
+      .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
+      .filter((q) => q.eq(q.field('tag'), 'התקדמות'))
+      .collect();
+
+    let resolvedCoverPhoto = null;
+    if (coverPhotoDoc) {
+      let url = coverPhotoDoc.fileUrl || null;
+      if (!url && coverPhotoDoc.projectFileId) {
+        const file = await ctx.db.get(coverPhotoDoc.projectFileId);
+        if (file) {
+          url = await ctx.storage.getUrl(file.storageId);
+        }
+      }
+      if (url) {
+        resolvedCoverPhoto = {
+          _id: coverPhotoDoc._id,
+          url,
+          label: coverPhotoDoc.label,
+          stageLabel: coverPhotoDoc.stageLabel,
+          takenOn: coverPhotoDoc.takenOn,
+        };
+      }
+    }
+
     return {
-      project,
+      project: {
+        ...project,
+        coverPhoto: resolvedCoverPhoto,
+        progressPhotosCount: progressPhotos.length,
+      },
       stats: {
         ...financialSummary,
         stagePaidTotal,

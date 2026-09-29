@@ -188,3 +188,117 @@ export const createAnnotatedVersion = mutation({
     return { versionId, versionNumber };
   },
 });
+
+export const getProgressPhotos = query({
+  args: { projectId: v.id('projects') },
+  handler: async (ctx, args) => {
+    await requireProjectFileUser(ctx, args.projectId);
+    const project = await ctx.db.get(args.projectId);
+
+    const allPhotos = await ctx.db
+      .query('photos')
+      .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
+      .collect();
+
+    // Only include photos explicitly marked for cover/hero OR currently set as cover
+    const photos = allPhotos.filter(
+      (p) => p.isCoverCandidate === true || (project?.coverPhotoId && p._id === project.coverPhotoId)
+    );
+
+    // Sort chronologically by takenOn or _creationTime
+    photos.sort((a, b) => {
+      const dateA = a.takenOn ? new Date(a.takenOn).getTime() : a._creationTime;
+      const dateB = b.takenOn ? new Date(b.takenOn).getTime() : b._creationTime;
+      return dateA - dateB;
+    });
+
+    const items = await Promise.all(
+      photos.map(async (photo) => {
+        let url = photo.fileUrl || null;
+        if (!url && photo.projectFileId) {
+          const file = await ctx.db.get(photo.projectFileId);
+          if (file) {
+            url = await ctx.storage.getUrl(file.storageId);
+          }
+        }
+        return {
+          _id: photo._id,
+          label: photo.label,
+          location: photo.location,
+          stageLabel: photo.stageLabel,
+          takenOn: photo.takenOn,
+          url,
+          isCover: project?.coverPhotoId === photo._id,
+          isCoverCandidate: photo.isCoverCandidate ?? false,
+          createdAt: photo._creationTime,
+        };
+      })
+    );
+
+    return items.filter((p): p is typeof p & { url: string } => p.url !== null);
+  },
+});
+
+export const uploadHeroProgressPhoto = mutation({
+  args: {
+    projectId: v.id('projects'),
+    projectFileId: v.id('projectFiles'),
+    label: v.string(),
+    stageLabel: v.optional(v.string()),
+    location: v.optional(v.string()),
+    setAsCover: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    const { userId } = await requireProjectFileUser(ctx, args.projectId);
+    const projectFile = await ctx.db.get(args.projectFileId);
+    if (!projectFile || projectFile.projectId !== args.projectId) {
+      throw new Error('Project file not found');
+    }
+
+    const now = new Date().toISOString().slice(0, 10);
+    const photoId = await ctx.db.insert('photos', {
+      projectId: args.projectId,
+      projectFileId: args.projectFileId,
+      takenOn: now,
+      location: (args.location ?? '').trim() || 'דאשבורד',
+      tag: 'התקדמות',
+      label: args.label.trim() || projectFile.originalName,
+      isCoverCandidate: true,
+      ...(args.stageLabel ? { stageLabel: args.stageLabel } : {}),
+      uploaderUserId: userId,
+    });
+
+    if (args.setAsCover !== false) {
+      await ctx.db.patch(args.projectId, {
+        coverPhotoId: photoId,
+      });
+    }
+
+    return photoId;
+  },
+});
+
+export const toggleCoverCandidate = mutation({
+  args: {
+    photoId: v.id('photos'),
+    isCoverCandidate: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    const photo = await ctx.db.get(args.photoId);
+    if (!photo) throw new Error('Photo not found');
+    await requireProjectFileUser(ctx, photo.projectId);
+
+    await ctx.db.patch(args.photoId, {
+      isCoverCandidate: args.isCoverCandidate,
+    });
+
+    // If removing candidate and it was the current cover photo, clear it from project
+    if (!args.isCoverCandidate) {
+      const project = await ctx.db.get(photo.projectId);
+      if (project && project.coverPhotoId === args.photoId) {
+        await ctx.db.patch(project._id, { coverPhotoId: undefined });
+      }
+    }
+  },
+});
+

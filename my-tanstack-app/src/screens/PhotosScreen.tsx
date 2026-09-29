@@ -209,6 +209,8 @@ export const PhotosScreen = () => {
   const createAnnotatedVersion = useMutation(api.photos.createAnnotatedVersion);
   const deleteProjectFile = useMutation(api.projectFiles.deleteProjectFile);
   const updatePhotoDefect = useMutation(api.mutations.updatePhotoDefect);
+  const setCoverPhotoMutation = useMutation(api.projects.setCoverPhoto);
+  const toggleCoverCandidateMutation = useMutation(api.photos.toggleCoverCandidate);
   
   const contractorsData = useQuery(api.queries.listContractors, projectId ? { projectId } : "skip");
   const contractors = React.useMemo(() => contractorsData || [], [contractorsData]);
@@ -1162,6 +1164,51 @@ export const PhotosScreen = () => {
               <span style={{fontSize:12,color:"var(--text3)"}}>{selected.stage} · {selected.location}</span>
             </div>
             <div style={{display:"flex",gap:8}}>
+              {projectId && canManagePhotos && (
+                <div style={{ display: 'inline-flex', gap: 6 }}>
+                  <Btn
+                    size="sm"
+                    variant={selected.isCoverCandidate ? "secondary" : "outline"}
+                    onClick={async () => {
+                      if (!selectedPhotoId) return;
+                      const next = !selected.isCoverCandidate;
+                      try {
+                        await toggleCoverCandidateMutation({ photoId: selectedPhotoId, isCoverCandidate: next });
+                        setSelected((prev: any) => ({ ...prev, isCoverCandidate: next }));
+                        setFeedback({
+                          title: next ? "נוספה לשער" : "הוסרה מהשער",
+                          message: next ? "התמונה זמינה כעת ביומן השער בדאשבורד." : "התמונה הוסרה מיומן השער.",
+                          type: "success",
+                        });
+                      } catch (err: any) {
+                        setFeedback({ title: "שגיאה", message: err.message, type: "error" });
+                      }
+                    }}
+                  >
+                    <Icon n="star" s={13}/> {selected.isCoverCandidate ? "מופיעה בשער" : "הוסף לשער"}
+                  </Btn>
+                  <Btn
+                    size="sm"
+                    variant="outline"
+                    onClick={async () => {
+                      if (!selectedPhotoId) return;
+                      try {
+                        await setCoverPhotoMutation({ projectId, photoId: selectedPhotoId });
+                        setSelected((prev: any) => ({ ...prev, isCoverCandidate: true }));
+                        setFeedback({
+                          title: "תמונת שער עודכנה",
+                          message: "התמונה נקבעה בהצלחה כתמונת השער הראשית של הפרויקט בדאשבורד.",
+                          type: "success",
+                        });
+                      } catch (err: any) {
+                        setFeedback({ title: "שגיאה", message: err.message, type: "error" });
+                      }
+                    }}
+                  >
+                    קבע כשער ראשי
+                  </Btn>
+                </div>
+              )}
               <Btn
                 size="sm"
                 variant="outline"

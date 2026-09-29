@@ -11,6 +11,7 @@ import { useRequireRole } from '../hooks/useRequireRole';
 import { useCurrentProject } from '../hooks/useCurrentProject';
 import { DashboardCategoryBreakdown } from '../components/DashboardCategoryBreakdown';
 import { DashboardPlansWidget } from '../components/DashboardPlansWidget';
+import { DashboardProjectHero } from '../components/DashboardProjectHero';
 
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
@@ -312,40 +313,15 @@ export const DashboardScreen = () => {
     <ScreenBoundary loading={loading} error={error} onRetry={refetch}>
       <div className="page-content">
 
-        {/* ── Page Header ── */}
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
-          style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 28, flexWrap: 'wrap', gap: 12 }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-            <div style={{
-              width: 52, height: 52, borderRadius: 16,
-              background: 'linear-gradient(135deg, var(--accent-light) 0%, var(--accent-glow-sm) 100%)',
-              color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              border: '1.5px solid var(--accent-glow-sm)', boxShadow: '0 4px 16px var(--accent-glow-sm)',
-              flexShrink: 0
-            }}>
-              <Icon n="home" s={24} />
-            </div>
-            <div>
-              <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0, letterSpacing: '-0.4px', lineHeight: 1.2 }}>
-                {project.name}
-              </h1>
-              <div style={{ fontSize: 13, color: 'var(--text3)', marginTop: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Icon n="layers" s={12} c="var(--text3)" />
-                {project.address}
-              </div>
-            </div>
+        {/* ── Page Hero & Header ── */}
+        <DashboardProjectHero project={project} />
+
+        {import.meta.env.DEV && (
+          <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+            <Btn size="sm" variant="secondary" onClick={() => seedAlert({ projectId: project._id })}>+ התראת טסט</Btn>
+            <Btn size="sm" variant="danger" onClick={() => deleteAllAlerts({ projectId: project._id })}>מחק הכל</Btn>
           </div>
-          {import.meta.env.DEV && (
-            <div style={{ display: 'flex', gap: 8 }}>
-              <Btn size="sm" variant="secondary" onClick={() => seedAlert({ projectId: project._id })}>+ התראת טסט</Btn>
-              <Btn size="sm" variant="danger" onClick={() => deleteAllAlerts({ projectId: project._id })}>מחק הכל</Btn>
-            </div>
-          )}
-        </motion.div>
+        )}
 
         {/* ── Retention Banner ── */}
         {showRetentionBanner && (

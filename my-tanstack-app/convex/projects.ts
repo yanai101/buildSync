@@ -264,6 +264,31 @@ export const deleteProject = mutation({
   }
 });
 
+export const setCoverPhoto = mutation({
+  args: {
+    projectId: v.id('projects'),
+    photoId: v.optional(v.id('photos')),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Unauthorized");
+    const project = await ctx.db.get(args.projectId);
+    if (!project) throw new Error("Project not found");
+
+    if (args.photoId) {
+      const photo = await ctx.db.get(args.photoId);
+      if (!photo || photo.projectId !== args.projectId) {
+        throw new Error("Photo not found in this project");
+      }
+      await ctx.db.patch(args.photoId, { isCoverCandidate: true });
+    }
+
+    await ctx.db.patch(args.projectId, {
+      coverPhotoId: args.photoId,
+    });
+  },
+});
+
 export const getOwnerSubscription = query({
   args: { projectId: v.id('projects') },
   handler: async (ctx, args) => {

@@ -79,4 +79,35 @@ describe('saveProjectSetup room reconciliation', () => {
     expect(remaining.map((r) => r._id)).toEqual([keptRoomId]);
     expect(orphaned).toBeNull();
   });
+
+  test('setCoverPhoto sets and updates coverPhotoId on project', async () => {
+    const t = convexTest(schema, modules);
+    const { ownerId, projectId } = await setupProject(t);
+
+    const photoId = await t.run((ctx) =>
+      ctx.db.insert('photos', {
+        projectId,
+        takenOn: '2026-09-29',
+        location: 'חזית הבית',
+        tag: 'התקדמות',
+        label: 'שלט הפרויקט',
+        uploaderUserId: ownerId,
+      }),
+    );
+
+    await t.withIdentity({ subject: ownerId }).mutation(api.projects.setCoverPhoto, {
+      projectId,
+      photoId,
+    });
+
+    const updated = await t.run((ctx) => ctx.db.get(projectId));
+    expect(updated?.coverPhotoId).toBe(photoId);
+
+    // Can also clear cover photo
+    await t.withIdentity({ subject: ownerId }).mutation(api.projects.setCoverPhoto, {
+      projectId,
+    });
+    const cleared = await t.run((ctx) => ctx.db.get(projectId));
+    expect(cleared?.coverPhotoId).toBeUndefined();
+  });
 });

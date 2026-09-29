@@ -2127,6 +2127,12 @@ export const deletePhoto = mutation({
       }
     }
 
+    // If this photo was set as the project's cover photo, clear it
+    const project = await ctx.db.get(photo.projectId);
+    if (project && project.coverPhotoId === args.photoId) {
+      await ctx.db.patch(project._id, { coverPhotoId: undefined });
+    }
+
     await ctx.db.delete(args.photoId);
     return { deleted: true, fileUrl: photo.fileUrl ?? null, storageDeleted };
   },

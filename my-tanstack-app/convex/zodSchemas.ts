@@ -132,6 +132,7 @@ export const zProject = {
   managerCanViewArchiveDocs: z.boolean().optional(),
   managerCanViewPlans: z.boolean().optional(),
   inspectorCanViewPlans: z.boolean().optional(),
+  coverPhotoId: zid('photos').optional(),
 };
 
 export const zProjectRoom = {
@@ -315,6 +316,7 @@ export const zPhoto = {
   priority: zPriority.optional(),
   assigneeId: zid('contractors').optional(),
   dueDate: z.string().optional(),
+  isCoverCandidate: z.boolean().optional(),
 };
 
 export const zProjectFile = {
