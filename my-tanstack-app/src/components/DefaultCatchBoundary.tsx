@@ -55,11 +55,19 @@ export function DefaultCatchBoundary({ error }: ErrorComponentProps) {
           for (let reg of regs) reg.unregister();
         });
       }
+      if ('caches' in window) {
+        caches.keys().then(keys => {
+          keys.forEach(key => caches.delete(key));
+        });
+      }
       return () => clearTimeout(timer);
     }
     
     sessionStorage.setItem(reloadKey, '1');
-    // First attempt: soft reload
+    // First attempt: clear caches before soft reload
+    if ('caches' in window) {
+      caches.keys().then(keys => keys.forEach(key => caches.delete(key)));
+    }
     window.location.reload();
     return () => clearTimeout(timer);
   }, [error]);
@@ -71,12 +79,17 @@ export function DefaultCatchBoundary({ error }: ErrorComponentProps) {
         {showManualReload && (
           <div style={{ position: 'absolute', bottom: '15%', left: 0, right: 0, display: 'flex', justifyContent: 'center', zIndex: 100000 }}>
             <button 
-              onClick={() => {
+              onClick={async () => {
                 if ('serviceWorker' in navigator) {
-                  navigator.serviceWorker.getRegistrations().then(regs => {
-                    for (let reg of regs) reg.unregister();
-                    window.location.href = window.location.pathname + '?t=' + Date.now();
-                  });
+                  try {
+                    const regs = await navigator.serviceWorker.getRegistrations();
+                    for (let reg of regs) {
+                      await reg.unregister();
+                    }
+                  } catch (e) {
+                    console.error('SW unregister failed', e);
+                  }
+                  window.location.href = window.location.pathname + '?t=' + Date.now();
                 } else {
                   window.location.href = window.location.pathname + '?t=' + Date.now();
                 }
