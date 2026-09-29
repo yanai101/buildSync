@@ -244,7 +244,8 @@ export function UploadPlanModal({ onClose }: { onClose: () => void }) {
 
         {isUploading && (
           <div style={{ marginTop: 8 }}>
-            <ProgressBar progress={progress} label="מעלה קובץ..." />
+            <div style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 6, fontWeight: 600 }}>מעלה... {Math.round(progress)}%</div>
+            <ProgressBar value={progress} height={8} color="var(--accent)" />
           </div>
         )}
 
