@@ -7,7 +7,7 @@ import {
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import * as React from 'react'
 import { ConvexAuthProvider } from '@convex-dev/auth/react'
-import { DefaultCatchBoundary } from '~/components/DefaultCatchBoundary'
+import { DefaultCatchBoundary, StaleChunkRecovery } from '~/components/DefaultCatchBoundary'
 import { NotFound } from '~/components/NotFound'
 import appCss from '~/styles/app.css?url'
 import { seo } from '~/utils/seo'
@@ -95,6 +95,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       <body suppressHydrationWarning={true}>
         <div id="root">
           <ConvexAuthProvider client={convex} storage={storage} storageNamespace="buildsync-auth">
+            <StaleChunkRecovery />
             <PushSubscriptionSync />
             <PendingInviteRedeem />
             <ProjectProvider>

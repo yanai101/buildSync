@@ -23,6 +23,29 @@ function isStaleChunkError(error: unknown): boolean {
   );
 }
 
+const RELOAD_ATTEMPTS_KEY = 'chunk_reload_attempts';
+// Set while the stale-chunk screen is showing, so the reset below doesn't
+// clear the retry counter during a failed boot.
+let staleChunkErrorShown = false;
+
+// Mounted in the root shell. Once the app has run healthily for a while,
+// reset the retry counter (otherwise a long-lived PWA session stops
+// auto-reloading after two deploys) and strip the `?t=` cache-buster.
+export function StaleChunkRecovery() {
+  React.useEffect(() => {
+    const url = new URL(window.location.href);
+    if (url.searchParams.has('t')) {
+      url.searchParams.delete('t');
+      window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash);
+    }
+    const timer = setTimeout(() => {
+      if (!staleChunkErrorShown) sessionStorage.removeItem(RELOAD_ATTEMPTS_KEY);
+    }, 10000);
+    return () => clearTimeout(timer);
+  }, []);
+  return null;
+}
+
 export function DefaultCatchBoundary({ error }: ErrorComponentProps) {
   const router = useRouter()
   const isRoot = useMatch({
@@ -41,33 +64,18 @@ export function DefaultCatchBoundary({ error }: ErrorComponentProps) {
     // If it stays on this error screen for >3 seconds, show a fallback button
     const timer = setTimeout(() => setShowManualReload(true), 3000);
     
-    const attemptsKey = 'chunk_reload_attempts';
-    const attempts = Number(sessionStorage.getItem(attemptsKey) || '0');
+    staleChunkErrorShown = true;
+    const attempts = Number(sessionStorage.getItem(RELOAD_ATTEMPTS_KEY) || '0');
 
     // Allow a couple of automatic retries (deploys can briefly leave the old
     // and new chunk hashes in an inconsistent state) before falling back to
-    // manual-only, instead of permanently disabling auto-reload after one try.
+    // the manual button. We deliberately do NOT unregister the service worker:
+    // sw.js caches nothing, and unregistering drops the push subscription.
     if (attempts >= 2) {
-      // On mobile PWAs (iOS especially), window.location.reload() doesn't clear SW cache.
-      // We must forcefully unregister it so the next manual tap will work.
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistrations().then(regs => {
-          for (let reg of regs) reg.unregister();
-        });
-      }
-      if ('caches' in window) {
-        caches.keys().then(keys => {
-          keys.forEach(key => caches.delete(key));
-        });
-      }
       return () => clearTimeout(timer);
     }
 
-    sessionStorage.setItem(attemptsKey, String(attempts + 1));
-    // Clear caches before soft reload
-    if ('caches' in window) {
-      caches.keys().then(keys => keys.forEach(key => caches.delete(key)));
-    }
+    sessionStorage.setItem(RELOAD_ATTEMPTS_KEY, String(attempts + 1));
     window.location.reload();
     return () => clearTimeout(timer);
   }, [error]);
@@ -77,27 +85,9 @@ export function DefaultCatchBoundary({ error }: ErrorComponentProps) {
       <div style={{ position: 'fixed', inset: 0, zIndex: 99999 }}>
         <AppLoadingScreen title="עדכון זמין" subtitle="טוען גרסה חדשה של האפליקציה..." />
         {showManualReload && (
-          <div style={{ position: 'absolute', bottom: '15%', left: 0, right: 0, display: 'flex', justifyContent: 'center', zIndex: 100000 }}>
+          <div style={{ position: 'absolute', bottom: '15%', left: 0, right: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, zIndex: 100000 }}>
             <button 
-              onClick={async () => {
-                if ('caches' in window) {
-                  try {
-                    const keys = await caches.keys();
-                    await Promise.all(keys.map((key) => caches.delete(key)));
-                  } catch (e) {
-                    console.error('Cache clear failed', e);
-                  }
-                }
-                if ('serviceWorker' in navigator) {
-                  try {
-                    const regs = await navigator.serviceWorker.getRegistrations();
-                    for (let reg of regs) {
-                      await reg.unregister();
-                    }
-                  } catch (e) {
-                    console.error('SW unregister failed', e);
-                  }
-                }
+              onClick={() => {
                 // Use replace (not href) so this doesn't add a back-button entry,
                 // and the cache-busting query forces a fresh document fetch.
                 window.location.replace(
@@ -118,6 +108,11 @@ export function DefaultCatchBoundary({ error }: ErrorComponentProps) {
             >
               לחץ כאן לרענון האפליקציה
             </button>
+            {/* Diagnostic: lets a user's screenshot tell a real stale chunk apart
+                from a module that fails to evaluate on their browser. */}
+            <div dir="ltr" style={{ fontSize: 10, opacity: 0.5, maxWidth: '90%', textAlign: 'center', wordBreak: 'break-word' }}>
+              {error instanceof Error ? error.message : String(error)} · {navigator.userAgent}
+            </div>
           </div>
         )}
       </div>
