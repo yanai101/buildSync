@@ -41,13 +41,13 @@ export function DefaultCatchBoundary({ error }: ErrorComponentProps) {
     // If it stays on this error screen for >3 seconds, show a fallback button
     const timer = setTimeout(() => setShowManualReload(true), 3000);
     
-    const reloadKey = 'chunk_reload_attempted';
-    if (sessionStorage.getItem(reloadKey)) {
-      // Already tried once — avoid infinite reload loop
-      // We purposefully DO NOT remove the key here. If we remove it, the next manual refresh
-      // will trigger an auto-reload again, causing a confusing loop.
-      // sessionStorage is cleared when the tab is closed anyway.
-      
+    const attemptsKey = 'chunk_reload_attempts';
+    const attempts = Number(sessionStorage.getItem(attemptsKey) || '0');
+
+    // Allow a couple of automatic retries (deploys can briefly leave the old
+    // and new chunk hashes in an inconsistent state) before falling back to
+    // manual-only, instead of permanently disabling auto-reload after one try.
+    if (attempts >= 2) {
       // On mobile PWAs (iOS especially), window.location.reload() doesn't clear SW cache.
       // We must forcefully unregister it so the next manual tap will work.
       if ('serviceWorker' in navigator) {
@@ -62,9 +62,9 @@ export function DefaultCatchBoundary({ error }: ErrorComponentProps) {
       }
       return () => clearTimeout(timer);
     }
-    
-    sessionStorage.setItem(reloadKey, '1');
-    // First attempt: clear caches before soft reload
+
+    sessionStorage.setItem(attemptsKey, String(attempts + 1));
+    // Clear caches before soft reload
     if ('caches' in window) {
       caches.keys().then(keys => keys.forEach(key => caches.delete(key)));
     }
@@ -80,6 +80,14 @@ export function DefaultCatchBoundary({ error }: ErrorComponentProps) {
           <div style={{ position: 'absolute', bottom: '15%', left: 0, right: 0, display: 'flex', justifyContent: 'center', zIndex: 100000 }}>
             <button 
               onClick={async () => {
+                if ('caches' in window) {
+                  try {
+                    const keys = await caches.keys();
+                    await Promise.all(keys.map((key) => caches.delete(key)));
+                  } catch (e) {
+                    console.error('Cache clear failed', e);
+                  }
+                }
                 if ('serviceWorker' in navigator) {
                   try {
                     const regs = await navigator.serviceWorker.getRegistrations();
@@ -89,10 +97,12 @@ export function DefaultCatchBoundary({ error }: ErrorComponentProps) {
                   } catch (e) {
                     console.error('SW unregister failed', e);
                   }
-                  window.location.href = window.location.pathname + '?t=' + Date.now();
-                } else {
-                  window.location.href = window.location.pathname + '?t=' + Date.now();
                 }
+                // Use replace (not href) so this doesn't add a back-button entry,
+                // and the cache-busting query forces a fresh document fetch.
+                window.location.replace(
+                  window.location.pathname + '?t=' + Date.now()
+                );
               }}
               style={{
                 padding: '12px 24px',
