@@ -20,7 +20,7 @@ export function PushReenableBanner({ show, onReenable, onDismiss }: { show: bool
             maxWidth: 380,
             width: 'calc(100vw - 48px)',
             background: 'var(--surface-elevated)',
-            border: '1px solid rgba(224, 122, 56, 0.2)',
+            border: '1px solid var(--accent-glow-sm)',
             borderRadius: 20,
             padding: 16,
             boxShadow: 'var(--shadow-xl), 0 0 0 1px var(--accent-glow-sm)',
@@ -45,7 +45,7 @@ export function PushReenableBanner({ show, onReenable, onDismiss }: { show: bool
           <button
             onClick={onDismiss}
             aria-label="סגור"
-            style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', padding: 4, flexShrink: 0 }}
+            style={{ background: 'none', border: 'none', color: 'var(--text2)', cursor: 'pointer', padding: 4, flexShrink: 0 }}
           >
             <X size={18} />
           </button>
