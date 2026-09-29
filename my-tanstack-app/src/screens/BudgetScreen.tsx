@@ -13,6 +13,7 @@ import { useProjectBudgetSummary } from '../hooks/useProjectBudgetSummary';
 import { useRequireRole } from '../hooks/useRequireRole';
 import { AccessDenied, AccessLoading } from '../components/AccessDenied';
 import { useProjectFileUploader } from '../hooks/useProjectFileUploader';
+import { PlannedCostsModal } from '../components/PlannedCostsModal';
 
 export const BudgetScreen = () => {
   const { project, projectId, identity, accessInfo } = useCurrentProject();
@@ -31,6 +32,7 @@ export const BudgetScreen = () => {
   const { mutate } = useDataMutation('expenses');
   
   const [addCatOpen, setAddCatOpen] = React.useState(false);
+  const [plannedCostsOpen, setPlannedCostsOpen] = React.useState(false);
   const [newExp, setNewExp] = React.useState({ desc: '', amount: '', cat: '', date: new Date().toISOString().split('T')[0] });
   const [newCat, setNewCat] = React.useState({ name: '', budget: '', color: '#F97316' });
 
@@ -41,6 +43,8 @@ export const BudgetScreen = () => {
   const [deleteExpenseConfirmId, setDeleteExpenseConfirmId] = React.useState<string | null>(null);
   const [editExpenseData, setEditExpenseData] = React.useState<any | null>(null);
   const [selectedEditReceiptFile, setSelectedEditReceiptFile] = React.useState<File | null>(null);
+  const [expStatusFilter, setExpStatusFilter] = React.useState<'all' | 'ממתין' | 'שולם'>('all');
+  const [expCatFilter, setExpCatFilter] = React.useState('');
   const [openExpMonths, setOpenExpMonths] = React.useState<Set<string>>(() => new Set([new Date().toISOString().slice(0, 7)]));
 
   const [budgetDraft, setBudgetDraft] = React.useState('');
@@ -262,9 +266,14 @@ export const BudgetScreen = () => {
               <div style={{fontSize:12.5, color:'var(--text3)', marginTop:3}}>מעקב הוצאות וקטגוריות תקציב</div>
             </div>
           </div>
-          <Btn onClick={() => setAddCatOpen(true)} variant="secondary" icon="plus">
-            הוסף קטגוריה
-          </Btn>
+          <div style={{display:'flex', gap:8, flexWrap:'wrap'}}>
+            <Btn onClick={() => setPlannedCostsOpen(true)} variant="secondary" icon="clipboard">
+              עלויות שנוטים לשכוח
+            </Btn>
+            <Btn onClick={() => setAddCatOpen(true)} variant="secondary" icon="plus">
+              הוסף קטגוריה
+            </Btn>
+          </div>
         </div>
 
         <div className="card" style={{padding:'20px 24px', marginBottom:20, display:'flex', justifyContent:'space-between', alignItems:'center', gap:16, flexWrap:'wrap', borderRight:'3px solid var(--accent)', position:'relative', overflow:'hidden'}}>
@@ -553,15 +562,65 @@ export const BudgetScreen = () => {
 
         {/* Expenses — grouped by month */}
         <div className="card">
-          <div className="card-header" style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-            <span>הוצאות</span>
-          </div>
+          {(() => {
+            const pendingExps = (expenses || []).filter((e:any) => e.status === 'ממתין');
+            const pendingTotal = pendingExps.reduce((sum:number, e:any) => sum + e.amount, 0);
+            const chip = (value: typeof expStatusFilter, label: string) => {
+              const active = expStatusFilter === value;
+              return (
+                <button
+                  key={value}
+                  onClick={() => setExpStatusFilter(value)}
+                  style={{
+                    fontSize:12, fontWeight:600, padding:'5px 12px', borderRadius:20, cursor:'pointer',
+                    border: active ? '1px solid var(--accent)' : '1px solid var(--border)',
+                    background: active ? 'var(--accent-light)' : 'transparent',
+                    color: active ? 'var(--accent)' : 'var(--text2)',
+                  }}
+                >
+                  {label}
+                </button>
+              );
+            };
+            return (
+              <div className="card-header" style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,flexWrap:"wrap"}}>
+                <span>הוצאות</span>
+                <div style={{display:'flex',gap:6,alignItems:'center',flexWrap:'wrap'}}>
+                  {chip('all', 'הכל')}
+                  {chip('ממתין', pendingExps.length ? `ממתין (${pendingExps.length} · ${fmtMoney(pendingTotal)})` : 'ממתין')}
+                  {chip('שולם', 'שולם')}
+                  <select
+                    className="bp-input"
+                    value={expCatFilter}
+                    onChange={e => setExpCatFilter(e.target.value)}
+                    style={{fontSize:12, padding:'4px 8px', width:'auto'}}
+                  >
+                    <option value="">כל הקטגוריות</option>
+                    {(categories || []).map((c:any) => <option key={c._id || c.name} value={c.name}>{c.name}</option>)}
+                  </select>
+                </div>
+              </div>
+            );
+          })()}
           <div style={{ padding: '8px 0' }}>
             {!expenses || expenses.length === 0 ? (
               <div style={{padding:40,textAlign:"center",color:"var(--text3)",fontSize:13}}>לא נמצאו הוצאות.</div>
             ) : (() => {
+              const isFiltering = expStatusFilter !== 'all' || expCatFilter !== '';
+              const filtered = expenses.filter((e:any) =>
+                (expStatusFilter === 'all' || e.status === expStatusFilter) &&
+                (!expCatFilter || e.cat === expCatFilter)
+              );
+              if (filtered.length === 0) {
+                return (
+                  <div style={{padding:40,textAlign:"center",color:"var(--text3)",fontSize:13}}>
+                    אין הוצאות שתואמות לסינון.{' '}
+                    <button onClick={() => { setExpStatusFilter('all'); setExpCatFilter(''); }} style={{background:'none',border:'none',color:'var(--accent)',cursor:'pointer',fontWeight:600,fontSize:13}}>נקה סינון</button>
+                  </div>
+                );
+              }
               // Group by year-month
-              const sorted = expenses.slice().sort((a:any,b:any) => (b._creationTime || 0) - (a._creationTime || 0));
+              const sorted = filtered.slice().sort((a:any,b:any) => (b._creationTime || 0) - (a._creationTime || 0));
               const groups: Record<string, typeof sorted> = {};
               for (const e of sorted) {
                 const d = new Date(e.date);
@@ -577,7 +636,9 @@ export const BudgetScreen = () => {
                 const [yr, mo] = monthKey.split('-');
                 const monthName = new Date(Number(yr), Number(mo)-1, 1).toLocaleDateString('he-IL', { month: 'long', year: 'numeric' });
                 const isCurrentMonth = monthKey === currentKey;
-                const isOpen = openExpMonths.has(monthKey);
+                // While filtering, show every matching month expanded so nothing hides in a closed accordion.
+                const isOpen = isFiltering || openExpMonths.has(monthKey);
+                const monthPending = monthExps.filter((e:any) => e.status === 'ממתין').length;
                 const monthTotal = monthExps.reduce((s:number, e:any) => s + e.amount, 0);
                 const paidTotal = monthExps.filter((e:any) => e.status === 'שולם').reduce((s:number, e:any) => s + e.amount, 0);
 
@@ -585,7 +646,7 @@ export const BudgetScreen = () => {
                   <div key={monthKey} style={{ borderBottom: '1px solid var(--border)' }}>
                     {/* Month header */}
                     <button
-                      onClick={() => setOpenExpMonths(prev => {
+                      onClick={() => !isFiltering && setOpenExpMonths(prev => {
                         const next = new Set(prev);
                         if (next.has(monthKey)) next.delete(monthKey); else next.add(monthKey);
                         return next;
@@ -596,6 +657,7 @@ export const BudgetScreen = () => {
                         <Icon n={isOpen ? 'chevron-down' : 'chevron-left'} s={16} c="var(--text3)" />
                         <span style={{ fontWeight:700, fontSize:15 }}>{monthName}</span>
                         {isCurrentMonth && <span style={{ fontSize:11, background:'var(--accent)', color:'#fff', padding:'2px 8px', borderRadius:20, fontWeight:600 }}>עכשיו</span>}
+                        {monthPending > 0 && <span style={{ fontSize:11, background:'var(--accent-light)', color:'var(--accent)', padding:'2px 8px', borderRadius:20, fontWeight:600 }}>{monthPending} ממתינות</span>}
                       </div>
                       <div style={{ display:'flex', gap:16, fontSize:13, color:'var(--text2)', alignItems:'center' }}>
                         <span>{monthExps.length} הוצאות</span>
@@ -687,6 +749,18 @@ export const BudgetScreen = () => {
               </Btn>
             </div>
           </Modal>
+        )}
+
+        {plannedCostsOpen && projectId && (
+          <PlannedCostsModal
+            projectId={projectId}
+            existingDescriptions={new Set((expenses || []).map((e: any) => e.description))}
+            onClose={() => setPlannedCostsOpen(false)}
+            onDone={(added) => {
+              setPlannedCostsOpen(false);
+              setFeedback({ title: "עלויות נוספו", message: `${added} עלויות נוספו לתקציב בסטטוס "ממתין".`, type: "success" });
+            }}
+          />
         )}
 
         {addCatOpen && (
