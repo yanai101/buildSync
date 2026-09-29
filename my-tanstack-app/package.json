@@ -27,7 +27,7 @@
     "@tanstack/react-virtual": "^3.14.5",
     "@types/jszip": "^3.4.0",
     "convex": "^1.46.0",
-    "convex-helpers": "^0.1.115",
+    "convex-helpers": "^0.1.124",
     "driver.js": "^1.4.0",
     "fflate": "^0.8.2",
     "framer-motion": "^12.38.0",
