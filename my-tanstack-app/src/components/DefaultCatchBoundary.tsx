@@ -9,6 +9,7 @@ import type { ErrorComponentProps } from '@tanstack/react-router'
 import * as React from 'react'
 
 import { AppLoadingScreen } from './Layout';
+import { PRELOAD_RELOAD_KEY } from '~/utils/chunkRecovery';
 
 // Detect stale JS chunk errors that happen after a new deploy.
 // The browser tries to load an old asset URL that no longer exists on the CDN.
@@ -23,14 +24,7 @@ function isStaleChunkError(error: unknown): boolean {
   );
 }
 
-const RELOAD_ATTEMPTS_KEY = 'chunk_reload_attempts';
-// Set while the stale-chunk screen is showing, so the reset below doesn't
-// clear the retry counter during a failed boot.
-let staleChunkErrorShown = false;
-
-// Mounted in the root shell. Once the app has run healthily for a while,
-// reset the retry counter (otherwise a long-lived PWA session stops
-// auto-reloading after two deploys) and strip the `?t=` cache-buster.
+// Mounted in the root shell: strip the `?t=` cache-buster added by the manual refresh button.
 export function StaleChunkRecovery() {
   React.useEffect(() => {
     const url = new URL(window.location.href);
@@ -38,10 +32,6 @@ export function StaleChunkRecovery() {
       url.searchParams.delete('t');
       window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash);
     }
-    const timer = setTimeout(() => {
-      if (!staleChunkErrorShown) sessionStorage.removeItem(RELOAD_ATTEMPTS_KEY);
-    }, 10000);
-    return () => clearTimeout(timer);
   }, []);
   return null;
 }
@@ -55,32 +45,32 @@ export function DefaultCatchBoundary({ error }: ErrorComponentProps) {
 
   console.error('DefaultCatchBoundary Error:', error)
 
+  const staleChunk = isStaleChunkError(error);
+  // Auto-reload is owned solely by the vite:preloadError handler (~/utils/chunkRecovery).
+  // This boundary never reloads on its own; it only shows the update screen + manual refresh.
+  const autoReloading = typeof window !== 'undefined' && Boolean(window.__chunkRecovery?.reloading);
   const [showManualReload, setShowManualReload] = React.useState(false);
 
-  // Auto-reload once on stale chunk errors (new deploy → old hash no longer on CDN)
   React.useEffect(() => {
-    if (!isStaleChunkError(error)) return;
-    
-    // If it stays on this error screen for >3 seconds, show a fallback button
-    const timer = setTimeout(() => setShowManualReload(true), 3000);
-    
-    staleChunkErrorShown = true;
-    const attempts = Number(sessionStorage.getItem(RELOAD_ATTEMPTS_KEY) || '0');
-
-    // Allow a couple of automatic retries (deploys can briefly leave the old
-    // and new chunk hashes in an inconsistent state) before falling back to
-    // the manual button. We deliberately do NOT unregister the service worker:
-    // sw.js caches nothing, and unregistering drops the push subscription.
-    if (attempts >= 2) {
-      return () => clearTimeout(timer);
+    if (!staleChunk) return;
+    let reloadMarker: string | null = null;
+    try { reloadMarker = sessionStorage.getItem(PRELOAD_RELOAD_KEY); } catch {}
+    window.__chunkRecovery?.log({
+      source: 'DefaultCatchBoundary',
+      error: error instanceof Error ? error.message : String(error),
+      reloadMarker,
+      action: autoReloading ? 'none: vite:preloadError reload in progress' : 'none: showing manual refresh',
+    });
+    if (!autoReloading) {
+      setShowManualReload(true);
+      return;
     }
-
-    sessionStorage.setItem(RELOAD_ATTEMPTS_KEY, String(attempts + 1));
-    window.location.reload();
+    // A reload is already underway; only offer the button if it hasn't happened after 3s.
+    const timer = setTimeout(() => setShowManualReload(true), 3000);
     return () => clearTimeout(timer);
-  }, [error]);
+  }, [error, staleChunk, autoReloading]);
 
-  if (isStaleChunkError(error)) {
+  if (staleChunk) {
     return (
       <div style={{ position: 'fixed', inset: 0, zIndex: 99999 }}>
         <AppLoadingScreen title="עדכון זמין" subtitle="טוען גרסה חדשה של האפליקציה..." />

@@ -13,6 +13,7 @@ import appCss from '~/styles/app.css?url'
 import { seo } from '~/utils/seo'
 import { AppLayout } from '~/components/Layout'
 import { convex } from '~/convex'
+import { CHUNK_RECOVERY_SCRIPT } from '~/utils/chunkRecovery'
 
 export const Route = createRootRoute({
   head: () => ({
@@ -82,25 +83,8 @@ function RootDocument({ children }: { children: React.ReactNode }) {
             } catch(e) {}
           })();
         `}} />
-        {/* Deploy version skew: an open tab from an older deploy fails to load a lazy
-            route chunk. Reload once to pick up the new document; if a reload happened
-            in the last 10s, let the error reach DefaultCatchBoundary instead of looping. */}
-        <script dangerouslySetInnerHTML={{ __html: `
-          (function() {
-            if (window.__vitePreloadErrorHandler) return;
-            window.__vitePreloadErrorHandler = true;
-            window.addEventListener('vite:preloadError', function(event) {
-              var key = 'vite-preload-reload';
-              var now = Date.now();
-              var lastReload = 0;
-              try { lastReload = Number(sessionStorage.getItem(key) || 0); } catch(e) {}
-              if (now - lastReload <= 10000) return;
-              try { sessionStorage.setItem(key, String(now)); } catch(e) { return; }
-              event.preventDefault();
-              window.location.reload();
-            });
-          })();
-        `}} />
+        {/* Must run before any module script: owns auto-reload on failed lazy-chunk loads. */}
+        <script dangerouslySetInnerHTML={{ __html: CHUNK_RECOVERY_SCRIPT }} />
         <script
           dangerouslySetInnerHTML={{
             __html: `

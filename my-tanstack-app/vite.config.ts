@@ -15,6 +15,12 @@ export default defineConfig({
   resolve: {
     tsconfigPaths: true,
   },
+  // Identifies the deployment in chunk-recovery diagnostics (~/utils/chunkRecovery).
+  define: {
+    'import.meta.env.VITE_BUILD_ID': JSON.stringify(
+      [process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7), process.env.VERCEL_DEPLOYMENT_ID].filter(Boolean).join(' ') || 'local'
+    ),
+  },
   // html2pdf.js is browser-only (uses `self`, `window`).
   // We keep it external in SSR so Node never requires it.
   // Do NOT exclude from optimizeDeps — Vite must pre-bundle it so
