@@ -3,6 +3,7 @@ import { defineConfig } from 'vite'
 import viteReact from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { nitro } from 'nitro/vite'
+import { vercelAssetCache } from './nitro-modules/vercelAssetCache'
 
 export default defineConfig({
   server: {
@@ -58,6 +59,6 @@ export default defineConfig({
       srcDirectory: 'src',
     }),
     viteReact(),
-    nitro(),
+    nitro({ modules: [vercelAssetCache] }),
   ],
 })
