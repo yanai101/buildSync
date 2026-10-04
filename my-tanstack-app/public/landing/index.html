@@ -73,6 +73,7 @@
       --color-whatsapp-hover: oklch(77% 0.19 150 / 0.22);
       --color-nav-glass: color-mix(in oklch, var(--color-paper) 70%, transparent);
       --color-stamp-bg: oklch(97% 0.01 25 / 0.92);
+      --color-success-line: oklch(69.6% 0.149 162.5 / 0.35);
       --color-focus: oklch(85% 0.12 70);
 
       --font-display: 'Heebo', system-ui, sans-serif;
@@ -197,6 +198,10 @@
     .step__title em { font-style: normal; color: var(--color-accent); }
     .step__body { font-size: var(--text-lg); color: var(--color-ink-2); max-width: 32rem; text-wrap: pretty; }
     .step__actions { display: flex; flex-wrap: wrap; gap: var(--space-sm); margin-top: var(--space-xs); }
+    .step__points { display: grid; gap: var(--space-sm); max-width: 32rem; }
+    .step__points li { display: grid; gap: 2px; padding-inline-start: var(--space-md); border-inline-start: 2px solid var(--color-accent); }
+    .step__points strong { font-size: var(--text-md); font-weight: 800; }
+    .step__points span { font-size: var(--text-sm); color: var(--color-ink-2); }
     .step--hero .step__copy { max-width: 40rem; }
     .step--hero .step__title { font-size: var(--text-display); }
     .scroll-hint { display: none; }
@@ -305,12 +310,12 @@
     }
     .is-scrub .step__media { z-index: -2; }
     .is-scrub .step { z-index: auto; isolation: auto; }
-    .is-scrub .step__copy, .is-scrub .card {
+    .is-scrub .step__copy, .is-scrub .step .card {
       position: relative; z-index: 1;
       opacity: 0; transform: translateY(18px);
       transition: opacity var(--dur-med) var(--ease-out), transform var(--dur-med) var(--ease-out);
     }
-    .is-scrub .card { transition-delay: 80ms; justify-self: end; }
+    .is-scrub .step .card { transition-delay: 80ms; justify-self: end; }
     .is-scrub .step.is-active .step__copy, .is-scrub .step.is-active .card { opacity: 1; transform: none; }
     .is-scrub .step__stage { display: none; }
     .is-scrub .scroll-hint { display: inline-flex; align-items: center; gap: var(--space-xs); color: var(--color-ink-3); font-size: var(--text-sm); margin-top: var(--space-sm); }
@@ -354,6 +359,19 @@
     .role--pro .checks svg { color: var(--color-accent); }
     .role .checks li { font-size: var(--text-md); }
     .role__pitch { color: var(--color-ink-2); font-size: var(--text-md); padding-top: var(--space-md); border-top: var(--rule-hair) solid var(--color-rule); max-width: 46ch; }
+    .ai { border-bottom: var(--rule-hair) solid var(--color-rule); }
+    .ai__grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 28rem); gap: var(--space-2xl); align-items: center; max-width: 76rem; }
+    .ai__copy { display: grid; gap: var(--space-md); justify-items: start; }
+    .ai__copy .section__title, .ai__copy .section__lede { margin: 0; }
+    .ai__copy .checks { justify-self: stretch; max-width: 40rem; }
+    .ai__copy .checks li { font-size: var(--text-md); color: var(--color-ink-2); }
+    .ai__copy .checks svg { color: var(--color-accent); }
+    .ai__card { width: 100%; background: var(--color-paper-2); backdrop-filter: none; -webkit-backdrop-filter: none; }
+    .quote { display: inline-flex; align-items: center; gap: var(--space-xs); flex: none; }
+    .quote .num { font-weight: 700; }
+    .row--pick { border-color: var(--color-success-line); background: var(--color-success-soft); }
+    .insight { font-size: var(--text-sm); color: var(--color-ink-2); padding: var(--space-sm) var(--space-md); border-radius: var(--radius-md); background: var(--color-accent-soft); border: var(--rule-hair) solid var(--color-accent-line); }
+    .insight b { display: block; color: var(--color-accent); font-size: var(--text-xs); margin-bottom: 2px; }
     .alerts { padding: var(--space-2xl) var(--page-gutter); border-bottom: var(--rule-hair) solid var(--color-rule); display: grid; gap: var(--space-lg); }
     .alerts__title { font-size: var(--text-xl); font-weight: 800; max-width: 52rem; text-wrap: balance; }
     .alerts__list { display: flex; flex-wrap: wrap; gap: var(--space-sm); }
@@ -456,12 +474,21 @@
       .is-scrub .step--hero .step__title { font-size: clamp(2.25rem, 10vw, 2.75rem); }
       .is-scrub .step__body { font-size: var(--text-sm); line-height: 1.5; }
       .is-scrub .step--hero .step__actions .btn--ghost { display: none; }
-      .is-scrub .card .row { padding: var(--space-xs) var(--space-sm); }
+      .is-scrub .step .card .row { padding: var(--space-xs) var(--space-sm); }
+      .card__title { font-size: var(--text-sm); white-space: nowrap; }
+      .seg__btn { padding: 0 var(--space-xs); }
       .step__body { font-size: var(--text-md); }
-      .is-scrub .card { justify-self: stretch; width: 100%; padding: var(--space-md); gap: var(--space-sm); }
+      /* Phones: points collapse to feature tags so the photo stays visible */
+      .step__points { display: flex; flex-wrap: wrap; gap: var(--space-xs); }
+      .step__points li { padding: 4px 10px; border: var(--rule-hair) solid var(--color-accent-line); border-radius: var(--radius-pill); background: var(--color-accent-soft); }
+      .step__points strong { font-size: var(--text-xs); font-weight: 700; white-space: nowrap; }
+      .step__points span { display: none; }
+      .is-scrub .step .card { justify-self: stretch; width: 100%; padding: var(--space-md); gap: var(--space-sm); }
       .hide-sm { display: none !important; }
       .compare { grid-template-columns: minmax(0, 1fr); }
-      .benefits, .roles__grid { grid-template-columns: minmax(0, 1fr); gap: var(--space-lg); }
+      .benefits, .roles__grid, .ai__grid { grid-template-columns: minmax(0, 1fr); gap: var(--space-lg); }
+      .row .row__main small { white-space: normal; }
+      .ai__card .kv { flex-direction: column; gap: 2px; }
       .meter__ticks { font-size: 0.6875rem; }
     }
 
@@ -469,7 +496,8 @@
       /* Short phones: headline + card carry the stage, so the photo stays visible */
       .is-scrub .step:not(.step--hero) .step__body { display: none; }
       .is-scrub .hide-short { display: none !important; }
-      .is-scrub .card { gap: var(--space-xs); }
+      .is-scrub .legend { display: none; }
+      .is-scrub .step .card { gap: var(--space-xs); }
       .is-scrub .step--hero .step__body { font-size: var(--text-xs); }
     }
 
@@ -518,12 +546,16 @@
           <div class="step__copy">
             <p class="step__stage">יסודות · 20%</p>
             <h2 class="step__title">כל ההיתרים והתוכניות במקום אחד.</h2>
-            <p class="step__body">התוכניות מקושרות לשלבי הפרויקט, כך שבכל שלב התוכנית הנכונה כבר מחכה. היתר בנייה, אישורי מהנדס וביטוחי קבלנים — זמינים מכל מכשיר, עם סימון למסמכים שפג תוקפם.</p>
+            <ul class="step__points">
+              <li><strong>היתרים ואישורים</strong><span>היתר בנייה, אישורי מהנדס וביטוחי קבלנים — מסודרים בתיק אחד.</span></li>
+              <li><strong>תוכניות לפי שלב</strong><span>כל תוכנית מקושרת לשלב שלה, כך שבכל שלב התוכנית הנכונה כבר מחכה.</span></li>
+              <li><strong>זמין מכל מכשיר</strong><span>שולפים כל מסמך ישר מהשטח — למפקח, לעורך הדין או לרשויות.</span></li>
+            </ul>
           </div>
           <div class="card" aria-label="דוגמה: היתרים ותוכניות">
             <div class="card__head"><span class="card__title">היתרים ותוכניות</span><span class="chip chip--wait">1 ממתין</span></div>
             <ul class="rows">
-              <li class="row"><span class="row__main"><strong>היתר בנייה ראשי</strong></span><span class="chip chip--ok">בתוקף</span></li>
+              <li class="row"><span class="row__main"><strong>היתר בנייה ראשי</strong></span><span class="chip chip--ok">אושר</span></li>
               <li class="row"><span class="row__main"><strong>אישור מהנדס - שלד</strong></span><span class="chip chip--wait">ממתין</span></li>
               <li class="row"><span class="row__main"><strong>תוכנית קונסטרוקציה</strong><small>מקושרת לשלב: יסודות ושלד</small></span><span class="chip chip--info">תוכנית</span></li>
               <li class="row hide-short"><span class="row__main"><strong>אישור חברת חשמל</strong></span><span class="chip chip--miss">חסר</span></li>
@@ -539,7 +571,11 @@
           <div class="step__copy">
             <p class="step__stage">שלד · 40%</p>
             <h2 class="step__title">יודעים מה כל קבלן עשה היום.</h2>
-            <p class="step__body">מפרקים את הבית למשימות קטנות, משייכים לקבלנים ועוקבים בזמן אמת — בלי לעמוד באתר כל היום.</p>
+            <ul class="step__points">
+              <li><strong>משימות לכל שלב</strong><span>מפרקים כל שלב למשימות קטנות ומשייכים אותן לקבלנים.</span></li>
+              <li><strong>התקדמות בזמן אמת</strong><span>כל משימה שמסומנת מקפיצה את מד ההתקדמות — בלי לעמוד באתר כל היום.</span></li>
+              <li><strong>כרטיס לכל קבלן</strong><span>היסטוריית תשלומים והסכמים של כל קבלן במקום אחד.</span></li>
+            </ul>
           </div>
           <div class="card" aria-label="דוגמה: שלבי ביצוע">
             <div class="card__head"><span class="card__title">מעטפת וטיח פנים</span><span class="chip chip--accent"><span class="num" data-task-pct>33%</span></span></div>
@@ -560,7 +596,12 @@
           <div class="step__copy">
             <p class="step__stage">קירות · 60%</p>
             <h2 class="step__title">סוף לחריגות התקציב.</h2>
-            <p class="step__body">אשף כמויות בונה מפרט רכש לפי חדר, ורואים בכל רגע כמה שולם, כמה משוריין ואיפה יש חריגה. התשלום לקבלן נפתח רק כשהמפקח סימן שהשלב הסתיים.</p>
+            <ul class="step__points">
+              <li><strong>אשף כמויות</strong><span>בונה מפרט רכש לפי חדר — אינסטלציה, ריצוף, חשמל.</span></li>
+              <li><strong>תקציב בזמן אמת</strong><span>כמה שולם, כמה משוריין לקבלנים ואיפה יש חריגה.</span></li>
+              <li><strong>תשלום לפי אבני דרך</strong><span>התשלום לקבלן נפתח רק כשהמפקח סימן שהשלב הסתיים.</span></li>
+              <li><strong>מעקב הזמנות</strong><span>כל משלוח לאתר נבדק מול ההזמנה, כולל אספקות חלקיות.</span></li>
+            </ul>
           </div>
           <div class="card" aria-label="דוגמה: תקציב והזמנות" data-view="owner">
             <div class="card__head">
@@ -596,7 +637,12 @@
           <div class="step__copy">
             <p class="step__stage">גמר · 80%</p>
             <h2 class="step__title">כל יום מתועד.<br>כל החלטה שמורה.</h2>
-            <p class="step__body">יומן עבודה יומי עם מזג אוויר, נוכחות ותמונות — <span class="nobr">ננעל ל-PDF</span>. הערות המפקח נקשרות ישירות לתמונה מהשטח: מסמנים עליה, מתייגים "בעיה" או "אושר", ומנהלים שרשור פנימי ושרשור מול הקבלן בנפרד.</p>
+            <ul class="step__points">
+              <li><strong>יומן עבודה יומי</strong><span>מזג אוויר, נוכחות ותמונות — ננעל ל-PDF שאי אפשר לערוך בדיעבד.</span></li>
+              <li><strong>סימון על התמונה</strong><span>הערות המפקח נקשרות ישירות לתמונה מהשטח, במקום לאבד אותן בוואטסאפ.</span></li>
+              <li><strong>תגיות סטטוס</strong><span>"בעיה", "בדיקה" או "אישור" — אף ליקוי לא נעלם בין הקירות.</span></li>
+              <li><strong>שרשורים נפרדים</strong><span>שיח פנימי ושיח מול הקבלן על אותו תיעוד, בלי לערבב.</span></li>
+            </ul>
           </div>
           <div class="card" aria-label="דוגמה: יומן עבודה יומי" data-log-card>
             <div class="card__head"><span class="card__title">יומן עבודה יומי</span><span class="chip chip--wait" data-log-chip>ממתין לאישור</span></div>
@@ -620,7 +666,11 @@
           <div class="step__copy">
             <p class="step__stage">מפתח · 100%</p>
             <h2 class="step__title">השקעה של מיליונים לא משאירים למזל.</h2>
-            <p class="step__body">BuildSync מחברת בין המפקח בשטח לבין בעלי הבית — עם תיעוד, תקציב, יומני עבודה ותמונות בזמן אמת.</p>
+            <ul class="step__points">
+              <li><strong>המפקח בשטח</strong><span>מתעד, מאשר ומעדכן — הכל מהנייד.</span></li>
+              <li><strong>בעלי הבית</strong><span>רואים בזמן אמת את ההתקדמות, התקציב והתמונות.</span></li>
+              <li><strong>הקבלנים</strong><span>מקבלים רק את המשימות שלהם, בלי חשיפה לתקציב.</span></li>
+            </ul>
             <div class="step__actions"><a class="btn btn--primary" href="/login">התחילו לבנות עם BuildSync</a></div>
           </div>
           <div class="card" aria-label="מה מקבלים">
@@ -659,6 +709,34 @@
       <div class="benefit">
         <h3>איכות עבודה ללא טעויות</h3>
         <p>מנגנון הערות פנימי ששומר על תקן. אישורי ביצוע מונעים התקדמות בלי בדיקת איכות.</p>
+      </div>
+    </section>
+
+    <section class="section ai" aria-labelledby="ai-title">
+      <div class="ai__grid">
+        <div class="ai__copy">
+          <span class="chip chip--accent">זמין במסלול Pro</span>
+          <h2 class="section__title" id="ai-title">השוואת הצעות מחיר חכמה, עם AI.</h2>
+          <p class="section__lede">מעלים את ההצעות של הקבלנים והספקים, וה-AI קורא את הקבצים ומשווה ביניהם: מחיר, היקף העבודה, תנאי תשלום ואחריות.</p>
+          <ul class="checks">
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>מזהה מה כלול אצל אחד וחסר אצל האחר — כי הצעה זולה שמציעה פחות אינה זולה יותר</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>מסמן דגלים אדומים: מקדמה גבוהה, אחריות חסרה, מפרט מעורפל</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>ממליץ עם מי לסגור ולמה, עם שאלות לשאול לפני שחותמים וטיפים למשא ומתן</li>
+          </ul>
+        </div>
+        <div class="card ai__card" aria-label="דוגמה: ניתוח AI של שלוש הצעות מחיר">
+          <div class="card__head"><span class="card__title">ניתוח AI · 3 הצעות למטבח</span><span class="chip chip--info">דוגמה</span></div>
+          <ul class="rows">
+            <li class="row row--pick"><span class="row__main"><strong>ספק ב׳</strong><small>כולל הובלה והרכבה · אחריות 5 שנים</small></span><span class="quote"><span class="num">₪71,500</span><span class="chip chip--ok">מומלץ</span></span></li>
+            <li class="row"><span class="row__main"><strong>ספק א׳</strong><small>מקדמה של 50% לפני תחילת העבודה</small></span><span class="quote"><span class="num">₪62,000</span><span class="chip chip--miss">דגל אדום</span></span></li>
+            <li class="row"><span class="row__main"><strong>ספק ג׳</strong><small>סכום כולל בלבד, בלי פירוט סעיפים</small></span><span class="quote"><span class="num">₪58,900</span><span class="chip chip--wait">חסר פירוט</span></span></li>
+          </ul>
+          <div class="insight">
+            <b>תובנת AI</b>
+            הזולה ביותר לא כוללת הרכבה ולא מציינת יצרן פרזול. אחרי השוואת מפרט, ספק ב׳ נותן הכי הרבה תמורה למחיר.
+          </div>
+          <div class="kv"><span>שאלה לפני שחותמים</span><strong>האם המחיר כולל פירוק המטבח הישן?</strong></div>
+        </div>
       </div>
     </section>
 
@@ -763,6 +841,7 @@
             <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>ניהול עלויות רכש אינטראקטיבי והצעות מחיר</li>
             <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>מעקב קבלת סחורות ושטרי מטען מהשטח</li>
             <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>הפקת יומני עבודה ל-PDF</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>השוואת הצעות מחיר עם AI (10 ניתוחים בחודש)</li>
           </ul>
           <div class="tier__cta">
             <a class="btn btn--primary" href="/login">הירשם עכשיו</a>
