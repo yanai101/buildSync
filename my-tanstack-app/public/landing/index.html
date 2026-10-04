@@ -233,7 +233,9 @@
     .kv { display: flex; justify-content: space-between; gap: var(--space-sm); font-size: var(--text-sm); padding-bottom: var(--space-xs); border-bottom: var(--rule-hair) dashed var(--color-rule); }
     .kv span { color: var(--color-ink-3); }
     .note { font-size: var(--text-sm); color: var(--color-ink-2); background: var(--color-well-2); border-radius: var(--radius-md); padding: var(--space-sm) var(--space-md); }
-    .note b { display: block; color: var(--color-ink); font-size: var(--text-xs); margin-bottom: 2px; }
+    .note b { display: block; color: var(--color-ink); font-size: var(--text-xs); }
+    .note__head { display: flex; justify-content: space-between; align-items: center; gap: var(--space-xs); margin-bottom: var(--space-2xs); }
+    .note__head .chip { padding: 1px 8px; }
 
     /* Interactive task list (stage 2) */
     .task { display: flex; align-items: center; gap: var(--space-sm); width: 100%; padding: var(--space-xs) var(--space-2xs); background: none; border: 0; color: var(--color-ink); font: 500 var(--text-sm)/1.4 var(--font-body); text-align: start; cursor: pointer; border-radius: var(--radius-sm); }
@@ -338,8 +340,21 @@
     .section__title { font-size: var(--text-display-s); font-weight: 900; text-wrap: balance; }
     .section__lede { font-size: var(--text-lg); color: var(--color-ink-2); }
 
+    .benefits { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-xl); padding: var(--space-2xl) var(--page-gutter); border-bottom: var(--rule-hair) solid var(--color-rule); }
+    .benefit { display: grid; gap: var(--space-xs); align-content: start; padding-top: var(--space-md); border-top: 2px solid var(--color-accent); }
+    .benefit h3 { font-size: var(--text-lg); font-weight: 800; }
+    .benefit p { color: var(--color-ink-2); font-size: var(--text-sm); max-width: 34ch; }
+    .roles__grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--space-lg); max-width: 72rem; }
+    .role { display: grid; gap: var(--space-md); align-content: start; justify-items: start; padding: var(--space-xl) var(--space-lg); border-radius: var(--radius-lg); border: var(--rule-hair) solid var(--color-rule); background: var(--color-paper-2); }
+    .role--owner { border-color: var(--color-info-line); }
+    .role--pro { border-color: var(--color-accent-line); }
+    .role h3 { font-size: var(--text-xl); font-weight: 800; }
+    .role .checks { justify-self: stretch; }
+    .role--owner .checks svg { color: var(--color-info); }
+    .role--pro .checks svg { color: var(--color-accent); }
+    .role .checks li { font-size: var(--text-md); }
     .alerts { padding: var(--space-2xl) var(--page-gutter); border-bottom: var(--rule-hair) solid var(--color-rule); display: grid; gap: var(--space-lg); }
-    .alerts__title { font-size: var(--text-xl); font-weight: 800; max-width: 40rem; }
+    .alerts__title { font-size: var(--text-xl); font-weight: 800; max-width: 52rem; text-wrap: balance; }
     .alerts__list { display: flex; flex-wrap: wrap; gap: var(--space-sm); }
     .alert { display: inline-flex; align-items: center; gap: var(--space-xs); padding: var(--space-xs) var(--space-md); border-radius: var(--radius-pill); background: var(--color-veil-1); border: var(--rule-hair) solid var(--color-veil-3); font-size: var(--text-sm); font-weight: 600; }
     .alert__dot { flex: none; width: 8px; height: 8px; border-radius: var(--radius-pill); }
@@ -445,6 +460,7 @@
       .is-scrub .card { justify-self: stretch; width: 100%; padding: var(--space-md); gap: var(--space-sm); }
       .hide-sm { display: none !important; }
       .compare { grid-template-columns: minmax(0, 1fr); }
+      .benefits, .roles__grid { grid-template-columns: minmax(0, 1fr); gap: var(--space-lg); }
       .meter__ticks { font-size: 0.6875rem; }
     }
 
@@ -543,7 +559,7 @@
           <div class="step__copy">
             <p class="step__stage">קירות · 60%</p>
             <h2 class="step__title">סוף לחריגות התקציב.</h2>
-            <p class="step__body">רואים בכל רגע כמה שולם, כמה משוריין לקבלנים ואיפה יש חריגה. כל משלוח לאתר נבדק מול ההזמנה — כולל אספקות חלקיות.</p>
+            <p class="step__body">אשף כמויות בונה מפרט רכש לפי חדר, ורואים בכל רגע כמה שולם, כמה משוריין ואיפה יש חריגה. התשלום לקבלן נפתח רק כשהמפקח סימן שהשלב הסתיים.</p>
           </div>
           <div class="card" aria-label="דוגמה: תקציב והזמנות" data-view="owner">
             <div class="card__head">
@@ -557,15 +573,16 @@
               <div class="kv"><span>תקציב כולל שנוצל</span><strong class="num">₪840,000</strong></div>
               <div class="bar" aria-hidden="true"><div class="bar__fill" style="width:45%"></div><div class="bar__fill bar__fill--warn" style="width:4%"></div></div>
               <div class="legend"><span><i style="background:var(--color-accent)"></i>שולם: <span class="num">₪378K</span></span><span><i style="background:var(--color-warning)"></i>חריגה: <span class="num">₪12K</span></span></div>
+              <div class="row"><span class="row__main"><strong>תשלום <span class="num">20%</span> לקבלן שלד</strong><small>אבן דרך: גמר שלד חוץ</small></span><span class="chip chip--wait">ממתין לאישור מפקח</span></div>
             </div>
             <div class="view view--contractor">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
               <strong>הנתונים הפיננסיים מוסתרים</strong>
               <span>הקבלן לא נחשף לתקציב, עלויות או קבלנים אחרים, אלא רק למשימות הביצוע שלו.</span>
             </div>
-            <ul class="rows hide-short">
+            <ul class="rows hide-sm">
               <li class="row"><span class="row__main"><strong>ברזל בניין 12 מ"מ</strong><small>פקר פלדה</small></span><span class="chip chip--wait">התקבל חלקי</span></li>
-              <li class="row hide-sm"><span class="row__main"><strong>ריצוף גרניט פורצלן</strong><small>נגב קרמיקה</small></span><span class="chip chip--info">בדרך</span></li>
+              <li class="row"><span class="row__main"><strong>ריצוף גרניט פורצלן</strong><small>נגב קרמיקה</small></span><span class="chip chip--info">בדרך</span></li>
             </ul>
           </div>
         </article>
@@ -578,14 +595,14 @@
           <div class="step__copy">
             <p class="step__stage">גמר · 80%</p>
             <h2 class="step__title">כל יום מתועד.<br>כל החלטה שמורה.</h2>
-            <p class="step__body">יומן עבודה יומי עם מזג אוויר, נוכחות ותמונות — <span class="nobr">ננעל ל-PDF</span>. הערות המפקח נקשרות ישירות לתמונה מהשטח, לא הולכות לאיבוד בוואטסאפ.</p>
+            <p class="step__body">יומן עבודה יומי עם מזג אוויר, נוכחות ותמונות — <span class="nobr">ננעל ל-PDF</span>. הערות המפקח נקשרות ישירות לתמונה מהשטח: מסמנים עליה, מתייגים "בעיה" או "אושר", ומנהלים שרשור פנימי ושרשור מול הקבלן בנפרד.</p>
           </div>
           <div class="card" aria-label="דוגמה: יומן עבודה יומי" data-log-card>
             <div class="card__head"><span class="card__title">יומן עבודה יומי</span><span class="chip chip--wait" data-log-chip>ממתין לאישור</span></div>
             <div class="kv"><span>מזג אוויר</span><strong>24°C, שמש מלאה</strong></div>
             <div class="kv hide-sm"><span>כוח אדם</span><strong>4 פועלי שלד, 2 רצפים</strong></div>
             <div class="kv"><span>אישורי בטיחות</span><strong style="color:var(--color-success)">תקין. ציוד אושר.</strong></div>
-            <p class="note hide-short"><b>אבי כהן (מפקח) · על תמונת חזית מזרחית</b>סימנתי על התמונה חוסר אטימה ליד החלון. לתקן לפני הטיח.</p>
+            <div class="note hide-short"><div class="note__head"><b>אבי כהן (מפקח) · שרשור קבלן</b><span class="chip chip--miss">בעיה</span></div>סימנתי על תמונת החזית חוסר אטימה ליד החלון. לתקן לפני הטיח.</div>
             <button type="button" class="btn btn--info btn--block" data-log-lock>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
               <span data-log-label>אשר ונעל את היומן</span>
@@ -628,6 +645,22 @@
       </div>
     </section>
 
+    <section class="benefits" aria-labelledby="benefits-title">
+      <h2 class="sr-only" id="benefits-title">היתרונות המרכזיים</h2>
+      <div class="benefit">
+        <h3>חוסכים משאבים וזמן</h3>
+        <p>שליטה בכל שלבי הפרויקט מונעת הפסקות עבודה מיותרות, חיכוך מול ספקים ועיכובים.</p>
+      </div>
+      <div class="benefit">
+        <h3>שקיפות כספית מלאה</h3>
+        <p>כל הוצאה, חריגה ותשלום עתידי לקבלן מוצגים תמיד באחוזים אל מול אבני הדרך בשטח.</p>
+      </div>
+      <div class="benefit">
+        <h3>איכות עבודה ללא טעויות</h3>
+        <p>מנגנון הערות פנימי ששומר על תקן. אישורי ביצוע מונעים התקדמות בלי בדיקת איכות.</p>
+      </div>
+    </section>
+
     <section class="alerts" aria-labelledby="alerts-title">
       <h2 class="alerts__title" id="alerts-title">ככה נראה יום באתר — בהתראות, לא בטלפונים.</h2>
       <ul class="alerts__list">
@@ -636,6 +669,36 @@
         <li class="alert"><span class="alert__dot alert__dot--info" aria-hidden="true"></span>יומן עבודה יומי אושר וננעל לשינויים</li>
         <li class="alert"><span class="alert__dot alert__dot--accent" aria-hidden="true"></span>התקבלה תמונה חדשה עם הערת ביצוע</li>
       </ul>
+    </section>
+
+    <section class="section roles" aria-labelledby="roles-title">
+      <div class="section__head">
+        <h2 class="section__title" id="roles-title">מערכת אחת. שני צדדים של אותו פרויקט.</h2>
+        <p class="section__lede">BuildSync מחברת בין המפקח בשטח לבין בעלי הבית — כל אחד רואה בדיוק את מה שהוא צריך.</p>
+      </div>
+      <div class="roles__grid">
+        <div class="role role--owner">
+          <span class="chip chip--info">עבור בעלי הבית / יזמים</span>
+          <h3>לדעת בדיוק מה קורה בנכס שלכם.</h3>
+          <ul class="checks">
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>מעקב התקדמות ויזואלי בזמן אמת</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>שקיפות מלאה על התקציב ולאן הולך הכסף</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>כל התמונות, החוזים והאישורים במקום אחד</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>בקרה קפדנית שמונעת הפתעות וטעויות יקרות</li>
+          </ul>
+        </div>
+        <div class="role role--pro">
+          <span class="chip chip--accent">עבור המפקח</span>
+          <h3>הופכים את השירות שלכם לפרימיום.</h3>
+          <ul class="checks">
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>אזור אישי ומרשים לכל לקוח</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>פחות טלפונים, הודעות ועדכונים ידניים</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>תיעוד מלא ומגובה לכל החלטה בשטח</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>כלי טכנולוגי שמבדל אתכם ממפקחים אחרים</li>
+          </ul>
+          <a class="btn btn--primary" href="/login">פתחו חשבון מפקח</a>
+        </div>
+      </div>
     </section>
 
     <section class="section" aria-labelledby="compare-title">
