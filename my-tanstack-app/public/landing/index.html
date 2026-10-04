@@ -72,6 +72,7 @@
       --color-whatsapp-line: oklch(77% 0.19 150 / 0.35);
       --color-whatsapp-hover: oklch(77% 0.19 150 / 0.22);
       --color-nav-glass: color-mix(in oklch, var(--color-paper) 70%, transparent);
+      --color-stamp-bg: oklch(97% 0.01 25 / 0.92);
       --color-focus: oklch(85% 0.12 70);
 
       --font-display: 'Heebo', system-ui, sans-serif;
@@ -127,6 +128,7 @@
     img { display: block; max-width: 100%; }
     ul, ol { margin: 0; padding: 0; list-style: none; }
     .num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; direction: ltr; unicode-bidi: isolate; }
+    .nobr { white-space: nowrap; }
     .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
     :focus-visible { outline: 2px solid var(--color-focus); outline-offset: 3px; }
 
@@ -246,6 +248,35 @@
     .checks li { display: flex; gap: var(--space-sm); align-items: flex-start; font-size: var(--text-sm); font-weight: 500; }
     .checks svg { flex: none; width: 18px; height: 18px; margin-top: 3px; color: var(--color-success); }
 
+    /* Role switch (stage 3) */
+    .seg { display: inline-flex; padding: 3px; gap: 2px; border-radius: var(--radius-pill); background: var(--color-well-2); }
+    .seg__btn { min-height: 30px; padding: 0 var(--space-sm); border: 0; border-radius: var(--radius-pill); background: none; color: var(--color-ink-3); font: 600 var(--text-xs)/1 var(--font-body); white-space: nowrap; cursor: pointer; transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out); }
+    .seg__btn:hover { color: var(--color-ink); }
+    .seg__btn[aria-pressed="true"] { background: var(--color-accent); color: var(--color-accent-ink); font-weight: 700; }
+    .seg__btn[data-view-btn="contractor"][aria-pressed="true"] { background: var(--color-veil-5); color: var(--color-ink); }
+    .view { display: grid; gap: var(--space-sm); }
+    .view--contractor { display: none; justify-items: center; text-align: center; padding-block: var(--space-sm); color: var(--color-ink-3); font-size: var(--text-sm); }
+    .view--contractor svg { width: 28px; height: 28px; }
+    .view--contractor strong { color: var(--color-ink); }
+    [data-view="contractor"] .view--owner, [data-view="contractor"] .rows { display: none; }
+    [data-view="contractor"] .view--contractor { display: grid; }
+
+    /* Approve & lock (stage 4) */
+    .btn--block { width: 100%; }
+    .btn:disabled { cursor: default; background: var(--color-veil-4); color: var(--color-ink-3); }
+    [data-log-card] { position: relative; }
+    .stamp {
+      position: absolute; inset: 50% auto auto 50%;
+      transform: translate(-50%, -50%) rotate(-12deg) scale(0.9);
+      padding: var(--space-xs) var(--space-lg);
+      border: 4px solid var(--color-danger); border-radius: var(--radius-sm);
+      color: var(--color-danger); background: var(--color-stamp-bg);
+      font: 900 var(--text-xl)/1.1 var(--font-display); white-space: nowrap;
+      opacity: 0; pointer-events: none;
+      transition: opacity var(--dur-fast) var(--ease-out), transform var(--dur-med) var(--ease-out);
+    }
+    [data-log-card].is-locked .stamp { opacity: 1; transform: translate(-50%, -50%) rotate(-12deg) scale(1); }
+
     /* Build meter */
     .meter { display: none; }
 
@@ -307,6 +338,15 @@
     .section__title { font-size: var(--text-display-s); font-weight: 900; text-wrap: balance; }
     .section__lede { font-size: var(--text-lg); color: var(--color-ink-2); }
 
+    .alerts { padding: var(--space-2xl) var(--page-gutter); border-bottom: var(--rule-hair) solid var(--color-rule); display: grid; gap: var(--space-lg); }
+    .alerts__title { font-size: var(--text-xl); font-weight: 800; max-width: 40rem; }
+    .alerts__list { display: flex; flex-wrap: wrap; gap: var(--space-sm); }
+    .alert { display: inline-flex; align-items: center; gap: var(--space-xs); padding: var(--space-xs) var(--space-md); border-radius: var(--radius-pill); background: var(--color-veil-1); border: var(--rule-hair) solid var(--color-veil-3); font-size: var(--text-sm); font-weight: 600; }
+    .alert__dot { flex: none; width: 8px; height: 8px; border-radius: var(--radius-pill); }
+    .alert__dot--warn { background: var(--color-warning); }
+    .alert__dot--ok { background: var(--color-success); }
+    .alert__dot--info { background: var(--color-info); }
+    .alert__dot--accent { background: var(--color-accent); }
     .compare { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-lg); max-width: 72rem; }
     .compare__col { border-top: 2px solid var(--color-rule-strong); padding-top: var(--space-lg); display: grid; gap: var(--space-md); align-content: start; }
     .compare__col h3 { font-size: var(--text-xl); font-weight: 800; }
@@ -411,6 +451,7 @@
     @media (max-width: 760px) and (max-height: 740px) {
       /* Short phones: headline + card carry the stage, so the photo stays visible */
       .is-scrub .step:not(.step--hero) .step__body { display: none; }
+      .is-scrub .hide-short { display: none !important; }
       .is-scrub .card { gap: var(--space-xs); }
       .is-scrub .step--hero .step__body { font-size: var(--text-xs); }
     }
@@ -504,11 +545,25 @@
             <h2 class="step__title">סוף לחריגות התקציב.</h2>
             <p class="step__body">רואים בכל רגע כמה שולם, כמה משוריין לקבלנים ואיפה יש חריגה. כל משלוח לאתר נבדק מול ההזמנה — כולל אספקות חלקיות.</p>
           </div>
-          <div class="card" aria-label="דוגמה: תקציב והזמנות">
-            <div class="card__head"><span class="card__title">תקציב כולל שנוצל</span><span class="num" style="font-weight:700">₪840,000</span></div>
-            <div class="bar" aria-hidden="true"><div class="bar__fill" style="width:45%"></div><div class="bar__fill bar__fill--warn" style="width:4%"></div></div>
-            <div class="legend"><span><i style="background:var(--color-accent)"></i>שולם: <span class="num">₪378K</span></span><span><i style="background:var(--color-warning)"></i>חריגה: <span class="num">₪12K</span></span></div>
-            <ul class="rows">
+          <div class="card" aria-label="דוגמה: תקציב והזמנות" data-view="owner">
+            <div class="card__head">
+              <span class="card__title">שקיפות סלקטיבית</span>
+              <div class="seg" role="group" aria-label="תצוגה לפי תפקיד">
+                <button type="button" class="seg__btn" aria-pressed="true" data-view-btn="owner">יזם/מפקח</button>
+                <button type="button" class="seg__btn" aria-pressed="false" data-view-btn="contractor">קבלן שטח</button>
+              </div>
+            </div>
+            <div class="view view--owner">
+              <div class="kv"><span>תקציב כולל שנוצל</span><strong class="num">₪840,000</strong></div>
+              <div class="bar" aria-hidden="true"><div class="bar__fill" style="width:45%"></div><div class="bar__fill bar__fill--warn" style="width:4%"></div></div>
+              <div class="legend"><span><i style="background:var(--color-accent)"></i>שולם: <span class="num">₪378K</span></span><span><i style="background:var(--color-warning)"></i>חריגה: <span class="num">₪12K</span></span></div>
+            </div>
+            <div class="view view--contractor">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+              <strong>הנתונים הפיננסיים מוסתרים</strong>
+              <span>הקבלן לא נחשף לתקציב, עלויות או קבלנים אחרים, אלא רק למשימות הביצוע שלו.</span>
+            </div>
+            <ul class="rows hide-short">
               <li class="row"><span class="row__main"><strong>ברזל בניין 12 מ"מ</strong><small>פקר פלדה</small></span><span class="chip chip--wait">התקבל חלקי</span></li>
               <li class="row hide-sm"><span class="row__main"><strong>ריצוף גרניט פורצלן</strong><small>נגב קרמיקה</small></span><span class="chip chip--info">בדרך</span></li>
             </ul>
@@ -523,14 +578,19 @@
           <div class="step__copy">
             <p class="step__stage">גמר · 80%</p>
             <h2 class="step__title">כל יום מתועד.<br>כל החלטה שמורה.</h2>
-            <p class="step__body">יומן עבודה יומי עם מזג אוויר, נוכחות ותמונות — ננעל ל-PDF. הערות הקבלן נקשרות ישירות לתמונה מהשטח, לא הולכות לאיבוד בוואטסאפ.</p>
+            <p class="step__body">יומן עבודה יומי עם מזג אוויר, נוכחות ותמונות — <span class="nobr">ננעל ל-PDF</span>. הערות המפקח נקשרות ישירות לתמונה מהשטח, לא הולכות לאיבוד בוואטסאפ.</p>
           </div>
-          <div class="card" aria-label="דוגמה: יומן עבודה יומי">
-            <div class="card__head"><span class="card__title">יומן עבודה יומי</span><span class="chip chip--info">ננעל ל-PDF</span></div>
+          <div class="card" aria-label="דוגמה: יומן עבודה יומי" data-log-card>
+            <div class="card__head"><span class="card__title">יומן עבודה יומי</span><span class="chip chip--wait" data-log-chip>ממתין לאישור</span></div>
             <div class="kv"><span>מזג אוויר</span><strong>24°C, שמש מלאה</strong></div>
             <div class="kv hide-sm"><span>כוח אדם</span><strong>4 פועלי שלד, 2 רצפים</strong></div>
             <div class="kv"><span>אישורי בטיחות</span><strong style="color:var(--color-success)">תקין. ציוד אושר.</strong></div>
-            <p class="note"><b>יוסי (קבלן שלד) · על תמונת חזית מזרחית</b>בוצע התיקון בהתאם להערה המסומנת על התמונה. מבקש בדיקת מפקח מחר.</p>
+            <p class="note hide-short"><b>אבי כהן (מפקח) · על תמונת חזית מזרחית</b>סימנתי על התמונה חוסר אטימה ליד החלון. לתקן לפני הטיח.</p>
+            <button type="button" class="btn btn--info btn--block" data-log-lock>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+              <span data-log-label>אשר ונעל את היומן</span>
+            </button>
+            <span class="stamp" aria-hidden="true">אושר וננעל</span>
           </div>
         </article>
 
@@ -566,6 +626,16 @@
           </ol>
         </div>
       </div>
+    </section>
+
+    <section class="alerts" aria-labelledby="alerts-title">
+      <h2 class="alerts__title" id="alerts-title">ככה נראה יום באתר — בהתראות, לא בטלפונים.</h2>
+      <ul class="alerts__list">
+        <li class="alert"><span class="alert__dot alert__dot--warn" aria-hidden="true"></span>חריגה צפויה של 2% בתקציב אינסטלציה</li>
+        <li class="alert"><span class="alert__dot alert__dot--ok" aria-hidden="true"></span>המפקח אישר את שלב יציקת הרצפה</li>
+        <li class="alert"><span class="alert__dot alert__dot--info" aria-hidden="true"></span>יומן עבודה יומי אושר וננעל לשינויים</li>
+        <li class="alert"><span class="alert__dot alert__dot--accent" aria-hidden="true"></span>התקבלה תמונה חדשה עם הערת ביצוע</li>
+      </ul>
     </section>
 
     <section class="section" aria-labelledby="compare-title">
@@ -694,9 +764,51 @@
       t.addEventListener('click', function () {
         t.setAttribute('aria-pressed', t.getAttribute('aria-pressed') === 'true' ? 'false' : 'true');
         syncTasks();
+
+    // Owner / contractor view switch
+    var budget = document.querySelector('[data-view]');
+    document.querySelectorAll('[data-view-btn]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        budget.setAttribute('data-view', b.getAttribute('data-view-btn'));
+        document.querySelectorAll('[data-view-btn]').forEach(function (o) { o.setAttribute('aria-pressed', String(o === b)); });
+      });
+    });
+
+    // Daily log: approve & lock (one-way, like the real thing)
+    var logCard = document.querySelector('[data-log-card]');
+    var lockBtn = document.querySelector('[data-log-lock]');
+    lockBtn.addEventListener('click', function () {
+      logCard.classList.add('is-locked');
+      lockBtn.disabled = true;
+      document.querySelector('[data-log-label]').textContent = 'ננעל · גיבוי ל-PDF הושלם';
+      var chip = document.querySelector('[data-log-chip]');
+      chip.textContent = 'ננעל ל-PDF';
+      chip.className = 'chip chip--info';
+    });
       });
     });
     syncTasks();
+
+    // Owner / contractor view switch
+    var budget = document.querySelector('[data-view]');
+    document.querySelectorAll('[data-view-btn]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        budget.setAttribute('data-view', b.getAttribute('data-view-btn'));
+        document.querySelectorAll('[data-view-btn]').forEach(function (o) { o.setAttribute('aria-pressed', String(o === b)); });
+      });
+    });
+
+    // Daily log: approve & lock (one-way, like the real thing)
+    var logCard = document.querySelector('[data-log-card]');
+    var lockBtn = document.querySelector('[data-log-lock]');
+    lockBtn.addEventListener('click', function () {
+      logCard.classList.add('is-locked');
+      lockBtn.disabled = true;
+      document.querySelector('[data-log-label]').textContent = 'ננעל · גיבוי ל-PDF הושלם';
+      var chip = document.querySelector('[data-log-chip]');
+      chip.textContent = 'ננעל ל-PDF';
+      chip.className = 'chip chip--info';
+    });
 
     // Scroll-scrubbed build. Skipped entirely for reduced motion: the stages stay a plain stacked list.
     var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
