@@ -1319,7 +1319,7 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
 }
 
 .auth {
-  flex: 1;
+  flex: 1 0 auto;
   min-height: 100dvh;
   display: grid;
   grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
@@ -1465,7 +1465,7 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
  * Hallmark · genre: atmospheric · macrostructure: Long Document · design-system: design.md · designed-as-app
  * Legal pages (/terms, /privacy): one readable column on the shared dark paper.
  * ───────────────────────────────────────────────────────────────────────────── */
-.legal { flex: 1; min-height: 100dvh; background: var(--a-paper); color: var(--a-ink-2); font-family: var(--a-font); line-height: 1.75; direction: rtl; -webkit-font-smoothing: antialiased; }
+.legal { flex: 1 0 auto; min-height: 100dvh; background: var(--a-paper); color: var(--a-ink-2); font-family: var(--a-font); line-height: 1.75; direction: rtl; -webkit-font-smoothing: antialiased; }
 .legal *, .legal *::before, .legal *::after { box-sizing: border-box; }
 .legal :focus-visible { outline: 2px solid var(--a-focus); outline-offset: 3px; }
 .legal__bar { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; justify-content: space-between; gap: var(--a-space-md); padding: var(--a-space-md) clamp(1rem, 4vw, 3.5rem); background: color-mix(in oklch, var(--a-paper) 85%, transparent); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-bottom: 1px solid var(--a-rule); }
