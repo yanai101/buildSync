@@ -8,12 +8,21 @@
   <!-- Preview page: remove noindex when this replaces "/" -->
   <meta name="robots" content="noindex">
   <meta name="theme-color" content="#0a0a0c">
+  <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
   <meta property="og:title" content="BuildSync - מערכת ניהול לפרויקטי בנייה ושיפוצים">
-  <meta property="og:description" content="פלטפורמה לניהול פרויקטי בנייה ושיפוצים: תקציב, קבלנים, יומני עבודה, תיעוד ותקשורת.">
+  <meta property="og:description" content="פלטפורמה לניהול פרויקטי בנייה ושיפוצים: תקציב, קבלנים, יומני עבודה, תיעוד ותקשורת. כל מה שאתה צריך כדי לנהל פרויקט מוצלח בשטח.">
   <meta property="og:type" content="website">
+  <meta property="og:url" content="https://buildsync.co.il/">
   <meta property="og:image" content="https://buildsync.co.il/og-image.png">
   <meta name="twitter:card" content="summary_large_image">
-  <link rel="icon" type="image/png" href="/favicon.png">
+  <meta name="twitter:site" content="@buildsync">
+  <meta name="twitter:creator" content="@buildsync">
+  <meta name="twitter:title" content="BuildSync - מערכת ניהול לפרויקטי בנייה ושיפוצים">
+  <meta name="twitter:description" content="פלטפורמה לניהול פרויקטי בנייה ושיפוצים: תקציב, קבלנים, יומני עבודה, תיעוד ותקשורת.">
+  <meta name="twitter:image" content="https://buildsync.co.il/og-image.png">
+  <link rel="canonical" href="https://buildsync.co.il/">
+  <link rel="icon" type="image/png" href="/logo.png">
+  <link rel="manifest" href="/site.webmanifest">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
   <link rel="preload" as="image" href="/landing/stage-0.webp" imagesrcset="/landing/stage-0-m.webp 800w, /landing/stage-0.webp 1600w" imagesizes="100vw" fetchpriority="high">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1039,6 +1048,18 @@
     function queue() {
       if (!queued) { queued = true; requestAnimationFrame(render); }
     }
+    // Keyboard users: focusing a control inside a stage that isn't showing scrolls the build to that stage,
+    // so focus never lands on something invisible.
+    build.addEventListener('focusin', function (e) {
+      var step = e.target.closest && e.target.closest('.step');
+      var i = steps.indexOf(step);
+      if (i < 0 || i === active) return;
+      var range = build.offsetHeight - window.innerHeight;
+      var top = build.getBoundingClientRect().top + window.scrollY;
+      window.scrollTo(0, top + range * (i / last));
+      render();
+    });
+
     window.addEventListener('scroll', queue, { passive: true });
     window.addEventListener('resize', queue);
     reduce.addEventListener && reduce.addEventListener('change', function () { location.reload(); });
