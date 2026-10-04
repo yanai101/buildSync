@@ -14,6 +14,7 @@ Atmospheric: a dark paper, real photography from the build sequence, and one war
   - Register: stage 0 (empty plot and plans).
   - Join: stage 2 (frame with the crew).
   - On phones, the photo becomes a strip above the form.
+- **Content** (`/terms`, `/privacy`): Long Document — sticky bar (wordmark + "חזרה לדף הבית"), a header band with one dimmed build photo (terms: stage 0 plans · privacy: stage 5 finished house), then one 46rem reading column on the paper with the faint blueprint grid. Components: `src/components/LegalShell.tsx`; styles `.legal*` in `src/styles/app.css`. Legal text is never rewritten by design work.
 - **App** (everything behind login): out of scope. It keeps `src/styles/app.css` and its light/dark themes.
 
 ## Theme
