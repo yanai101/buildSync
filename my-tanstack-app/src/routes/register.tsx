@@ -2,7 +2,8 @@ import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { useEffect, useState, useRef } from 'react'
 import { useAuthActions } from '@convex-dev/auth/react'
 import { useConvexAuth, useMutation, useConvex, useQuery } from 'convex/react'
-import { Icon, Input, Btn } from '~/components/Shared'
+import { Icon } from '~/components/Shared'
+import { AuthShell, AuthHead, AuthField, AuthInput, AuthButton, AuthNotice, AuthDivider, GoogleMark } from '~/components/AuthShell'
 import { api } from '../../convex/_generated/api'
 
 import { z } from 'zod'
@@ -241,219 +242,96 @@ function RegisterPage() {
   }
 
   return (
-    <div style={{ flex: 1, width: '100%', height: '100vh', overflowY: 'auto', display: 'flex', background: 'var(--bg)', fontFamily: "'Heebo', sans-serif" }}>
+    <AuthShell
+      photo="stage-0"
+      photoAlt="מגרש ריק מסומן ביתדות, ובעל הבית בוחן את תוכניות האדריכל"
+      captionTitle={<>פתח פרויקט <b>בנייה חדש.</b></>}
+      captionBody="ההרשמה מיועדת ליזמים ובעלי פרויקט. מנהלי עבודה, מפקחים וקבלנים יצורפו על ידי בעל הפרויקט לאחר יצירתו."
+    >
+      <AuthHead title="יצירת חשבון בעל פרויקט" lede="הזן את הפרטים כדי לפתוח סביבת עבודה ולצרף צוות" />
 
-      {/* Visual side pane (hidden on mobile) */}
-      <div style={{ flex: 1, background: 'linear-gradient(135deg, var(--text1), #1a1a24)', display: 'flex', flexDirection: 'column', padding: '60px', color: '#fff', position: 'relative', overflow: 'hidden' }} className="hidden-mobile">
-        <div style={{ position: 'relative', zIndex: 2 }}>
-          <div className="sidebar-logo" style={{ marginBottom: 60, alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <img 
-              src="/logo.png" 
-              alt="BuildSync Icon" 
-              style={{ 
-                width: 40, 
-                height: 40, 
-                display: 'block', 
-                borderRadius: '10px',
-                objectFit: 'cover'
-              }} 
-            />
-            <div className="sidebar-logo-text" dir="ltr" style={{ fontSize: 28, color: '#fff', margin: 0 }}>Build<span style={{color: 'var(--accent)'}}>Sync</span></div>
-          </div>
-
-          <h2 style={{ fontSize: '3rem', fontWeight: 800, lineHeight: 1.1, marginBottom: 24, letterSpacing: '-0.02em', maxWidth: 400 }}>
-            פתח פרויקט בנייה חדש.
-          </h2>
-          <p style={{ fontSize: '1.2rem', color: 'rgba(255,255,255,0.7)', lineHeight: 1.6, maxWidth: 440 }}>
-            ההרשמה מיועדת ליזמים ובעלי פרויקט. מנהלי עבודה, מפקחים וקבלנים יצורפו על ידי בעל הפרויקט לאחר יצירתו.
-          </p>
+      {promoCode && !promoStatus ? (
+        <div className="auth-loading" role="status">
+          <span className="auth-spinner" aria-hidden="true" />
+          בודק קוד הרשמה...
         </div>
-
-        {/* Decorative elements */}
-        <div style={{ position: 'absolute', bottom: -50, right: -50, width: 400, height: 400, background: 'var(--accent)', filter: 'blur(150px)', opacity: 0.15, zIndex: 1 }} />
-        <div style={{ position: 'absolute', top: 100, left: -50, width: 300, height: 300, background: 'var(--success)', filter: 'blur(150px)', opacity: 0.1, zIndex: 1 }} />
-      </div>
-
-      {/* Form side */}
-      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 20px', background: 'var(--surface)' }}>
-        <div style={{ width: '100%', maxWidth: 420 }}>
-          <div style={{ marginBottom: 32 }}>
-            <h1 style={{ fontSize: '2rem', fontWeight: 800, marginBottom: 8, color: 'var(--text1)' }}>יצירת חשבון בעל פרויקט</h1>
-            <p style={{ color: 'var(--text2)' }}>הזן את הפרטים כדי לפתוח סביבת עבודה ולצרף צוות</p>
-          </div>
-          
-          {promoCode && !promoStatus ? (
-            <div style={{ 
-              marginBottom: 24, 
-              padding: 16, 
-              borderRadius: 8, 
-              background: 'var(--surface)',
-              border: '1px solid var(--border)',
-              display: 'flex',
-              gap: 12,
-              alignItems: 'center',
-              color: 'var(--text2)'
-            }}>
-              <div style={{ 
-                width: 20, 
-                height: 20, 
-                border: '2px solid var(--border)', 
-                borderTopColor: 'var(--accent)', 
-                borderRadius: '50%', 
-                animation: 'spin 1s linear infinite' 
-              }} />
-              <div style={{ fontSize: 14 }}>בודק קוד הרשמה...</div>
-            </div>
-          ) : (
-            <>
-              {promoMessage && (
-                <div style={{ 
-                  marginBottom: 24, 
-                  padding: 16, 
-                  borderRadius: 8, 
-                  background: promoMessage.type === 'success' ? '#ECFDF5' : promoMessage.type === 'warning' ? '#FFFBEB' : '#FEF2F2',
-                  color: promoMessage.type === 'success' ? '#059669' : promoMessage.type === 'warning' ? '#D97706' : '#DC2626',
-                  border: `1px solid ${promoMessage.type === 'success' ? '#A7F3D0' : promoMessage.type === 'warning' ? '#FDE68A' : '#FECACA'}`,
-                  display: 'flex',
-                  gap: 12,
-                  alignItems: 'flex-start'
-                }}>
-                  <Icon n={promoMessage.type === 'success' ? 'check-circle' : 'alert-circle'} s={20} />
-                  <div style={{ fontSize: 14, lineHeight: 1.4 }}>{promoMessage.text}</div>
-                </div>
-              )}
+      ) : (
+        <>
+          {promoMessage && (
+            <AuthNotice tone={promoMessage.type}>{promoMessage.text}</AuthNotice>
+          )}
 
           {verificationStep ? (
-            <div style={{ animation: 'fadeIn 0.3s ease-out' }}>
-              <div style={{ textAlign: 'center', marginBottom: 24 }}>
-                <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--accent-light, rgba(0, 102, 255, 0.1))', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
-                  <Icon n="mail" s={32} c="var(--accent)" />
-                </div>
-                <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: 8, color: 'var(--text1)' }}>אימות אימייל</h2>
-                <p style={{ color: 'var(--text2)', lineHeight: 1.5 }}>
-                  שלחנו קישור אימות לכתובת <strong>{form.email}</strong>.<br/>
-                  אנא לחץ על הקישור במייל, או הזן את הקוד מתוכו כאן כדי להשלים את ההרשמה.
+            <>
+              <header className="auth__head">
+                <span className="auth-chip"><Icon n="mail" s={16} /> אימות אימייל</span>
+                <p className="auth__lede">
+                  שלחנו קישור אימות לכתובת <strong>{form.email}</strong>. אנא לחץ על הקישור במייל, או הזן את הקוד מתוכו כאן כדי להשלים את ההרשמה.
                 </p>
-              </div>
+              </header>
 
-              <form onSubmit={handleVerify} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text1)', marginBottom: 6, textAlign: 'center' }}>קוד אימות</label>
-                  <Input 
-                    type="text" 
-                    value={code} 
-                    onChange={(v: string) => setCode(v)} 
-                    placeholder="הזן את הקוד..." 
-                    style={{ width: '100%', textAlign: 'center', letterSpacing: 4, fontSize: 18 }} 
-                  />
-                </div>
+              <form onSubmit={handleVerify} className="auth__form">
+                <AuthField label="קוד אימות">
+                  <AuthInput type="text" name="code" autoComplete="one-time-code" inputMode="numeric" className="auth-input--code" value={code} onChange={(v) => setCode(v)} placeholder="הזן את הקוד..." />
+                </AuthField>
 
-                {error && (
-                  <div style={{ fontSize: 13, color: 'var(--danger)', background: '#FEE2E2', border: '1px solid #FCA5A5', borderRadius: 8, padding: '8px 12px', textAlign: 'center' }}>
-                    {error}
-                  </div>
-                )}
+                {error && <AuthNotice tone="error">{error}</AuthNotice>}
 
-                <Btn type="submit" disabled={loading} style={{ width: '100%', justifyContent: 'center', padding: '14px', marginTop: 4, fontSize: 15 }}>
-                  {loading ? (
-                    <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                      <Icon n="clock" s={16} /> בודק קוד...
-                    </span>
-                  ) : 'אמת והתחבר'}
-                </Btn>
+                <AuthButton type="submit" disabled={loading} loading={loading} loadingText="בודק קוד...">
+                  אמת והתחבר
+                </AuthButton>
               </form>
 
-              <button 
-                onClick={() => { setVerificationStep(false); setError(null); }}
-                style={{ background: 'none', border: 'none', color: 'var(--text3)', fontSize: 13, textDecoration: 'underline', marginTop: 24, cursor: 'pointer', width: '100%', textAlign: 'center' }}
-              >
+              <button type="button" className="auth-text-btn" onClick={() => { setVerificationStep(false); setError(null); }}>
                 חזור לתיקון פרטים
               </button>
-            </div>
+            </>
           ) : (
             <>
-              <Btn onClick={handleGoogle} variant="ghost" style={{ width: '100%', justifyContent: 'center', padding: '12px', marginBottom: 16, fontSize: 14, border: '1px solid var(--border)' }}>
+              <AuthButton type="button" variant="ghost" onClick={handleGoogle}>
                 <GoogleMark /> המשך עם Google
-              </Btn>
+              </AuthButton>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '16px 0', color: 'var(--text3)', fontSize: 12 }}>
-                <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
-                או בדוא"ל
-                <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
-              </div>
+              <AuthDivider>או בדוא"ל</AuthDivider>
 
-              <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text1)', marginBottom: 6 }}>שם מלא</label>
-                  <Input value={form.name} onChange={(v: string) => setForm({...form, name: v})} placeholder="ישראל ישראלי" style={{ width: '100%' }} />
+              <form onSubmit={handleSubmit} className="auth__form">
+                <AuthField label="שם מלא">
+                  <AuthInput name="name" autoComplete="name" value={form.name} onChange={(v) => setForm({ ...form, name: v })} placeholder="ישראל ישראלי" />
+                </AuthField>
+
+                <div className="auth-row2">
+                  <AuthField label="אימייל">
+                    <AuthInput type="email" name="email" autoComplete="email" inputMode="email" value={form.email} onChange={(v) => setForm({ ...form, email: v })} placeholder="name@company.com" />
+                  </AuthField>
+                  <AuthField label="טלפון">
+                    <AuthInput type="tel" name="phone" autoComplete="tel" inputMode="tel" value={form.phone} onChange={(v) => setForm({ ...form, phone: v })} placeholder="050-0000000" />
+                  </AuthField>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                   <div>
-                      <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text1)', marginBottom: 6 }}>אימייל</label>
-                      <Input type="email" value={form.email} onChange={(v: string) => setForm({...form, email: v})} placeholder="name@company.com" style={{ width: '100%' }} />
-                   </div>
-                   <div>
-                      <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text1)', marginBottom: 6 }}>טלפון</label>
-                      <Input type="tel" value={form.phone} onChange={(v: string) => setForm({...form, phone: v})} placeholder="050-0000000" style={{ width: '100%' }} />
-                   </div>
-                </div>
+                <AuthField label="סיסמה" hint="לפחות 8 תווים, כולל אותיות A-Z, a-z ומספר">
+                  <AuthInput type="password" name="password" autoComplete="new-password" value={form.password} onChange={(v) => setForm({ ...form, password: v })} placeholder="••••••••" />
+                </AuthField>
 
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
-                    <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text1)' }}>סיסמה</label>
-                    <span style={{ fontSize: 11, color: 'var(--text3)' }}>לפחות 8 תווים, כולל אותיות A-Z, a-z ומספר</span>
-                  </div>
-                  <Input type="password" value={form.password} onChange={(v: string) => setForm({...form, password: v})} placeholder="••••••••" style={{ width: '100%' }} />
-                </div>
+                {error && <AuthNotice tone="error">{error}</AuthNotice>}
 
-                {error && (
-                  <div style={{ fontSize: 13, color: 'var(--danger)', background: '#FEE2E2', border: '1px solid #FCA5A5', borderRadius: 8, padding: '8px 12px' }}>
-                    {error}
-                  </div>
-                )}
-
-                <Btn type="submit" disabled={loading} style={{ width: '100%', justifyContent: 'center', padding: '14px', marginTop: 4, fontSize: 15 }}>
-                  {loading ? (
-                     <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                       <Icon n="clock" s={16} /> נרשם...
-                     </span>
-                  ) : 'פתח חשבון ונהל פרויקט'}
-                </Btn>
+                <AuthButton type="submit" disabled={loading} loading={loading} loadingText="נרשם...">
+                  פתח חשבון ונהל פרויקט
+                </AuthButton>
               </form>
             </>
           )}
 
-          <p style={{ textAlign: 'center', marginTop: 28, fontSize: 13, color: 'var(--text3)' }}>
-            יש לך כבר חשבון? <Link to="/login" style={{ color: 'var(--accent)', fontWeight: 600, textDecoration: 'none' }}>התחבר כאן</Link>
-          </p>
-          <p style={{ textAlign: 'center', marginTop: 12, fontSize: 12, color: 'var(--text3)' }}>
-            מנהל עבודה, מפקח או קבלן? יש לבקש מבעל הפרויקט לצרף אותך.
-          </p>
-          <p style={{ textAlign: 'center', marginTop: 16, fontSize: 11, color: 'var(--text3)' }}>
-            בהרשמה למערכת, את/ה מסכים/ה ל<Link to="/terms" style={{ color: 'var(--text2)', textDecoration: 'underline' }}>תנאי השימוש</Link> ול<Link to="/privacy" style={{ color: 'var(--text2)', textDecoration: 'underline' }}>מדיניות הפרטיות</Link> שלנו.
-          </p>
-            </>
-          )}
-        </div>
-      </div>
-
-      <style>{`
-        @media (max-width: 800px) {
-          .hidden-mobile { display: none !important; }
-        }
-      `}</style>
-    </div>
-  )
-}
-
-function GoogleMark() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 48 48" aria-hidden>
-      <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
-      <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
-      <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
-      <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
-    </svg>
+          <footer className="auth__foot">
+            <p>
+              יש לך כבר חשבון? <Link to="/login" className="auth-link">התחבר כאן</Link>
+            </p>
+            <p>מנהל עבודה, מפקח או קבלן? יש לבקש מבעל הפרויקט לצרף אותך.</p>
+            <p className="auth__legal">
+              בהרשמה למערכת, את/ה מסכים/ה ל<Link to="/terms" className="auth-link--quiet">תנאי השימוש</Link> ול<Link to="/privacy" className="auth-link--quiet">מדיניות הפרטיות</Link> שלנו.
+            </p>
+          </footer>
+        </>
+      )}
+    </AuthShell>
   )
 }
