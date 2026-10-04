@@ -997,8 +997,7 @@
     });
 
     // Scroll-scrubbed build. Skipped entirely for reduced motion: the stages stay a plain stacked list.
-    var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
-    if (reduce.matches) return;
+    var reduceMedia = window.matchMedia('(prefers-reduced-motion: reduce)');
 
     var build = document.getElementById('build');
     var steps = Array.prototype.slice.call(build.querySelectorAll('.step'));
@@ -1009,7 +1008,6 @@
     var n = steps.length;
     var last = n - 1;
     var active = -1;
-    var queued = false;
 
     root.classList.add('is-scrub');
     build.style.setProperty('--steps', n);
@@ -1022,11 +1020,36 @@
 
     function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
 
-    function render() {
-      queued = false;
-      var rect = build.getBoundingClientRect();
-      var range = build.offsetHeight - window.innerHeight;
-      var p = range > 0 ? clamp(-rect.top / range, 0, 1) : 0;
+    var currentScrollY = window.scrollY;
+    var targetScrollY = currentScrollY;
+    var buildTop = 0;
+    var buildRange = 0;
+    var lastPctText = "";
+    var isLerping = false;
+
+    function measure() {
+      buildTop = window.scrollY + build.getBoundingClientRect().top;
+      buildRange = Math.max(0, build.offsetHeight - window.innerHeight);
+      targetScrollY = window.scrollY;
+      
+      // Ensure initial render triggers immediately
+      if (!isLerping) {
+        currentScrollY = targetScrollY;
+        isLerping = true;
+        requestAnimationFrame(renderLoop);
+      }
+    }
+
+    function renderLoop() {
+      if (reduceMedia.matches) {
+        // Skip Lerp for prefers-reduced-motion users
+        currentScrollY = targetScrollY;
+      } else {
+        // Linear Interpolation for smooth inertia
+        currentScrollY += (targetScrollY - currentScrollY) * 0.12;
+      }
+
+      var p = buildRange > 0 ? clamp((currentScrollY - buildTop) / buildRange, 0, 1) : 0;
       var s = p * last; // 0..last, the stage position
 
       for (var i = 1; i < n; i++) {
@@ -1047,28 +1070,60 @@
         });
       }
       meter.style.setProperty('--p', p.toFixed(4));
-      pctOut.textContent = Math.round(p * 100) + '%';
+      
+      var newPctText = Math.round(p * 100) + '%';
+      if (newPctText !== lastPctText) {
+        pctOut.textContent = newPctText;
+        lastPctText = newPctText;
+      }
+
+      // Check distance. If reduced motion is on, distance will be 0 right away.
+      if (Math.abs(targetScrollY - currentScrollY) > 0.5) {
+        requestAnimationFrame(renderLoop);
+      } else {
+        isLerping = false;
+        currentScrollY = targetScrollY; // Snap to target when close enough
+      }
     }
 
-    function queue() {
-      if (!queued) { queued = true; requestAnimationFrame(render); }
+    function onScroll() {
+      targetScrollY = window.scrollY;
+      if (!isLerping) {
+        isLerping = true;
+        requestAnimationFrame(renderLoop);
+      }
     }
-    // Keyboard users: focusing a control inside a stage that isn't showing scrolls the build to that stage,
-    // so focus never lands on something invisible.
+
+    // Keyboard users: focusing a control inside a stage that isn't showing scrolls the build to that stage
     build.addEventListener('focusin', function (e) {
       var step = e.target.closest && e.target.closest('.step');
       var i = steps.indexOf(step);
       if (i < 0 || i === active) return;
-      var range = build.offsetHeight - window.innerHeight;
-      var top = build.getBoundingClientRect().top + window.scrollY;
-      window.scrollTo(0, top + range * (i / last));
-      render();
+      window.scrollTo(0, buildTop + buildRange * (i / last));
     });
 
-    window.addEventListener('scroll', queue, { passive: true });
-    window.addEventListener('resize', queue);
-    reduce.addEventListener && reduce.addEventListener('change', function () { location.reload(); });
-    render();
+    // Replace window.resize with ResizeObserver for more robust layout tracking
+    var resizeObserver = new ResizeObserver(function() {
+      measure();
+    });
+    resizeObserver.observe(build);
+    resizeObserver.observe(document.body);
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    
+    // React to prefers-reduced-motion changes dynamically
+    if (reduceMedia.addEventListener) {
+      reduceMedia.addEventListener('change', function () {
+        targetScrollY = window.scrollY;
+        if (!isLerping) {
+          isLerping = true;
+          requestAnimationFrame(renderLoop);
+        }
+      });
+    }
+
+    // Initial measurement and render
+    measure();
   })();
   </script>
 </body>
