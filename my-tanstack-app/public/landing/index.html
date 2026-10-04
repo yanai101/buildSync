@@ -71,6 +71,7 @@
       --color-info-line: oklch(62.3% 0.188 260 / 0.3);
       --color-whatsapp-line: oklch(77% 0.19 150 / 0.35);
       --color-whatsapp-hover: oklch(77% 0.19 150 / 0.22);
+      --color-nav-glass: color-mix(in oklch, var(--color-paper) 70%, transparent);
       --color-focus: oklch(85% 0.12 70);
 
       --font-display: 'Heebo', system-ui, sans-serif;
@@ -358,7 +359,26 @@
       .tier--pro { order: -1; }
     }
     @media (max-width: 760px) {
-      .nav-pill__link--hide-sm { display: none; }
+      /* Phones: the pill splits into two edge-anchored chips so the photo shows between them */
+      .nav-pill {
+        inset: var(--space-sm) var(--space-sm) auto var(--space-sm);
+        transform: none; max-width: none;
+        justify-content: space-between; gap: var(--space-sm);
+        padding: 0; background: none; border: 0; box-shadow: none;
+        backdrop-filter: none; -webkit-backdrop-filter: none;
+      }
+      .nav-pill__link { display: none; }
+      .nav-pill .wordmark {
+        height: 40px; padding-inline: 6px 14px; gap: 8px;
+        font-size: 1rem;
+        background: var(--color-nav-glass);
+        backdrop-filter: blur(14px) saturate(120%); -webkit-backdrop-filter: blur(14px) saturate(120%);
+        border: var(--rule-hair) solid var(--color-rule);
+        border-radius: var(--radius-pill);
+        box-shadow: 0 8px 24px -12px var(--color-shadow);
+      }
+      .nav-pill .wordmark img { width: 28px; height: 28px; border-radius: var(--radius-pill); }
+      .nav-pill .btn { min-height: 40px; padding: 0 var(--space-md); box-shadow: 0 8px 24px -12px var(--color-shadow); }
       .step__media img { object-position: 62% 60%; }
       /* Phones: the photo owns the top of the screen at full strength; copy + card sit below on paper */
       .is-scrub .step {
