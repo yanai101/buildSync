@@ -405,7 +405,7 @@ export const JoinScreen = ({ code }: Props) => {
     if (isServerAuthed) {
       try {
         await redeemExisting({ code });
-        navigate({ to: '/' });
+        navigate({ to: '/dashboard' });
       } catch (err) {
         setError(err instanceof Error ? err.message : 'הצטרפות נכשלה');
         setSubmitting(false);
@@ -453,7 +453,7 @@ export const JoinScreen = ({ code }: Props) => {
       if (signInOk) {
         try {
           await redeemExisting({ code });
-          navigate({ to: '/' });
+          navigate({ to: '/dashboard' });
         } catch (err) {
           setError(err instanceof Error ? err.message : 'הצטרפות לפרויקט נכשלה');
           setSubmitting(false);
@@ -510,7 +510,7 @@ export const JoinScreen = ({ code }: Props) => {
     if (newSignInOk) {
       try {
         await redeemExisting({ code });
-        navigate({ to: '/' });
+        navigate({ to: '/dashboard' });
       } catch (err) {
         setError(err instanceof Error ? err.message : 'הצטרפות לפרויקט נכשלה');
         setSubmitting(false);

@@ -30,7 +30,7 @@ export function AnnouncementsScreen() {
           <Icon n="bell" s={28} c="var(--accent)" />
           כל ההודעות
         </h2>
-        <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text2)', textDecoration: 'none', fontSize: 14, fontWeight: 600, padding: '6px 12px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, transition: 'all 0.2s' }}>
+        <Link to="/dashboard" style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text2)', textDecoration: 'none', fontSize: 14, fontWeight: 600, padding: '6px 12px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, transition: 'all 0.2s' }}>
           <Icon n="arrow-right" s={16} /> חזרה
         </Link>
       </div>

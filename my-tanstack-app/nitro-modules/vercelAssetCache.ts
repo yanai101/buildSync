@@ -16,6 +16,10 @@ import type { NitroModule } from 'nitro/types'
 //     misses see this rule.
 //   - config.json: immutable moves to the `hit` phase (runs only when a real file matched), and
 //     misses get no-store right after the filesystem check.
+//
+// The landing page is a static file at / (public/index.html). Its name isn't content-hashed, so it
+// must revalidate on every visit; the `hit` phase pins that explicitly instead of relying on
+// Vercel's default for static files.
 
 type VercelRoute = {
   src?: string
@@ -30,6 +34,8 @@ const ASSETS_RULE = '/assets/**'
 const ASSETS_SRC = '/assets/(.*)'
 const IMMUTABLE = 'public, max-age=31536000, immutable'
 const NO_STORE = 'no-store'
+const LANDING_SRC = '/(index\\.html)?'
+const REVALIDATE = 'public, max-age=0, must-revalidate'
 
 export const vercelAssetCache: NitroModule = {
   name: 'vercel-asset-cache',
@@ -61,6 +67,7 @@ export const vercelAssetCache: NitroModule = {
       routes.push(
         { handle: 'hit' },
         { src: ASSETS_SRC, headers: { 'cache-control': IMMUTABLE }, continue: true, important: true },
+        { src: LANDING_SRC, headers: { 'cache-control': REVALIDATE }, continue: true, important: true },
       )
 
       await writeFile(configPath, JSON.stringify(config, null, 2))

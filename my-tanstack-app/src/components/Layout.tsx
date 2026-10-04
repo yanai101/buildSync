@@ -95,6 +95,9 @@ export const PAGE_SUBTITLES: Record<string, string> = {
   "/guides": "למדו כיצד להפיק את המרב מ-BuildSync בעזרת מדריכי וידאו קצרים",
 }
 
+// Read by the inline script in public/index.html — keep the two in sync.
+const SIGNED_IN_HINT_KEY = 'buildsync:signed_in'
+
 const LOADING_PHRASES = [
   "מערבבים את המלט...",
   "מכינים קפה לפועלים...",
@@ -293,6 +296,15 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       return () => clearTimeout(timer)
     }
   }, [isLoading, authStabilized])
+  // App-owned "signed in" hint for the static landing page (public/index.html), which sends
+  // returning users straight to /dashboard. Only a hint: /dashboard still does the real auth check.
+  React.useEffect(() => {
+    if (!authStabilized || isLoading) return
+    try {
+      if (isAuthenticated) window.localStorage.setItem(SIGNED_IN_HINT_KEY, '1')
+      else window.localStorage.removeItem(SIGNED_IN_HINT_KEY)
+    } catch (e) {}
+  }, [authStabilized, isLoading, isAuthenticated])
   const { role: resolvedRole, identity } = useRequireRole(ALL_ROLES)
   const userRole = resolvedRole ?? 'owner'
   const [shortcuts] = useBottomNavShortcuts()
@@ -587,6 +599,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           'buildsync:last_viewed_daily_logs',
           'buildsync:sub-change:', // SubscriptionChangePopup per-user cache
         ]
+        window.localStorage.removeItem(SIGNED_IN_HINT_KEY)
         const keys = Object.keys(window.localStorage)
         for (const k of keys) {
           if (SESSION_PREFIXES.some((prefix) => k.startsWith(prefix))) {
@@ -606,7 +619,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   // group nav sections
   const sections = Array.from(new Set(NAV.map(n => n.section)))
 
-  const publicRoutes = ['/', '/register', '/login', '/terms', '/privacy']
+  // '/' is the static landing page (public/index.html), not a React route.
+  const publicRoutes = ['/register', '/login', '/terms', '/privacy']
   const isPublicRoute = (path: string) =>
     publicRoutes.includes(path) || path.startsWith('/join/')
 
@@ -628,7 +642,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   React.useEffect(() => {
     if (isLoading) return
-    if (isAuthenticated && (currentPath === '/login' || currentPath === '/')) {
+    if (isAuthenticated && currentPath === '/login') {
       let target = '/dashboard'
       if (typeof window !== 'undefined') {
         try {

@@ -68,7 +68,7 @@ function ProjectsRoute() {
       if (typeof newId === 'string') {
         setCurrentProject(newId);
       }
-      navigate({ to: '/' });
+      navigate({ to: '/dashboard' });
     } catch (err) {
       // The server enforces the limit too; surface the upgrade modal rather than
       // a generic failure when that's why creation was rejected.
@@ -281,7 +281,7 @@ function ProjectsRoute() {
                     variant={isActive ? 'ghost' : 'primary'}
                     onClick={() => {
                       setCurrentProject(project._id);
-                      navigate({ to: '/' });
+                      navigate({ to: '/dashboard' });
                     }}
                   >
                     <Icon n="arrow-right" s={16} />

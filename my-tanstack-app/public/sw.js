@@ -23,7 +23,7 @@ self.addEventListener('push', function (event) {
         body: data.body || '',
         icon: '/logo.svg',
         badge: '/logo.svg',
-        data: data.url || '/',
+        data: data.url || '/dashboard',
         vibrate: [200, 100, 200],
         dir: 'rtl',
         ...(data.tag ? { tag: data.tag, renotify: true } : {}),
@@ -34,7 +34,7 @@ self.addEventListener('push', function (event) {
       event.waitUntil(
         self.registration.showNotification('התראה חדשה', {
           body: event.data.text(),
-          data: '/',
+          data: '/dashboard',
           dir: 'rtl',
         })
       );
@@ -45,7 +45,7 @@ self.addEventListener('push', function (event) {
 self.addEventListener('notificationclick', function (event) {
   event.notification.close();
   
-  const rawTarget = event.notification && event.notification.data ? event.notification.data : '/';
+  const rawTarget = event.notification && event.notification.data ? event.notification.data : '/dashboard';
   const targetUrl = new URL(rawTarget, self.location.origin).href;
 
   event.waitUntil(

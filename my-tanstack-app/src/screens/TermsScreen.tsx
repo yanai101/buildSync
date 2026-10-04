@@ -1,16 +1,16 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Icon } from '../components/Shared';
-import { Link } from '@tanstack/react-router';
 
 export const TermsScreen = () => {
   return (
     <div style={{ background: '#fcfcfc', minHeight: '100vh', direction: 'rtl', fontFamily: "'Heebo', sans-serif" }}>
       {/* Header */}
       <header style={{ padding: '20px 5%', background: '#08080a', color: '#fff', display: 'flex', alignItems: 'center', gap: 20 }}>
-        <Link to="/" style={{ color: '#fff', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700 }}>
+        {/* '/' is the static landing page (public/index.html), so this is a full page load */}
+        <a href="/" style={{ color: '#fff', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700 }}>
           <Icon n="arrow-right" s={18} /> חזרה לדף הבית
-        </Link>
+        </a>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginRight: 'auto' }}>
           <img 
             src="/logo.png" 

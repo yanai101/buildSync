@@ -2,11 +2,14 @@
 <html lang="he" dir="rtl">
 <head>
   <meta charset="UTF-8">
+  <script>
+    // Returning signed-in users go straight to the app. 'buildsync:signed_in' is set/cleared by
+    // src/components/Layout.tsx; it is only a hint — /dashboard does the real auth check.
+    try { if (localStorage.getItem('buildsync:signed_in') === '1') location.replace('/dashboard'); } catch (e) {}
+  </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>BuildSync - מערכת ניהול לפרויקטי בנייה ושיפוצים</title>
   <meta name="description" content="פלטפורמה לניהול פרויקטי בנייה ושיפוצים: תקציב, קבלנים, יומני עבודה, תיעוד ותקשורת. כל מה שאתה צריך כדי לנהל פרויקט מוצלח בשטח.">
-  <!-- Preview page: remove noindex when this replaces "/" -->
-  <meta name="robots" content="noindex">
   <meta name="theme-color" content="#0a0a0c">
   <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
   <meta property="og:title" content="BuildSync - מערכת ניהול לפרויקטי בנייה ושיפוצים">
@@ -545,7 +548,7 @@
 </head>
 <body>
   <nav class="nav-pill" aria-label="ראשי">
-    <a class="wordmark" href="/landing" aria-label="BuildSync - דף הבית"><img src="/logo.png" alt="" width="28" height="28"><span>Build<b>Sync</b></span></a>
+    <a class="wordmark" href="/" aria-label="BuildSync - דף הבית"><img src="/logo.png" alt="" width="28" height="28"><span>Build<b>Sync</b></span></a>
     <a class="nav-pill__link nav-pill__link--hide-sm" href="#pricing">מחירים</a>
     <a class="nav-pill__link" href="/about">מי אנחנו</a>
     <a class="btn btn--primary" href="/login">נסה עכשיו</a>

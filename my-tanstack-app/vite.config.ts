@@ -59,6 +59,14 @@ export default defineConfig({
       srcDirectory: 'src',
     }),
     viteReact(),
-    nitro({ modules: [vercelAssetCache] }),
+    nitro({
+      modules: [vercelAssetCache],
+      routeRules: {
+        // The landing page moved from its /landing preview to / (public/index.html).
+        // Exact paths only: /landing/stage-*.webp are the page's images and must not redirect.
+        '/landing': { redirect: { to: '/', status: 301 } },
+        '/landing/': { redirect: { to: '/', status: 301 } },
+      },
+    }),
   ],
 })

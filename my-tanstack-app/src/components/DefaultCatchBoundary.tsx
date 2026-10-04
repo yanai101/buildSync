@@ -1,6 +1,5 @@
 import {
   ErrorComponent,
-  Link,
   rootRouteId,
   useMatch,
   useRouter,
@@ -122,15 +121,15 @@ export function DefaultCatchBoundary({ error }: ErrorComponentProps) {
           Try Again
         </button>
         {isRoot ? (
-          <Link
-            to="/"
+          <a
+            href="/"
             className={`px-2 py-1 bg-gray-600 dark:bg-gray-700 rounded-sm text-white uppercase font-extrabold`}
           >
             Home
-          </Link>
+          </a>
         ) : (
-          <Link
-            to="/"
+          <a
+            href="/"
             className={`px-2 py-1 bg-gray-600 dark:bg-gray-700 rounded-sm text-white uppercase font-extrabold`}
             onClick={(e) => {
               e.preventDefault()
@@ -138,7 +137,7 @@ export function DefaultCatchBoundary({ error }: ErrorComponentProps) {
             }}
           >
             Go Back
-          </Link>
+          </a>
         )}
       </div>
     </div>

@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { createFileRoute, Link } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 
 
 export const Route = createFileRoute('/privacy')({
@@ -12,9 +12,10 @@ function PrivacyScreen() {
       <div style={{ maxWidth: 800, margin: '0 auto', background: 'rgba(19, 19, 24, 0.65)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', padding: 50, borderRadius: 24, border: `1px solid rgba(255,255,255,0.08)`, boxShadow: '0 20px 60px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.1)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 30 }}>
           <h1 style={{ fontSize: '2.5rem', fontWeight: 800, color: '#fff', margin: 0 }}>מדיניות פרטיות</h1>
-          <Link to="/" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+          {/* '/' is the static landing page (public/index.html), so this is a full page load */}
+          <a href="/" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
             חזרה לדף הבית
-          </Link>
+          </a>
         </div>
         
         <div style={{ fontSize: '1.1rem', lineHeight: 1.8, color: '#ccc' }}>
