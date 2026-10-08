@@ -29,23 +29,16 @@ export const DashboardQuickNotes = () => {
   const [newText, setNewText] = React.useState('');
   const [newColor, setNewColor] = React.useState(COLORS[0].value);
   const [deleteId, setDeleteId] = React.useState<string | null>(null);
-  const [expandedId, setExpandedId] = React.useState<string | null>(null);
+  const [selectedNote, setSelectedNote] = React.useState<any | null>(null);
 
   React.useEffect(() => {
     if (search?.addNote) {
       setIsAddOpen(true);
-      // Clean up the URL so it doesn't reopen on refresh
       navigate({ to: '/dashboard', replace: true });
     }
   }, [search, navigate]);
 
-  // Note: Since active tier check happens in backend based on Project Owner,
-  // we just show a limit message if it throws. The "isAtLimit" check can be removed from client
-  // or we can just always allow clicking and let the backend reject.
-
-  const handleAddClick = () => {
-    setIsAddOpen(true);
-  };
+  const handleAddClick = () => setIsAddOpen(true);
 
   const handleSave = async () => {
     if (!newText.trim() || !projectId) return;
@@ -70,6 +63,9 @@ export const DashboardQuickNotes = () => {
     if (!deleteId) return;
     try {
       await removeNote({ noteId: deleteId as any });
+      if (selectedNote?._id === deleteId) {
+        setSelectedNote(null);
+      }
     } catch (e) {
       console.error(e);
     }
@@ -83,7 +79,7 @@ export const DashboardQuickNotes = () => {
       <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <Icon n="sticky-note" s={16} c="var(--accent)" />
-          הפתקים שלי
+          הפתקים שלי ({notes.length})
         </span>
         <Btn size="sm" variant="secondary" onClick={handleAddClick} style={{ padding: '4px 10px', fontSize: 12 }}>
           <Icon n="plus" s={14} /> פתק חדש
@@ -97,66 +93,97 @@ export const DashboardQuickNotes = () => {
               אין לך פתקים עדיין. לחץ על "פתק חדש" כדי להתחיל.
             </motion.div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {notes.slice(0, 6).map((note: any) => {
-                const isExpanded = expandedId === note._id;
-                return (
-                  <motion.div
-                    key={note._id}
-                    layout
-                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxHeight: 320, overflowY: 'auto', paddingRight: 4, paddingBottom: 4 }}>
+              {notes.map((note: any) => (
+                <motion.div
+                  key={note._id}
+                  layout
+                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  style={{
+                    backgroundColor: note.color || '#FEF08A',
+                    color: '#27272A',
+                    borderRadius: 12,
+                    padding: 14,
+                    position: 'relative',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+                    border: '1px solid rgba(0,0,0,0.05)'
+                  }}
+                >
+                  <div
+                    onClick={() => setSelectedNote(note)}
                     style={{
-                      backgroundColor: note.color || '#FEF08A',
-                      color: '#27272A',
-                      borderRadius: 12,
-                      padding: 14,
-                      position: 'relative',
-                      boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
-                      border: '1px solid rgba(0,0,0,0.05)'
+                      fontSize: 14,
+                      lineHeight: 1.5,
+                      whiteSpace: 'pre-wrap',
+                      wordBreak: 'break-word',
+                      cursor: 'pointer',
+                      display: '-webkit-box',
+                      WebkitLineClamp: 3,
+                      WebkitBoxOrient: 'vertical' as any,
+                      overflow: 'hidden'
                     }}
                   >
-                    <div
-                      onClick={() => setExpandedId(isExpanded ? null : note._id)}
-                      style={{
-                        fontSize: 14,
-                        lineHeight: 1.5,
-                        whiteSpace: 'pre-wrap',
-                        wordBreak: 'break-word',
-                        cursor: 'pointer',
-                        display: isExpanded ? 'block' : '-webkit-box',
-                        WebkitLineClamp: 3,
-                        WebkitBoxOrient: 'vertical' as any,
-                        overflow: 'hidden'
-                      }}
-                    >
-                      {note.text}
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12, borderTop: '1px solid rgba(0,0,0,0.08)', paddingTop: 8 }}>
-                      <span style={{ fontSize: 11, opacity: 0.7, fontWeight: 500 }}>
-                        {new Date(note.createdAt).toLocaleDateString('he-IL')}
-                      </span>
+                    {note.text}
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12, borderTop: '1px solid rgba(0,0,0,0.08)', paddingTop: 8 }}>
+                    <span style={{ fontSize: 11, opacity: 0.7, fontWeight: 500 }}>
+                      {new Date(note.createdAt).toLocaleDateString('he-IL')}
+                    </span>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button
+                        onClick={() => setSelectedNote(note)}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#27272A', opacity: 0.6, padding: 4 }}
+                        title="קרא פתק"
+                      >
+                        <Icon n="maximize-2" s={14} />
+                      </button>
                       <button
                         onClick={() => setDeleteId(note._id)}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#EF4444', opacity: 0.8, display: 'flex', padding: 4 }}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#EF4444', opacity: 0.8, padding: 4 }}
                         title="מחק פתק"
                       >
                         <Icon n="trash-2" s={14} />
                       </button>
                     </div>
-                  </motion.div>
-                );
-              })}
-              {notes.length > 6 && (
-                <div style={{ textAlign: 'center', fontSize: 12, color: 'var(--text3)' }}>
-                  מציג 6 מתוך {notes.length} פתקים
-                </div>
-              )}
+                  </div>
+                </motion.div>
+              ))}
             </div>
           )}
         </AnimatePresence>
       </div>
+
+      {/* View Note Modal */}
+      <Modal title="צפייה בפתק" open={!!selectedNote} onClose={() => setSelectedNote(null)} width={400}>
+        {selectedNote && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+             <div style={{
+                backgroundColor: selectedNote.color || '#FEF08A',
+                padding: 16,
+                borderRadius: 12,
+                color: '#27272A',
+                fontSize: 15,
+                lineHeight: 1.6,
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-word',
+                maxHeight: '50vh',
+                overflowY: 'auto'
+             }}>
+                {selectedNote.text}
+             </div>
+             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: 12, color: 'var(--text3)' }}>
+                  עודכן: {new Date(selectedNote.createdAt).toLocaleDateString('he-IL')} בשעה {new Date(selectedNote.createdAt).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}
+                </span>
+                <Btn size="sm" variant="secondary" onClick={() => setDeleteId(selectedNote._id)} style={{ color: '#EF4444', borderColor: 'transparent', background: 'rgba(239, 68, 68, 0.1)' }}>
+                  <Icon n="trash-2" s={14} /> מחק פתק
+                </Btn>
+             </div>
+          </div>
+        )}
+      </Modal>
 
       {/* Add Note Modal */}
       <Modal title="פתק חדש" open={isAddOpen} onClose={() => setIsAddOpen(false)} width={400}>
