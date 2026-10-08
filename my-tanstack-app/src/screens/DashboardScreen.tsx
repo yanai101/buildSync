@@ -11,6 +11,7 @@ import { useRequireRole } from '../hooks/useRequireRole';
 import { useCurrentProject } from '../hooks/useCurrentProject';
 import { DashboardCategoryBreakdown } from '../components/DashboardCategoryBreakdown';
 import { DashboardPlansWidget } from '../components/DashboardPlansWidget';
+import { DashboardQuickNotes } from '../components/DashboardQuickNotes';
 import { DashboardProjectHero } from '../components/DashboardProjectHero';
 
 import { useMutation, useQuery } from 'convex/react';
@@ -611,6 +612,8 @@ export const DashboardScreen = () => {
 
           {/* ── Right Column ── */}
           <div style={{ flex: '1 1 320px', display: 'flex', flexDirection: 'column', gap: 20, minWidth: 0 }}>
+            
+            <DashboardQuickNotes />
 
             {/* Project Info Card */}
             <motion.div variants={itemVariants} className="card">
