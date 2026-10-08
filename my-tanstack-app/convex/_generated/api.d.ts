@@ -48,6 +48,7 @@ import type * as projects from "../projects.js";
 import type * as push from "../push.js";
 import type * as pushActions from "../pushActions.js";
 import type * as queries from "../queries.js";
+import type * as quickNotes from "../quickNotes.js";
 import type * as quotes from "../quotes.js";
 import type * as seed from "../seed.js";
 import type * as stages from "../stages.js";
@@ -106,6 +107,7 @@ declare const fullApi: ApiFromModules<{
   push: typeof push;
   pushActions: typeof pushActions;
   queries: typeof queries;
+  quickNotes: typeof quickNotes;
   quotes: typeof quotes;
   seed: typeof seed;
   stages: typeof stages;
