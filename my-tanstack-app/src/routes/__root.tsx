@@ -65,7 +65,7 @@ function PushSubscriptionSync() {
   
   const onAction = needsReenable ? reenable : () => {
     dismissPromo();
-    navigate({ to: '/account', search: (prev: any) => prev });
+    navigate({ to: '/account', hash: 'notifications', search: (prev: any) => prev });
   };
   
   const onDismiss = needsReenable ? dismiss : dismissPromo;

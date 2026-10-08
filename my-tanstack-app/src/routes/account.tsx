@@ -65,6 +65,15 @@ function AccountPage() {
     window.addEventListener('resize', check)
     return () => window.removeEventListener('resize', check)
   }, [])
+
+  React.useEffect(() => {
+    if (window.location.hash === '#notifications') {
+      setTimeout(() => {
+        const el = document.getElementById('notifications')
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      }, 150)
+    }
+  }, [])
   
   const updateProfile = useMutation(api.users.updateProfile)
   const updatePassword = useAction(api.users.updatePassword)
@@ -476,7 +485,7 @@ function AccountPage() {
         </form>
       </div>
 
-      <div className="card" style={{ padding: 24 }}>
+      <div id="notifications" className="card" style={{ padding: 24 }}>
         <SectionHeader title="הגדרות התראות" subtitle="בחר כיצד תרצה לקבל עדכונים והודעות" />
         <div style={{ marginTop: 16 }}>
           <PushNotificationToggle />
