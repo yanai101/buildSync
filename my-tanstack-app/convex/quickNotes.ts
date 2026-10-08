@@ -1,3 +1,5 @@
+import { Id } from "./_generated/dataModel";
+
 import { mutation, query } from './_generated/server';
 import { ConvexError, v } from 'convex/values';
 import { getAuthUserId } from '@convex-dev/auth/server';
@@ -42,7 +44,8 @@ export const create = mutation({
     }
     
     // The active tier depends on the project OWNER, not the current user.
-    const owner = await ctx.db.get(project.ownerUserId);
+    if (!project.ownerUserId) throw new Error("No ownerUserId");
+    const owner = await ctx.db.get(project.ownerUserId as Id<"users">);
     if (!owner) {
       throw new Error('Project owner not found');
     }
