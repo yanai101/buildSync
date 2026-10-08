@@ -4,6 +4,7 @@ import { useAction, useMutation, useQuery } from 'convex/react'
 import { AnimatePresence } from 'framer-motion'
 import { Btn, Input, Icon, DarkModeToggle, useDarkMode } from '~/components/Shared'
 import { api } from '../../convex/_generated/api'
+import { ConvexError } from 'convex/values'
 import { useSubscription } from '~/hooks/useSubscription'
 import { useAppNotify } from '~/hooks/useAppNotify'
 import { SupportModal } from '~/components/SupportModal'
@@ -176,7 +177,7 @@ function AccountPage() {
     } catch (err) {
       setProfileMsg({
         kind: 'err',
-        text: err instanceof Error ? err.message : 'שמירת הפרטים נכשלה',
+        text: err instanceof ConvexError ? (err.data as string) : err instanceof Error ? err.message : 'שמירת הפרטים נכשלה',
       })
     } finally {
       setProfileSaving(false)
@@ -194,8 +195,9 @@ function AccountPage() {
       setPwdMsg({ kind: 'err', text: 'אימות הסיסמה החדשה לא תואם' })
       return
     }
-    if (pwd.next.length < 8) {
-      setPwdMsg({ kind: 'err', text: 'הסיסמה החדשה חייבת להכיל לפחות 8 תווים' })
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/
+    if (!passwordRegex.test(pwd.next)) {
+      setPwdMsg({ kind: 'err', text: 'הסיסמה חייבת להכיל לפחות 8 תווים, אות גדולה (A-Z), אות קטנה (a-z) ומספר' })
       return
     }
     setPwdSaving(true)
@@ -206,7 +208,7 @@ function AccountPage() {
     } catch (err) {
       setPwdMsg({
         kind: 'err',
-        text: err instanceof Error ? err.message : 'עדכון הסיסמה נכשל',
+        text: err instanceof ConvexError ? (err.data as string) : err instanceof Error ? err.message : 'עדכון הסיסמה נכשל',
       })
     } finally {
       setPwdSaving(false)

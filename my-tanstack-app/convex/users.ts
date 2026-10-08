@@ -1,5 +1,5 @@
 import { action, mutation, query } from './_generated/server';
-import { v } from 'convex/values';
+import { v, ConvexError } from 'convex/values';
 import { api } from './_generated/api';
 import { Polar } from '@polar-sh/sdk';
 import {
@@ -92,11 +92,8 @@ export const updatePassword = action({
     if (!userId) {
       throw new Error('Not authenticated');
     }
-    if (args.newPassword.length < 8) {
-      throw new Error('הסיסמה החדשה חייבת להכיל לפחות 8 תווים');
-    }
     if (args.currentPassword === args.newPassword) {
-      throw new Error('הסיסמה החדשה זהה לסיסמה הנוכחית');
+      throw new ConvexError('הסיסמה החדשה זהה לסיסמה הנוכחית');
     }
 
     const me = await ctx.runQuery(api.users.me, {});
