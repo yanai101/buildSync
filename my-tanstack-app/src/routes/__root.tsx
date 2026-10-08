@@ -54,12 +54,20 @@ import { usePushSubscriptionSync } from '~/hooks/usePushNotifications'
 import { PushReenableBanner } from '~/components/PushReenableBanner'
 import { usePendingInviteRedeem } from '~/hooks/usePendingInviteRedeem'
 
+import { useNavigate } from '@tanstack/react-router'
+
 function PushSubscriptionSync() {
-  const { needsReenable, reenable, dismiss, needsPromo, promoSubscribe, dismissPromo } = usePushSubscriptionSync()
+  const { needsReenable, reenable, dismiss, needsPromo, dismissPromo } = usePushSubscriptionSync()
+  const navigate = useNavigate()
   
   const show = needsReenable || needsPromo;
   const mode = needsReenable ? 'reenable' : 'promo';
-  const onAction = needsReenable ? reenable : promoSubscribe;
+  
+  const onAction = needsReenable ? reenable : () => {
+    dismissPromo();
+    navigate({ to: '/account' });
+  };
+  
   const onDismiss = needsReenable ? dismiss : dismissPromo;
 
   return <PushReenableBanner show={show} mode={mode} onAction={onAction} onDismiss={onDismiss} />
