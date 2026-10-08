@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 
 // Shown when this device had push enabled (permission still granted) but its
 // subscription was lost and the browser won't let us restore it without a tap.
-export function PushReenableBanner({ show, onReenable, onDismiss }: { show: boolean, onReenable: () => void, onDismiss: () => void }) {
+export function PushReenableBanner({ show, mode = 'reenable', onAction, onDismiss }: { show: boolean, mode?: 'reenable' | 'promo', onAction: () => void, onDismiss: () => void }) {
   return (
     <AnimatePresence>
       {show && (
@@ -34,19 +34,22 @@ export function PushReenableBanner({ show, onReenable, onDismiss }: { show: bool
             <Bell size={20} />
           </div>
           <div style={{ flex: 1, fontSize: 13, color: 'var(--text1)', lineHeight: 1.5 }}>
-            ההתראות כובו בעקבות עדכון האפליקציה
-            <div style={{ fontSize: 11, color: 'var(--text2)' }}>סגירה תסתיר את ההודעה ל-30 יום</div>
+            {mode === 'promo' 
+              ? 'הישאר מעודכן! הפעל התראות כדי לקבל עדכונים על יומני עבודה והודעות צוות.'
+              : 'ההתראות כובו בעקבות עדכון האפליקציה'
+            }
+            <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 2 }}>סגירה תסתיר הודעה זו לחודש</div>
           </div>
           <button
-            onClick={onReenable}
+            onClick={onAction}
             style={{ padding: '8px 14px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}
           >
-            הפעל מחדש
+            {mode === 'promo' ? 'הפעל התראות' : 'הפעל מחדש'}
           </button>
           <button
             onClick={onDismiss}
-            aria-label="הסתר ל-30 יום"
-            title="הסתר ל-30 יום"
+            aria-label="הסתר לחודש"
+            title="הסתר לחודש"
             style={{ background: 'none', border: 'none', color: 'var(--text2)', cursor: 'pointer', padding: 4, flexShrink: 0 }}
           >
             <X size={18} />

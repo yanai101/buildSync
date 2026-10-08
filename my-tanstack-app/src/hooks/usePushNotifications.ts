@@ -69,6 +69,16 @@ function subscribeRegistration(registration: ServiceWorkerRegistration) {
   });
 }
 
+const PUSH_PROMO_SNOOZE_KEY = 'buildsync:push-promo-snoozed-until';
+
+function isPromoSnoozed() {
+  try {
+    return Date.now() < Number(localStorage.getItem(PUSH_PROMO_SNOOZE_KEY) || '0');
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Re-claims this browser's push subscription for the currently logged-in user.
  * Without this, on a shared device the subscription stays tied to whoever
@@ -83,8 +93,11 @@ export function usePushSubscriptionSync() {
   const { isAuthenticated } = useConvexAuth();
   const saveSubscription = useMutation(api.push.saveSubscription);
   const removeSubscription = useMutation(api.push.removeSubscription);
+  
   const [needsReenable, setNeedsReenable] = useState(false);
+  const [needsPromo, setNeedsPromo] = useState(false);
 
+  // Sync existing subscription or ask for re-enable
   useEffect(() => {
     if (!isAuthenticated) return;
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
@@ -93,20 +106,13 @@ export function usePushSubscriptionSync() {
       .getRegistration('/sw.js')
       .then(async (existing) => {
         const registration = existing ?? (await navigator.serviceWorker.register('/sw.js'));
-
         const subscription = await registration.pushManager.getSubscription();
 
-        // If permission was revoked after subscribing, the subscription
-        // object may still exist locally but the browser will never
-        // deliver the push. Remove it from our DB so diagnostics are
-        // accurate and we don't waste send attempts.
         if (Notification.permission === 'denied' && subscription) {
           try {
             await removeSubscription({ endpoint: subscription.endpoint });
             await subscription.unsubscribe();
-          } catch (e) {
-            console.error('Failed to clean up denied push subscription', e);
-          }
+          } catch (e) {}
           return;
         }
 
@@ -118,20 +124,31 @@ export function usePushSubscriptionSync() {
             const args = subscriptionToSaveArgs(restored);
             if (args) await saveSubscription(args);
           } catch (e) {
-            console.warn('Silent push re-subscribe failed; asking user', e);
             if (!isReenableSnoozed()) setNeedsReenable(true);
           }
           return;
         }
+        
         const args = subscriptionToSaveArgs(subscription);
         if (args) return saveSubscription(args);
       })
-      .catch((err) => {
-        console.error('Failed to sync push subscription to current user', err);
-      });
+      .catch(() => {});
   }, [isAuthenticated, saveSubscription, removeSubscription]);
 
-  // Must be called from a user gesture (tap) for iOS to allow it.
+  // Handle Promo logic for new users
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+    if (Notification.permission !== 'default') return;
+    if (isPromoSnoozed()) return;
+
+    const timer = setTimeout(() => {
+      setNeedsPromo(true);
+    }, 5000);
+
+    return () => clearTimeout(timer);
+  }, [isAuthenticated]);
+
   const reenable = async () => {
     try {
       const registration = await navigator.serviceWorker.ready;
@@ -139,9 +156,21 @@ export function usePushSubscriptionSync() {
       const args = subscriptionToSaveArgs(subscription);
       if (args) await saveSubscription(args);
       setNeedsReenable(false);
-    } catch (e) {
-      console.error('Failed to re-enable push notifications', e);
-    }
+    } catch (e) {}
+  };
+
+  const promoSubscribe = async () => {
+    try {
+      const permissionResult = await Notification.requestPermission();
+      if (permissionResult === 'granted') {
+        const registration = await navigator.serviceWorker.ready;
+        const subscription = await subscribeRegistration(registration);
+        const args = subscriptionToSaveArgs(subscription);
+        if (args) await saveSubscription(args);
+        writeFlag(PUSH_OPTED_OUT_KEY, false);
+      }
+    } catch (e) {}
+    setNeedsPromo(false);
   };
 
   const dismiss = () => {
@@ -151,7 +180,14 @@ export function usePushSubscriptionSync() {
     setNeedsReenable(false);
   };
 
-  return { needsReenable, reenable, dismiss };
+  const dismissPromo = () => {
+    try {
+      localStorage.setItem(PUSH_PROMO_SNOOZE_KEY, String(Date.now() + PUSH_REENABLE_SNOOZE_MS));
+    } catch {}
+    setNeedsPromo(false);
+  };
+
+  return { needsReenable, reenable, dismiss, needsPromo, promoSubscribe, dismissPromo };
 }
 
 export function usePushNotifications() {

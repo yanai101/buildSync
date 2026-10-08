@@ -55,8 +55,14 @@ import { PushReenableBanner } from '~/components/PushReenableBanner'
 import { usePendingInviteRedeem } from '~/hooks/usePendingInviteRedeem'
 
 function PushSubscriptionSync() {
-  const { needsReenable, reenable, dismiss } = usePushSubscriptionSync()
-  return <PushReenableBanner show={needsReenable} onReenable={reenable} onDismiss={dismiss} />
+  const { needsReenable, reenable, dismiss, needsPromo, promoSubscribe, dismissPromo } = usePushSubscriptionSync()
+  
+  const show = needsReenable || needsPromo;
+  const mode = needsReenable ? 'reenable' : 'promo';
+  const onAction = needsReenable ? reenable : promoSubscribe;
+  const onDismiss = needsReenable ? dismiss : dismissPromo;
+
+  return <PushReenableBanner show={show} mode={mode} onAction={onAction} onDismiss={onDismiss} />
 }
 
 function PendingInviteRedeem() {
