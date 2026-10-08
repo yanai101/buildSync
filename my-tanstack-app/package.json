@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite dev",
     "prebuild": "rm -rf .output .vinxi .nitro .vite",
-    "build": "vite build && tsc --noEmit",
+    "build": "npm run test && vite build && tsc --noEmit",
     "preview": "vite preview",
     "start": "node .output/server/index.mjs",
     "test": "vitest run"
