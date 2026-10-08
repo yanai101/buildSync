@@ -6,8 +6,10 @@ import { getActiveTier } from './_lib/entitlements';
 const FREE_TIER_MAX_NOTES = 5;
 
 export const list = query({
-  args: {},
-  handler: async (ctx) => {
+  args: {
+    projectId: v.id('projects'),
+  },
+  handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) {
       return [];
@@ -15,7 +17,7 @@ export const list = query({
 
     const notes = await ctx.db
       .query('quickNotes')
-      .withIndex('by_user', (q) => q.eq('userId', userId))
+      .withIndex('by_user_project', (q) => q.eq('userId', userId).eq('projectId', args.projectId))
       .take(200);
 
     return notes.sort((a, b) => b.createdAt - a.createdAt);
@@ -24,6 +26,7 @@ export const list = query({
 
 export const create = mutation({
   args: {
+    projectId: v.id('projects'),
     text: v.string(),
     color: v.optional(v.string()),
   },
@@ -33,28 +36,36 @@ export const create = mutation({
       throw new Error('Not authenticated');
     }
 
-    const user = await ctx.db.get(userId);
-    if (!user) {
-      throw new Error('User not found');
+    const project = await ctx.db.get(args.projectId);
+    if (!project) {
+      throw new Error('Project not found');
+    }
+    
+    // The active tier depends on the project OWNER, not the current user.
+    const owner = await ctx.db.get(project.ownerUserId);
+    if (!owner) {
+      throw new Error('Project owner not found');
     }
 
-    const tier = getActiveTier(user);
+    const tier = getActiveTier(owner);
+    
     if (tier === 'free') {
       const existingNotes = await ctx.db
         .query('quickNotes')
-        .withIndex('by_user', (q) => q.eq('userId', userId))
+        .withIndex('by_user_project', (q) => q.eq('userId', userId).eq('projectId', args.projectId))
         .collect();
       
       if (existingNotes.length >= FREE_TIER_MAX_NOTES) {
         throw new ConvexError({
           code: 'FREE_NOTE_LIMIT',
-          message: 'משתמשי חינם יכולים לשמור עד 5 פתקים. שדרג לפרו כדי ליצור פתקים ללא הגבלה.',
+          message: 'הגעת למגבלת הפתקים בפרויקט זה. היזם (בעל הפרויקט) מוגדר במסלול חינמי. יש לשדרג לפרו כדי ליצור פתקים ללא הגבלה.',
         });
       }
     }
 
     const noteId = await ctx.db.insert('quickNotes', {
       userId,
+      projectId: args.projectId,
       text: args.text,
       color: args.color,
       createdAt: Date.now(),

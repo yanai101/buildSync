@@ -5,6 +5,7 @@ import { api } from '../../convex/_generated/api';
 import { Icon, Modal, Btn } from './Shared';
 import { openUpgradeModal } from './UpgradeModalHost';
 import { useSearch, useNavigate } from '@tanstack/react-router';
+import { useCurrentProject } from '../hooks/useCurrentProject';
 
 const COLORS = [
   { name: 'צהוב', value: '#FEF08A' },
@@ -17,8 +18,10 @@ const COLORS = [
 export const DashboardQuickNotes = () => {
   const search = useSearch({ strict: false }) as any;
   const navigate = useNavigate();
-  const notes = useQuery(api.quickNotes.list) ?? [];
-  const identity = useQuery(api.users.currentIdentity);
+  const { project } = useCurrentProject();
+  const projectId = project?._id;
+
+  const notes = useQuery(api.quickNotes.list, projectId ? { projectId } : 'skip') ?? [];
   const createNote = useMutation(api.quickNotes.create);
   const removeNote = useMutation(api.quickNotes.remove);
 
@@ -28,7 +31,6 @@ export const DashboardQuickNotes = () => {
   const [deleteId, setDeleteId] = React.useState<string | null>(null);
   const [expandedId, setExpandedId] = React.useState<string | null>(null);
 
-  // Open from deep link (PWA Shortcut)
   React.useEffect(() => {
     if (search?.addNote) {
       setIsAddOpen(true);
@@ -37,24 +39,18 @@ export const DashboardQuickNotes = () => {
     }
   }, [search, navigate]);
 
-  const isFree = identity?.subscriptionTier === undefined || identity?.subscriptionTier === 'free';
-  const isAtLimit = isFree && notes.length >= 5;
+  // Note: Since active tier check happens in backend based on Project Owner,
+  // we just show a limit message if it throws. The "isAtLimit" check can be removed from client
+  // or we can just always allow clicking and let the backend reject.
 
   const handleAddClick = () => {
-    if (isAtLimit) {
-      openUpgradeModal({
-        title: 'שדרוג לפרו',
-        reason: 'משתמשי חינם יכולים לשמור עד 5 פתקים. שדרג כדי ליצור פתקים ללא הגבלה.',
-      });
-      return;
-    }
     setIsAddOpen(true);
   };
 
   const handleSave = async () => {
-    if (!newText.trim()) return;
+    if (!newText.trim() || !projectId) return;
     try {
-      await createNote({ text: newText.trim(), color: newColor });
+      await createNote({ text: newText.trim(), color: newColor, projectId });
       setIsAddOpen(false);
       setNewText('');
       setNewColor(COLORS[0].value);
@@ -62,7 +58,7 @@ export const DashboardQuickNotes = () => {
       if (err.message?.includes('FREE_NOTE_LIMIT')) {
         openUpgradeModal({
           title: 'שדרוג לפרו',
-          reason: 'הגעת למגבלת הפתקים בחשבון החינמי.',
+          reason: 'הגעת למגבלת הפתקים בחשבון החינמי של יזם הפרויקט.',
         });
       } else {
         console.error(err);
@@ -79,6 +75,8 @@ export const DashboardQuickNotes = () => {
     }
     setDeleteId(null);
   };
+
+  if (!projectId) return null;
 
   return (
     <div className="card" style={{ marginBottom: 20 }}>

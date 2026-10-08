@@ -322,12 +322,13 @@ export default defineSchema({
 
   quickNotes: defineTable({
     userId: v.id('users'),
+    projectId: v.id('projects'),
     text: v.string(),
     color: v.optional(v.string()),
     createdAt: v.number(),
   })
-    .index('by_user', ['userId'])
-    .index('by_user_created', ['userId', 'createdAt']),
+    .index('by_user_project', ['userId', 'projectId'])
+    .index('by_user_project_created', ['userId', 'projectId', 'createdAt']),
 
 }, { schemaValidation: false });
 
