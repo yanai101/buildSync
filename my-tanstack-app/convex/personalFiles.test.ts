@@ -64,9 +64,8 @@ describe('personal project archive scoping', () => {
     const t = convexTest(schema, modules);
     const { ownerId, otherProjectId } = await setup(t);
 
-    await expect(
-      t.withIdentity({ subject: ownerId }).query(api.personalFiles.listMyPersonalFiles, { projectId: otherProjectId }),
-    ).rejects.toThrow('אין לך הרשאה לגשת לארכיון פרויקט זה');
+    const result = await t.withIdentity({ subject: ownerId }).query(api.personalFiles.listMyPersonalFiles, { projectId: otherProjectId });
+    expect(result).toBeNull();
   });
 
   test('allows manager with permissions on Pro project to access archive', async () => {
@@ -118,9 +117,8 @@ describe('personal project archive scoping', () => {
       startDate: '2026-01-01', expectedEnd: '2026-12-31', progressPct: 0, budgetTotal: 0, spent: 0,
     }));
 
-    await expect(
-      t.withIdentity({ subject: managerId }).query(api.personalFiles.listMyPersonalFiles, { projectId: freeProjectId }),
-    ).rejects.toThrow('הארכיון זמין רק כאשר בעל הפרויקט הוא בעל מנוי Pro או Premium');
+    const result = await t.withIdentity({ subject: managerId }).query(api.personalFiles.listMyPersonalFiles, { projectId: freeProjectId });
+    expect(result).toBeNull();
   });
 
   test('non-owner cannot delete files from archive', async () => {
