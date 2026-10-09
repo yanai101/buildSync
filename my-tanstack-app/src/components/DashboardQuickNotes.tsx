@@ -2,7 +2,7 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
-import { Icon, Modal, Btn } from './Shared';
+import { Icon, Modal, Btn, useDarkMode } from './Shared';
 import { openUpgradeModal } from './UpgradeModalHost';
 import { useSearch, useNavigate } from '@tanstack/react-router';
 import { useCurrentProject } from '../hooks/useCurrentProject';
@@ -18,9 +18,37 @@ const COLORS = [
 export const DashboardQuickNotes = () => {
   const search = useSearch({ strict: false }) as any;
   const navigate = useNavigate();
-  const { project } = useCurrentProject();
+  const { project, identity } = useCurrentProject();
   const projectId = project?._id;
-  const identity = useQuery(api.users.currentIdentity);
+  const { dark } = useDarkMode(identity?.userId);
+
+  const getNoteColors = (hex: string) => {
+    if (!dark) return { 
+      bg: hex || '#FEF08A', 
+      text: '#27272A', 
+      badgeBg: '#fff', 
+      badgeIcon: '#3b82f6',
+      btnColor: '#27272A',
+      trashColor: '#EF4444'
+    };
+    
+    const darkMap: Record<string, string> = {
+      '#FEF08A': '#854d0e', // yellow-800
+      '#BBF7D0': '#166534', // green-800
+      '#BFDBFE': '#1e40af', // blue-800
+      '#FBCFE8': '#9d174d', // pink-800
+      '#E9D5FF': '#6b21a8', // purple-800
+    };
+    
+    return { 
+      bg: darkMap[hex] || '#854d0e', 
+      text: '#F9FAFB', 
+      badgeBg: 'rgba(255,255,255,0.15)', 
+      badgeIcon: '#93C5FD',
+      btnColor: '#F9FAFB',
+      trashColor: '#FCA5A5' // lighter red for better contrast on dark backgrounds
+    };
+  };
 
   const notes = useQuery(api.quickNotes.list, projectId ? { projectId } : 'skip') ?? [];
   const team = useQuery(api.quickNotes.listTeamForSharing, projectId ? { projectId } : 'skip') ?? [];
@@ -31,6 +59,7 @@ export const DashboardQuickNotes = () => {
   const [isAddOpen, setIsAddOpen] = React.useState(false);
   const [newText, setNewText] = React.useState('');
   const [newColor, setNewColor] = React.useState(COLORS[0].value);
+  const [newSharedWith, setNewSharedWith] = React.useState('');
   const [deleteId, setDeleteId] = React.useState<string | null>(null);
   const [selectedNote, setSelectedNote] = React.useState<any | null>(null);
 
@@ -46,10 +75,16 @@ export const DashboardQuickNotes = () => {
   const handleSave = async () => {
     if (!newText.trim() || !projectId) return;
     try {
-      await createNote({ text: newText.trim(), color: newColor, projectId });
+      await createNote({ 
+        text: newText.trim(), 
+        color: newColor, 
+        projectId,
+        ...(newSharedWith ? { sharedWith: [newSharedWith as any] } : {})
+      });
       setIsAddOpen(false);
       setNewText('');
       setNewColor(COLORS[0].value);
+      setNewSharedWith('');
     } catch (err: any) {
       if (err.message?.includes('FREE_NOTE_LIMIT')) {
         openUpgradeModal({
@@ -96,11 +131,12 @@ export const DashboardQuickNotes = () => {
               אין לך פתקים עדיין. לחץ על "פתק חדש" כדי להתחיל.
             </motion.div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxHeight: 320, overflowY: 'auto', paddingRight: 4, paddingBottom: 4 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxHeight: 320, overflowY: 'auto', padding: '12px 12px 12px 4px' }}>
               {notes.map((note: any) => {
                 // Determine if this note was shared WITH me or BY me
                 const isMyNote = identity?.userId === note.userId;
                 const isSharedWithMe = !isMyNote;
+                const colors = getNoteColors(note.color);
 
                 return (
                   <motion.div
@@ -110,8 +146,8 @@ export const DashboardQuickNotes = () => {
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.95 }}
                     style={{
-                      backgroundColor: note.color || '#FEF08A',
-                      color: '#27272A',
+                      backgroundColor: colors.bg,
+                      color: colors.text,
                       borderRadius: 12,
                       padding: 14,
                       position: 'relative',
@@ -120,13 +156,13 @@ export const DashboardQuickNotes = () => {
                     }}
                   >
                     {isSharedWithMe && (
-                      <div style={{ position: 'absolute', top: -8, right: -8, background: '#fff', borderRadius: '50%', padding: 4, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }} title="שותף איתי">
-                        <Icon n="users" s={14} c="var(--accent)" />
+                      <div style={{ position: 'absolute', top: 8, left: 8, background: colors.badgeBg, borderRadius: '50%', width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }} title="שותף איתי">
+                        <Icon n="users" s={14} c={colors.badgeIcon} />
                       </div>
                     )}
                     {(note.sharedWith && note.sharedWith.length > 0 && isMyNote) && (
-                      <div style={{ position: 'absolute', top: -8, left: -8, background: '#fff', borderRadius: '50%', padding: 4, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }} title="שותף עם הצוות">
-                        <Icon n="share-2" s={14} c="var(--accent)" />
+                      <div style={{ position: 'absolute', top: 8, left: 8, background: colors.badgeBg, borderRadius: '50%', width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }} title="שותף עם הצוות">
+                        <Icon n="users" s={14} c={colors.badgeIcon} />
                       </div>
                     )}
                     <div
@@ -140,26 +176,29 @@ export const DashboardQuickNotes = () => {
                         display: '-webkit-box',
                         WebkitLineClamp: 3,
                         WebkitBoxOrient: 'vertical' as any,
-                        overflow: 'hidden'
+                        overflow: 'hidden',
+                        paddingLeft: (isSharedWithMe || (note.sharedWith && note.sharedWith.length > 0)) ? 28 : 0
                       }}
                     >
                       {note.text}
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12, borderTop: '1px solid rgba(0,0,0,0.08)', paddingTop: 8 }}>
-                      <span style={{ fontSize: 11, opacity: 0.7, fontWeight: 500 }}>
-                        {new Date(note.createdAt).toLocaleDateString('he-IL')}
-                      </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ fontSize: 11, opacity: 0.7, fontWeight: 500 }}>
+                          {new Date(note.createdAt).toLocaleDateString('he-IL')}
+                        </span>
+                      </div>
                       <div style={{ display: 'flex', gap: 8 }}>
                         <button
                           onClick={() => setSelectedNote(note)}
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#27272A', opacity: 0.6, padding: 4 }}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: colors.btnColor, opacity: 0.7, padding: 4 }}
                           title="קרא פתק"
                         >
                           <Icon n="maximize-2" s={14} />
                         </button>
                         <button
                           onClick={() => setDeleteId(note._id)}
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#EF4444', opacity: 0.8, padding: 4 }}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: colors.trashColor, opacity: 0.9, padding: 4 }}
                           title={isMyNote ? "מחק פתק" : "הסר מהלוח שלי"}
                         >
                           <Icon n={isMyNote ? "trash-2" : "x"} s={14} />
@@ -181,14 +220,15 @@ export const DashboardQuickNotes = () => {
           const alreadySharedIds = selectedNote.sharedWith || [];
           // Filter team to those who haven't been shared with yet
           const availableToShare = team.filter((m: any) => !alreadySharedIds.includes(m._id));
+          const colors = getNoteColors(selectedNote.color);
 
           return (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                <div style={{
-                  backgroundColor: selectedNote.color || '#FEF08A',
+                  backgroundColor: colors.bg,
                   padding: 16,
                   borderRadius: 12,
-                  color: '#27272A',
+                  color: colors.text,
                   fontSize: 15,
                   lineHeight: 1.6,
                   whiteSpace: 'pre-wrap',
@@ -274,23 +314,40 @@ export const DashboardQuickNotes = () => {
               fontFamily: 'inherit'
             }}
           />
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <Icon n="palette" s={16} c="var(--text3)" />
-            <div style={{ display: 'flex', gap: 8 }}>
-              {COLORS.map(c => (
-                <button
-                  key={c.value}
-                  type="button"
-                  onClick={() => setNewColor(c.value)}
-                  style={{
-                    width: 24, height: 24, borderRadius: '50%', background: c.value,
-                    border: newColor === c.value ? '2px solid var(--accent)' : '2px solid transparent',
-                    cursor: 'pointer', boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-                  }}
-                  title={c.name}
-                />
-              ))}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <Icon n="palette" s={16} c="var(--text3)" />
+              <div style={{ display: 'flex', gap: 8 }}>
+                {COLORS.map(c => (
+                  <button
+                    key={c.value}
+                    type="button"
+                    onClick={() => setNewColor(c.value)}
+                    style={{
+                      width: 24, height: 24, borderRadius: '50%', background: c.value,
+                      border: newColor === c.value ? '2px solid var(--accent)' : '2px solid transparent',
+                      cursor: 'pointer', boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+                    }}
+                    title={c.name}
+                  />
+                ))}
+              </div>
             </div>
+            {team.length > 0 && (
+              <select
+                value={newSharedWith}
+                onChange={(e) => setNewSharedWith(e.target.value)}
+                style={{
+                  padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)', 
+                  background: 'var(--bg)', fontSize: 12, color: 'var(--text2)', maxWidth: 140
+                }}
+              >
+                <option value="">ללא שיתוף</option>
+                {team.map((m: any) => (
+                  <option key={m._id} value={m._id}>{m.name} ({m.role})</option>
+                ))}
+              </select>
+            )}
           </div>
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
             <Btn variant="secondary" onClick={() => setIsAddOpen(false)}>ביטול</Btn>

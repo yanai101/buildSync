@@ -36,6 +36,7 @@ export const create = mutation({
     projectId: v.id('projects'),
     text: v.string(),
     color: v.optional(v.string()),
+    sharedWith: v.optional(v.array(v.id('users'))),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -77,7 +78,22 @@ export const create = mutation({
       text: args.text,
       color: args.color,
       createdAt: Date.now(),
+      sharedWith: args.sharedWith,
     });
+
+    if (args.sharedWith && args.sharedWith.length > 0) {
+      const me = await ctx.db.get(userId);
+      const myName = me?.name || 'איש צוות';
+      const projName = project.name || 'הפרויקט';
+
+      await scheduleUserNotifications(ctx, {
+        userIds: args.sharedWith,
+        title: 'פתק חדש שותף איתך',
+        body: `${myName} שיתף איתך פתק בפרויקט ${projName}. היכנס לדאשבורד כדי לראות אותו.`,
+        url: `/dashboard?projectId=${args.projectId}`,
+        tag: `shared-note-${noteId}-create`
+      });
+    }
 
     return noteId;
   },
