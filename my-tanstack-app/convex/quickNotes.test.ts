@@ -120,4 +120,44 @@ describe('Quick Notes', () => {
     notes = await asFreeUser.query(api.quickNotes.list, { projectId: freeProject });
     expect(notes.length).toBe(0);
   });
+
+  test('can share a note with a team member and they can remove it from their board', async () => {
+    const { t, freeUserId, proUserId, freeProject } = await setup();
+    const asFreeUser = t.withIdentity({ subject: freeUserId });
+    const asProUser = t.withIdentity({ subject: proUserId });
+
+    const noteId = await asFreeUser.mutation(api.quickNotes.create, { projectId: freeProject, text: 'Shared Note' });
+    
+    // Pro user shouldn't see it initially
+    let proNotes = await asProUser.query(api.quickNotes.list, { projectId: freeProject });
+    expect(proNotes.length).toBe(0);
+
+    // Free user shares it with Pro user
+    await asFreeUser.mutation(api.quickNotes.share, { noteId, userId: proUserId });
+
+    // Pro user should now see it
+    proNotes = await asProUser.query(api.quickNotes.list, { projectId: freeProject });
+    expect(proNotes.length).toBe(1);
+    expect(proNotes[0].text).toBe('Shared Note');
+
+    // Free user still sees it
+    let freeNotes = await asFreeUser.query(api.quickNotes.list, { projectId: freeProject });
+    expect(freeNotes.length).toBe(1);
+
+    // Pro user removes it from their board (only removes them from sharedWith)
+    await asProUser.mutation(api.quickNotes.remove, { noteId });
+
+    // Pro user shouldn't see it anymore
+    proNotes = await asProUser.query(api.quickNotes.list, { projectId: freeProject });
+    expect(proNotes.length).toBe(0);
+
+    // Free user should STILL see it (they are the creator)
+    freeNotes = await asFreeUser.query(api.quickNotes.list, { projectId: freeProject });
+    expect(freeNotes.length).toBe(1);
+
+    // Free user deletes it completely
+    await asFreeUser.mutation(api.quickNotes.remove, { noteId });
+    freeNotes = await asFreeUser.query(api.quickNotes.list, { projectId: freeProject });
+    expect(freeNotes.length).toBe(0);
+  });
 });
