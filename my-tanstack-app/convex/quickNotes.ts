@@ -128,6 +128,34 @@ export const remove = mutation({
   },
 });
 
+export const update = mutation({
+  args: {
+    noteId: v.id('quickNotes'),
+    text: v.string(),
+    color: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error('Not authenticated');
+    }
+
+    const note = await ctx.db.get(args.noteId);
+    if (!note) {
+      throw new Error('Note not found');
+    }
+
+    if (note.userId !== userId && !note.sharedWith?.includes(userId)) {
+      throw new Error('Access denied');
+    }
+
+    await ctx.db.patch(args.noteId, {
+      text: args.text,
+      ...(args.color ? { color: args.color } : {})
+    });
+  },
+});
+
 export const share = mutation({
   args: {
     noteId: v.id('quickNotes'),

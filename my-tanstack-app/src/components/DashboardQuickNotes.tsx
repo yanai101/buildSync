@@ -55,6 +55,7 @@ export const DashboardQuickNotes = () => {
   const createNote = useMutation(api.quickNotes.create);
   const removeNote = useMutation(api.quickNotes.remove);
   const shareNote = useMutation(api.quickNotes.share);
+  const updateNote = useMutation(api.quickNotes.update);
 
   const [isAddOpen, setIsAddOpen] = React.useState(false);
   const [newText, setNewText] = React.useState('');
@@ -62,6 +63,10 @@ export const DashboardQuickNotes = () => {
   const [newSharedWith, setNewSharedWith] = React.useState('');
   const [deleteId, setDeleteId] = React.useState<string | null>(null);
   const [selectedNote, setSelectedNote] = React.useState<any | null>(null);
+  
+  const [isEditing, setIsEditing] = React.useState(false);
+  const [editText, setEditText] = React.useState('');
+  const [editColor, setEditColor] = React.useState('');
 
   React.useEffect(() => {
     if (search?.addNote) {
@@ -131,7 +136,7 @@ export const DashboardQuickNotes = () => {
               אין לך פתקים עדיין. לחץ על "פתק חדש" כדי להתחיל.
             </motion.div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxHeight: 320, overflowY: 'auto', padding: '12px 12px 12px 4px' }}>
+            <div className="notes-list">
               {notes.map((note: any) => {
                 // Determine if this note was shared WITH me or BY me
                 const isMyNote = identity?.userId === note.userId;
@@ -213,33 +218,75 @@ export const DashboardQuickNotes = () => {
         </AnimatePresence>
       </div>
 
-      {/* View Note Modal */}
-      <Modal title="צפייה בפתק" open={!!selectedNote} onClose={() => setSelectedNote(null)} width={400}>
+      <Modal title={isEditing ? "עריכת פתק" : "צפייה בפתק"} open={!!selectedNote} onClose={() => { setSelectedNote(null); setIsEditing(false); }} width={400}>
         {selectedNote && (() => {
           const isMyNote = identity?.userId === selectedNote.userId;
           const alreadySharedIds = selectedNote.sharedWith || [];
           // Filter team to those who haven't been shared with yet
           const availableToShare = team.filter((m: any) => !alreadySharedIds.includes(m._id));
-          const colors = getNoteColors(selectedNote.color);
+          const colors = getNoteColors(isEditing ? editColor : selectedNote.color);
 
           return (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-               <div style={{
-                  backgroundColor: colors.bg,
-                  padding: 16,
-                  borderRadius: 12,
-                  color: colors.text,
-                  fontSize: 15,
-                  lineHeight: 1.6,
-                  whiteSpace: 'pre-wrap',
-                  wordBreak: 'break-word',
-                  maxHeight: '40vh',
-                  overflowY: 'auto'
-               }}>
-                  {selectedNote.text}
-               </div>
+               {isEditing ? (
+                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                   <textarea
+                     autoFocus
+                     value={editText}
+                     onChange={(e) => setEditText(e.target.value)}
+                     rows={5}
+                     style={{
+                       width: '100%',
+                       padding: 16,
+                       borderRadius: 12,
+                       border: '1px solid var(--border)',
+                       backgroundColor: colors.bg,
+                       color: colors.text,
+                       fontSize: 15,
+                       lineHeight: 1.6,
+                       resize: 'none',
+                       fontFamily: 'inherit'
+                     }}
+                   />
+                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                       <Icon n="palette" s={16} c="var(--text3)" />
+                       <div style={{ display: 'flex', gap: 8 }}>
+                         {COLORS.map(c => (
+                           <button
+                             key={c.value}
+                             type="button"
+                             onClick={() => setEditColor(c.value)}
+                             style={{
+                               width: 24, height: 24, borderRadius: '50%', background: c.value,
+                               border: editColor === c.value ? '2px solid var(--accent)' : '2px solid transparent',
+                               cursor: 'pointer', boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+                             }}
+                             title={c.name}
+                           />
+                         ))}
+                       </div>
+                     </div>
+                   </div>
+                 </div>
+               ) : (
+                 <div style={{
+                    backgroundColor: colors.bg,
+                    padding: 16,
+                    borderRadius: 12,
+                    color: colors.text,
+                    fontSize: 15,
+                    lineHeight: 1.6,
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-word',
+                    maxHeight: '40vh',
+                    overflowY: 'auto'
+                 }}>
+                    {selectedNote.text}
+                 </div>
+               )}
 
-               {isMyNote && (
+               {!isEditing && isMyNote && (
                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, background: 'var(--bg2)', padding: 12, borderRadius: 8 }}>
                     <div style={{ fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
                       <Icon n="share-2" s={14} c="var(--text2)" /> שיתוף עם צוות
@@ -284,9 +331,33 @@ export const DashboardQuickNotes = () => {
                     {isMyNote ? 'נוצר: ' : 'שותף איתך: '}
                     {new Date(selectedNote.createdAt).toLocaleDateString('he-IL')} בשעה {new Date(selectedNote.createdAt).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}
                   </span>
-                  <Btn size="sm" variant="secondary" onClick={() => { setDeleteId(selectedNote._id); setSelectedNote(null); }} style={{ color: '#EF4444', borderColor: 'transparent', background: 'rgba(239, 68, 68, 0.1)' }}>
-                    <Icon n={isMyNote ? "trash-2" : "x"} s={14} /> {isMyNote ? 'מחק פתק' : 'הסר'}
-                  </Btn>
+                  
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    {isEditing ? (
+                      <>
+                        <Btn size="sm" variant="secondary" onClick={() => setIsEditing(false)}>ביטול</Btn>
+                        <Btn size="sm" onClick={async () => {
+                          if (!editText.trim()) return;
+                          await updateNote({ noteId: selectedNote._id, text: editText.trim(), color: editColor });
+                          setSelectedNote({ ...selectedNote, text: editText.trim(), color: editColor });
+                          setIsEditing(false);
+                        }}>שמור</Btn>
+                      </>
+                    ) : (
+                      <>
+                        <Btn size="sm" variant="secondary" onClick={() => {
+                          setEditText(selectedNote.text);
+                          setEditColor(selectedNote.color || COLORS[0].value);
+                          setIsEditing(true);
+                        }} style={{ borderColor: 'transparent', background: 'var(--bg2)', color: 'var(--text1)' }}>
+                          <Icon n="edit" s={14} /> ערוך
+                        </Btn>
+                        <Btn size="sm" variant="secondary" onClick={() => { setDeleteId(selectedNote._id); setSelectedNote(null); }} style={{ color: '#EF4444', borderColor: 'transparent', background: 'rgba(239, 68, 68, 0.1)' }}>
+                          <Icon n={isMyNote ? "trash-2" : "x"} s={14} /> {isMyNote ? 'מחק' : 'הסר'}
+                        </Btn>
+                      </>
+                    )}
+                  </div>
                </div>
             </div>
           );

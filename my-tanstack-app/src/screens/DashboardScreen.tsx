@@ -13,6 +13,7 @@ import { DashboardCategoryBreakdown } from '../components/DashboardCategoryBreak
 import { DashboardPlansWidget } from '../components/DashboardPlansWidget';
 import { DashboardQuickNotes } from '../components/DashboardQuickNotes';
 import { DashboardProjectHero } from '../components/DashboardProjectHero';
+import { useMediaQuery } from '../hooks/useMediaQuery';
 
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
@@ -34,6 +35,7 @@ export const DashboardScreen = () => {
   const { projects, isLoading: projectLoading, setCurrentProject, identity, accessInfo } = useCurrentProject();
   const [showAllStages, setShowAllStages] = React.useState(false);
   const [showAllAlerts, setShowAllAlerts] = React.useState(false);
+  const isMobile = useMediaQuery('(max-width: 1023px)');
 
   // Free-tier retention warning — dismissed state via localStorage (7 days)
   const DISMISS_KEY = 'free_retention_warning_dismissed_at';
@@ -451,6 +453,10 @@ export const DashboardScreen = () => {
         {/* ── Budget Summary Cards ── */}
         {canViewBudget && <BudgetSummaryCards summary={stats} style={{ marginBottom: 28 }} />}
 
+        {isMobile && (
+           <DashboardQuickNotes />
+        )}
+
         {/* ── Main Grid ── */}
         <motion.div
           variants={containerVariants} initial="hidden" animate="show"
@@ -613,7 +619,7 @@ export const DashboardScreen = () => {
           {/* ── Right Column ── */}
           <div style={{ flex: '1 1 320px', display: 'flex', flexDirection: 'column', gap: 20, minWidth: 0 }}>
             
-            <DashboardQuickNotes />
+            {!isMobile && <DashboardQuickNotes />}
 
             {/* Project Info Card */}
             <motion.div variants={itemVariants} className="card">
