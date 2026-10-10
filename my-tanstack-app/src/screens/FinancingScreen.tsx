@@ -749,14 +749,29 @@ export const FinancingScreen: React.FC = () => {
                   style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 20 }}
                 >
                   {[
-                    { label: 'התקבל למימון', val: summary.totalFundingReceived, icon: 'check-circle', color: 'var(--success)', light: 'var(--success-light)' },
-                    { label: 'הוצאות פרויקט', val: summary.totalProjectExpenses, icon: 'chart', color: 'var(--accent)', light: 'var(--accent-light)' },
+                    { 
+                      label: 'כספי מימון שהתקבלו', 
+                      val: summary.totalFundingReceived, 
+                      icon: 'check-circle', 
+                      color: 'var(--success)', 
+                      light: 'var(--success-light)',
+                      subtitle: 'סך ההון וההלוואות שנכנסו עד כה'
+                    },
+                    { 
+                      label: 'שולם בפועל (הוצאות)', 
+                      val: summary.totalProjectExpenses, 
+                      icon: 'chart', 
+                      color: 'var(--accent)', 
+                      light: 'var(--accent-light)',
+                      subtitle: 'כספים שיצאו בפועל לקבלנים וספקים'
+                    },
                     {
-                      label: summary.availableFunding >= 0 ? 'יתרה זמינה' : 'פער מימון נוכחי',
+                      label: summary.availableFunding >= 0 ? 'יתרת קופה זמינה' : 'פער מימון נוכחי',
                       val: Math.abs(summary.availableFunding),
                       icon: summary.availableFunding >= 0 ? 'check-circle' : 'alert',
                       color: summary.availableFunding >= 0 ? 'var(--success)' : 'var(--danger)',
                       light: summary.availableFunding >= 0 ? 'var(--success-light)' : 'rgba(239,68,68,0.1)',
+                      subtitle: summary.availableFunding >= 0 ? 'מימון שהתקבל פחות מה ששולם' : 'תשלומים שחורגים מהמימון שהתקבל'
                     },
                   ].map((card) => (
                     <motion.div
@@ -773,7 +788,8 @@ export const FinancingScreen: React.FC = () => {
                         <Icon n={card.icon} s={22} />
                       </div>
                       <div style={{ fontSize: 24, fontWeight: 800, color: card.color, letterSpacing: '-0.5px' }}>{fmtMoney(card.val)}</div>
-                      <div style={{ fontSize: 12, color: 'var(--text3)', fontWeight: 600, marginTop: 4, textTransform: 'uppercase' }}>{card.label}</div>
+                      <div style={{ fontSize: 13, color: 'var(--text1)', fontWeight: 700, marginTop: 4 }}>{card.label}</div>
+                      <div style={{ fontSize: 11, color: 'var(--text3)', fontWeight: 500, marginTop: 2, opacity: 0.9 }}>{card.subtitle}</div>
                     </motion.div>
                   ))}
                 </motion.div>
@@ -781,8 +797,9 @@ export const FinancingScreen: React.FC = () => {
                 {/* Future & gap row */}
                 <motion.div variants={itemVariants} style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 28 }}>
                   <div style={{ flex: '1 1 180px', background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 16px' }}>
-                    <div style={{ fontSize: 12, color: 'var(--text3)', fontWeight: 600, marginBottom: 4 }}>מימון עתידי מתוכנן</div>
+                    <div style={{ fontSize: 13, color: 'var(--text1)', fontWeight: 700, marginBottom: 4 }}>מימון עתידי מתוכנן</div>
                     <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text1)' }}>{fmtMoney(summary.totalPlannedFunding)}</div>
+                    <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4, fontWeight: 500, opacity: 0.9 }}>פעימות / הון שטרם התקבלו</div>
                   </div>
                   <div style={{
                     flex: '1 1 180px', borderRadius: 10, padding: '12px 16px',
@@ -790,13 +807,15 @@ export const FinancingScreen: React.FC = () => {
                     border: `1px solid ${summary.projectFundingGap > 0 ? 'rgba(239,68,68,0.3)' : 'var(--border)'}`,
                     background: summary.projectFundingGap > 0 ? 'rgba(239,68,68,0.05)' : 'var(--surface-2)',
                   }}>
-                    <div style={{ fontSize: 12, color: 'var(--text3)', fontWeight: 600, marginBottom: 4 }}>
-                      {summary.projectFundingGap > 0 ? '⚠️ פער מימון צפוי' : summary.projectFundingGap < 0 ? '✅ עודף מימון צפוי' : 'פער מימון'}
+                    <div style={{ fontSize: 13, color: summary.projectFundingGap > 0 ? 'var(--danger)' : 'var(--text1)', fontWeight: 700, marginBottom: 4 }}>
+                      {summary.projectFundingGap > 0 ? '⚠️ פער מימון צפוי' : summary.projectFundingGap < 0 ? '✅ עודף מימון צפוי' : 'פער מימון צפוי'}
                     </div>
                     <div style={{ fontSize: 18, fontWeight: 800, color: summary.projectFundingGap > 0 ? 'var(--danger)' : summary.projectFundingGap < 0 ? 'var(--success)' : 'var(--text1)' }}>
                       {fmtMoney(Math.abs(summary.projectFundingGap))}
                     </div>
-                    <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>תקציב פרויקט: {fmtMoney(summary.projectBudget)}</div>
+                    <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4, fontWeight: 500, opacity: 0.9 }}>
+                      מול התקציב המלא ({fmtMoney(summary.projectBudget)})
+                    </div>
                   </div>
                 </motion.div>
 
