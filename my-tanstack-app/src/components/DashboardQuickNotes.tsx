@@ -68,6 +68,21 @@ export const DashboardQuickNotes = () => {
   const [editText, setEditText] = React.useState('');
   const [editColor, setEditColor] = React.useState('');
 
+  const listRef = React.useRef<HTMLDivElement>(null);
+  const firstNoteId = notes[0]?._id;
+
+  const scrollToStart = React.useCallback(() => {
+    const el = listRef.current;
+    if (!el) return;
+    el.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
+  }, []);
+
+  React.useEffect(() => {
+    if (firstNoteId) {
+      scrollToStart();
+    }
+  }, [firstNoteId, scrollToStart]);
+
   React.useEffect(() => {
     if (search?.addNote) {
       setIsAddOpen(true);
@@ -90,6 +105,7 @@ export const DashboardQuickNotes = () => {
       setNewText('');
       setNewColor(COLORS[0].value);
       setNewSharedWith('');
+      setTimeout(scrollToStart, 50);
     } catch (err: any) {
       if (err.message?.includes('FREE_NOTE_LIMIT')) {
         openUpgradeModal({
@@ -136,7 +152,7 @@ export const DashboardQuickNotes = () => {
               אין לך פתקים עדיין. לחץ על "פתק חדש" כדי להתחיל.
             </motion.div>
           ) : (
-            <div className="notes-list">
+            <div ref={listRef} className="notes-list">
               {notes.map((note: any) => {
                 // Determine if this note was shared WITH me or BY me
                 const isMyNote = identity?.userId === note.userId;
@@ -161,7 +177,7 @@ export const DashboardQuickNotes = () => {
                     }}
                   >
                     {isSharedWithMe && (
-                      <div style={{ position: 'absolute', top: 8, left: 8, background: colors.badgeBg, borderRadius: '50%', width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }} title="שותף איתי">
+                      <div style={{ position: 'absolute', top: 8, left: 8, background: colors.badgeBg, borderRadius: '50%', width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }} title={note.authorName ? `שותף ע"י ${note.authorName}` : 'שותף איתי'}>
                         <Icon n="users" s={14} c={colors.badgeIcon} />
                       </div>
                     )}
@@ -188,10 +204,15 @@ export const DashboardQuickNotes = () => {
                       {note.text}
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12, borderTop: '1px solid rgba(0,0,0,0.08)', paddingTop: 8 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                         <span style={{ fontSize: 11, opacity: 0.7, fontWeight: 500 }}>
                           {new Date(note.createdAt).toLocaleDateString('he-IL')}
                         </span>
+                        {isSharedWithMe && note.authorName && (
+                          <span style={{ fontSize: 11, opacity: 0.85, fontWeight: 600 }}>
+                            · מ-{note.authorName}
+                          </span>
+                        )}
                       </div>
                       <div style={{ display: 'flex', gap: 8 }}>
                         <button
@@ -283,6 +304,16 @@ export const DashboardQuickNotes = () => {
                     overflowY: 'auto'
                  }}>
                     {selectedNote.text}
+                 </div>
+               )}
+
+               {!isEditing && !isMyNote && selectedNote.authorName && (
+                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--bg2)', padding: '8px 12px', borderRadius: 8, fontSize: 12.5, color: 'var(--text2)' }}>
+                   <Icon n="users" s={14} c="var(--accent)" />
+                   <span>
+                     שותף איתך ע"י <strong>{selectedNote.authorName}</strong>
+                     {selectedNote.authorRole ? ` (${selectedNote.authorRole})` : ''}
+                   </span>
                  </div>
                )}
 

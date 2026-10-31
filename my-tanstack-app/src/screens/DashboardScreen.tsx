@@ -53,9 +53,10 @@ export const DashboardScreen = () => {
     setRetentionDismissed(true);
   };
 
-  // Handle push-notification deep links: ?project=<id>
+  // Handle push-notification deep links: ?project=<id> or ?projectId=<id>
   React.useEffect(() => {
-    const urlProject = new URLSearchParams(window.location.search).get('project');
+    const params = new URLSearchParams(window.location.search);
+    const urlProject = params.get('project') || params.get('projectId');
     if (!urlProject) return;
     setCurrentProject(urlProject);
   // eslint-disable-next-line react-hooks/exhaustive-deps

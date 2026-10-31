@@ -18,16 +18,57 @@ export const list = query({
       return [];
     }
 
-    const allProjectNotes = await ctx.db
-      .query('quickNotes')
-      .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
-      .collect();
+    const [project, allProjectNotes, contractors] = await Promise.all([
+      ctx.db.get(args.projectId),
+      ctx.db
+        .query('quickNotes')
+        .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
+        .collect(),
+      ctx.db
+        .query('contractors')
+        .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
+        .collect(),
+    ]);
 
     const myNotes = allProjectNotes.filter(
       (n) => n.userId === userId || n.sharedWith?.includes(userId)
     );
 
-    return myNotes.sort((a, b) => b.createdAt - a.createdAt);
+    const uniqueUserIds = Array.from(new Set(myNotes.map((n) => n.userId)));
+    const userDocs = await Promise.all(uniqueUserIds.map((id) => ctx.db.get(id)));
+    const userMap = new Map(uniqueUserIds.map((id, idx) => [id, userDocs[idx]]));
+
+    const resolveAuthorInfo = (authorId: Id<'users'>) => {
+      const u = userMap.get(authorId);
+      if (project) {
+        if (project.ownerUserId === authorId) {
+          return { authorName: u?.name || project.ownerName || 'בעל הבית', authorRole: 'בעל הבית' };
+        }
+        if (project.managerUserId === authorId) {
+          return { authorName: u?.name || project.managerName || 'מנהל פרויקט', authorRole: 'מנהל פרויקט' };
+        }
+        if (project.inspectorUserId === authorId) {
+          return { authorName: u?.name || project.inspectorName || 'מפקח', authorRole: 'מפקח' };
+        }
+      }
+      const contractor = contractors.find((c) => c.userId === authorId);
+      if (contractor) {
+        return { authorName: u?.name || contractor.name || 'קבלן', authorRole: contractor.role || 'קבלן' };
+      }
+      return { authorName: u?.name || 'איש צוות', authorRole: 'צוות' };
+    };
+
+    const enriched = myNotes.map((n) => ({
+      ...n,
+      ...resolveAuthorInfo(n.userId),
+    }));
+
+    return enriched.sort((a, b) => {
+      const timeB = b.updatedAt ?? b.createdAt;
+      const timeA = a.updatedAt ?? a.createdAt;
+      if (timeB !== timeA) return timeB - timeA;
+      return b._creationTime - a._creationTime;
+    });
   },
 });
 
@@ -72,12 +113,14 @@ export const create = mutation({
       }
     }
 
+    const now = Date.now();
     const noteId = await ctx.db.insert('quickNotes', {
       userId,
       projectId: args.projectId,
       text: args.text,
       color: args.color,
-      createdAt: Date.now(),
+      createdAt: now,
+      updatedAt: now,
       sharedWith: args.sharedWith,
     });
 
@@ -90,7 +133,7 @@ export const create = mutation({
         userIds: args.sharedWith,
         title: 'פתק חדש שותף איתך',
         body: `${myName} שיתף איתך פתק בפרויקט ${projName}. היכנס לדאשבורד כדי לראות אותו.`,
-        url: `/dashboard?projectId=${args.projectId}`,
+        url: `/dashboard?project=${args.projectId}`,
         tag: `shared-note-${noteId}-create`
       });
     }
@@ -175,6 +218,7 @@ export const share = mutation({
     if (!sharedWith.includes(args.userId)) {
       await ctx.db.patch(args.noteId, {
         sharedWith: [...sharedWith, args.userId],
+        updatedAt: Date.now(),
       });
 
       const me = await ctx.db.get(currentUserId);
@@ -186,7 +230,7 @@ export const share = mutation({
         userIds: [args.userId],
         title: 'פתק חדש שותף איתך',
         body: `${myName} שיתף איתך פתק בפרויקט ${projName}. היכנס לדאשבורד כדי לראות אותו.`,
-        url: `/dashboard?projectId=${note.projectId}`,
+        url: `/dashboard?project=${note.projectId}`,
         tag: `shared-note-${args.noteId}-${args.userId}`
       });
     }
@@ -207,17 +251,17 @@ export const listTeamForSharing = query({
     // Add owner
     if (project.ownerUserId && project.ownerUserId !== userId) {
       const u = await ctx.db.get(project.ownerUserId as Id<"users">);
-      if (u) team.push({ _id: u._id, name: u.name || 'יזם הפרויקט', role: 'יזם' });
+      if (u) team.push({ _id: u._id, name: u.name || project.ownerName || 'בעל הבית', role: 'בעל הבית' });
     }
     // Add manager
     if (project.managerUserId && project.managerUserId !== userId) {
       const u = await ctx.db.get(project.managerUserId as Id<"users">);
-      if (u) team.push({ _id: u._id, name: u.name || 'מנהל הפרויקט', role: 'מנהל פרויקט' });
+      if (u) team.push({ _id: u._id, name: u.name || project.managerName || 'מנהל הפרויקט', role: 'מנהל פרויקט' });
     }
     // Add inspector
     if (project.inspectorUserId && project.inspectorUserId !== userId) {
       const u = await ctx.db.get(project.inspectorUserId as Id<"users">);
-      if (u) team.push({ _id: u._id, name: u.name || 'מפקח', role: 'מפקח' });
+      if (u) team.push({ _id: u._id, name: u.name || project.inspectorName || 'מפקח', role: 'מפקח' });
     }
     
     // Add contractors who have a linked user account

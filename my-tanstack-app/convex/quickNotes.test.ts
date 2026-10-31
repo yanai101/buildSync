@@ -160,4 +160,74 @@ describe('Quick Notes', () => {
     freeNotes = await asFreeUser.query(api.quickNotes.list, { projectId: freeProject });
     expect(freeNotes.length).toBe(0);
   });
+
+  test('inspector shares a note with project owner and owner sees it with author details', async () => {
+    const { t, proUserId: ownerId, proProject } = await setup();
+    const inspectorId = await t.run((ctx) => ctx.db.insert('users', {
+      name: 'רון לוי',
+      role: 'inspector',
+    }));
+    await t.run((ctx) => ctx.db.patch(proProject, {
+      inspectorUserId: inspectorId,
+      inspectorName: 'רון לוי',
+    }));
+
+    const asInspector = t.withIdentity({ subject: inspectorId });
+    const asOwner = t.withIdentity({ subject: ownerId });
+
+    // Inspector checks team list for sharing and sees owner
+    const team = await asInspector.query(api.quickNotes.listTeamForSharing, { projectId: proProject });
+    expect(team.some((m: any) => m._id === ownerId)).toBe(true);
+
+    // Inspector creates a note shared directly with owner
+    await asInspector.mutation(api.quickNotes.create, {
+      projectId: proProject,
+      text: 'פתק מהמפקח לבעל הבית',
+      sharedWith: [ownerId],
+    });
+
+    const ownerNotes = await asOwner.query(api.quickNotes.list, { projectId: proProject });
+    expect(ownerNotes.length).toBe(1);
+    expect(ownerNotes[0].text).toBe('פתק מהמפקח לבעל הבית');
+    expect(ownerNotes[0].authorName).toBe('רון לוי');
+    expect(ownerNotes[0].authorRole).toBe('מפקח');
+  });
+
+  test('lists notes from newest to oldest, including newly shared notes at the top', async () => {
+    const { t, proUserId: ownerId, freeUserId: inspectorId, proProject } = await setup();
+    const asOwner = t.withIdentity({ subject: ownerId });
+    const asInspector = t.withIdentity({ subject: inspectorId });
+
+    // Inspector creates an older note (not shared yet)
+    const olderInspectorNoteId = await asInspector.mutation(api.quickNotes.create, {
+      projectId: proProject,
+      text: 'פתק ישן של המפקח ששותף עכשיו',
+    });
+
+    // Owner creates 3 notes sequentially
+    await asOwner.mutation(api.quickNotes.create, { projectId: proProject, text: 'פתק 1 (ראשון שנוסף)' });
+    await asOwner.mutation(api.quickNotes.create, { projectId: proProject, text: 'פתק 2 (אמצעי)' });
+    await asOwner.mutation(api.quickNotes.create, { projectId: proProject, text: 'פתק 3 (אחרון שנוסף)' });
+
+    let ownerNotes = await asOwner.query(api.quickNotes.list, { projectId: proProject });
+    expect(ownerNotes.map((n: any) => n.text)).toEqual([
+      'פתק 3 (אחרון שנוסף)',
+      'פתק 2 (אמצעי)',
+      'פתק 1 (ראשון שנוסף)',
+    ]);
+
+    // Now inspector shares the older note with the owner -> it should appear at the top!
+    await asInspector.mutation(api.quickNotes.share, {
+      noteId: olderInspectorNoteId,
+      userId: ownerId,
+    });
+
+    ownerNotes = await asOwner.query(api.quickNotes.list, { projectId: proProject });
+    expect(ownerNotes.map((n: any) => n.text)).toEqual([
+      'פתק ישן של המפקח ששותף עכשיו',
+      'פתק 3 (אחרון שנוסף)',
+      'פתק 2 (אמצעי)',
+      'פתק 1 (ראשון שנוסף)',
+    ]);
+  });
 });

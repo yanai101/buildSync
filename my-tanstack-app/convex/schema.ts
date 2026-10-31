@@ -326,6 +326,7 @@ export default defineSchema({
     text: v.string(),
     color: v.optional(v.string()),
     createdAt: v.number(),
+    updatedAt: v.optional(v.number()),
     sharedWith: v.optional(v.array(v.id('users'))),
   })
     .index('by_user_project', ['userId', 'projectId'])
