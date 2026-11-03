@@ -40,7 +40,7 @@ function usePlanAvailability(enabled: boolean) {
 }
 
 /**
- * Conversion-focused upgrade modal. Reused by PremiumLock (feature teasers) and
+ * Conversion-focused upgrade modal. Reused by FeatureTeaser and
  * by the project-limit flow. Lets a free user subscribe in one click — monthly
  * or annual — without hunting through the account page.
  */

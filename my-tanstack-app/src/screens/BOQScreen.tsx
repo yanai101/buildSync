@@ -1,6 +1,8 @@
 import React from 'react';
 import { useNavigate } from '@tanstack/react-router';
-import { Icon, Btn, Badge, EmptyState, PageBackground, PremiumLock } from '../components/Shared';
+import { Icon, Btn, Badge, EmptyState, PageBackground } from '../components/Shared';
+import { FeatureTeaser } from '../components/FeatureTeaser';
+import { BOQPreview } from '../components/teaser/previews/BOQPreview';
 import { BOQ_DATA, fmtMoney } from '../utils/mockData';
 import { ScreenBoundary } from '../components/ScreenBoundary';
 import { Project, Room } from '../types';
@@ -592,14 +594,16 @@ export const BOQScreen = () => {
 
   if (roleLoading) return <AccessLoading />;
   if (!allowed) return <AccessDenied message="ניהול עלויות רכש מורשה לצוות הניהול והפיקוח בלבד." />;
+  if (!isProOrPremium) {
+    return (
+      <div className="page-content">
+        <FeatureTeaser feature="boq" requiredPlan="pro" preview={<BOQPreview />} />
+      </div>
+    );
+  }
 
   return (
     <ScreenBoundary loading={loading} error={null} onRetry={() => window.location.reload()}>
-      <PremiumLock
-        isLocked={!isProOrPremium}
-        title="ניהול חכם של עלויות רכש"
-        description="קבל גישה מלאה לניהול רשימת העלויות, ייצוא ל-PDF ומעקב מדויק אחר הזמנות מספקים."
-      >
         <div className="page-content">
           <div style={{display:"flex",gap:12,alignItems:"center",marginBottom:20,flexWrap:"wrap"}}>
           <select className="bp-input" value={room} onChange={e=>setRoom(e.target.value)} style={{width:"auto",minWidth:180}}>
@@ -786,7 +790,6 @@ export const BOQScreen = () => {
           />
         </div>
       </div>
-      </PremiumLock>
     </ScreenBoundary>
   );
 };

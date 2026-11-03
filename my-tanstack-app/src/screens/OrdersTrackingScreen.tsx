@@ -5,7 +5,9 @@ import type { Id } from '../../convex/_generated/dataModel';
 import { useCurrentProject } from '../hooks/useCurrentProject';
 import { useSubscription } from '../hooks/useSubscription';
 import { ScreenBoundary } from '../components/ScreenBoundary';
-import { Icon, Btn, Modal, FeedbackModal, EmptyState, PageBackground, ConfirmDialog, Badge, PremiumLock } from '../components/Shared';
+import { Icon, Btn, Modal, FeedbackModal, EmptyState, PageBackground, ConfirmDialog, Badge } from '../components/Shared';
+import { FeatureTeaser } from '../components/FeatureTeaser';
+import { OrdersPreview } from '../components/teaser/previews/OrdersPreview';
 
 type Order = {
   _id: Id<'orders'>;
@@ -166,7 +168,7 @@ const OrderCard = ({
 export const OrdersTrackingScreen = () => {
   const { projectId } = useCurrentProject();
   const { isProOrPremium } = useSubscription();
-  const orders = useQuery(api.orders.list, projectId ? { projectId } : 'skip');
+  const orders = useQuery(api.orders.list, isProOrPremium && projectId ? { projectId } : 'skip');
   const createOrder = useMutation(api.orders.create);
   const updateOrder = useMutation(api.orders.update);
   const updateReceived = useMutation(api.orders.updateReceived);
@@ -354,9 +356,16 @@ export const OrdersTrackingScreen = () => {
     }
   };
 
+  if (!isProOrPremium) {
+    return (
+      <div className="page-content">
+        <FeatureTeaser feature="orders" requiredPlan="pro" preview={<OrdersPreview />} />
+      </div>
+    );
+  }
+
   return (
     <ScreenBoundary loading={loading} error={null} onRetry={() => {}}>
-      <PremiumLock isLocked={!isProOrPremium} title="מעקב הזמנות" description="ניהול ומעקב אחר אספקת חומרים, מלאי ותעודות משלוח לאתר. שדרג ל-Pro כדי לקבל גישה.">
         <div className="page-content" style={{ display: 'flex', flexDirection: 'column', minHeight: 'calc(100vh - 100px)' }}>
         
         {/* Header */}
@@ -563,7 +572,6 @@ export const OrdersTrackingScreen = () => {
 
       {/* Feedback */}
       {feedback && <FeedbackModal {...feedback} onClose={() => setFeedback(null)} />}
-      </PremiumLock>
     </ScreenBoundary>
   );
 };

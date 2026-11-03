@@ -1,14 +1,153 @@
 import * as React from 'react';
 import { Btn, Icon } from './Shared';
 import { openUpgradeModal } from './UpgradeModalHost';
+import { useCurrentProject } from '../hooks/useCurrentProject';
 import type { BillingTier } from '../billing';
 
-export type FeatureTeaserProps = {
-  /** Subscription that unlocks the feature — drives the badge and the upgrade popup. */
-  tier: BillingTier;
+export type TeaserFeatureKey =
+  | 'analytics'
+  | 'boq'
+  | 'boqwizard'
+  | 'dailyLogs'
+  | 'orders'
+  | 'permits'
+  | 'financing'
+  | 'archiveImages'
+  | 'archiveDocs'
+  | 'archiveRooms';
+
+export type FeatureTeaserMeta = {
   title: string;
   description: string;
   benefits: string[];
+  memberMessage?: string;
+  upgradeReason?: string;
+  interactive?: boolean;
+};
+
+export const FEATURE_TEASER_CATALOG: Record<TeaserFeatureKey, FeatureTeaserMeta> = {
+  analytics: {
+    title: 'דוחות וסטטיסטיקות מתקדמות',
+    description: 'תמונת מצב גרפית של התקציב, התפלגות ההוצאות לפי קטגוריה, מגמת התשלומים החודשית וקצב התקדמות השלבים והמשימות.',
+    benefits: [
+      'כרטיסי סיכום תקציב, הוצאות בפועל, התחייבויות ויתרה פנויה',
+      'גרף התפלגות הוצאות לפי קטגוריות ומגמת הוצאות חודשית',
+      'פילוח סטטוס משימות והתקדמות שלבי הבנייה באחוזים',
+      'הגדלת כל גרף לתצוגת מסך מלא לניתוח מעמיק',
+    ],
+    interactive: true,
+  },
+  boq: {
+    title: 'ניהול חכם של עלויות רכש',
+    description: 'נהל את כל רשימת הרכש של הבית לפי חדרים וקטגוריות — כולל כמויות, מחירי יחידה, ספקים, סטטוס אישור וסימון תשלומים.',
+    benefits: [
+      'מעקב עלויות מפורט לכל חדר וסיכום אוטומטי לכלל הבית',
+      'חישוב אוטומטי של שטחי ריצוף וחיפוי קירות כולל אחוז פחת',
+      'מעקב סטטוס פריט (ממתין / מאושר) וסימון פריטים ששולמו',
+      'ייצוא כתב כמויות ועלויות מרוכז לקובץ PDF',
+    ],
+    interactive: true,
+  },
+  boqwizard: {
+    title: 'אשף כמויות חכם לפי חדרים',
+    description: 'עבור חדר-חדר ובנה כתב כמויות מדויק לרכישה ולייבוא — עם חישוב אוטומטי של ריצוף וחיפוי וריכוז כמויות מאוחד לכל הבית.',
+    benefits: [
+      'חישוב אוטומטי של מ"ר ריצוף וחיפוי קירות לפי גודל החדר ואחוז הפחת',
+      'קטלוג פריטים מובנה לכל סוג חדר (חשמל, תאורה, אינסטלציה ועוד)',
+      'רשימת יבוא ורכש מרוכזת המאחדת כמויות מכל חדרי הבית',
+      'העברה בלחיצה לניהול עלויות רכש וייצוא ל-PDF',
+    ],
+    interactive: true,
+  },
+  dailyLogs: {
+    title: 'יומן עבודה יומי ותיעוד שטח',
+    description: 'תעד כל יום עבודה באתר הבנייה — מזג אוויר, מצבת עובדים, עבודות שבוצעו, אספקות חומרים, חריגות, הנחיות מפקח ותמונות שטח.',
+    benefits: [
+      'תיעוד יומי של כוח אדם לפי תפקיד וקבלן, פעילויות ואספקות',
+      'רישום חריגות (איכות, בטיחות, עיכוב, השפעה כספית) והנחיות מפקח',
+      'העלאת תמונות מהשטח, נעילת דוח חתום והפקת PDF',
+      'היסטוריית יומנים מלאה עם סינון לפי סטטוס, תקופה וסוג חריגה',
+    ],
+    interactive: true,
+  },
+  orders: {
+    title: 'מעקב הזמנות ואספקות לאתר',
+    description: 'נהל את כל הזמנות החומרים והציוד לפרויקט — עקוב אחר כמויות שסופקו בפועל, תאריכי יעד לאספקה ותעודות משלוח.',
+    benefits: [
+      'תמונת מצב מיידית: בהמתנה לאספקה, סופק חלקית או סופק במלואו',
+      'פס התקדמות כמותי לכל הזמנה ועדכון קבלת סחורה באתר',
+      'צירוף וצפייה בתעודות משלוח וחשבוניות לכל הזמנה',
+      'מעקב תאריכי יעד לאספקה למניעת עיכובים בשטח',
+    ],
+    interactive: true,
+  },
+  permits: {
+    title: 'ניהול בירוקרטיה, רישוי והיתרים',
+    description: 'רכז במקום אחד את כל המסמכים והאישורים מול הרשויות — ועדה מקומית, פיקוד העורף, חברת חשמל, תאגיד המים וטופס 4.',
+    benefits: [
+      'ניהול מסודר של היתרי בנייה ואישורים לפי רשות מאשרת',
+      'תיעוד הערות, סטטוס טיפול וסידור עדיפויות בגרירה',
+      'צפייה ישירה במסמכי ההיתרים והאישורים מכל מכשיר',
+      'נכלל בגיבוי ובייצוא המלא של תיק הפרויקט',
+    ],
+    interactive: true,
+  },
+  financing: {
+    title: 'ניהול מימון פרויקט ומשכנתא',
+    description: 'עקוב אחר כל מקורות המימון של הבנייה — הון עצמי, משכנתא לבנייה עצמית ופעימות שחרור כספים מול ההוצאות בפועל.',
+    benefits: [
+      'תמונת קופה חיה: כספי מימון שהתקבלו מול הוצאות ששולמו בפועל',
+      'מעקב משכנתא לבנייה עצמית: פעימות שהתקבלו ותכנון המשיכה הבאה לפי אחוז התקדמות',
+      'חישוב אוטומטי של יתרת קופה זמינה וזיהוי פערי מימון מראש',
+      'צירוף מסמכי אישור עקרוני ואסמכתאות בנקאיות לכל מקור מימון',
+    ],
+    interactive: true,
+  },
+  archiveImages: {
+    title: 'תמונות ארכיון',
+    description: 'שמור צילומים חשובים של הפרויקט בקבוצות, עם הערות לכל תמונה, והפק מהם דוח מרוכז בלחיצה.',
+    benefits: [
+      'קבוצות תמונות לפי נושא (איטום, צנרת, חשמל…)',
+      'הערה לכל תמונה וצפייה בגודל מלא',
+      'הפקת דוח PDF מרוכז מהתמונות שבחרת',
+      'דחיסה אוטומטית שחוסכת מקום',
+    ],
+    interactive: false,
+  },
+  archiveDocs: {
+    title: 'מסמכי הפרויקט',
+    description: 'כל המסמכים החשובים במקום אחד — היתרים, חוזים ותכניות — זמינים לך בכל שלב של הבנייה.',
+    benefits: [
+      'שמירת היתרים, חוזים ותכניות בפרויקט',
+      'הערות לכל מסמך לחיפוש והתמצאות מהירה',
+      'צפייה והורדה מכל מכשיר',
+      'נכלל בייצוא הפרויקט בסיום הבנייה',
+    ],
+    interactive: false,
+  },
+  archiveRooms: {
+    title: 'תיעוד תמונות לפי חדרים',
+    description: 'תעד כל חדר בבית לאורך שלבי הבנייה, כדי לדעת בדיוק מה עובר בתוך הקירות גם אחרי שהם נסגרים.',
+    benefits: [
+      'תמונות לכל חדר לפי שלבי הבנייה — שלד, מערכות גולמיות, טיח, ריצוף וגמרים',
+      'קטגוריות (חשמל, אינסטלציה, מיזוג…), תיאור קצר והערות לכל תמונה',
+      'השוואת לפני / אחרי בין שלבים',
+      'דוח PDF להדפסה לכל חדר וייצוא מסודר לפי חדר ושלב',
+    ],
+    interactive: true,
+  },
+};
+
+export type FeatureTeaserProps = {
+  /** Key in `FEATURE_TEASER_CATALOG` for declarative usage. */
+  feature?: TeaserFeatureKey;
+  /** Subscription plan required (alias for `tier`). Defaults to `'pro'`. */
+  requiredPlan?: BillingTier;
+  /** Subscription that unlocks the feature — drives the badge and the upgrade popup. */
+  tier?: BillingTier;
+  title?: string;
+  description?: string;
+  benefits?: string[];
   /** Mock of the real feature UI rendered with sample data. */
   preview: React.ReactNode;
   /**
@@ -17,11 +156,10 @@ export type FeatureTeaserProps = {
    */
   interactive?: boolean;
   /**
-   * Whether the viewer can buy the subscription (project owner). Team members
-   * see `memberMessage` instead of a buy button, since they can't upgrade the
-   * owner's account.
+   * Whether the viewer can buy the subscription (project owner). When omitted,
+   * automatically resolved from `useCurrentProject().userRole === 'owner'`.
    */
-  canPurchase: boolean;
+  canPurchase?: boolean;
   memberMessage?: string;
   /** Text passed to the upgrade popup header. Defaults to `description`. */
   upgradeReason?: string;
@@ -38,29 +176,50 @@ const ctaStyle: React.CSSProperties = {
 
 /**
  * Generic paywall teaser: an upgrade card plus a preview of the feature built
- * from the real components with sample data. Layout is size-aware (container
- * queries in app.css): stacked on narrow screens with the card first, and
- * side-by-side with a sticky card on wide screens so the CTA is always in view.
- * The upgrade popup opens only from the button — never automatically.
- * Theme-aware via CSS variables (light/dark).
+ * from the real components with sample data (`demoProject`).
  *
- * Reusable for any gated screen (archive, budget, BOQ, analytics…).
+ * Layout is size-aware (container queries in app.css): stacked on narrow
+ * screens with the card first, and side-by-side with a sticky card on wide
+ * screens so the CTA is always in view. The upgrade popup opens only from the
+ * button — never automatically.
  */
 export const FeatureTeaser = ({
-  tier,
-  title,
-  description,
-  benefits,
+  feature,
+  requiredPlan,
+  tier: tierProp,
+  title: titleProp,
+  description: descriptionProp,
+  benefits: benefitsProp,
   preview,
-  interactive = false,
-  canPurchase,
-  memberMessage = 'הפיצ\'ר יהיה זמין לך כאשר בעל הפרויקט ישדרג את המנוי.',
-  upgradeReason,
+  interactive: interactiveProp,
+  canPurchase: canPurchaseProp,
+  memberMessage: memberMessageProp,
+  upgradeReason: upgradeReasonProp,
   previewHeight = 420,
 }: FeatureTeaserProps) => {
+  const { project, identity, user } = useCurrentProject();
   const headingId = React.useId();
-  const tierLabel = TIER_LABEL[tier];
-  const upgrade = () => openUpgradeModal({ tier, title, reason: upgradeReason ?? description });
+
+  const meta = feature ? FEATURE_TEASER_CATALOG[feature] : undefined;
+  const resolvedTier: BillingTier = requiredPlan ?? tierProp ?? 'pro';
+  const tierLabel = TIER_LABEL[resolvedTier];
+  const title = titleProp ?? meta?.title ?? 'פיצ\'ר מתקדם';
+  const description = descriptionProp ?? meta?.description ?? '';
+  const benefits = benefitsProp ?? meta?.benefits ?? [];
+  const interactive = interactiveProp ?? meta?.interactive ?? false;
+  const roleFromContext = (project?.myRole ?? identity?.role) as string | undefined;
+  const isOwnerByContext =
+    Boolean(identity?.isSuperAdmin) ||
+    (project && user?._id && project.ownerUserId === user._id) ||
+    (roleFromContext ? roleFromContext === 'owner' : true);
+  const canPurchase = canPurchaseProp ?? isOwnerByContext;
+  const memberMessage =
+    memberMessageProp ??
+    meta?.memberMessage ??
+    `פיצ'ר זה יהיה זמין לך כאשר בעל הפרויקט ישדרג ל-${tierLabel}.`;
+  const upgradeReason = upgradeReasonProp ?? meta?.upgradeReason ?? description;
+
+  const upgrade = () => openUpgradeModal({ tier: resolvedTier, title, reason: upgradeReason });
 
   const cta = canPurchase ? (
     <Btn onClick={upgrade} style={ctaStyle}>
@@ -85,7 +244,7 @@ export const FeatureTeaser = ({
       </span>
       <span style={{ fontWeight: 600 }}>
         {position === 'top'
-          ? (interactive ? 'נתוני דוגמה בלבד — לחץ ונסה. כך זה ייראה עם החדרים והתמונות שלך.' : 'נתוני דוגמה בלבד — כך זה ייראה אצלך.')
+          ? (interactive ? 'נתוני דוגמה בלבד (וילה משפחת לוי) — לחץ והתנסה בחופשיות.' : 'נתוני דוגמה בלבד — כך זה ייראה אצלך.')
           : 'כל המידע כאן הוא לדוגמה ואינו נשמר.'}
       </span>
     </div>

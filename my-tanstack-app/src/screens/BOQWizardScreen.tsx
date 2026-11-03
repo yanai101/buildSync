@@ -1,7 +1,20 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from '@tanstack/react-router';
-import { Icon, Btn, ProgressBar, FeedbackModal, EmptyState, PageBackground, PremiumLock } from '../components/Shared';
+import { Icon, Btn, ProgressBar, FeedbackModal, EmptyState, PageBackground } from '../components/Shared';
+import { FeatureTeaser } from '../components/FeatureTeaser';
+import { BOQWizardPreview } from '../components/teaser/previews/BOQWizardPreview';
+import {
+  DEFAULT_FLOOR_WASTE_PCT,
+  FLOOR_CATEGORY,
+  FLOOR_NAME,
+  FLOOR_UNIT,
+  WALL_TILE_CATEGORY,
+  WALL_TILE_NAME,
+  WALL_TILE_UNIT,
+  applyWaste,
+  aggregateWizardItems,
+} from '../utils/boqCalculations';
 import { useDataSource } from '../hooks/useDataSource';
 import { useDataMutation } from '../hooks/useDataMutation';
 import { ScreenBoundary } from '../components/ScreenBoundary';
@@ -21,19 +34,7 @@ import { getFloorLabel } from './ProjectSetupScreen';
 
 // ── CONSTANTS & CATALOG ───────────────────────────────────────────────────────
 
-// Locked-flooring constants — every room gets two auto-generated, undeletable
-// rows: one for floor tiling, one for wall-tile cladding. Both can be toggled
-// on/off (isEnabled). The waste % is read from project.floorWastePct, default 10.
-const DEFAULT_FLOOR_WASTE_PCT = 15;
-const FLOOR_CATEGORY = 'ריצוף';
-const FLOOR_NAME = 'ריצוף לחדר';
-const FLOOR_UNIT = 'מ"ר';
-const WALL_TILE_CATEGORY = 'חיפוי קירות';
-const WALL_TILE_NAME = 'ריצוף לחיפוי קירות';
-const WALL_TILE_UNIT = 'מ"ר';
-const wasteFactor = (pct: number | undefined) => 1 + (Number(pct ?? DEFAULT_FLOOR_WASTE_PCT) / 100);
-const applyWaste = (base: number, pct: number | undefined) =>
-  Math.ceil(Math.max(0, base) * wasteFactor(pct));
+// Locked-flooring constants & waste helpers are imported from ../utils/boqCalculations.
 
 // Smart-suggestion auto-population was removed — new rooms start empty
 // (only the locked flooring/wall-tile rows appear, see ensureLockedRows).
@@ -1049,44 +1050,22 @@ export const BOQWizardScreen = () => {
 
   if (roleLoading || !subscriptionLoaded) return <AccessLoading />;
   if (!allowed) return <AccessDenied message="אשף הכמויות וניהול ה-BoQ מורשים ליזם ומנהל הפרויקט בלבד." />;
+  if (!isProOrPremium) {
+    return (
+      <div className="page-content">
+        <FeatureTeaser feature="boqwizard" requiredPlan="pro" preview={<BOQWizardPreview />} />
+      </div>
+    );
+  }
 
   if (!project) return <ScreenBoundary loading={loading} error={error} onRetry={refetch}><div/></ScreenBoundary>;
 
   if (view === 'summary') {
-    const aggregated: Record<string, {name: string, cat: string, unit: string, total: number, rooms: {name: string, qty: number, notes?: string}[], notes: string[]}> = {};
-    Object.keys(allItems).forEach(ruid => {
-      const room = rooms.find((r:any)=>r.uid===ruid);
-      const rName = room ? `${room.name} (${getFloorLabel(Number(room.floor), (project as any)?.housingUnits)})` : "חדר";
-      allItems[ruid].forEach((item: any) => {
-        // Skip locked rows that the user toggled off — they don't contribute
-        // to the orderable totals.
-        if (item.isLocked && item.isEnabled === false) return;
-        // For locked rows the truth is `qty` (system-derived from sizeSqm /
-        // userQty × waste). For user-added rows the editable value is `userQty`.
-        const effectiveQty = item.isLocked ? Number(item.qty ?? 0) : Number(item.userQty ?? item.qty ?? 0);
-        if (effectiveQty <= 0) return;
-        const key = `${item.name}|${item.cat}|${item.unit}`;
-        if (!aggregated[key]) {
-          aggregated[key] = { name: item.name, cat: item.cat, unit: item.unit, total: 0, rooms: [], notes: [] };
-        }
-        aggregated[key].total += effectiveQty;
-        const notes = String(item.notes ?? '').trim();
-        aggregated[key].rooms.push({ name: rName, qty: effectiveQty, ...(notes ? { notes } : {}) });
-        if (notes && !aggregated[key].notes.includes(notes)) {
-          aggregated[key].notes.push(notes);
-        }
-      });
-    });
-
+    const aggregated = aggregateWizardItems(rooms, allItems, (project as any)?.housingUnits);
     const summaryCats = [...new Set(Object.values(aggregated).map(i => i.cat))];
 
     return (
       <ScreenBoundary loading={loading} error={error} onRetry={refetch}>
-        <PremiumLock 
-          isLocked={!isProOrPremium} 
-          title="אשף הכמויות זמין במסלול Pro ומעלה"
-          description="שדרג את החשבון שלך כדי לקבל גישה לאשף שיעזור לך להכין כתב כמויות מדויק בקליק, כולל הצעות חכמות וייצוא ממותג ל-PDF."
-        >
           <div className="page-content" style={{maxWidth:1200,margin:"0 auto"}}>
           <div style={{display:"flex",flexWrap:"wrap",justifyContent:"space-between",alignItems:"flex-end",gap:16,marginBottom:32}}>
             <div>
@@ -1196,7 +1175,6 @@ export const BOQWizardScreen = () => {
             />
           </div>
           </div>
-        </PremiumLock>
       </ScreenBoundary>
     );
   }
@@ -1205,11 +1183,6 @@ export const BOQWizardScreen = () => {
   if (!currentRoom) {
     return (
       <ScreenBoundary loading={loading} error={error} onRetry={refetch}>
-        <PremiumLock 
-          isLocked={!isProOrPremium} 
-          title="אשף הכמויות זמין במסלול Pro ומעלה"
-          description="שדרג את החשבון שלך כדי לקבל גישה לאשף שיעזור לך להכין רשימת עלויות רכש מדויקת בקליק, כולל הצעות חכמות וייצוא ממותג ל-PDF."
-        >
           <div style={{ position: 'relative', zIndex: 1, minHeight: 400, display: 'flex', flexDirection: 'column' }}>
             <PageBackground image="/empty_states/boq.png" />
             <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -1225,7 +1198,6 @@ export const BOQWizardScreen = () => {
               />
             </div>
           </div>
-        </PremiumLock>
       </ScreenBoundary>
     );
   }
@@ -1241,11 +1213,6 @@ export const BOQWizardScreen = () => {
 
   return (
     <ScreenBoundary loading={loading} error={error} onRetry={refetch}>
-      <PremiumLock 
-        isLocked={!isProOrPremium} 
-        title="אשף הכמויות זמין במסלול Pro ומעלה"
-        description="שדרג את החשבון שלך כדי לקבל גישה לאשף שיעזור לך להכין כתב כמויות מדויק בקליק, כולל הצעות חכמות וייצוא ממותג ל-PDF."
-      >
         <div className="page-content" style={{maxWidth:1200,margin:"0 auto"}}>
           
           {/* Header Section */}
@@ -1628,7 +1595,6 @@ export const BOQWizardScreen = () => {
           </div>
         )}
       </div>
-      </PremiumLock>
     </ScreenBoundary>
   );
 };

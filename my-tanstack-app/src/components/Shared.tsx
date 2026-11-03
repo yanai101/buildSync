@@ -193,15 +193,24 @@ export const Modal = ({onClose, title, children, width=660, open=true}: any) => 
   const [mounted, setMounted] = React.useState(false);
   React.useEffect(() => setMounted(true), []);
 
+  React.useEffect(() => {
+    if (!mounted || !open || !onClose) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [mounted, open, onClose]);
+
   if (!mounted || !open) return null;
 
   return createPortal(
     <AnimatePresence>
       <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} className="modal-overlay" onClick={(e: any)=>e.target===e.currentTarget&&onClose()}>
-        <motion.div initial={{scale:0.95,opacity:0,y:10}} animate={{scale:1,opacity:1,y:0}} exit={{scale:0.95,opacity:0,y:10}} transition={{type:"spring",stiffness:300,damping:30}} className="modal-box" style={{maxWidth:width}}>
+        <motion.div role="dialog" aria-modal="true" aria-label={typeof title === 'string' ? title : 'חלון קופץ'} initial={{scale:0.95,opacity:0,y:10}} animate={{scale:1,opacity:1,y:0}} exit={{scale:0.95,opacity:0,y:10}} transition={{type:"spring",stiffness:300,damping:30}} className="modal-box" style={{maxWidth:width}}>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"20px 24px",borderBottom:"1px solid var(--border)"}}>
             <span style={{fontWeight:800,fontSize:18}}>{title}</span>
-            <motion.button type="button" whileHover={{scale:1.1}} whileTap={{scale:0.9}} onClick={onClose} style={{background:"var(--bg)",border:"none",borderRadius:"50%",cursor:"pointer",color:"var(--text2)",padding:6,display:"flex"}}><Icon n="x" s={18}/></motion.button>
+            <motion.button type="button" aria-label="סגור" whileHover={{scale:1.1}} whileTap={{scale:0.9}} onClick={onClose} style={{background:"var(--bg)",border:"none",borderRadius:"50%",cursor:"pointer",color:"var(--text2)",padding:6,display:"flex"}}><Icon n="x" s={18}/></motion.button>
           </div>
           <div style={{padding:24}}>{children}</div>
         </motion.div>
@@ -769,50 +778,3 @@ export const EmptyState = ({ icon, image, title, description, action, accentColo
   );
 };
 
-export const PremiumLock = ({ isLocked, title = "פיצ'ר זה זמין ב-Pro", description = "שדרג את החשבון שלך כדי לקבל גישה לכלי זה ולכלים מתקדמים נוספים.", children }: any) => {
-  if (!isLocked) return <>{children}</>;
-
-  return (
-    <div style={{ position: 'relative', width: '100%', height: '100%', overflow: 'hidden', borderRadius: 24 }}>
-      <div style={{ filter: 'blur(10px) grayscale(0.5)', opacity: 0.6, pointerEvents: 'none', userSelect: 'none', height: '100%' }}>
-        {children}
-      </div>
-      <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24, zIndex: 10, background: 'linear-gradient(180deg, transparent 0%, var(--surface) 55%, var(--surface) 100%)' }}>
-        <motion.div initial={{ scale: 0.9, opacity: 0, y: 10 }} animate={{ scale: 1, opacity: 1, y: 0 }} transition={{ type: "spring", stiffness: 300, damping: 20 }} style={{ background: 'var(--card, var(--surface))', borderRadius: 24, padding: 32, maxWidth: 400, textAlign: 'center', boxShadow: '0 20px 40px rgba(0,0,0,0.18)', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'linear-gradient(135deg, #FFD700 0%, #F59E0B 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', marginBottom: 20, boxShadow: '0 10px 20px rgba(245,158,11,0.3)' }}>
-            <Icon n="lock" s={28} />
-          </div>
-          <h3 style={{ fontSize: 22, fontWeight: 800, marginBottom: 12, color: 'var(--text1)' }}>{title}</h3>
-          <p style={{ fontSize: 15, color: 'var(--text2)', marginBottom: 24, lineHeight: 1.5 }}>{description}</p>
-          <Btn style={{ width: '100%', justifyContent: 'center', background: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)', boxShadow: '0 4px 12px rgba(217,119,6,0.3)' }} onClick={() => window.dispatchEvent(new CustomEvent('buildsync:open-upgrade', { detail: { title, reason: description } }))}>
-            <Icon n="star" s={16} /> שדרג ל-Pro
-          </Btn>
-        </motion.div>
-      </div>
-    </div>
-  );
-};
-
-// Standalone subscription paywall (no content to blur). Used by route guards
-// where a strict role check would otherwise short-circuit the in-screen
-// PremiumLock teaser, so non-subscribed / unregistered users still get the
-// upgrade prompt instead of a bare "no access" message.
-export const SubscriptionLock = ({
-  title = "פיצ'ר זה זמין ב-Pro",
-  description = "שדרג את החשבון שלך כדי לקבל גישה לכלי זה ולכלים מתקדמים נוספים.",
-}: { title?: string; description?: string }) => (
-  <div className="page-content">
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', padding: 24 }}>
-      <motion.div initial={{ scale: 0.95, opacity: 0, y: 10 }} animate={{ scale: 1, opacity: 1, y: 0 }} transition={{ type: 'spring', stiffness: 300, damping: 20 }} style={{ background: 'var(--card, var(--surface))', borderRadius: 24, padding: 32, maxWidth: 420, textAlign: 'center', boxShadow: '0 20px 40px rgba(0,0,0,0.18)', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-        <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'linear-gradient(135deg, #FFD700 0%, #F59E0B 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', marginBottom: 20, boxShadow: '0 10px 20px rgba(245,158,11,0.3)' }}>
-          <Icon n="lock" s={28} />
-        </div>
-        <h3 style={{ fontSize: 22, fontWeight: 800, marginBottom: 12, color: 'var(--text1)' }}>{title}</h3>
-        <p style={{ fontSize: 15, color: 'var(--text2)', marginBottom: 24, lineHeight: 1.5 }}>{description}</p>
-        <Btn style={{ width: '100%', justifyContent: 'center', background: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)', boxShadow: '0 4px 12px rgba(217,119,6,0.3)' }} onClick={() => window.dispatchEvent(new CustomEvent('buildsync:open-upgrade', { detail: { title, reason: description } }))}>
-          <Icon n="star" s={16} /> שדרג ל-Pro
-        </Btn>
-      </motion.div>
-    </div>
-  </div>
-);

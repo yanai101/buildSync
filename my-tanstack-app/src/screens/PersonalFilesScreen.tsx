@@ -10,7 +10,7 @@ import { useAppNotify } from '../hooks/useAppNotify';
 import { useRequireRole } from '../hooks/useRequireRole';
 import { AccessDenied, AccessLoading } from '../components/AccessDenied';
 import { useSubscription } from '../hooks/useSubscription';
-import { PremiumLock, Modal, ConfirmDialog } from '../components/Shared';
+import { Modal, ConfirmDialog } from '../components/Shared';
 import { ImageGalleryViewer } from '../components/ImageGalleryViewer';
 import { UploadToArchiveModal } from '../components/UploadToArchiveModal';
 import { RoomsArchiveTab } from '../components/roomArchive/RoomsArchiveTab';
@@ -1107,15 +1107,8 @@ export const PersonalFilesScreen = () => {
             </div>
             {activeTab === 'images' && (
               <FeatureTeaser
-                tier="pro"
-                title="תמונות ארכיון"
-                description="שמור צילומים חשובים של הפרויקט בקבוצות, עם הערות לכל תמונה, והפק מהם דוח מרוכז בלחיצה."
-                benefits={[
-                  'קבוצות תמונות לפי נושא (איטום, צנרת, חשמל…)',
-                  'הערה לכל תמונה וצפייה בגודל מלא',
-                  'הפקת דוח PDF מרוכז מהתמונות שבחרת',
-                  'דחיסה אוטומטית שחוסכת מקום',
-                ]}
+                feature="archiveImages"
+                requiredPlan="pro"
                 preview={<ArchiveImagesPreview />}
                 canPurchase={isOwner === true}
                 memberMessage={proMemberMessage}
@@ -1123,15 +1116,8 @@ export const PersonalFilesScreen = () => {
             )}
             {activeTab === 'docs' && (
               <FeatureTeaser
-                tier="pro"
-                title="מסמכי הפרויקט"
-                description="כל המסמכים החשובים במקום אחד — היתרים, חוזים ותכניות — זמינים לך בכל שלב של הבנייה."
-                benefits={[
-                  'שמירת היתרים, חוזים ותכניות בפרויקט',
-                  'הערות לכל מסמך לחיפוש והתמצאות מהירה',
-                  'צפייה והורדה מכל מכשיר',
-                  'נכלל בייצוא הפרויקט בסיום הבנייה',
-                ]}
+                feature="archiveDocs"
+                requiredPlan="pro"
                 preview={<ArchiveDocsPreview />}
                 canPurchase={isOwner === true}
                 memberMessage={proMemberMessage}
@@ -1147,11 +1133,7 @@ export const PersonalFilesScreen = () => {
   }
 
   return (
-    <PremiumLock
-      isLocked={!effectivePro}
-      title="ניהול מסמכים ותמונות"
-      description={isOwner ? "גיבוי, שמירה וניהול של כל הקבצים, התמונות והמסמכים החשובים של הפרויקט. שדרג ל-Pro כדי לקבל גישה." : "הארכיון זמין כאשר בעל הפרויקט הוא מנוי Pro או Premium."}
-    >
+    <>
       {files === null ? (
         <AccessDenied message="בעל הפרויקט לא הגדיר עבורך הרשאות גישה לתמונות ומסמכים בארכיון." />
       ) : (
@@ -1525,6 +1507,6 @@ export const PersonalFilesScreen = () => {
       )}
       </>
       )}
-    </PremiumLock>
+    </>
   );
 };

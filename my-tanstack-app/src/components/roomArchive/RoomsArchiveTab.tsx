@@ -54,17 +54,9 @@ export const RoomsArchiveTab = ({
   if (!access.isPremium && !access.readOnly) {
     return (
       <FeatureTeaser
-        tier="pro"
-        title="תיעוד תמונות לפי חדרים"
-        description="תעד כל חדר בבית לאורך שלבי הבנייה, כדי לדעת בדיוק מה עובר בתוך הקירות גם אחרי שהם נסגרים."
-        benefits={[
-          'תמונות לכל חדר לפי שלבי הבנייה — שלד, מערכות גולמיות, טיח, ריצוף וגמרים',
-          'קטגוריות (חשמל, אינסטלציה, מיזוג…), תיאור קצר והערות לכל תמונה',
-          'השוואת לפני / אחרי בין שלבים',
-          'דוח PDF להדפסה לכל חדר וייצוא מסודר לפי חדר ושלב',
-        ]}
+        feature="archiveRooms"
+        requiredPlan="pro"
         preview={<RoomsArchivePreview />}
-        interactive
         canPurchase={access.isOwner}
         memberMessage="תיעוד תמונות לפי חדרים יהיה זמין לך כאשר בעל הפרויקט ישדרג ל-Pro."
         upgradeReason="פיצ'ר זה זמין במנוי Pro."

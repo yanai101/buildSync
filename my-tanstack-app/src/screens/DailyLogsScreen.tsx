@@ -4,7 +4,9 @@ import { useQuery, useMutation, usePaginatedQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { useSearch } from '@tanstack/react-router';
 import { ScreenBoundary } from '../components/ScreenBoundary';
-import { PageBackground, EmptyState, Btn, Icon, ConfirmDialog, FeedbackModal, PremiumLock, Modal } from '../components/Shared';
+import { PageBackground, EmptyState, Btn, Icon, ConfirmDialog, FeedbackModal, Modal } from '../components/Shared';
+import { FeatureTeaser } from '../components/FeatureTeaser';
+import { DailyLogsPreview } from '../components/teaser/previews/DailyLogsPreview';
 import { ImageGalleryViewer } from '../components/ImageGalleryViewer';
 import { useRequireRole } from '../hooks/useRequireRole';
 import { AccessDenied, AccessLoading } from '../components/AccessDenied';
@@ -27,10 +29,10 @@ export const DailyLogsScreen = () => {
   const [filterIssue, setFilterIssue] = useState<'all' | 'any_issue' | 'financial' | 'delay' | 'quality' | 'safety'>('all');
   const [filterPeriod, setFilterPeriod] = useState<'all' | 'week' | 'month'>('all');
 
-  const logsForDate = useQuery(api.dailyLogs.getLogsByDate, projectId ? { projectId, date: selectedDate } : 'skip');
+  const logsForDate = useQuery(api.dailyLogs.getLogsByDate, isProOrPremium && projectId ? { projectId, date: selectedDate } : 'skip');
   const { results: allLogs, status: pagedStatus, loadMore } = usePaginatedQuery(
     api.dailyLogs.getLogs,
-    projectId && activeTab === 'history' ? { projectId } : 'skip',
+    isProOrPremium && projectId && activeTab === 'history' ? { projectId } : 'skip',
     { initialNumItems: 15 }
   );
 
@@ -447,9 +449,18 @@ export const DailyLogsScreen = () => {
     </div>
   );
 
+  if (roleLoading) return <AccessLoading />;
+  if (!allowed) return <AccessDenied />;
+  if (!isProOrPremium) {
+    return (
+      <div className="page-content">
+        <FeatureTeaser feature="dailyLogs" requiredPlan="pro" preview={<DailyLogsPreview />} />
+      </div>
+    );
+  }
+
   return (
-    <ScreenBoundary loading={Boolean(roleLoading || (isProOrPremium && projectId && logsForDate === undefined && activeTab === 'log'))} error={null} onRetry={() => window.location.reload()}>
-      <PremiumLock isLocked={!isProOrPremium} title="יומן עבודה יומי" description="יומן עבודה מאפשר מעקב מדויק אחרי העבודה בשטח, כולל מזג אוויר ונוכחות פועלים. שדרג ל-Pro כדי לקבל גישה.">
+    <ScreenBoundary loading={Boolean(isProOrPremium && projectId && logsForDate === undefined && activeTab === 'log')} error={null} onRetry={() => window.location.reload()}>
         <div className="page-content" style={{ paddingBottom: 100, maxWidth: 900, margin: "0 auto" }}>
 
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 24, flexWrap: "wrap", gap: 16 }}>
@@ -1255,7 +1266,6 @@ export const DailyLogsScreen = () => {
             onClose={() => setViewGallery(null)}
           />
         )}
-      </PremiumLock>
     </ScreenBoundary>
   );
 };

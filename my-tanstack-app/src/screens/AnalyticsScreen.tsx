@@ -8,7 +8,9 @@ import { BudgetSummaryCards } from '../components/BudgetSummaryCards';
 import { AccessDenied, AccessLoading } from '../components/AccessDenied';
 import { useRequireRole } from '../hooks/useRequireRole';
 import { useSubscription } from '../hooks/useSubscription';
-import { Modal, Icon, PremiumLock, useAccentColor } from '../components/Shared';
+import { Modal, Icon, useAccentColor } from '../components/Shared';
+import { FeatureTeaser } from '../components/FeatureTeaser';
+import { AnalyticsPreview } from '../components/teaser/previews/AnalyticsPreview';
 import {
   PieChart, Pie, Cell, Tooltip, ResponsiveContainer,
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend,
@@ -28,11 +30,11 @@ export const AnalyticsScreen = () => {
   const canViewBudget = accessInfo?.canViewBudget ?? false;
 
   const { summary, isPending: summaryPending } = useProjectBudgetSummary();
-  const categories = useQuery(api.budget.listCategories, projectId && canViewBudget ? { projectId } : "skip");
-  const expenses = useQuery(api.budget.listExpenses, projectId && canViewBudget ? { projectId } : "skip");
-  const stages = useQuery(api.stages.list, projectId ? { projectId } : "skip");
+  const categories = useQuery(api.budget.listCategories, isProOrPremium && projectId && canViewBudget ? { projectId } : "skip");
+  const expenses = useQuery(api.budget.listExpenses, isProOrPremium && projectId && canViewBudget ? { projectId } : "skip");
+  const stages = useQuery(api.stages.list, isProOrPremium && projectId ? { projectId } : "skip");
 
-  const loading = roleLoading || accessInfo === undefined || stages === undefined || (canViewBudget && (summaryPending || categories === undefined || expenses === undefined));
+  const loading = roleLoading || (isProOrPremium && (accessInfo === undefined || stages === undefined || (canViewBudget && (summaryPending || categories === undefined || expenses === undefined))));
 
   // Process data for charts
   const categoryData = useMemo(() => {
@@ -96,14 +98,16 @@ export const AnalyticsScreen = () => {
 
   if (roleLoading) return <AccessLoading />;
   if (!allowed) return <AccessDenied message="צפייה בדוחות וסטטיסטיקות מורשית למנהלי הפרויקט בלבד." />;
+  if (!isProOrPremium) {
+    return (
+      <div className="page-content">
+        <FeatureTeaser feature="analytics" requiredPlan="pro" preview={<AnalyticsPreview />} />
+      </div>
+    );
+  }
   if (loading) return <ScreenBoundary loading={true} onRetry={() => {}}><div/></ScreenBoundary>;
 
   return (
-    <PremiumLock
-      isLocked={!isProOrPremium}
-      title="דוחות וסטטיסטיקות מתקדמות"
-      description="ניתוח נתונים, גרפים, והתפלגות הוצאות ומשימות. שדרג ל-Pro כדי לקבל גישה."
-    >
       <ScreenBoundary>
         <div className="page-header">
         <h1 className="page-title">דוחות וסטטיסטיקות</h1>
@@ -376,6 +380,5 @@ export const AnalyticsScreen = () => {
         </Modal>
       )}
     </ScreenBoundary>
-    </PremiumLock>
   );
 };

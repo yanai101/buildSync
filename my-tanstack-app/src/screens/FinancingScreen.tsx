@@ -3,9 +3,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { useCurrentProject } from '../hooks/useCurrentProject';
+import { useSubscription } from '../hooks/useSubscription';
 import { useAppNotify } from '../hooks/useAppNotify';
 import { useProjectFileUploader } from '../hooks/useProjectFileUploader';
 import { ScreenBoundary } from '../components/ScreenBoundary';
+import { FeatureTeaser } from '../components/FeatureTeaser';
+import { FinancingPreview } from '../components/teaser/previews/FinancingPreview';
 import {
   PageBackground,
   EmptyState,
@@ -700,16 +703,24 @@ function SourceCard({
 // ── Main Screen ────────────────────────────────────────────────────────────
 export const FinancingScreen: React.FC = () => {
   const { projects } = useCurrentProject();
+  const { isProOrPremium } = useSubscription();
   const [showAddSource, setShowAddSource] = useState(false);
 
   const projectId = projects[0]?._id as Id<'projects'> | undefined;
   const summary = useQuery(
     api.financing.getFundingSummary,
-    projectId ? { projectId } : 'skip',
+    isProOrPremium && projectId ? { projectId } : 'skip',
   );
   const project = projects[0];
   const currentProjectPct: number = (project as any)?.progressPct ?? 0;
 
+  if (!isProOrPremium) {
+    return (
+      <div className="page-content">
+        <FeatureTeaser feature="financing" requiredPlan="pro" preview={<FinancingPreview />} />
+      </div>
+    );
+  }
 
   if (!projectId) return null;
 

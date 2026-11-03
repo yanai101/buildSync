@@ -20,7 +20,9 @@ import { useCurrentProject } from '../hooks/useCurrentProject';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { ScreenBoundary } from '../components/ScreenBoundary';
-import { PageBackground, EmptyState, Btn, Icon, ConfirmDialog, PremiumLock } from '../components/Shared';
+import { PageBackground, EmptyState, Btn, Icon, ConfirmDialog } from '../components/Shared';
+import { FeatureTeaser } from '../components/FeatureTeaser';
+import { PermitsPreview } from '../components/teaser/previews/PermitsPreview';
 import { useRequireRole } from '../hooks/useRequireRole';
 import { AccessDenied, AccessLoading } from '../components/AccessDenied';
 import type { Id } from '../../convex/_generated/dataModel';
@@ -136,7 +138,7 @@ export const PermitsScreen = () => {
   const { allowed, loading: roleLoading } = useRequireRole(['owner', 'manager', 'inspector']);
   const { projectId } = useCurrentProject();
   const { isProOrPremium } = useSubscription();
-  const permits = useQuery(api.permits.list, projectId && allowed ? { projectId } : 'skip');
+  const permits = useQuery(api.permits.list, isProOrPremium && projectId && allowed ? { projectId } : 'skip');
   const generateUploadUrl = useMutation(api.permits.generateUploadUrl);
   const addPermit = useMutation(api.permits.addPermit);
   const deletePermit = useMutation(api.permits.deletePermit);
@@ -276,9 +278,15 @@ export const PermitsScreen = () => {
 
   if (roleLoading) return <AccessLoading />;
   if (!allowed) return <AccessDenied message="מסמכים ואישורים זמינים לצוות הניהול בלבד." />;
+  if (!isProOrPremium) {
+    return (
+      <div className="page-content">
+        <FeatureTeaser feature="permits" requiredPlan="pro" preview={<PermitsPreview />} />
+      </div>
+    );
+  }
 
   return (
-    <PremiumLock isLocked={!isProOrPremium} title="ניהול בירוקרטיה והיתרים" description="מסך ההיתרים מאפשר לרכז היתרי בנייה ואישורים מול רשויות. שדרג את חשבונך כדי לגשת אליו.">
       <ScreenBoundary loading={isLoading}>
       <datalist id="authorities-list">
         <option value="עירייה - ועדה מקומית" />
@@ -379,6 +387,5 @@ export const PermitsScreen = () => {
         )}
       </div>
     </ScreenBoundary>
-    </PremiumLock>
   );
 };
