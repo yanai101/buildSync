@@ -211,8 +211,11 @@ const ItemDialog = ({
     const itemNorm = normHebrew(itemRaw);
     const roomCatalog = getCatalogForRoom(roomType);
     const allItemsList = getAllCatalogItems();
-    const match = roomCatalog.find(c => norm(c.name) === norm(itemRaw) || normHebrew(c.name) === itemNorm)
-      || allItemsList.find(c => norm(c.name) === norm(itemRaw) || normHebrew(c.name) === itemNorm);
+    const match =
+      roomCatalog.find(c => norm(c.name) === norm(itemRaw) || normHebrew(c.name) === itemNorm)
+      || allItemsList.find(c => norm(c.name) === norm(itemRaw) || normHebrew(c.name) === itemNorm)
+      || roomCatalog.find(c => normHebrew(c.name).includes(itemNorm) || itemNorm.includes(normHebrew(c.name)))
+      || allItemsList.find(c => normHebrew(c.name).includes(itemNorm) || itemNorm.includes(normHebrew(c.name)));
     if (!match) return null;
     return adaptCategoryForRoom({ name: match.name, cat: match.cat }, roomType);
   }, [pendingItem?.name, roomType]);
@@ -239,11 +242,11 @@ const ItemDialog = ({
 
   // Reset / hydrate every time the dialog opens or switches target.
   React.useEffect(() => {
-    setPicked(false);
     setImageUploadError(null);
     setFormError(null);
     setSavingItem(false);
     if (dialog?.mode === 'edit') {
+      setPicked(true);
       const it = dialog.item;
       setPendingItem({
         id: it.id, cat: it.cat ?? '', name: it.name ?? '', qty: it.userQty ?? it.qty ?? 1,
@@ -252,6 +255,7 @@ const ItemDialog = ({
       });
       setImagePreview(it.imageUrl ?? null);
     } else {
+      setPicked(false);
       setImagePreview(null);
       if (dialog) {
         setPendingItem({ id: `cat_${Date.now()}`, cat: '', name: '', qty: 1, unit: "יח'", notes: '', imageUrl: null });
@@ -265,7 +269,7 @@ const ItemDialog = ({
   const existingNames = existingItems.map(i => norm(i.name));
   const suggestions = React.useMemo(() => {
     const qRaw = String(pendingItem?.name ?? '').trim();
-    if (isEdit || picked || !qRaw) return [] as any[];
+    if (picked || !qRaw) return [] as any[];
     const qNorm = normHebrew(qRaw);
     const roomCatalog = getCatalogForRoom(roomType);
     const seen = new Set<string>();
@@ -281,7 +285,7 @@ const ItemDialog = ({
       if (out.length >= 10) break;
     }
     return out;
-  }, [pendingItem?.name, picked, isEdit, roomType, projectItems]);
+  }, [pendingItem?.name, picked, roomType, projectItems]);
 
   const selectItem = (item: any) => {
     setPicked(true);
@@ -289,8 +293,8 @@ const ItemDialog = ({
       ...p,
       name: item.name,
       cat: adaptCategoryForRoom({ name: item.name, cat: item.cat || '' }, roomType),
-      qty: item.qty ?? 1,
-      unit: item.unit || "יח'",
+      qty: p?.qty ?? item.qty ?? 1,
+      unit: item.unit || p?.unit || "יח'",
     }));
   };
 
@@ -368,7 +372,7 @@ const ItemDialog = ({
                 className="bp-input"
                 value={pendingItem.name}
                 onChange={e => { setPicked(false); setPendingItem((p:any) => ({...p, name: e.target.value})); }}
-                placeholder={isEdit ? "" : "הקלד שם פריט או חפש בקטלוג..."}
+                placeholder="הקלד שם פריט או חפש בקטלוג..."
                 style={{fontSize:14}}
               />
               {suggestions.length > 0 && (
