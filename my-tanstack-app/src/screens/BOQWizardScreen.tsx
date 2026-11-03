@@ -164,6 +164,18 @@ type ItemDialogState = { mode: 'add' } | { mode: 'edit'; roomUid: string; item: 
 
 const UNIT_OPTIONS = ["יח'", "מ'", 'מ"ר', "קומפ'", "ק\"ג", "סט"];
 
+// Normalize Hebrew spelling variants (e.g. טלויזיה <-> טלוויזיה, כסא <-> כיסא)
+const normHebrew = (s: string) =>
+  s
+    .trim()
+    .toLowerCase()
+    .replace(/וו/g, 'ו')
+    .replace(/יי/g, 'י')
+    .replace(/כיסא/g, 'כסא')
+    .replace(/כיסאות/g, 'כסאות');
+
+const norm = (s: string) => s.trim().toLowerCase();
+
 const ItemDialog = ({
   dialog, onClose, roomType, existingItems, projectItems, projectCategories, onAdd, onEdit, projectId, uploadProjectFile, globalCategories
 }: {
@@ -250,17 +262,6 @@ const ItemDialog = ({
     }
   }, [dialog]);
 
-  // Normalize Hebrew spelling variants (e.g. טלויזיה <-> טלוויזיה, כסא <-> כיסא)
-  const normHebrew = (s: string) =>
-    s
-      .trim()
-      .toLowerCase()
-      .replace(/וו/g, 'ו')
-      .replace(/יי/g, 'י')
-      .replace(/כיסא/g, 'כסא')
-      .replace(/כיסאות/g, 'כסאות');
-
-  const norm = (s: string) => s.trim().toLowerCase();
   const existingNames = existingItems.map(i => norm(i.name));
   const suggestions = React.useMemo(() => {
     const qRaw = String(pendingItem?.name ?? '').trim();
