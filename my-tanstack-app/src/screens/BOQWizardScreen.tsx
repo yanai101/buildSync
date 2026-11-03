@@ -184,7 +184,7 @@ const AddItemWidget = ({
   const catalog = getCatalogForRoom(roomType);
   const existingNames = existingItems.map(i=>i.name.trim().toLowerCase());
   const allSuggestions = query.trim().length >= 1
-    ? catalog.filter(c => c.name.includes(query.trim()) && !existingNames.includes(c.name.toLowerCase())).slice(0, 8)
+    ? catalog.filter(c => c.name.includes(query.trim())).slice(0, 8)
     : [];
 
   const close = () => { setOpen(false); setQuery(""); setPendingItem(null); setImagePreview(null); setImageUploadError(null); };
@@ -279,7 +279,9 @@ const AddItemWidget = ({
                   style={{fontSize:15}}
                 />
                 <div style={{maxHeight:260, overflowY:"auto", border:"1px solid var(--border)", borderRadius:10}}>
-                  {allSuggestions.length > 0 ? allSuggestions.map((s,i) => (
+                  {allSuggestions.length > 0 ? allSuggestions.map((s,i) => {
+                    const alreadyInRoom = existingNames.includes(s.name.trim().toLowerCase());
+                    return (
                     <div
                       key={i}
                       onClick={() => selectItem(s)}
@@ -287,10 +289,18 @@ const AddItemWidget = ({
                       onMouseEnter={e => (e.currentTarget.style.background="var(--accent-light)")}
                       onMouseLeave={e => (e.currentTarget.style.background="transparent")}
                     >
-                      <span style={{fontWeight:600}}>{s.name}</span>
+                      <div style={{display:"flex",alignItems:"center",gap:8}}>
+                        <span style={{fontWeight:600}}>{s.name}</span>
+                        {alreadyInRoom && (
+                          <span style={{fontSize:11,color:"var(--accent)",background:"var(--accent-light)",borderRadius:6,padding:"1px 6px",fontWeight:700}}>
+                            כבר בחדר
+                          </span>
+                        )}
+                      </div>
                       <span style={{fontSize:12,color:"var(--text3)",background:"var(--border)",borderRadius:6,padding:"2px 8px"}}>{s.cat}</span>
                     </div>
-                  )) : (
+                    );
+                  }) : (
                     <div style={{padding:"14px 16px",fontSize:13,color:"var(--text3)"}}>
                       {query.trim().length === 0 ? "התחל להקליד כדי לחפש..." : "לא נמצאו תוצאות. תוכל להוסיף כפריט חופשי."}
                     </div>
@@ -932,8 +942,18 @@ export const BOQWizardScreen = () => {
     }, 600);
   };
 
+  const qtyTimers = React.useRef<Record<string, number>>({});
   const setQty = (roomUid: string, itemId: string, qty: any) => {
-    setAllItems((prev: any)=>({...prev,[roomUid]:(prev[roomUid]||[]).map((i: any)=>i.id===itemId?{...i,userQty:Math.max(0,Number(qty))}:i)}));
+    const nextQty = Math.max(0, Number(qty) || 0);
+    const targetItem = (allItems[roomUid] || []).find((i: any) => i.id === itemId);
+    setAllItems((prev: any)=>({...prev,[roomUid]:(prev[roomUid]||[]).map((i: any)=>i.id===itemId?{...i,userQty:nextQty,qty:nextQty}:i)}));
+    if (targetItem?._persisted && projectId) {
+      const existing = qtyTimers.current[String(itemId)];
+      if (existing) window.clearTimeout(existing);
+      qtyTimers.current[String(itemId)] = window.setTimeout(() => {
+        updateBoqItemMutation({ itemId: itemId as any, qty: nextQty, userQty: nextQty }).catch(console.error);
+      }, 400);
+    }
   };
   const addItem = async (roomUid: string, item: any) => {
     setAllItems((prev: any)=>({...prev,[roomUid]:[...(prev[roomUid]||[]),item]}));
