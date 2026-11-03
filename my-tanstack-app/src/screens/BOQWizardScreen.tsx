@@ -25,7 +25,7 @@ import { api } from '../../convex/_generated/api';
 import html2pdf from 'html2pdf.js';
 import { BOQPrintTemplate } from '../components/BOQPrintTemplate';
 import { useProjectFileUploader } from '../hooks/useProjectFileUploader';
-import { getCatalogForRoom, getAllCatalogItems, adaptCategoryForRoom, getCategoriesForRoomType } from '../data/boqCatalog';
+import { getCatalogForRoom, getAllCatalogItems, adaptCategoryForRoom, getCategoriesForRoomType, getAllBoqCatalogCategories } from '../data/boqCatalog';
 import { useRequireRole } from '../hooks/useRequireRole';
 import { AccessDenied, AccessLoading } from '../components/AccessDenied';
 import type { Id } from '../../convex/_generated/dataModel';
@@ -187,6 +187,21 @@ const ItemDialog = ({
   const [imageUploadError, setImageUploadError] = React.useState<string | null>(null);
   const [formError, setFormError] = React.useState<string | null>(null);
   const [catDropdownOpen, setCatDropdownOpen] = React.useState(false);
+
+  const standardCategoriesSet = React.useMemo(() => {
+    return new Set(getAllBoqCatalogCategories());
+  }, []);
+
+  // Compute recommended category if the typed/chosen item name matches a catalog item
+  const recommendedCategory = React.useMemo(() => {
+    const itemName = (pendingItem?.name || '').trim().toLowerCase();
+    if (!itemName) return null;
+    const roomCatalog = getCatalogForRoom(roomType);
+    const match = roomCatalog.find(c => c.name.trim().toLowerCase() === itemName)
+      || getAllCatalogItems().find(c => c.name.trim().toLowerCase() === itemName);
+    if (!match) return null;
+    return adaptCategoryForRoom({ name: match.name, cat: match.cat }, roomType);
+  }, [pendingItem?.name, roomType]);
 
   const allUniqueCategories = React.useMemo(() => {
     return Array.from(new Set([...projectCategories, ...getCategoriesForRoomType(roomType), ...globalCategories]));
@@ -419,10 +434,17 @@ const ItemDialog = ({
                         onMouseEnter={e => (e.currentTarget.style.background = "var(--accent-light)")}
                         onMouseLeave={e => (e.currentTarget.style.background = pendingItem.cat === option ? "var(--accent-light)" : "transparent")}
                       >
-                        <span>{option}</span>
-                        {projectCategories.includes(option) && (
-                          <span style={{fontSize:11,color:"var(--accent)",opacity:0.8}}>בשימוש בפרויקט</span>
-                        )}
+                        <div style={{display:"flex",alignItems:"center",gap:6}}>
+                          <span>{option}</span>
+                          {!standardCategoriesSet.has(option) && (
+                            <span style={{fontSize:10,fontWeight:700,background:"var(--accent-light)",color:"var(--accent)",padding:"1px 6px",borderRadius:4}}>מותאמת אישית</span>
+                          )}
+                        </div>
+                        {recommendedCategory === option ? (
+                          <span style={{fontSize:11,fontWeight:700,color:"var(--success)",display:"flex",alignItems:"center",gap:3}}>💡 מומלץ לפריט</span>
+                        ) : projectCategories.includes(option) ? (
+                          <span style={{fontSize:11,color:"var(--text3)"}}>בשימוש בפרויקט</span>
+                        ) : null}
                       </div>
                     ))}
                     {pendingItem.cat.trim() && !allUniqueCategories.some(c => c.toLowerCase() === pendingItem.cat.trim().toLowerCase()) && (
@@ -449,31 +471,66 @@ const ItemDialog = ({
                   </div>
                 )}
               </div>
+              {/* Recommended category chip if available for this item */}
+              {recommendedCategory && (
+                <div style={{display:"flex",alignItems:"center",gap:8,padding:"6px 10px",borderRadius:8,background:"var(--surface-2)",border:"1px dashed var(--border)",marginTop:2}}>
+                  <span style={{fontSize:12,color:"var(--text2)",fontWeight:600}}>💡 המלצה לפריט זה:</span>
+                  <button
+                    type="button"
+                    onMouseDown={e => {
+                      e.preventDefault();
+                      setPendingItem((p:any) => ({...p, cat: recommendedCategory}));
+                    }}
+                    style={{
+                      fontSize:12,
+                      padding:"2px 10px",
+                      borderRadius:999,
+                      cursor:"pointer",
+                      fontWeight:700,
+                      border:`1.5px solid ${pendingItem.cat === recommendedCategory ? "var(--accent)" : "var(--accent)"}`,
+                      background: pendingItem.cat === recommendedCategory ? "var(--accent)" : "var(--accent-light)",
+                      color: pendingItem.cat === recommendedCategory ? "#fff" : "var(--accent)",
+                      transition:"all .15s",
+                    }}
+                  >
+                    {recommendedCategory} {pendingItem.cat === recommendedCategory ? '✓' : '+ בחר'}
+                  </button>
+                </div>
+              )}
+
               {filteredCategoryChips.length > 0 && (
                 <div style={{display:"flex",flexWrap:"wrap",gap:6,maxHeight:80,overflowY:"auto",marginTop:4}}>
-                  {filteredCategoryChips.map(c => (
-                    <button
-                      key={c}
-                      type="button"
-                      onMouseDown={e => {
-                        e.preventDefault();
-                        setPendingItem((p:any) => ({...p, cat: c}));
-                      }}
-                      style={{
-                        fontSize:12,
-                        padding:"3px 10px",
-                        borderRadius:999,
-                        cursor:"pointer",
-                        fontWeight:600,
-                        border:`1px solid ${pendingItem.cat === c ? "var(--accent)" : "var(--border)"}`,
-                        background: pendingItem.cat === c ? "var(--accent-light)" : "var(--surface)",
-                        color: pendingItem.cat === c ? "var(--accent)" : "var(--text2)",
-                        transition:"all .15s",
-                      }}
-                    >
-                      {c}
-                    </button>
-                  ))}
+                  {filteredCategoryChips.map(c => {
+                    const isCustom = !standardCategoriesSet.has(c);
+                    const isSelected = pendingItem.cat === c;
+                    return (
+                      <button
+                        key={c}
+                        type="button"
+                        onMouseDown={e => {
+                          e.preventDefault();
+                          setPendingItem((p:any) => ({...p, cat: c}));
+                        }}
+                        style={{
+                          fontSize:12,
+                          padding:"3px 10px",
+                          borderRadius:999,
+                          cursor:"pointer",
+                          fontWeight:600,
+                          border:`1px solid ${isSelected ? "var(--accent)" : isCustom ? "color-mix(in srgb, var(--accent) 40%, var(--border))" : "var(--border)"}`,
+                          background: isSelected ? "var(--accent-light)" : isCustom ? "rgba(234,88,12,0.04)" : "var(--surface)",
+                          color: isSelected ? "var(--accent)" : isCustom ? "var(--accent-text, var(--text1))" : "var(--text2)",
+                          transition:"all .15s",
+                          display:"inline-flex",
+                          alignItems:"center",
+                          gap:4,
+                        }}
+                      >
+                        {isCustom && <span style={{fontSize:9,opacity:0.8}}>★</span>}
+                        <span>{c}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               )}
             </div>
