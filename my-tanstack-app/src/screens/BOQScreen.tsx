@@ -767,13 +767,15 @@ export const BOQScreen = () => {
             </div>
           ))}
           
-        <div style={{ position: 'absolute', top: '-9999px', left: '-9999px' }}>
-          <BOQPrintTemplate
-            ref={printRef}
-            project={project}
-            itemsGroupedByRoom={items}
-            rooms={rooms}
-          />
+        <div style={{ position: 'fixed', top: 0, left: 0, width: 0, height: 0, overflow: 'hidden', opacity: 0, pointerEvents: 'none', zIndex: -9999 }}>
+          <div style={{ width: '210mm' }}>
+            <BOQPrintTemplate
+              ref={printRef}
+              project={project}
+              itemsGroupedByRoom={items}
+              rooms={rooms}
+            />
+          </div>
         </div>
       </div>
     </ScreenBoundary>

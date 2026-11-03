@@ -1795,7 +1795,7 @@ export const BOQWizardScreen = () => {
                 <div style={{padding:"16px 24px",background:"var(--surface)",borderBottom:"1px solid var(--border)",fontSize:14,fontWeight:800}}>
                   {cat}
                 </div>
-                <div style={{padding:"0 24px"}}>
+                <div style={{padding:"0 24px", overflowX: "auto"}}>
                   <table className="bp-table" style={{width:"100%",borderCollapse:"collapse"}}>
                     <thead>
                       <tr style={{borderBottom:"1px solid var(--border)"}}>
@@ -1849,15 +1849,17 @@ export const BOQWizardScreen = () => {
               onClose={closeFeedback}
             />
           )}
-          <div style={{ position: 'absolute', top: '-9999px', left: '-9999px' }}>
-            <BOQPrintTemplate
-              ref={printRef}
-              project={project as any}
-              itemsGroupedByCategory={aggregated}
-              rooms={rooms}
-              title="רשימת יבוא מרוכזת (סיכום אשף)"
-              generalNotes={importNotes}
-            />
+          <div style={{ position: 'fixed', top: 0, left: 0, width: 0, height: 0, overflow: 'hidden', opacity: 0, pointerEvents: 'none', zIndex: -9999 }}>
+            <div style={{ width: '210mm' }}>
+              <BOQPrintTemplate
+                ref={printRef}
+                project={project as any}
+                itemsGroupedByCategory={aggregated}
+                rooms={rooms}
+                title="רשימת יבוא מרוכזת (סיכום אשף)"
+                generalNotes={importNotes}
+              />
+            </div>
           </div>
           </div>
       </ScreenBoundary>
