@@ -174,7 +174,9 @@ const normHebrew = (s: string) =>
     .replace(/כיסא/g, 'כסא')
     .replace(/כיסאות/g, 'כסאות')
     .replace(/מתלי/g, 'מתלה')
-    .replace(/מתלים/g, 'מתלה');
+    .replace(/מתלים/g, 'מתלה')
+    .replace(/רמקולים/g, 'רמקול')
+    .replace(/שקועים/g, 'שקוע');
 
 const norm = (s: string) => s.trim().toLowerCase();
 
