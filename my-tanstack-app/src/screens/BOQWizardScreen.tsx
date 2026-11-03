@@ -164,7 +164,7 @@ type ItemDialogState = { mode: 'add' } | { mode: 'edit'; roomUid: string; item: 
 
 const UNIT_OPTIONS = ["יח'", "מ'", 'מ"ר', "קומפ'", "ק\"ג", "סט"];
 
-// Normalize Hebrew spelling variants (e.g. טלויזיה <-> טלוויזיה, כסא <-> כיסא)
+// Normalize Hebrew spelling variants (e.g. טלויזיה <-> טלוויזיה, כסא <-> כיסא, מתלה <-> מתלי)
 const normHebrew = (s: string) =>
   s
     .trim()
@@ -172,7 +172,9 @@ const normHebrew = (s: string) =>
     .replace(/וו/g, 'ו')
     .replace(/יי/g, 'י')
     .replace(/כיסא/g, 'כסא')
-    .replace(/כיסאות/g, 'כסאות');
+    .replace(/כיסאות/g, 'כסאות')
+    .replace(/מתלי/g, 'מתלה')
+    .replace(/מתלים/g, 'מתלה');
 
 const norm = (s: string) => s.trim().toLowerCase();
 
@@ -211,13 +213,33 @@ const ItemDialog = ({
     const itemNorm = normHebrew(itemRaw);
     const roomCatalog = getCatalogForRoom(roomType);
     const allItemsList = getAllCatalogItems();
-    const match =
+
+    // 1. Exact match (or normalized Hebrew match)
+    const exact =
       roomCatalog.find(c => norm(c.name) === norm(itemRaw) || normHebrew(c.name) === itemNorm)
-      || allItemsList.find(c => norm(c.name) === norm(itemRaw) || normHebrew(c.name) === itemNorm)
-      || roomCatalog.find(c => normHebrew(c.name).includes(itemNorm) || itemNorm.includes(normHebrew(c.name)))
-      || allItemsList.find(c => normHebrew(c.name).includes(itemNorm) || itemNorm.includes(normHebrew(c.name)));
-    if (!match) return null;
-    return adaptCategoryForRoom({ name: match.name, cat: match.cat }, roomType);
+      || allItemsList.find(c => norm(c.name) === norm(itemRaw) || normHebrew(c.name) === itemNorm);
+    if (exact) return adaptCategoryForRoom({ name: exact.name, cat: exact.cat }, roomType);
+
+    // 2. Catalog item contains user's search phrase (e.g. "מתלי מגבות וחלוקים" contains "מתלה מגבות")
+    const catalogContains =
+      roomCatalog.find(c => normHebrew(c.name).includes(itemNorm))
+      || allItemsList.find(c => normHebrew(c.name).includes(itemNorm));
+    if (catalogContains) return adaptCategoryForRoom({ name: catalogContains.name, cat: catalogContains.cat }, roomType);
+
+    // 3. User phrase contains catalog item, but ONLY if catalog item has a space (compound phrase)
+    // to avoid false positives (e.g. typing "מתלה מגבות" accidentally matching single word "מגבות" from textiles)
+    const userContains =
+      roomCatalog.find(c => {
+        const cNorm = normHebrew(c.name);
+        return cNorm.includes(' ') && itemNorm.includes(cNorm);
+      })
+      || allItemsList.find(c => {
+        const cNorm = normHebrew(c.name);
+        return cNorm.includes(' ') && itemNorm.includes(cNorm);
+      });
+    if (userContains) return adaptCategoryForRoom({ name: userContains.name, cat: userContains.cat }, roomType);
+
+    return null;
   }, [pendingItem?.name, roomType]);
 
   const allUniqueCategories = React.useMemo(() => {
