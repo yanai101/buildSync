@@ -1,5 +1,5 @@
 import React from 'react';
-import { useConvex, useMutation } from 'convex/react';
+import { useConvex, useMutation, useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import type { Id } from '../../convex/_generated/dataModel';
 import { Icon, Btn } from './Shared';
@@ -16,6 +16,8 @@ type SectionDef = {
   icon: string;
   countFn?: (manifest: any) => number | null;
   hintFn?: (manifest: any) => string;
+  /** Only shown when room photos are available (Premium, or photos kept after a downgrade). */
+  premiumOnly?: boolean;
 };
 
 const SECTIONS: SectionDef[] = [
@@ -60,6 +62,14 @@ const SECTIONS: SectionDef[] = [
     icon: 'archive',
     countFn: (m) => m?.personalFiles?.length ?? null,
     hintFn: (m) => m?.personalFiles?.length ? `${m.personalFiles.length} קבצים ששמרת בפרויקט` : '',
+  },
+  {
+    key: 'roomPhotos',
+    label: 'תמונות חדרים לפי שלבים',
+    icon: 'home',
+    premiumOnly: true,
+    countFn: (m) => m?.roomPhotos?.length ?? null,
+    hintFn: (m) => m?.roomPhotos?.length ? `${m.roomPhotos.length} תמונות` : 'תיקייה לכל חדר ושלב + אינדקס CSV',
   },
   {
     key: 'budget',
@@ -128,6 +138,8 @@ type Props = {
 
 export function ProjectExportModal({ projectId, projectName, onClose }: Props) {
   const { notify } = useAppNotify();
+  const roomAccess = useQuery(api.roomArchive.getAccess, { projectId });
+  const showRoomPhotos = roomAccess?.canView === true;
   const convex = useConvex();
   const [step, setStep] = React.useState<Step>('select');
   const [exportingSection, setExportingSection] = React.useState<SectionDef | null>(null);
@@ -221,7 +233,7 @@ export function ProjectExportModal({ projectId, projectName, onClose }: Props) {
         >
           {/* ─── Header ────────────────────────────────────────────────────── */}
           <div style={{
-            background: 'linear-gradient(135deg, #E07A38 0%, #c95e1e 100%)',
+            background: 'linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%)',
             padding: '20px 24px',
             color: '#fff',
             position: 'relative',
@@ -271,8 +283,8 @@ export function ProjectExportModal({ projectId, projectName, onClose }: Props) {
                 <div style={{
                   display: 'flex', alignItems: 'center', gap: 10,
                   padding: '10px 14px',
-                  background: 'rgba(224,122,56,0.08)',
-                  border: '1px solid rgba(224,122,56,0.25)',
+                  background: 'var(--accent-soft)',
+                  border: '1px solid var(--accent-glow-sm)',
                   borderRadius: 10, marginBottom: 4,
                 }}>
                   <Icon n="lock" s={14} c="var(--accent)" />
@@ -286,7 +298,7 @@ export function ProjectExportModal({ projectId, projectName, onClose }: Props) {
                 </p>
 
                 {/* Individual, on-demand archives */}
-                {SECTIONS.map((section) => {
+                {SECTIONS.filter((section) => !section.premiumOnly || showRoomPhotos).map((section) => {
                   const downloadStatus = sectionDownloads[section.key];
                   return (
                     <div
@@ -302,7 +314,7 @@ export function ProjectExportModal({ projectId, projectName, onClose }: Props) {
                     >
                       <div style={{
                         width: 32, height: 32, borderRadius: 8, flexShrink: 0,
-                        background: 'rgba(224,122,56,0.12)',
+                        background: 'var(--accent-light)',
                         display: 'grid', placeItems: 'center',
                       }}>
                         <Icon n={section.icon} s={16} c="var(--accent)" />
@@ -352,7 +364,7 @@ export function ProjectExportModal({ projectId, projectName, onClose }: Props) {
                       <div key={phase} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
                         <div style={{
                           width: 32, height: 32, borderRadius: '50%',
-                          background: isDone ? 'var(--accent)' : isActive ? 'rgba(224,122,56,0.15)' : 'var(--surface-2)',
+                          background: isDone ? 'var(--accent)' : isActive ? 'var(--accent-light)' : 'var(--surface-2)',
                           border: `2px solid ${isDone || isActive ? 'var(--accent)' : 'var(--border)'}`,
                           display: 'grid', placeItems: 'center',
                           transition: 'all 0.3s',

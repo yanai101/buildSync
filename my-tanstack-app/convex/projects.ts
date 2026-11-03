@@ -2,6 +2,7 @@ import { query, mutation } from './_generated/server';
 import { getAuthUserId } from '@convex-dev/auth/server';
 import { v } from 'convex/values';
 import { performProjectDeletion } from './_lib/projectDeletion';
+import { deletePhotosForRooms } from './_lib/roomArchiveCleanup';
 import { canUserViewBudget, canUserViewSchedule } from './_lib/projectAccess';
 import { getActiveTier, capabilitiesFor, PROJECT_LIMIT_ERROR } from './_lib/entitlements';
 
@@ -226,6 +227,12 @@ export const saveProjectSetup = mutation({
         keptRoomIds.add(insertedId);
       }
     }
+
+    const removedRoomIds = existingRooms
+      .filter((room) => !keptRoomIds.has(room._id))
+      .map((room) => room._id);
+    // Room photos (Premium room archive) are deleted together with their room.
+    await deletePhotosForRooms(ctx, removedRoomIds);
 
     for (const room of existingRooms) {
       if (!keptRoomIds.has(room._id)) {

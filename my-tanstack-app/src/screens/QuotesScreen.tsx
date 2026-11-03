@@ -923,8 +923,8 @@ export const QuotesScreen = () => {
             <div style={{ marginTop: 20, borderTop: "1px solid var(--border)", paddingTop: 16 }}>
               {!isProOrPremium ? (
                 /* Free-plan upgrade card */
-                <div style={{ background: "linear-gradient(135deg, rgba(224,122,56,.08) 0%, rgba(224,122,56,.03) 100%)", border: "1.5px solid rgba(224,122,56,.25)", borderRadius: 14, padding: "16px 20px", display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
-                  <div style={{ width: 38, height: 38, borderRadius: 10, background: "rgba(224,122,56,.12)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>🤖</div>
+                <div style={{ background: "linear-gradient(135deg, var(--accent-soft) 0%, transparent 100%)", border: "1.5px solid var(--accent-glow-sm)", borderRadius: 14, padding: "16px 20px", display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+                  <div style={{ width: 38, height: 38, borderRadius: 10, background: "var(--accent-light)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>🤖</div>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 2 }}>השוואת AI — זמין ב-Pro</div>
                     <div style={{ fontSize: 12, color: "var(--text3)" }}>שדרג לPro לקבלת ניתוח AI חכם הכולל קריאת קבצי ההצעות</div>
@@ -1241,7 +1241,7 @@ export const QuotesScreen = () => {
                 </div>
               )}
               <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                <a href={previewQuote.fileUrl} target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 8, textDecoration: "none", borderRadius: 10, padding: "10px 20px", fontSize: 14, fontFamily: "'Heebo',sans-serif", fontWeight: 700, background: "linear-gradient(135deg, var(--accent) 0%, #c96b30 100%)", color: "#fff", boxShadow: "0 2px 8px rgba(224,122,56,0.3)" }}>
+                <a href={previewQuote.fileUrl} target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 8, textDecoration: "none", borderRadius: 10, padding: "10px 20px", fontSize: 14, fontFamily: "'Heebo',sans-serif", fontWeight: 700, background: "linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%)", color: "#fff", boxShadow: "0 2px 8px var(--accent-glow-sm)" }}>
                   <Icon n="download" s={13} /> פתח בקובץ מלא
                 </a>
               </div>

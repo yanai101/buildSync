@@ -323,12 +323,12 @@ export const GuidesScreen = () => {
                             width: 72,
                             height: 72,
                             borderRadius: '50%',
-                            background: 'linear-gradient(135deg, var(--accent) 0%, #c96b30 100%)',
+                            background: 'linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%)',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
                             color: '#fff',
-                            boxShadow: '0 10px 24px rgba(224,122,56,0.5)',
+                            boxShadow: '0 10px 24px var(--accent-glow)',
                             border: '2px solid rgba(255,255,255,0.2)'
                           }}
                         >
@@ -626,8 +626,8 @@ export const GuidesScreen = () => {
                 className="card" 
                 style={{ 
                   padding: 24, 
-                  background: 'linear-gradient(135deg, rgba(224,122,56,0.06) 0%, rgba(245,158,11,0.02) 100%)', 
-                  border: '1px solid rgba(224,122,56,0.12)',
+                  background: 'linear-gradient(135deg, var(--accent-soft) 0%, transparent 100%)', 
+                  border: '1px solid var(--accent-light)',
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',

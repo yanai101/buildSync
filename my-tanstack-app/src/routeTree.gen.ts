@@ -41,7 +41,9 @@ import { Route as TimelineRouteImport } from './routes/timeline'
 import { Route as ApiAiCompareRouteImport } from './routes/api/ai-compare'
 import { Route as ApiAiExtractRouteImport } from './routes/api/ai-extract'
 import { Route as ApiCheckoutRouteImport } from './routes/api/checkout'
+import { Route as ApiPlansRouteImport } from './routes/api/plans'
 import { Route as ApiPortalRouteImport } from './routes/api/portal'
+import { Route as DevTeasersRouteImport } from './routes/dev.teasers'
 import { Route as JoinCodeRouteImport } from './routes/join.$code'
 import { Route as ApiWebhookPolarRouteImport } from './routes/api/webhook/polar'
 
@@ -205,9 +207,19 @@ const ApiCheckoutRoute = ApiCheckoutRouteImport.update({
   path: '/api/checkout',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPlansRoute = ApiPlansRouteImport.update({
+  id: '/api/plans',
+  path: '/api/plans',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPortalRoute = ApiPortalRouteImport.update({
   id: '/api/portal',
   path: '/api/portal',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DevTeasersRoute = DevTeasersRouteImport.update({
+  id: '/dev/teasers',
+  path: '/dev/teasers',
   getParentRoute: () => rootRouteImport,
 } as any)
 const JoinCodeRoute = JoinCodeRouteImport.update({
@@ -254,7 +266,9 @@ export interface FileRoutesByFullPath {
   '/api/ai-compare': typeof ApiAiCompareRoute
   '/api/ai-extract': typeof ApiAiExtractRoute
   '/api/checkout': typeof ApiCheckoutRoute
+  '/api/plans': typeof ApiPlansRoute
   '/api/portal': typeof ApiPortalRoute
+  '/dev/teasers': typeof DevTeasersRoute
   '/join/$code': typeof JoinCodeRoute
   '/api/webhook/polar': typeof ApiWebhookPolarRoute
 }
@@ -291,7 +305,9 @@ export interface FileRoutesByTo {
   '/api/ai-compare': typeof ApiAiCompareRoute
   '/api/ai-extract': typeof ApiAiExtractRoute
   '/api/checkout': typeof ApiCheckoutRoute
+  '/api/plans': typeof ApiPlansRoute
   '/api/portal': typeof ApiPortalRoute
+  '/dev/teasers': typeof DevTeasersRoute
   '/join/$code': typeof JoinCodeRoute
   '/api/webhook/polar': typeof ApiWebhookPolarRoute
 }
@@ -329,7 +345,9 @@ export interface FileRoutesById {
   '/api/ai-compare': typeof ApiAiCompareRoute
   '/api/ai-extract': typeof ApiAiExtractRoute
   '/api/checkout': typeof ApiCheckoutRoute
+  '/api/plans': typeof ApiPlansRoute
   '/api/portal': typeof ApiPortalRoute
+  '/dev/teasers': typeof DevTeasersRoute
   '/join/$code': typeof JoinCodeRoute
   '/api/webhook/polar': typeof ApiWebhookPolarRoute
 }
@@ -368,7 +386,9 @@ export interface FileRouteTypes {
     | '/api/ai-compare'
     | '/api/ai-extract'
     | '/api/checkout'
+    | '/api/plans'
     | '/api/portal'
+    | '/dev/teasers'
     | '/join/$code'
     | '/api/webhook/polar'
   fileRoutesByTo: FileRoutesByTo
@@ -405,7 +425,9 @@ export interface FileRouteTypes {
     | '/api/ai-compare'
     | '/api/ai-extract'
     | '/api/checkout'
+    | '/api/plans'
     | '/api/portal'
+    | '/dev/teasers'
     | '/join/$code'
     | '/api/webhook/polar'
   id:
@@ -442,7 +464,9 @@ export interface FileRouteTypes {
     | '/api/ai-compare'
     | '/api/ai-extract'
     | '/api/checkout'
+    | '/api/plans'
     | '/api/portal'
+    | '/dev/teasers'
     | '/join/$code'
     | '/api/webhook/polar'
   fileRoutesById: FileRoutesById
@@ -480,7 +504,9 @@ export interface RootRouteChildren {
   ApiAiCompareRoute: typeof ApiAiCompareRoute
   ApiAiExtractRoute: typeof ApiAiExtractRoute
   ApiCheckoutRoute: typeof ApiCheckoutRoute
+  ApiPlansRoute: typeof ApiPlansRoute
   ApiPortalRoute: typeof ApiPortalRoute
+  DevTeasersRoute: typeof DevTeasersRoute
   JoinCodeRoute: typeof JoinCodeRoute
   ApiWebhookPolarRoute: typeof ApiWebhookPolarRoute
 }
@@ -711,11 +737,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiCheckoutRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/plans': {
+      id: '/api/plans'
+      path: '/api/plans'
+      fullPath: '/api/plans'
+      preLoaderRoute: typeof ApiPlansRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/portal': {
       id: '/api/portal'
       path: '/api/portal'
       fullPath: '/api/portal'
       preLoaderRoute: typeof ApiPortalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dev/teasers': {
+      id: '/dev/teasers'
+      path: '/dev/teasers'
+      fullPath: '/dev/teasers'
+      preLoaderRoute: typeof DevTeasersRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/join/$code': {
@@ -768,7 +808,9 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAiCompareRoute: ApiAiCompareRoute,
   ApiAiExtractRoute: ApiAiExtractRoute,
   ApiCheckoutRoute: ApiCheckoutRoute,
+  ApiPlansRoute: ApiPlansRoute,
   ApiPortalRoute: ApiPortalRoute,
+  DevTeasersRoute: DevTeasersRoute,
   JoinCodeRoute: JoinCodeRoute,
   ApiWebhookPolarRoute: ApiWebhookPolarRoute,
 }

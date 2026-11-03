@@ -1,10 +1,11 @@
 import React from 'react'
 import { useRouterState } from '@tanstack/react-router'
 import { UpgradeModal } from './UpgradeModal'
+import type { BillingTier } from '../billing'
 
 export const UPGRADE_EVENT = 'buildsync:open-upgrade'
 
-type UpgradeDetail = { title?: string; reason?: string }
+type UpgradeDetail = { title?: string; reason?: string; tier?: BillingTier }
 
 /** Fire from anywhere to open the upgrade modal. */
 export function openUpgradeModal(detail: UpgradeDetail = {}) {
@@ -39,6 +40,7 @@ export function UpgradeModalHost() {
 
   return (
     <UpgradeModal
+      tier={detail.tier}
       title={detail.title}
       reason={detail.reason}
       onClose={() => setDetail(null)}

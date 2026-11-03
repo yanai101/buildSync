@@ -18,6 +18,10 @@ yarn.lock
 /playwright-report/
 /blob-report/
 /playwright/.cache/
+# Playwright login state (contains auth tokens) and test credentials
+/e2e/.auth/
+.env.e2e
+!.env.e2e.example
 .tanstack
 
 # Local working notes — not pushed

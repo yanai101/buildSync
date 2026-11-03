@@ -2,6 +2,18 @@ import * as React from 'react';
 import { createPortal } from 'react-dom';
 export const __CACHE_BUSTER = 'v4';
 import { motion, AnimatePresence } from 'framer-motion';
+import {
+  type AccentScheme,
+  COLOR_SCHEMES,
+  DEFAULT_ACCENT_SCHEME,
+  accentKey,
+  applyAccentScheme,
+  getSavedAccentScheme,
+  getSchemeDefinition,
+  isValidAccentScheme,
+  normalizeAccentScheme,
+  saveAndApplyAccentScheme,
+} from '../utils/colorSchemes';
 
 // ── BuildSync SHARED COMPONENTS ───────────────────────────────────────────────
 
@@ -76,6 +88,9 @@ export const PATHS: Record<string, string[]> = {
   "tree-pine":["m17 14 3 3.32C20.8 18.2 20 19 19 19H5c-1 0-1.8-.8-1-1.68L7 14","m15 10 3 3.34C18.8 14.2 18 15 17 15H7c-1 0-1.8-.8-1-1.66L9 10","m13 6 3 3.34C16.8 10.2 16 11 15 11H9c-1 0-1.8-.8-1-1.66L11 6","M12 2v4","M12 19v3"],
   "sticky-note": ["M16 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8Z", "M15 3v5h5"],
   palette: ["M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10c1.38 0 2.5-1.12 2.5-2.5 0-.69-.28-1.32-.73-1.77l-1.42-1.42c-.22-.22-.35-.53-.35-.85 0-.69.56-1.25 1.25-1.25H20c1.38 0 2.5-1.12 2.5-2.5C22.5 6.477 18.023 2 12 2z", "M6.5 11a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z", "M11 6.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z", "M16.5 8.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z", "M19 14.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z"],
+  sun: ["M12 17a5 5 0 1 0 0-10 5 5 0 0 0 0 10Z", "M12 1v2", "M12 21v2", "M4.22 4.22l1.42 1.42", "M18.36 18.36l1.42 1.42", "M1 12h2", "M21 12h2", "M4.22 19.78l1.42-1.42", "M18.36 5.64l1.42-1.42"],
+  moon: ["M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"],
+  monitor: ["M20 3H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2z", "M8 21h8", "M12 17v4"],
 };
 
 export const Icon = ({n, s=18, c="currentColor"}: any) => (
@@ -390,10 +405,10 @@ export const useDarkMode = (userId?: string | null) => {
 export const DarkModeToggle = ({ userId }: { userId?: string | null }) => {
   const { mode, setMode } = useDarkMode(userId);
 
-  const options: { value: ThemeMode; icon: string; title: string }[] = [
-    { value: 'light', icon: '☀️', title: 'מצב בהיר' },
-    { value: 'dark',  icon: '🌙', title: 'מצב כהה' },
-    { value: 'auto',  icon: '💻', title: 'אוטומטי (לפי המחשב)' },
+  const options: { value: ThemeMode; iconName: string; title: string }[] = [
+    { value: 'light', iconName: 'sun',     title: 'מצב בהיר' },
+    { value: 'dark',  iconName: 'moon',    title: 'מצב כהה' },
+    { value: 'auto',  iconName: 'monitor', title: 'אוטומטי (לפי המחשב)' },
   ];
 
   return (
@@ -407,11 +422,108 @@ export const DarkModeToggle = ({ userId }: { userId?: string | null }) => {
           aria-pressed={mode === opt.value}
           className={`theme-toggle-btn${mode === opt.value ? ' active' : ''}`}
         >
-          {opt.icon}
+          <Icon n={opt.iconName} s={15} />
         </button>
       ))}
     </div>
   );
+};
+
+// ─── Accent Color Scheme ─────────────────────────────────────────────────────
+
+export {
+  type AccentScheme,
+  COLOR_SCHEMES,
+  DEFAULT_ACCENT_SCHEME,
+  getSchemeDefinition,
+  isValidAccentScheme,
+  normalizeAccentScheme,
+};
+
+export const useColorScheme = (
+  userId?: string | null,
+  cloudScheme?: string | null,
+) => {
+  const [scheme, setSchemeState] = React.useState<AccentScheme>(() =>
+    getSavedAccentScheme(userId),
+  );
+
+  // Apply scheme to <html> and persist to localStorage whenever scheme changes
+  React.useEffect(() => {
+    saveAndApplyAccentScheme(scheme, userId);
+  }, [scheme, userId]);
+
+  // When userId becomes known, load that user's saved preference
+  React.useEffect(() => {
+    if (!userId) return;
+    try {
+      const saved = localStorage.getItem(accentKey(userId));
+      if (isValidAccentScheme(saved)) {
+        setSchemeState(saved);
+      } else {
+        const device = localStorage.getItem('buildsync:accent');
+        if (isValidAccentScheme(device)) {
+          localStorage.setItem(accentKey(userId), device);
+          setSchemeState(device);
+        }
+      }
+    } catch {
+      // ignore storage errors
+    }
+  }, [userId]);
+
+  // Sync from Convex cloud preference when it loads or changes
+  React.useEffect(() => {
+    if (isValidAccentScheme(cloudScheme) && cloudScheme !== scheme) {
+      setSchemeState(cloudScheme);
+    }
+  }, [cloudScheme]);
+
+  // Listen across tabs/components via storage + custom event
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const onStorage = (e: StorageEvent) => {
+      if (
+        (e.key === 'buildsync:accent' || e.key === accentKey(userId)) &&
+        isValidAccentScheme(e.newValue)
+      ) {
+        setSchemeState(e.newValue);
+        applyAccentScheme(e.newValue);
+      }
+    };
+    const onCustom = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (isValidAccentScheme(detail)) {
+        setSchemeState(detail);
+      }
+    };
+    window.addEventListener('storage', onStorage);
+    window.addEventListener('buildsync:accent-change', onCustom);
+    return () => {
+      window.removeEventListener('storage', onStorage);
+      window.removeEventListener('buildsync:accent-change', onCustom);
+    };
+  }, [userId]);
+
+  return {
+    scheme,
+    setScheme: (next: AccentScheme) => {
+      const valid = saveAndApplyAccentScheme(next, userId);
+      setSchemeState(valid);
+    },
+    definition: getSchemeDefinition(scheme),
+  };
+};
+
+/**
+ * Returns the active resolved hex color for `--accent` (taking both data-accent
+ * and data-theme into account) for libraries like Recharts SVG props.
+ */
+export const useAccentColor = (userId?: string | null) => {
+  const { scheme } = useColorScheme(userId);
+  const { dark } = useDarkMode(userId);
+  const def = getSchemeDefinition(scheme);
+  return dark ? def.darkAccent : def.lightAccent;
 };
 
 export const IconPicker = ({ value, onChange }: { value?: string, onChange: (v: string) => void }) => {

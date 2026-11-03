@@ -94,6 +94,9 @@ function RootDocument({ children }: { children: React.ReactNode }) {
               var isDark = saved === 'dark' ? true : saved === 'light' ? false : prefersDark;
               document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
               document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';
+              var accent = localStorage.getItem('buildsync:accent');
+              var validAccents = ['orange', 'blue', 'teal', 'indigo', 'bronze', 'slate'];
+              document.documentElement.setAttribute('data-accent', validAccents.indexOf(accent) !== -1 ? accent : 'orange');
             } catch(e) {}
           })();
         `}} />

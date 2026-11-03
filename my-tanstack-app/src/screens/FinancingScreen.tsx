@@ -675,7 +675,7 @@ function SourceCard({
               </div>
             )}
             <div style={{ display: "flex", justifyContent: "flex-end" }}>
-              <a href={source.fileUrl} target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 8, textDecoration: "none", borderRadius: 10, padding: "10px 20px", fontSize: 14, fontFamily: "'Heebo',sans-serif", fontWeight: 700, background: "linear-gradient(135deg, var(--accent) 0%, #c96b30 100%)", color: "#fff", boxShadow: "0 2px 8px rgba(224,122,56,0.3)" }}>
+              <a href={source.fileUrl} target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 8, textDecoration: "none", borderRadius: 10, padding: "10px 20px", fontSize: 14, fontFamily: "'Heebo',sans-serif", fontWeight: 700, background: "linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%)", color: "#fff", boxShadow: "0 2px 8px var(--accent-glow-sm)" }}>
                 <Icon n="download" s={13} /> פתח בקובץ מלא
               </a>
             </div>

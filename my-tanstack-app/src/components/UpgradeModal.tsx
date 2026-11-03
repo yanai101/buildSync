@@ -2,17 +2,42 @@ import React from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Icon, Btn } from './Shared'
 import { useCurrentProject } from '../hooks/useCurrentProject'
-import { checkoutUrl, type BillingPlan } from '../billing'
+import { checkoutUrl, PLANS_FOR_TIER, type BillingPlan, type BillingTier } from '../billing'
 import { useNavigate } from '@tanstack/react-router'
 
 const PRO_BENEFITS = [
   '✨ השוואת הצעות מחיר חכמה עם AI',
+  'תיעוד תמונות לכל חדר לפי שלבי הבנייה, השוואת לפני/אחרי ודוח PDF',
   'פרויקטים ללא הגבלה',
   'מעקב עלויות רכש והזמנות',
   'ניהול צוות ומפקחים',
   'יומני עבודה וייצוא ל-PDF',
   'דוחות וניתוחים מתקדמים',
 ]
+
+const PREMIUM_BENEFITS = [
+  'תיעוד תמונות לכל חדר לפי שלבי הבנייה',
+  'קטגוריות (חשמל, אינסטלציה, מיזוג…), תיאור והערות לכל תמונה',
+  'השוואת לפני / אחרי בין שלבים — לראות מה עובר בתוך הקירות',
+  'דוח PDF להדפסה לכל חדר וייצוא מסודר לפי חדר ושלב',
+  'הרשאות צפייה והעלאה למנהל העבודה ולמפקח',
+  'כל היכולות של מסלול Pro',
+]
+
+/** Which tiers can be purchased in this environment (see /api/plans). */
+function usePlanAvailability(enabled: boolean) {
+  const [state, setState] = React.useState<{ pro: boolean; premium: boolean } | null>(null)
+  React.useEffect(() => {
+    if (!enabled) return
+    let cancelled = false
+    fetch('/api/plans')
+      .then((r) => (r.ok ? r.json() : { pro: true, premium: false }))
+      .then((data) => { if (!cancelled) setState(data) })
+      .catch(() => { if (!cancelled) setState({ pro: true, premium: false }) })
+    return () => { cancelled = true }
+  }, [enabled])
+  return state
+}
 
 /**
  * Conversion-focused upgrade modal. Reused by PremiumLock (feature teasers) and
@@ -21,13 +46,22 @@ const PRO_BENEFITS = [
  */
 export function UpgradeModal({
   onClose,
-  title = 'שדרג ל-Pro',
+  tier = 'pro',
+  title = tier === 'premium' ? 'שדרג ל-Premium' : 'שדרג ל-Pro',
   reason,
 }: {
   onClose: () => void
+  /** Which subscription the modal sells. Defaults to Pro. */
+  tier?: BillingTier
   title?: string
   reason?: string
 }) {
+  const isPremium = tier === 'premium'
+  const benefits = isPremium ? PREMIUM_BENEFITS : PRO_BENEFITS
+  const availability = usePlanAvailability(isPremium)
+  // Pro is always purchasable; Premium only once its Polar products exist.
+  const canBuy = !isPremium || availability?.premium === true
+  const checkingAvailability = isPremium && availability === null
   const { user } = useCurrentProject()
   const userId = user?._id as string | undefined
 
@@ -124,7 +158,7 @@ export function UpgradeModal({
 
           <div style={{ padding: 28 }}>
             <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {PRO_BENEFITS.map((b) => (
+              {benefits.map((b) => (
                 <li key={b} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 15, color: 'var(--text1)' }}>
                   <span style={{ color: '#10B981', display: 'inline-flex' }}>
                     <Icon n="check" s={18} />
@@ -134,9 +168,18 @@ export function UpgradeModal({
               ))}
             </ul>
 
+            {!canBuy ? (
+              <div style={{ marginTop: 24, textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div role="status" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, background: 'var(--accent-light)', border: '1px solid var(--accent)', borderRadius: 12, padding: '12px 14px', fontSize: 14, color: 'var(--text1)', lineHeight: 1.5 }}>
+                  {!checkingAvailability && <Icon n="clock" s={16} c="var(--accent)" />}
+                  {checkingAvailability ? 'בודק זמינות…' : 'מסלול Premium יושק בקרוב. נעדכן אותך ברגע שיהיה זמין לרכישה.'}
+                </div>
+                <Btn variant="ghost" onClick={onClose} style={{ width: '100%', justifyContent: 'center' }}>הבנתי</Btn>
+              </div>
+            ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 24 }}>
               <Btn
-                onClick={() => go('annual')}
+                onClick={() => go(PLANS_FOR_TIER[tier].annual)}
                 style={{
                   width: '100%',
                   justifyContent: 'center',
@@ -144,12 +187,13 @@ export function UpgradeModal({
                   boxShadow: '0 4px 12px rgba(217,119,6,0.3)',
                 }}
               >
-                <Icon n="star" s={16} /> שדרג למנוי שנתי (17% הנחה)
+                <Icon n="star" s={16} /> {isPremium ? 'שדרג ל-Premium שנתי' : 'שדרג למנוי שנתי (17% הנחה)'}
               </Btn>
-              <Btn variant="ghost" onClick={() => go('monthly')} style={{ width: '100%', justifyContent: 'center' }}>
-                שדרג למנוי חודשי
+              <Btn variant="ghost" onClick={() => go(PLANS_FOR_TIER[tier].monthly)} style={{ width: '100%', justifyContent: 'center' }}>
+                {isPremium ? 'שדרג ל-Premium חודשי' : 'שדרג למנוי חודשי'}
               </Btn>
             </div>
+            )}
 
             <p style={{ textAlign: 'center', fontSize: 12, color: 'var(--text3)', marginTop: 16 }}>
               ביטול בכל עת · חיוב מאובטח דרך Polar

@@ -16,6 +16,8 @@ export interface Capabilities {
   aiAssistant: boolean;
   /** Download a complete archive of an owned project. */
   projectExport: boolean;
+  /** Room photo archive (photos per room, categories, notes, PDF). */
+  roomArchive: boolean;
 }
 
 export const TIER_CAPABILITIES: Record<Tier, Capabilities> = {
@@ -28,6 +30,7 @@ export const TIER_CAPABILITIES: Record<Tier, Capabilities> = {
     orders: false,
     aiAssistant: false,
     projectExport: false,
+    roomArchive: false,
   },
   pro: {
     maxOwnedProjects: Number.POSITIVE_INFINITY,
@@ -38,6 +41,7 @@ export const TIER_CAPABILITIES: Record<Tier, Capabilities> = {
     orders: true,
     aiAssistant: false,
     projectExport: true,
+    roomArchive: true,
   },
   premium: {
     maxOwnedProjects: Number.POSITIVE_INFINITY,
@@ -48,6 +52,7 @@ export const TIER_CAPABILITIES: Record<Tier, Capabilities> = {
     orders: true,
     aiAssistant: true,
     projectExport: true,
+    roomArchive: true,
   },
 };
 

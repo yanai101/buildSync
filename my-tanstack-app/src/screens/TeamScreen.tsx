@@ -7,6 +7,7 @@ import { Btn, Icon, Input, Modal, Select } from '../components/Shared';
 import { useCurrentProject } from '../hooks/useCurrentProject';
 import { useRequireRole } from '../hooks/useRequireRole';
 import { useAppNotify } from '../hooks/useAppNotify';
+import { RoomArchivePermissionsCard } from '../components/roomArchive/RoomArchivePermissionsCard';
 import { useSubscription } from '../hooks/useSubscription';
 
 type InviteRole = 'manager' | 'inspector' | 'contractor';
@@ -644,6 +645,8 @@ export const TeamScreen = () => {
           )}
         </div>
       </div>
+
+      {projectId && isProjectOwner && <RoomArchivePermissionsCard projectId={projectId} notify={notify} />}
 
       <div className="card">
         <div

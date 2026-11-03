@@ -6,6 +6,7 @@ import { useDataSource } from '../hooks/useDataSource';
 import { useDataMutation } from '../hooks/useDataMutation';
 import { useCurrentProject } from '../hooks/useCurrentProject';
 import { useQuery } from 'convex/react';
+import { useSearch } from '@tanstack/react-router';
 import { api } from '../../convex/_generated/api';
 import { ScreenBoundary } from '../components/ScreenBoundary';
 import { useRequireRole } from '../hooks/useRequireRole';
@@ -67,6 +68,23 @@ export const ProjectSetupScreen = () => {
   const [saving, setSaving] = React.useState(false);
   const [feedback, setFeedback] = React.useState<{ title: string; message: string; type: 'success' | 'error' | 'info' } | null>(null);
   const [floorRemovalConfirm, setFloorRemovalConfirm] = React.useState<{ newFloors: number; roomsToRemove: Room[] } | null>(null);
+
+  // Room photo archive link: photo counts per room, so deleting a room (which
+  // deletes its photos) is always confirmed first.
+  const roomPhotoCounts = (useQuery(api.roomArchive.getRoomPhotoCounts, projectId && allowed ? { projectId } : "skip") ?? {}) as Record<string, number>;
+  const [roomDeleteConfirm, setRoomDeleteConfirm] = React.useState<{ uid: string; name: string; count: number } | null>(null);
+  const [saveConfirm, setSaveConfirm] = React.useState<{ name: string; count: number }[] | null>(null);
+  const photosInRooms = (rooms: Room[]) => rooms.reduce((sum, r) => sum + (roomPhotoCounts[r.uid] ?? 0), 0);
+
+  // Deep link from the archive: /setup?step=rooms opens the rooms step in edit mode.
+  const search = useSearch({ strict: false }) as { step?: string };
+  const deepLinkHandled = React.useRef(false);
+  React.useEffect(() => {
+    if (deepLinkHandled.current || !project || search?.step !== 'rooms') return;
+    deepLinkHandled.current = true;
+    setIsEditing(true);
+    setStep(2);
+  }, [project, search?.step]);
 
   React.useEffect(() => {
     if (project) {
@@ -139,6 +157,11 @@ export const ProjectSetupScreen = () => {
   };
   
   const removeRoom = (uid: string) => setCfg((c)=> c ? ({...c,rooms:(c.rooms || []).filter((r)=>r.uid!==uid)}) : c);
+  const requestRemoveRoom = (r: Room) => {
+    const count = roomPhotoCounts[r.uid] ?? 0;
+    if (count > 0) setRoomDeleteConfirm({ uid: r.uid, name: r.name, count });
+    else removeRoom(r.uid);
+  };
 
   const STEPS = ["פרטי הפרויקט","מבנה הבית","אזורים","צוות","סיכום"];
   const totalRoomArea = cfg ? (cfg.rooms || []).reduce((a: number,r) => {
@@ -165,8 +188,18 @@ export const ProjectSetupScreen = () => {
     setFloorRemovalConfirm(null);
   };
 
-  const handleSave = async () => {
+  const handleSave = async (photoDeletionConfirmed = false) => {
     if (!cfg || !project) return;
+    if (!photoDeletionConfirmed) {
+      const keptUids = new Set((cfg.rooms || []).map((r) => r.uid));
+      const removedWithPhotos = (((project as any).rooms || []) as Room[])
+        .filter((r) => !keptUids.has(r.uid) && (roomPhotoCounts[r.uid] ?? 0) > 0)
+        .map((r) => ({ name: r.name, count: roomPhotoCounts[r.uid] }));
+      if (removedWithPhotos.length > 0) {
+        setSaveConfirm(removedWithPhotos);
+        return;
+      }
+    }
     setSaving(true);
     try {
       await mutate('saveProjectSetup', {
@@ -495,7 +528,12 @@ export const ProjectSetupScreen = () => {
                       <select className="bp-input" value={r.floor} onChange={e=>setRoom(r.uid,"floor",Number(e.target.value))} style={{width:100,flexShrink:0,fontSize:12}}>
                         {getFloorList(cfg.floors, cfg.hasBasement, cfg.hasYard, cfg.housingUnits).map(fl=><option key={fl} value={fl}>{getFloorLabel(fl, cfg.housingUnits)}</option>)}
                       </select>
-                      <button onClick={()=>removeRoom(r.uid)} style={{background:"none",border:"none",cursor:"pointer",color:"var(--text3)",padding:4,display:"flex",flexShrink:0}}>
+                      {(roomPhotoCounts[r.uid] ?? 0) > 0 && (
+                        <span title="תמונות בארכיון החדרים" style={{display:"inline-flex",alignItems:"center",gap:4,fontSize:11,color:"var(--text2)",background:"var(--surface-2)",borderRadius:999,padding:"2px 8px",flexShrink:0}}>
+                          <Icon n="camera" s={12}/> {roomPhotoCounts[r.uid]}
+                        </span>
+                      )}
+                      <button onClick={()=>requestRemoveRoom(r)} aria-label="מחק אזור" style={{background:"none",border:"none",cursor:"pointer",color:"var(--text3)",padding:4,display:"flex",flexShrink:0}}>
                         <Icon n="trash" s={14}/>
                       </button>
                     </div>
@@ -575,7 +613,7 @@ export const ProjectSetupScreen = () => {
         </Btn>
         {step<STEPS.length-1
           ? <Btn onClick={()=>setStep(s=>s+1)}>הבא <Icon n="chevron-left" s={14}/></Btn>
-          : <Btn onClick={handleSave} disabled={saving}>
+          : <Btn onClick={() => handleSave()} disabled={saving}>
               <Icon n={saving ? "refresh" : "check"} s={14}/> {saving ? "שומר..." : "שמור הגדרות"}
             </Btn>
         }
@@ -598,9 +636,53 @@ export const ProjectSetupScreen = () => {
               בקומות שתוסרו יש {floorRemovalConfirm.roomsToRemove.length} אזורים מוגדרים: {floorRemovalConfirm.roomsToRemove.map(r=>r.name).join(', ')}.
               המשך יימחק אותם לצמיתות עם השמירה הבאה. להמשיך?
             </p>
+            {photosInRooms(floorRemovalConfirm.roomsToRemove) > 0 && (
+              <div role="alert" style={{display:"flex",alignItems:"center",gap:8,fontSize:13,color:"var(--danger)",background:"var(--danger-light, #fee2e2)",borderRadius:8,padding:"8px 12px",lineHeight:1.5}}>
+                <Icon n="alert" s={15}/> לאזורים אלה יש {photosInRooms(floorRemovalConfirm.roomsToRemove)} תמונות בארכיון החדרים. גם הן יימחקו לצמיתות.
+              </div>
+            )}
             <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
               <Btn variant="ghost" onClick={()=>setFloorRemovalConfirm(null)}>ביטול</Btn>
               <Btn variant="danger" onClick={confirmFloorRemoval} style={{background:"var(--danger)",color:"#fff"}}>הסר אזורים והמשך</Btn>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {roomDeleteConfirm && (
+        <Modal title="מחיקת אזור עם תמונות" onClose={()=>setRoomDeleteConfirm(null)} width={440}>
+          <div style={{display:"flex",flexDirection:"column",gap:16}}>
+            <p style={{fontSize:14,color:"var(--text1)",lineHeight:1.6,margin:0}}>
+              לאזור "{roomDeleteConfirm.name}" יש <b>{roomDeleteConfirm.count} תמונות</b> בארכיון החדרים.
+              מחיקת האזור תמחק לצמיתות גם את כל התמונות, התיאורים וההערות שלו בעת שמירת ההגדרות — ולא ניתן יהיה לשחזר אותם.
+            </p>
+            <div style={{display:"flex",alignItems:"center",gap:8,fontSize:13,color:"var(--text2)",background:"var(--accent-light)",borderRadius:8,padding:"8px 12px"}}>
+              <Icon n="info" s={15} c="var(--accent)"/> מומלץ להפיק דוח PDF לחדר או לייצא את הפרויקט לפני המחיקה.
+            </div>
+            <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
+              <Btn variant="ghost" onClick={()=>setRoomDeleteConfirm(null)}>ביטול</Btn>
+              <Btn onClick={()=>{ removeRoom(roomDeleteConfirm.uid); setRoomDeleteConfirm(null); }} style={{background:"var(--danger)",color:"#fff"}}>
+                <Icon n="trash" s={14}/> מחק אזור ותמונות
+              </Btn>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {saveConfirm && (
+        <Modal title="אישור מחיקת תמונות חדרים" onClose={()=>setSaveConfirm(null)} width={460}>
+          <div style={{display:"flex",flexDirection:"column",gap:16}}>
+            <p style={{fontSize:14,color:"var(--text1)",lineHeight:1.6,margin:0}}>
+              השמירה תמחק אזורים שיש להם תמונות בארכיון החדרים. התמונות יימחקו לצמיתות:
+            </p>
+            <ul style={{margin:0,paddingInlineStart:20,fontSize:14,lineHeight:1.7}}>
+              {saveConfirm.map((r, i) => <li key={i}>{r.name}: {r.count} תמונות</li>)}
+            </ul>
+            <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
+              <Btn variant="ghost" onClick={()=>setSaveConfirm(null)}>ביטול</Btn>
+              <Btn onClick={()=>{ setSaveConfirm(null); void handleSave(true); }} style={{background:"var(--danger)",color:"#fff"}}>
+                שמור ומחק תמונות
+              </Btn>
             </div>
           </div>
         </Modal>

@@ -42,7 +42,28 @@ export const currentIdentity = query({
       subscriptionTier: isExpired ? undefined : user?.subscriptionTier,
       subscriptionExpiresAt: user?.subscriptionExpiresAt,
       isSubscriptionExpired: isExpired,
+      accentScheme: user?.accentScheme ?? null,
     };
+  },
+});
+
+export const updateAccentScheme = mutation({
+  args: {
+    accentScheme: v.union(
+      v.literal('orange'),
+      v.literal('blue'),
+      v.literal('teal'),
+      v.literal('indigo'),
+      v.literal('bronze'),
+      v.literal('slate'),
+    ),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error('Not authenticated');
+    }
+    await ctx.db.patch(userId, { accentScheme: args.accentScheme });
   },
 });
 

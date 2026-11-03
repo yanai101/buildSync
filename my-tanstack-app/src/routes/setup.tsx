@@ -11,5 +11,9 @@ function GuardedSetup() {
 }
 
 export const Route = createFileRoute('/setup')({
+  // Optional deep link: /setup?step=rooms opens the rooms step in edit mode.
+  validateSearch: (search: Record<string, unknown>): { step?: string } => ({
+    step: typeof search.step === 'string' ? search.step : undefined,
+  }),
   component: GuardedSetup,
 })

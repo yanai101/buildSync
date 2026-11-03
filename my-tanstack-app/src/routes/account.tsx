@@ -2,7 +2,7 @@ import { createFileRoute, useSearch } from '@tanstack/react-router'
 import * as React from 'react'
 import { useAction, useMutation, useQuery } from 'convex/react'
 import { AnimatePresence } from 'framer-motion'
-import { Btn, Input, Icon, DarkModeToggle, useDarkMode } from '~/components/Shared'
+import { Btn, Input, Icon, DarkModeToggle, useDarkMode, useColorScheme, COLOR_SCHEMES, type AccentScheme } from '~/components/Shared'
 import { api } from '../../convex/_generated/api'
 import { ConvexError } from 'convex/values'
 import { useSubscription } from '~/hooks/useSubscription'
@@ -496,7 +496,7 @@ function AccountPage() {
 
       {/* Archive Export Card */}
       {userRole === 'owner' && projectId && project?.ownerUserId === user?._id && (
-        <div className="card" style={{ padding: 24, background: 'rgba(224,122,56,0.04)', border: '1px solid rgba(224,122,56,0.2)' }}>
+        <div className="card" style={{ padding: 24, background: 'var(--accent-soft)', border: '1px solid var(--accent-glow-sm)' }}>
           <SectionHeader
             title="ייצוא ארכיון פרויקט"
             subtitle="הורד את כל נתוני הפרויקט כקובץ ZIP — יומנים, תמונות, תשלומים, היתרים ועוד"
@@ -526,8 +526,10 @@ function AccountPage() {
       )}
 
       <div className="card" style={{ padding: 24 }}>
-        <SectionHeader title="מראה ותצוגה" subtitle="בחר את מצב התצוגה המועדף עליך" />
+        <SectionHeader title="מראה ותצוגה" subtitle="התאם את מצב התצוגה וסכימת הצבעים של המערכת" />
         <ThemeSelector userId={user._id} />
+        <div className="section-divider" style={{ margin: '24px 0' }} />
+        <ColorSchemeSelector userId={user._id} cloudScheme={user.accentScheme} />
       </div>
 
       <div className="card" style={{ padding: 24 }}>
@@ -630,8 +632,8 @@ function AccountPage() {
                   style={{
                     flex: 1, display: 'flex', alignItems: 'center', gap: 8,
                     padding: '10px 12px', borderRadius: 12,
-                    background: 'rgba(224,122,56,0.07)',
-                    border: '1.5px solid rgba(224,122,56,0.25)'
+                    background: 'var(--accent-soft)',
+                    border: '1.5px solid var(--accent-glow-sm)'
                   }}
                 >
                   <Icon n={item.icon} s={16} c="var(--accent)" />
@@ -681,19 +683,19 @@ function ThemeSelector({ userId }: { userId: any }) {
   const options = [
     {
       value: 'light' as const,
-      icon: '☀️',
+      iconName: 'sun',
       label: 'מצב בהיר',
       desc: 'הממשק תמיד בהיר בלי קשר להגדרות המחשב',
     },
     {
       value: 'dark' as const,
-      icon: '🌙',
+      iconName: 'moon',
       label: 'מצב כהה',
       desc: 'הממשק תמיד כהה, נוח לעיניים בתאורה חשוכה',
     },
     {
       value: 'auto' as const,
-      icon: '💻',
+      iconName: 'monitor',
       label: 'אוטומטי',
       desc: 'עוקב אחר הגדרות המחשב — בהיר ביום, כהה בלילה',
     },
@@ -722,10 +724,19 @@ function ThemeSelector({ userId }: { userId: any }) {
               cursor: 'pointer',
               transition: 'all 0.2s',
               fontFamily: 'inherit',
-              outline: 'none',
             }}
           >
-            <span style={{ fontSize: 28 }}>{opt.icon}</span>
+            <div style={{
+              width: 44, height: 44, borderRadius: 12,
+              background: active ? 'var(--accent)' : 'var(--surface)',
+              color: active ? '#fff' : 'var(--text2)',
+              border: active ? 'none' : '1px solid var(--border)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: active ? '0 4px 12px var(--accent-glow-sm)' : 'none',
+              transition: 'all 0.2s',
+            }}>
+              <Icon n={opt.iconName} s={22} />
+            </div>
             <span style={{ fontWeight: 700, fontSize: 14, color: active ? 'var(--accent)' : 'var(--text1)' }}>
               {opt.label}
             </span>
@@ -744,6 +755,262 @@ function ThemeSelector({ userId }: { userId: any }) {
           </button>
         );
       })}
+    </div>
+  );
+}
+
+function ColorSchemeSelector({
+  userId,
+  cloudScheme,
+}: {
+  userId: any;
+  cloudScheme?: string | null;
+}) {
+  const { scheme, setScheme, definition } = useColorScheme(userId, cloudScheme);
+  const updateAccentMutation = useMutation(api.users.updateAccentScheme);
+
+  const handleSelectScheme = (next: AccentScheme) => {
+    setScheme(next);
+    if (userId) {
+      updateAccentMutation({ accentScheme: next }).catch(() => {
+        // local preference is already applied & saved
+      });
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent, idx: number) => {
+    let nextIdx = -1;
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') {
+      nextIdx = (idx + 1) % COLOR_SCHEMES.length;
+    } else if (e.key === 'ArrowRight' || e.key === 'ArrowUp') {
+      nextIdx = (idx - 1 + COLOR_SCHEMES.length) % COLOR_SCHEMES.length;
+    }
+    if (nextIdx !== -1) {
+      e.preventDefault();
+      handleSelectScheme(COLOR_SCHEMES[nextIdx].id);
+    }
+  };
+
+  return (
+    <div data-testid="color-scheme-section">
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 14 }}>
+        <div>
+          <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--text1)', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Icon n="palette" s={17} c="var(--accent)" />
+            סכימת צבעים
+          </div>
+          <div style={{ fontSize: 12.5, color: 'var(--text3)', marginTop: 3 }}>
+            בחר את הצבע המוביל שיופיע בכל כפתורי הפעולה, הטאבים והחיוויים במערכת
+          </div>
+        </div>
+        <span className="badge badge-active" data-testid="active-scheme-badge">
+          {definition.label}
+        </span>
+      </div>
+
+      {/* Swatch grid */}
+      <div
+        role="radiogroup"
+        aria-label="בחירת סכימת צבעים"
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(175px, 1fr))',
+          gap: 10,
+        }}
+      >
+        {COLOR_SCHEMES.map((item, idx) => {
+          const active = scheme === item.id;
+          return (
+            <button
+              key={item.id}
+              type="button"
+              role="radio"
+              aria-checked={active}
+              data-testid={`scheme-btn-${item.id}`}
+              onClick={() => handleSelectScheme(item.id)}
+              onKeyDown={(e) => handleKeyDown(e, idx)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 11,
+                padding: '12px 14px',
+                borderRadius: 12,
+                border: `2px solid ${active ? item.lightAccent : 'var(--border)'}`,
+                background: active ? 'var(--accent-light)' : 'var(--surface-2)',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                fontFamily: 'inherit',
+                textAlign: 'right',
+              }}
+            >
+              {/* Dual light/dark swatch circle */}
+              <span
+                style={{
+                  width: 30,
+                  height: 30,
+                  borderRadius: '50%',
+                  background: `linear-gradient(135deg, ${item.lightAccent} 50%, ${item.darkAccent} 50%)`,
+                  boxShadow: active
+                    ? `0 0 0 3px var(--surface), 0 0 0 5px ${item.lightAccent}`
+                    : 'inset 0 1px 2px rgba(0,0,0,0.15)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                  transition: 'all 0.2s',
+                }}
+              >
+                {active && <Icon n="check" s={15} c="#ffffff" />}
+              </span>
+              <span style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
+                <span style={{
+                  fontSize: 13.5,
+                  fontWeight: 700,
+                  color: active ? 'var(--accent)' : 'var(--text1)',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                }}>
+                  {item.label}
+                </span>
+                <span style={{
+                  fontSize: 11,
+                  color: 'var(--text3)',
+                  lineHeight: 1.3,
+                  marginTop: 2,
+                  display: '-webkit-box',
+                  WebkitLineClamp: 1,
+                  WebkitBoxOrient: 'vertical',
+                  overflow: 'hidden',
+                }}>
+                  {item.desc}
+                </span>
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* macOS-style Split Live Preview (Light + Dark side by side) */}
+      <div style={{ marginTop: 18 }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text2)', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+          <Icon n="eye" s={14} c="var(--accent)" />
+          תצוגה מקדימה חיה (מצב בהיר ומצב כהה)
+        </div>
+        <div
+          data-testid="scheme-live-preview"
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+            borderRadius: 16,
+            overflow: 'hidden',
+            border: '1px solid var(--border)',
+            boxShadow: 'var(--shadow-sm)',
+          }}
+        >
+          {(['light', 'dark'] as const).map((previewTheme) => (
+            <div
+              key={previewTheme}
+              data-theme={previewTheme}
+              data-testid={`scheme-preview-${previewTheme}`}
+              style={{
+                background: 'var(--bg)',
+                color: 'var(--text1)',
+                padding: 16,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 12,
+                borderInlineEnd: previewTheme === 'light' ? '1px solid var(--border)' : 'none',
+              }}
+            >
+              {/* Mode header bar */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11.5, fontWeight: 700, color: 'var(--text2)' }}>
+                  <Icon n={previewTheme === 'light' ? 'sun' : 'moon'} s={13} c="var(--accent)" />
+                  {previewTheme === 'light' ? 'תצוגת יום (Light)' : 'תצוגת לילה (Dark)'}
+                </span>
+                <span className="badge badge-active" style={{ fontSize: 10.5, padding: '2px 8px' }}>
+                  בשלב ביצוע
+                </span>
+              </div>
+
+              {/* Inner mini card */}
+              <div
+                style={{
+                  background: 'var(--surface)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 12,
+                  padding: 14,
+                  boxShadow: 'var(--shadow-xs)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 10,
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div
+                    style={{
+                      width: 34,
+                      height: 34,
+                      borderRadius: 9,
+                      background: 'var(--accent-light)',
+                      color: 'var(--accent)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0,
+                    }}
+                  >
+                    <Icon n="hard-hat" s={17} />
+                  </div>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ fontSize: 13.5, fontWeight: 800, color: 'var(--text1)' }}>
+                      שלב שלד ובנייה
+                    </div>
+                    <div style={{ fontSize: 11.5, color: 'var(--text2)', marginTop: 1 }}>
+                      יציקת תקרה קומה א׳ הושלמה
+                    </div>
+                  </div>
+                </div>
+
+                {/* Progress bar sample */}
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, fontWeight: 700, marginBottom: 4 }}>
+                    <span style={{ color: 'var(--text2)' }}>התקדמות השלב</span>
+                    <span style={{ color: 'var(--accent)' }}>68%</span>
+                  </div>
+                  <div className="progress-track" style={{ height: 6 }}>
+                    <div className="progress-fill" style={{ width: '68%' }} />
+                  </div>
+                </div>
+
+                {/* Buttons sample */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
+                  <span
+                    className="btn btn-primary btn-sm"
+                    style={{ pointerEvents: 'none', flex: 1 }}
+                  >
+                    <Icon n="check" s={13} /> אישור שלב
+                  </span>
+                  <span
+                    style={{
+                      padding: '6px 12px',
+                      borderRadius: 8,
+                      fontSize: 12,
+                      fontWeight: 700,
+                      border: '1.5px solid var(--accent)',
+                      color: 'var(--accent)',
+                      background: 'var(--accent-soft)',
+                    }}
+                  >
+                    פרטים
+                  </span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

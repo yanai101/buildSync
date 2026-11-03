@@ -4,6 +4,7 @@ import {
   buildSummaryHtml,
   buildPermitsHtml,
 } from '../components/print-templates/pdfTemplates';
+import { ROOM_PHOTO_CATEGORY_LABELS, type RoomPhotoCategory } from '../../convex/_lib/roomArchiveShared';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -22,6 +23,7 @@ export type ExportSections = {
   timeline: boolean;
   activityFeed: boolean;
   priceQuotes: boolean;
+  roomPhotos?: boolean;
 };
 
 export type ExportProgress = {
@@ -531,6 +533,52 @@ export async function buildProjectZip(
         }
       }
     }
+  }
+
+  // Premium room photo archive: one folder per room, sub-folder per stage
+  // (in construction order), plus a CSV index with category/description/notes.
+  if (manifest.roomPhotos?.length) {
+    const roomsFolder = root.folder('תמונות_חדרים')!;
+    const floorName = (f: number) => (f === 0 ? 'קרקע' : f < 0 ? `מרתף_${Math.abs(f)}` : `קומה_${f}`);
+    const sorted = [...manifest.roomPhotos].sort((a: any, b: any) =>
+      (a.floor - b.floor)
+      || String(a.roomName).localeCompare(String(b.roomName), 'he')
+      || ((a.stageSortOrder ?? 9999) - (b.stageSortOrder ?? 9999))
+      || (a.uploadedAt - b.uploadedAt));
+    const counters = new Map<string, number>();
+    const rows: Record<string, unknown>[] = [];
+    for (const p of sorted) {
+      const roomDir = safe(`${floorName(p.floor)}_${p.roomName}`);
+      const stageDir = p.stageName
+        ? safe(`${p.stageSortOrder != null ? String(p.stageSortOrder).padStart(2, '0') + '_' : ''}${p.stageName}`)
+        : 'ללא_שלב';
+      const categoryName = ROOM_PHOTO_CATEGORY_LABELS[p.category as RoomPhotoCategory] ?? p.category;
+      const counterKey = `${roomDir}/${stageDir}/${categoryName}`;
+      const n = (counters.get(counterKey) ?? 0) + 1;
+      counters.set(counterKey, n);
+      const ext = String(p.mimeType ?? '').split('/')[1]?.replace('jpeg', 'jpg') || 'jpg';
+      const filename = `${safe(categoryName)}_${String(n).padStart(2, '0')}.${ext}`;
+      rows.push({
+        קומה: floorName(p.floor),
+        חדר: p.roomName,
+        שלב: p.stageName ?? 'ללא שלב',
+        קטגוריה: categoryName,
+        תיאור: p.description ?? '',
+        הערות: p.note ?? '',
+        תאריך: p.takenOn ?? (p.uploadedAt ? new Date(p.uploadedAt).toLocaleDateString('he-IL') : ''),
+        קובץ: `${roomDir}/${stageDir}/${filename}`,
+      });
+      if (p.url) {
+        tasks.push({
+          url: p.url,
+          folder: roomsFolder.folder(roomDir)!.folder(stageDir)!,
+          filename,
+          label: `חדר ${p.roomName}: ${categoryName}`,
+        });
+      }
+    }
+    roomsFolder.file('00_אינדקס_תמונות_חדרים.csv', toCsv(rows,
+      ['קומה', 'חדר', 'שלב', 'קטגוריה', 'תיאור', 'הערות', 'תאריך', 'קובץ']));
   }
 
   // Project archive files are uploaded gzipped by /personal-files. They are

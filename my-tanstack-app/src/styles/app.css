@@ -14,9 +14,11 @@
 
   --accent: #E07A38;
   --accent-dark: #C4652A;
-  --accent-light: rgba(224, 122, 56, 0.12);
-  --accent-glow: rgba(224, 122, 56, 0.35);
-  --accent-glow-sm: rgba(224, 122, 56, 0.2);
+  --accent-light: color-mix(in srgb, var(--accent) 12%, transparent);
+  --accent-glow: color-mix(in srgb, var(--accent) 35%, transparent);
+  --accent-glow-sm: color-mix(in srgb, var(--accent) 20%, transparent);
+  --accent-soft: color-mix(in srgb, var(--accent) 6%, transparent);
+  --accent-text: color-mix(in srgb, var(--accent) 65%, black);
 
   --success: #10B981;
   --success-light: rgba(16, 185, 129, 0.1);
@@ -79,9 +81,11 @@
 
     --accent: #F08A48;
     --accent-dark: #D4743C;
-    --accent-light: rgba(240, 138, 72, 0.15);
-    --accent-glow: rgba(240, 138, 72, 0.4);
-    --accent-glow-sm: rgba(240, 138, 72, 0.25);
+    --accent-light: color-mix(in srgb, var(--accent) 15%, transparent);
+    --accent-glow: color-mix(in srgb, var(--accent) 40%, transparent);
+    --accent-glow-sm: color-mix(in srgb, var(--accent) 25%, transparent);
+    --accent-soft: color-mix(in srgb, var(--accent) 8%, transparent);
+    --accent-text: var(--accent);
 
     --success: #34D399;
     --success-light: rgba(52, 211, 153, 0.12);
@@ -129,9 +133,11 @@
 
   --accent: #F08A48;
   --accent-dark: #D4743C;
-  --accent-light: rgba(240, 138, 72, 0.15);
-  --accent-glow: rgba(240, 138, 72, 0.4);
-  --accent-glow-sm: rgba(240, 138, 72, 0.25);
+  --accent-light: color-mix(in srgb, var(--accent) 15%, transparent);
+  --accent-glow: color-mix(in srgb, var(--accent) 40%, transparent);
+  --accent-glow-sm: color-mix(in srgb, var(--accent) 25%, transparent);
+  --accent-soft: color-mix(in srgb, var(--accent) 8%, transparent);
+  --accent-text: var(--accent);
 
   --success: #34D399;
   --success-light: rgba(52, 211, 153, 0.12);
@@ -176,9 +182,11 @@
 
   --accent: #E07A38;
   --accent-dark: #C4652A;
-  --accent-light: rgba(224, 122, 56, 0.12);
-  --accent-glow: rgba(224, 122, 56, 0.35);
-  --accent-glow-sm: rgba(224, 122, 56, 0.2);
+  --accent-light: color-mix(in srgb, var(--accent) 12%, transparent);
+  --accent-glow: color-mix(in srgb, var(--accent) 35%, transparent);
+  --accent-glow-sm: color-mix(in srgb, var(--accent) 20%, transparent);
+  --accent-soft: color-mix(in srgb, var(--accent) 6%, transparent);
+  --accent-text: color-mix(in srgb, var(--accent) 65%, black);
 
   --success: #10B981;
   --success-light: rgba(16, 185, 129, 0.1);
@@ -214,6 +222,73 @@
   --shadow-2xl: 0 40px 60px -12px rgba(0,0,0,.18), 0 12px 24px -12px rgba(0,0,0,.08);
 }
 
+/* ─── Accent Color Schemes ──────────────────────────────────────────────────── */
+[data-accent="orange"],
+[data-accent="orange"] [data-theme="light"] {
+  --accent: #E07A38;
+  --accent-dark: #C4652A;
+}
+[data-theme="dark"][data-accent="orange"],
+[data-accent="orange"] [data-theme="dark"] {
+  --accent: #F08A48;
+  --accent-dark: #D4743C;
+}
+
+[data-accent="blue"],
+[data-accent="blue"] [data-theme="light"] {
+  --accent: #2563EB;
+  --accent-dark: #1D4ED8;
+}
+[data-theme="dark"][data-accent="blue"],
+[data-accent="blue"] [data-theme="dark"] {
+  --accent: #3B82F6;
+  --accent-dark: #2563EB;
+}
+
+[data-accent="teal"],
+[data-accent="teal"] [data-theme="light"] {
+  --accent: #0D9488;
+  --accent-dark: #0F766E;
+}
+[data-theme="dark"][data-accent="teal"],
+[data-accent="teal"] [data-theme="dark"] {
+  --accent: #14B8A6;
+  --accent-dark: #0D9488;
+}
+
+[data-accent="indigo"],
+[data-accent="indigo"] [data-theme="light"] {
+  --accent: #4F46E5;
+  --accent-dark: #4338CA;
+}
+[data-theme="dark"][data-accent="indigo"],
+[data-accent="indigo"] [data-theme="dark"] {
+  --accent: #6366F1;
+  --accent-dark: #4F46E5;
+}
+
+[data-accent="bronze"],
+[data-accent="bronze"] [data-theme="light"] {
+  --accent: #B45309;
+  --accent-dark: #92400E;
+}
+[data-theme="dark"][data-accent="bronze"],
+[data-accent="bronze"] [data-theme="dark"] {
+  --accent: #D97706;
+  --accent-dark: #B45309;
+}
+
+[data-accent="slate"],
+[data-accent="slate"] [data-theme="light"] {
+  --accent: #475569;
+  --accent-dark: #334155;
+}
+[data-theme="dark"][data-accent="slate"],
+[data-accent="slate"] [data-theme="dark"] {
+  --accent: #94A3B8;
+  --accent-dark: #64748B;
+}
+
 /* ─── Global ────────────────────────────────────────────────────────────────── */
 .glass {
   background: rgba(255, 255, 255, 0.78);
@@ -239,7 +314,7 @@ body {
   font-family: 'Heebo', sans-serif;
   background: var(--bg);
   background-image:
-    radial-gradient(ellipse at 80% 0%, rgba(224,122,56,0.05) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 0%, color-mix(in srgb, var(--accent) 5%, transparent) 0%, transparent 50%),
     radial-gradient(ellipse at 20% 100%, rgba(16,185,129,0.04) 0%, transparent 50%);
   color: var(--text1);
   min-height: 100vh;
@@ -251,7 +326,7 @@ body {
 
 [data-theme="dark"] body {
   background-image:
-    radial-gradient(ellipse at 80% 0%, rgba(240,138,72,0.06) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 0%, color-mix(in srgb, var(--accent) 6%, transparent) 0%, transparent 50%),
     radial-gradient(ellipse at 20% 100%, rgba(52,211,153,0.04) 0%, transparent 50%);
 }
 
@@ -461,9 +536,9 @@ body {
 
 /* Active nav item — accent glow + left bar */
 .nav-item.active .nav-item-bg {
-  background: linear-gradient(90deg, rgba(224,122,56,.2) 0%, rgba(224,122,56,.06) 100%);
-  border-color: rgba(224,122,56,.25);
-  box-shadow: 0 0 20px rgba(224,122,56,.12), inset 0 1px 0 rgba(255,255,255,.06);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 20%, transparent) 0%, color-mix(in srgb, var(--accent) 6%, transparent) 100%);
+  border-color: color-mix(in srgb, var(--accent) 25%, transparent);
+  box-shadow: 0 0 20px color-mix(in srgb, var(--accent) 12%, transparent), inset 0 1px 0 rgba(255,255,255,.06);
 }
 .nav-item.active::before {
   content: '';
@@ -677,7 +752,7 @@ body {
   white-space: nowrap; letter-spacing: 0.1px;
 }
 .badge-done    { background: var(--success-light); color: #065F46; border: 1px solid rgba(16,185,129,.22); }
-.badge-active  { background: var(--accent-light);  color: #7C3200; border: 1px solid rgba(224,122,56,.22); }
+.badge-active  { background: var(--accent-light);  color: var(--accent-text); border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent); }
 .badge-pending { background: var(--surface-2); color: var(--text2); border: 1px solid var(--border); }
 .badge-problem { background: var(--danger-light); color: #991B1B; border: 1px solid rgba(239,68,68,.22); }
 .badge-info    { background: var(--info-light); color: #1E3A8A; border: 1px solid rgba(59,130,246,.22); }
@@ -822,7 +897,7 @@ body {
   transition: box-shadow var(--transition), border-color var(--transition), transform var(--transition);
   margin-bottom: 8px;
 }
-.stage-row:hover { box-shadow: var(--shadow); border-color: rgba(224,122,56,.18); transform: translateY(-1px); }
+.stage-row:hover { box-shadow: var(--shadow); border-color: color-mix(in srgb, var(--accent) 18%, transparent); transform: translateY(-1px); }
 .stage-row-active { border-right: 3px solid var(--accent); }
 .stage-row-done   { border-right: 3px solid var(--success); }
 
@@ -958,7 +1033,7 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
   content: '';
   position: absolute;
   inset: 2px 4px;
-  background: rgba(224,122,56,.12);
+  background: var(--accent-light);
   border-radius: 10px;
   animation: slide-pill 0.25s var(--transition-spring) both;
 }
@@ -1075,6 +1150,24 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
 
 /* ─── Responsive ─────────────────────────────────────────────────────────────── */
 .mobile-only { display: none !important; }
+
+/* ── FeatureTeaser (paywall preview) ─────────────────────────────────────────
+   Size-aware via container queries: stacked on narrow containers (upgrade
+   card first so the CTA is visible immediately), side-by-side with a sticky
+   upgrade card on wide containers. */
+.feature-teaser { container-type: inline-size; }
+.feature-teaser__layout { display: flex; flex-direction: column; gap: 16px; }
+.feature-teaser__bottom-cta { display: flex; }
+@container (min-width: 880px) {
+  .feature-teaser__layout {
+    display: grid;
+    grid-template-columns: minmax(300px, 360px) minmax(0, 1fr);
+    align-items: start;
+    gap: 20px;
+  }
+  .feature-teaser__card { position: sticky; top: 16px; }
+  .feature-teaser__bottom-cta { display: none; }
+}
 .mobile-block-only { display: none !important; }
 
 @media(max-width:768px){

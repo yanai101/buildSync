@@ -52,6 +52,17 @@ The app is role-gated for four kinds of users on a construction project
   (budget, quotes, pricing in the BoQ), which must stay Owner-only at the
   backend/query level, not just hidden in the UI.
 
+## Local testing (dev only)
+
+- For browser / end-to-end checks against the local dev server
+  (`http://localhost:3000`), use the dev test account whose credentials are
+  stored in `.env.e2e` (`E2E_EMAIL`, `E2E_PASSWORD`). The file is
+  git-ignored; copy `.env.e2e.example` to create it. Never hardcode these
+  credentials in code or docs.
+- Smoke tests: `npm run test:e2e` (Playwright, see `e2e/`).
+- Use this account only against the local/dev environment — never against
+  production data.
+
 <!-- convex-ai-start -->
 
 This project uses [Convex](https://convex.dev) as its backend.

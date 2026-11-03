@@ -48,6 +48,16 @@ export default defineSchema({
     subscriptionAutoRenew: v.optional(v.boolean()),
     polarCustomerId: v.optional(v.string()),
     polarSubscriptionId: v.optional(v.string()),
+    accentScheme: v.optional(
+      v.union(
+        v.literal('orange'),
+        v.literal('blue'),
+        v.literal('teal'),
+        v.literal('indigo'),
+        v.literal('bronze'),
+        v.literal('slate'),
+      ),
+    ),
   })
     .index('email', ['email'])
     .index('phone', ['phone']),
@@ -74,6 +84,54 @@ export default defineSchema({
   projectRooms: defineTable(zodToConvexFields(s.zProjectRoom))
     .index('by_project', ['projectId'])
     .index('by_project_sort', ['projectId', 'sortOrder']),
+
+  // ── Premium: room photo archive (independent feature, see roomArchive.ts) ──
+  roomPhotos: defineTable({
+    projectId: v.id('projects'),
+    roomId: v.id('projectRooms'),
+    // Construction stage the photo documents (optional). The name snapshot
+    // keeps the label readable if the stage is later deleted.
+    stageId: v.optional(v.id('stages')),
+    stageNameSnapshot: v.optional(v.string()),
+    storageId: v.id('_storage'),
+    originalName: v.string(),
+    mimeType: v.string(),
+    originalSize: v.number(),
+    storedSize: v.number(),
+    category: v.union(
+      v.literal('general'),
+      v.literal('plumbing'),
+      v.literal('electrical'),
+      v.literal('ac'),
+      v.literal('waterproofing'),
+      v.literal('tiling'),
+      v.literal('plaster_paint'),
+      v.literal('carpentry'),
+      v.literal('aluminum'),
+      v.literal('drywall'),
+      v.literal('other'),
+    ),
+    description: v.string(),
+    note: v.string(),
+    takenOn: v.optional(v.string()),
+    uploaderUserId: v.id('users'),
+    uploadedAt: v.number(),
+    updatedAt: v.optional(v.number()),
+  })
+    .index('by_project', ['projectId'])
+    .index('by_room', ['roomId'])
+    .index('by_room_and_stageId', ['roomId', 'stageId']),
+
+  // Per-member permissions for the room photo archive. Keyed by user so a
+  // replacement manager/inspector never inherits a previous member's access.
+  roomArchivePermissions: defineTable({
+    projectId: v.id('projects'),
+    userId: v.id('users'),
+    canView: v.boolean(),
+    canUpload: v.boolean(),
+  })
+    .index('by_project', ['projectId'])
+    .index('by_project_and_user', ['projectId', 'userId']),
 
   stages: defineTable(zodToConvexFields(s.zStage))
     .index('by_project', ['projectId'])

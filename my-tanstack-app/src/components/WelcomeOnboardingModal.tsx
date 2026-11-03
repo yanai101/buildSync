@@ -50,13 +50,13 @@ export function WelcomeOnboardingModal({ isOpen, onClose }: { isOpen: boolean, o
                 width: 76,
                 height: 76,
                 borderRadius: 24,
-                background: 'linear-gradient(135deg, rgba(224,122,56,0.15), rgba(201,107,48,0.15))',
+                background: 'linear-gradient(135deg, var(--accent-light), var(--accent-glow-sm))',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 margin: '0 auto 20px auto',
-                boxShadow: '0 8px 20px rgba(224,122,56,0.15)',
-                border: '1px solid rgba(224,122,56,0.2)',
+                boxShadow: '0 8px 20px var(--accent-light)',
+                border: '1px solid var(--accent-glow-sm)',
                 overflow: 'hidden'
               }}
             >
@@ -80,7 +80,7 @@ export function WelcomeOnboardingModal({ isOpen, onClose }: { isOpen: boolean, o
             }}>
               <div style={{
                 width: 34, height: 34, borderRadius: 10, flexShrink: 0,
-                background: 'rgba(224,122,56,0.12)', display: 'flex',
+                background: 'var(--accent-light)', display: 'flex',
                 alignItems: 'center', justifyContent: 'center'
               }}>
                 <Icon n="folder" s={18} c="var(--accent)" />
@@ -100,7 +100,7 @@ export function WelcomeOnboardingModal({ isOpen, onClose }: { isOpen: boolean, o
             }}>
               <div style={{
                 width: 34, height: 34, borderRadius: 10, flexShrink: 0,
-                background: 'rgba(224,122,56,0.12)', display: 'flex',
+                background: 'var(--accent-light)', display: 'flex',
                 alignItems: 'center', justifyContent: 'center'
               }}>
                 <Icon n="video" s={18} c="var(--accent)" />

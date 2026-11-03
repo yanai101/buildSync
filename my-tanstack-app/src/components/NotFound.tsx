@@ -47,12 +47,12 @@ export function NotFound({ children }: { children?: any }) {
             transform: 'translate(-50%, -50%)',
             width: 120,
             height: 120,
-            background: 'linear-gradient(135deg, var(--accent) 0%, #c96b30 100%)',
+            background: 'linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%)',
             borderRadius: 32,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            boxShadow: '0 20px 40px rgba(224, 122, 56, 0.4)',
+            boxShadow: '0 20px 40px var(--accent-glow)',
             zIndex: 2
           }}
         >

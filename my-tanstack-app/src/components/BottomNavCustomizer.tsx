@@ -129,8 +129,8 @@ export function BottomNavCustomizer({ onClose, isProOrPremium, userRole }: Props
                   style={{
                     flex: 1, display: 'flex', alignItems: 'center', gap: 8,
                     padding: '10px 12px', borderRadius: 12,
-                    background: item ? 'rgba(224,122,56,0.08)' : 'var(--bg)',
-                    border: `1.5px ${item ? 'solid rgba(224,122,56,0.35)' : 'dashed var(--border)'}`,
+                    background: item ? 'var(--accent-soft)' : 'var(--bg)',
+                    border: `1.5px ${item ? 'solid var(--accent-glow)' : 'dashed var(--border)'}`,
                     transition: 'all 0.2s'
                   }}
                 >
@@ -173,7 +173,7 @@ export function BottomNavCustomizer({ onClose, isProOrPremium, userRole }: Props
                           ? '1.5px solid var(--accent)'
                           : '1.5px solid transparent',
                         background: isSelected
-                          ? 'rgba(224,122,56,0.08)'
+                          ? 'var(--accent-soft)'
                           : isDisabled ? 'rgba(0,0,0,0.02)' : 'var(--bg)',
                         cursor: isDisabled ? 'not-allowed' : 'pointer',
                         opacity: isDisabled ? 0.5 : 1,
@@ -185,7 +185,7 @@ export function BottomNavCustomizer({ onClose, isProOrPremium, userRole }: Props
                     >
                       <div style={{
                         width: 36, height: 36, borderRadius: 10, flexShrink: 0,
-                        background: isSelected ? 'rgba(224,122,56,0.15)' : 'var(--surface)',
+                        background: isSelected ? 'var(--accent-light)' : 'var(--surface)',
                         border: '1px solid var(--border)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center'
                       }}>

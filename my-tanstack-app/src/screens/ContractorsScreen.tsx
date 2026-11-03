@@ -2507,7 +2507,7 @@ export const ContractorsScreen = () => {
                   key={c.id}
                   className="card"
                   style={{padding:24,cursor:"pointer",borderColor:"var(--border)",backgroundColor:"var(--surface)"}}
-                  whileHover={{y:-5,boxShadow:"var(--shadow-xl)",borderColor:"rgba(224,122,56,0.3)"}}
+                  whileHover={{y:-5,boxShadow:"var(--shadow-xl)",borderColor:"var(--accent-glow)"}}
                   whileTap={{scale:0.99}}
                   onClick={()=>setSelectedId(String(c.id))}
                 >

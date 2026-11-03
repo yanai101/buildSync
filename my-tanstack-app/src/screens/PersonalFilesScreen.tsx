@@ -13,6 +13,9 @@ import { useSubscription } from '../hooks/useSubscription';
 import { PremiumLock, Modal, ConfirmDialog } from '../components/Shared';
 import { ImageGalleryViewer } from '../components/ImageGalleryViewer';
 import { UploadToArchiveModal } from '../components/UploadToArchiveModal';
+import { RoomsArchiveTab } from '../components/roomArchive/RoomsArchiveTab';
+import { FeatureTeaser } from '../components/FeatureTeaser';
+import { ArchiveImagesPreview, ArchiveDocsPreview } from '../components/archive/ArchivePreviews';
 import { useCurrentProject } from '../hooks/useCurrentProject';
 
 const MAX_FILES = 30;
@@ -171,7 +174,20 @@ export const PersonalFilesScreen = () => {
   
   const [previewFile, setPreviewFile] = React.useState<{url: string, name: string, isImage: boolean} | null>(null);
   const [selectedImages, setSelectedImages] = React.useState<Set<string>>(new Set());
-  const [activeTab, setActiveTab] = React.useState<'images' | 'docs'>('images');
+  // Deep link support: /personal-files?tab=rooms&room=<roomId>
+  const initialSearch = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+  const [activeTab, setActiveTab] = React.useState<'images' | 'docs' | 'rooms'>(
+    initialSearch?.get('tab') === 'rooms' ? 'rooms' : 'images',
+  );
+  const [initialRoomId] = React.useState<string | null>(initialSearch?.get('room') ?? null);
+  const selectTab = React.useCallback((tab: 'images' | 'docs' | 'rooms') => {
+    setActiveTab(tab);
+    if (typeof window === 'undefined') return;
+    const url = new URL(window.location.href);
+    if (tab === 'images') url.searchParams.delete('tab'); else url.searchParams.set('tab', tab);
+    url.searchParams.delete('room');
+    window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash);
+  }, []);
   const [fileToDelete, setFileToDelete] = React.useState<{id: Id<'personalFiles'>, name: string} | null>(null);
   const [sectionToDelete, setSectionToDelete] = React.useState<{ id: string; name: string; count: number } | null>(null);
   const [pendingDeleteSection, setPendingDeleteSection] = React.useState<string | null>(null);
@@ -183,7 +199,12 @@ export const PersonalFilesScreen = () => {
   const canDocs = isOwner || (archivePerms?.canDocs ?? false);
   const effectivePro = isOwner ? isProOrPremium : (archivePerms?.isProOrPremium ?? false);
 
+  // Premium room photo archive (independent feature, own permissions).
+  const roomAccess = useQuery(api.roomArchive.getAccess, projectId ? { projectId } : 'skip');
+  const roomsOnly = !isOwner && !canPhotos && !canDocs && roomAccess?.canView === true;
+
   React.useEffect(() => {
+    if (activeTab === 'rooms') return;
     if (!canPhotos && canDocs && activeTab === 'images') {
       setActiveTab('docs');
     } else if (canPhotos && !canDocs && activeTab === 'docs') {
@@ -630,9 +651,19 @@ export const PersonalFilesScreen = () => {
     }
   };
 
-  if (!identity || roleLoading || projectLoading || (projectId && archivePerms === undefined)) return <AccessLoading />;
+  if (!identity || roleLoading || projectLoading || (projectId && (archivePerms === undefined || roomAccess === undefined))) return <AccessLoading />;
   if (!allowed) return <AccessDenied message="המסמכים האישיים זמינים לבעל הפרויקט, מנהל עבודה ומפקח בלבד." />;
   if (!projectId) return <AccessDenied message="יש לבחור פרויקט פעיל לפני ניהול ארכיון הפרויקט." />;
+  if (roomsOnly) {
+    // Member has access only to the room photo archive.
+    return (
+      <div className="page-content">
+        <div className="card"><div className="card-body">
+          <RoomsArchiveTab projectId={projectId} projectName={project?.name ?? ''} notify={notify} initialRoomId={initialRoomId} />
+        </div></div>
+      </div>
+    );
+  }
   if (!isOwner && !canPhotos && !canDocs) {
     return <AccessDenied message="בעל הפרויקט טרם הגדיר עבורך הרשאות גישה לארכיון פרויקט זה." />;
   }
@@ -1035,6 +1066,86 @@ export const PersonalFilesScreen = () => {
     );
   };
 
+  if (!effectivePro) {
+    const tabs: { key: 'images' | 'docs' | 'rooms'; label: string; icon: string; tier: 'Pro' | 'Premium' }[] = [
+      { key: 'images', label: 'תמונות', icon: 'image', tier: 'Pro' },
+      { key: 'docs', label: 'מסמכים', icon: 'file-text', tier: 'Pro' },
+      { key: 'rooms', label: 'חדרים', icon: 'home', tier: 'Pro' },
+    ];
+    const proMemberMessage = 'הארכיון יהיה זמין לך כאשר בעל הפרויקט ישדרג ל-Pro או Premium.';
+    return (
+      <div className="page-content" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div style={{ padding: '0 4px' }}>
+          <p style={{ margin: 0, fontSize: 15, color: 'var(--text2)', lineHeight: 1.6 }}>
+            ארכיון הפרויקט של {project?.name ?? 'הפרויקט הפעיל'}: מקום אחד לצילומי תשתיות, מסמכים חשובים ותיעוד החדרים לאורך הבנייה.
+          </p>
+        </div>
+        <div className="card">
+          <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            <div role="tablist" aria-label="ארכיון הפרויקט" style={{ display: 'flex', gap: 16, borderBottom: '1px solid var(--border)', overflowX: 'auto', whiteSpace: 'nowrap' }}>
+              {tabs.map((t) => (
+                <button
+                  key={t.key}
+                  type="button"
+                  role="tab"
+                  aria-selected={activeTab === t.key}
+                  onClick={() => selectTab(t.key)}
+                  style={{
+                    background: 'transparent', border: 'none', cursor: 'pointer',
+                    borderBottom: activeTab === t.key ? '2px solid var(--accent)' : '2px solid transparent',
+                    padding: '12px 16px', fontSize: 15, fontWeight: activeTab === t.key ? 600 : 500,
+                    color: activeTab === t.key ? 'var(--text1)' : 'var(--text2)',
+                    display: 'flex', alignItems: 'center', gap: 8, transition: 'color .2s',
+                  }}
+                >
+                  <Icon n={t.icon} s={18} /> {t.label}
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 10, fontWeight: 800, color: '#fff', background: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)', borderRadius: 999, padding: '1px 7px' }}>
+                    <Icon n="lock" s={9} /> {t.tier}
+                  </span>
+                </button>
+              ))}
+            </div>
+            {activeTab === 'images' && (
+              <FeatureTeaser
+                tier="pro"
+                title="תמונות ארכיון"
+                description="שמור צילומים חשובים של הפרויקט בקבוצות, עם הערות לכל תמונה, והפק מהם דוח מרוכז בלחיצה."
+                benefits={[
+                  'קבוצות תמונות לפי נושא (איטום, צנרת, חשמל…)',
+                  'הערה לכל תמונה וצפייה בגודל מלא',
+                  'הפקת דוח PDF מרוכז מהתמונות שבחרת',
+                  'דחיסה אוטומטית שחוסכת מקום',
+                ]}
+                preview={<ArchiveImagesPreview />}
+                canPurchase={isOwner === true}
+                memberMessage={proMemberMessage}
+              />
+            )}
+            {activeTab === 'docs' && (
+              <FeatureTeaser
+                tier="pro"
+                title="מסמכי הפרויקט"
+                description="כל המסמכים החשובים במקום אחד — היתרים, חוזים ותכניות — זמינים לך בכל שלב של הבנייה."
+                benefits={[
+                  'שמירת היתרים, חוזים ותכניות בפרויקט',
+                  'הערות לכל מסמך לחיפוש והתמצאות מהירה',
+                  'צפייה והורדה מכל מכשיר',
+                  'נכלל בייצוא הפרויקט בסיום הבנייה',
+                ]}
+                preview={<ArchiveDocsPreview />}
+                canPurchase={isOwner === true}
+                memberMessage={proMemberMessage}
+              />
+            )}
+            {activeTab === 'rooms' && (
+              <RoomsArchiveTab projectId={projectId} projectName={project?.name ?? ''} notify={notify} initialRoomId={initialRoomId} />
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <PremiumLock
       isLocked={!effectivePro}
@@ -1099,10 +1210,10 @@ export const PersonalFilesScreen = () => {
             {uploading && <div style={{ textAlign: 'center', padding: 12, color: 'var(--text2)' }}>מעלה קובץ, אנא המתן...</div>}
             
             <div>
-                {(canPhotos && canDocs) && (
+                {(
                   <div style={{ display: 'flex', gap: 16, marginBottom: 24, borderBottom: '1px solid var(--border)', overflowX: 'auto', whiteSpace: 'nowrap' }}>
-                    <button 
-                      onClick={() => setActiveTab('images')}
+                    {canPhotos && <button 
+                      onClick={() => selectTab('images')}
                       style={{ 
                         background: 'transparent', border: 'none',
                         borderBottom: activeTab === 'images' ? '2px solid var(--accent)' : '2px solid transparent',
@@ -1112,9 +1223,9 @@ export const PersonalFilesScreen = () => {
                       }}
                     >
                       <Icon n="image" s={18} /> תמונות ({imageFiles.length})
-                    </button>
-                    <button 
-                      onClick={() => setActiveTab('docs')}
+                    </button>}
+                    {canDocs && <button 
+                      onClick={() => selectTab('docs')}
                       style={{ 
                         background: 'transparent', border: 'none',
                         borderBottom: activeTab === 'docs' ? '2px solid var(--accent)' : '2px solid transparent',
@@ -1124,8 +1235,24 @@ export const PersonalFilesScreen = () => {
                       }}
                     >
                       <Icon n="file-text" s={18} /> מסמכים ({docFiles.length})
+                    </button>}
+                    <button
+                      onClick={() => selectTab('rooms')}
+                      style={{
+                        background: 'transparent', border: 'none',
+                        borderBottom: activeTab === 'rooms' ? '2px solid var(--accent)' : '2px solid transparent',
+                        padding: '12px 16px', fontSize: 15, fontWeight: activeTab === 'rooms' ? 600 : 500,
+                        color: activeTab === 'rooms' ? 'var(--text1)' : 'var(--text2)', cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', gap: 8
+                      }}
+                    >
+                      <Icon n="home" s={18} /> חדרים
                     </button>
                   </div>
+                )}
+
+                {activeTab === 'rooms' && (
+                  <RoomsArchiveTab projectId={projectId} projectName={project?.name ?? ''} notify={notify} initialRoomId={initialRoomId} />
                 )}
 
                 {activeTab === 'images' && (

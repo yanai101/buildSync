@@ -110,4 +110,23 @@ describe('saveProjectSetup room reconciliation', () => {
     const cleared = await t.run((ctx) => ctx.db.get(projectId));
     expect(cleared?.coverPhotoId).toBeUndefined();
   });
+
+  test('users.updateAccentScheme persists the user accent color scheme', async () => {
+    const t = convexTest(schema, modules);
+    const { ownerId } = await setupProject(t);
+
+    await t.withIdentity({ subject: ownerId }).mutation(api.users.updateAccentScheme, {
+      accentScheme: 'blue',
+    });
+
+    const user = await t.run((ctx) => ctx.db.get(ownerId));
+    expect(user?.accentScheme).toBe('blue');
+
+    await t.withIdentity({ subject: ownerId }).mutation(api.users.updateAccentScheme, {
+      accentScheme: 'teal',
+    });
+
+    const updatedUser = await t.run((ctx) => ctx.db.get(ownerId));
+    expect(updatedUser?.accentScheme).toBe('teal');
+  });
 });

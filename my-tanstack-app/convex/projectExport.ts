@@ -24,6 +24,8 @@ export const generateExportManifest = query({
       timeline: v.boolean(),
       activityFeed: v.boolean(),
       priceQuotes: v.boolean(),
+      // Premium room photo archive. Optional so older clients keep working.
+      roomPhotos: v.optional(v.boolean()),
     }),
   },
   handler: async (ctx, args) => {
@@ -212,6 +214,45 @@ export const generateExportManifest = query({
       );
     }
 
+    // ── Room photo archive (Premium) ────────────────────────────────────────
+    let roomPhotosData: any[] = [];
+    if (args.sections.roomPhotos) {
+      // Included regardless of current tier: photos taken while Premium stay
+      // the user's data after a downgrade (read-only in the app).
+      {
+        const roomById = new Map(rooms.map((r) => [r._id, r]));
+        const stages = await ctx.db
+          .query('stages')
+          .withIndex('by_project_sort', (q) => q.eq('projectId', projectId))
+          .take(200);
+        const stageById = new Map(stages.map((s) => [s._id, s]));
+        const roomPhotos = await ctx.db
+          .query('roomPhotos')
+          .withIndex('by_project', (q) => q.eq('projectId', projectId))
+          .take(8000);
+        roomPhotosData = await Promise.all(
+          roomPhotos.map(async (p) => {
+            const room = roomById.get(p.roomId);
+            const stage = p.stageId ? stageById.get(p.stageId) : undefined;
+            return {
+              id: p._id,
+              roomName: room?.name ?? 'חדר',
+              floor: room?.floor ?? 0,
+              stageName: stage?.name ?? p.stageNameSnapshot ?? null,
+              stageSortOrder: stage?.sortOrder ?? null,
+              category: p.category,
+              description: p.description,
+              note: p.note,
+              takenOn: p.takenOn ?? null,
+              uploadedAt: p.uploadedAt,
+              mimeType: p.mimeType,
+              url: await ctx.storage.getUrl(p.storageId),
+            };
+          }),
+        );
+      }
+    }
+
     // ── Permits ─────────────────────────────────────────────────────────────
     let permitsData: any[] = [];
     if (args.sections.permits) {
@@ -348,6 +389,7 @@ export const generateExportManifest = query({
       dailyLogs: dailyLogsData,
       photos: photosData,
       personalFiles: personalFilesData,
+      roomPhotos: roomPhotosData,
       permits: permitsData,
       budget: budgetData,
       boq: boqData,

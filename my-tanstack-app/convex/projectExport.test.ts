@@ -169,3 +169,37 @@ describe('projectExport.generateExportManifest authorization', () => {
     await expect(manifestFor(t, ownerId, projectId)).rejects.toThrow('projectExport');
   });
 });
+
+describe('project export: room photo archive', () => {
+  const seedRoomPhoto = async (t: ReturnType<typeof convexTest>, ownerId: any, projectId: any) => {
+    const roomId = await t.run((ctx) => ctx.db.insert('projectRooms', {
+      projectId, type: 'kitchen', name: 'מטבח', floor: 1, sizeSqm: 12, isWet: true, needsAc: false, sortOrder: 0,
+    }));
+    const storageId = await t.run((ctx) => ctx.storage.store(new Blob(['img'], { type: 'image/jpeg' })));
+    await t.run((ctx) => ctx.db.insert('roomPhotos', {
+      projectId, roomId, storageId, originalName: 'a.jpg', mimeType: 'image/jpeg', originalSize: 3, storedSize: 3,
+      category: 'electrical', description: 'שקעים', note: 'קיר צפוני', uploaderUserId: ownerId, uploadedAt: Date.now(),
+    }));
+  };
+
+  test('includes room photos for a premium owner when requested', async () => {
+    const t = convexTest(schema, modules);
+    const { ownerId, projectId } = await setupExportProject(t, { tier: 'premium' });
+    await seedRoomPhoto(t, ownerId, projectId);
+    const manifest = await t.withIdentity({ subject: ownerId }).query(api.projectExport.generateExportManifest, {
+      projectId, sections: { ...emptySections, roomPhotos: true },
+    });
+    expect(manifest.roomPhotos).toHaveLength(1);
+    expect(manifest.roomPhotos[0]).toMatchObject({ roomName: 'מטבח', category: 'electrical', description: 'שקעים', note: 'קיר צפוני' });
+  });
+
+  test('still includes room photos after the owner downgrades to Pro', async () => {
+    const t = convexTest(schema, modules);
+    const { ownerId, projectId } = await setupExportProject(t, { tier: 'pro' });
+    await seedRoomPhoto(t, ownerId, projectId);
+    const manifest = await t.withIdentity({ subject: ownerId }).query(api.projectExport.generateExportManifest, {
+      projectId, sections: { ...emptySections, roomPhotos: true },
+    });
+    expect(manifest.roomPhotos).toHaveLength(1);
+  });
+});

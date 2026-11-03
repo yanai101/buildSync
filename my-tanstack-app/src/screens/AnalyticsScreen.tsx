@@ -8,18 +8,20 @@ import { BudgetSummaryCards } from '../components/BudgetSummaryCards';
 import { AccessDenied, AccessLoading } from '../components/AccessDenied';
 import { useRequireRole } from '../hooks/useRequireRole';
 import { useSubscription } from '../hooks/useSubscription';
-import { Modal, Icon, PremiumLock } from '../components/Shared';
+import { Modal, Icon, PremiumLock, useAccentColor } from '../components/Shared';
 import {
   PieChart, Pie, Cell, Tooltip, ResponsiveContainer,
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend,
   AreaChart, Area
 } from 'recharts';
 
-const COLORS = ['#E07A38', '#10B981', '#3B82F6', '#8B5CF6', '#EC4899', '#F59E0B', '#6366F1', '#14B8A6'];
+const BASE_COLORS = ['#10B981', '#3B82F6', '#8B5CF6', '#EC4899', '#F59E0B', '#6366F1', '#14B8A6'];
 
 export const AnalyticsScreen = () => {
   const { allowed, loading: roleLoading } = useRequireRole(['owner', 'manager', 'inspector', 'contractor']);
-  const { projectId, accessInfo } = useCurrentProject();
+  const { projectId, accessInfo, user } = useCurrentProject();
+  const accentColor = useAccentColor(user?._id);
+  const COLORS = useMemo(() => [accentColor, ...BASE_COLORS], [accentColor]);
   const { isProOrPremium } = useSubscription();
   const [expandedChart, setExpandedChart] = React.useState<string | null>(null);
   
@@ -37,9 +39,9 @@ export const AnalyticsScreen = () => {
     if (!categories) return [];
     return categories
       .filter(c => c.spent > 0)
-      .map(c => ({ name: c.name, value: c.spent, color: c.color || COLORS[0] }))
+      .map(c => ({ name: c.name, value: c.spent, color: (c.color && c.color !== '#E07A38') ? c.color : COLORS[0] }))
       .sort((a, b) => b.value - a.value);
-  }, [categories]);
+  }, [categories, COLORS]);
 
   const expensesOverTime = useMemo(() => {
     if (!expenses) return [];
@@ -72,10 +74,10 @@ export const AnalyticsScreen = () => {
     });
     return [
       { name: 'הושלם', value: done, fill: '#10B981' },
-      { name: 'פעיל', value: active, fill: '#E07A38' },
+      { name: 'פעיל', value: active, fill: accentColor },
       { name: 'ממתין', value: pending, fill: '#F59E0B' },
     ].filter(s => s.value > 0);
-  }, [stages]);
+  }, [stages, accentColor]);
 
   const stageProgressData = useMemo(() => {
     if (!stages) return [];

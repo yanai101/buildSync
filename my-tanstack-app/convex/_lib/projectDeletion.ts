@@ -1,5 +1,6 @@
 import { Id } from '../_generated/dataModel';
 import { MutationCtx } from '../_generated/server';
+import { deleteRoomArchiveForProject } from './roomArchiveCleanup';
 
 export async function performProjectDeletion(ctx: MutationCtx, projectId: Id<'projects'>) {
   // 1. Delete stages and their descendants
@@ -111,6 +112,9 @@ export async function performProjectDeletion(ctx: MutationCtx, projectId: Id<'pr
       .collect();
     for (const ci of cItems) await ctx.db.delete(ci._id);
   }
+
+  // 5a. Premium room photo archive (photos + storage + permissions)
+  await deleteRoomArchiveForProject(ctx, projectId);
 
   // 5. Delete other project-level tables
   const projectTables = [

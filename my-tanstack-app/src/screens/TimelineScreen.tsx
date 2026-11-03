@@ -53,7 +53,7 @@ const BASE_DAY_WIDTH = 8;
 
 const statusColors: Record<string, string> = {
   done: '#16A34A',
-  active: '#E07A38',
+  active: 'var(--accent)',
   pending: '#D1D5DB',
 };
 
@@ -196,9 +196,6 @@ export const TimelineScreen = () => {
 
   const loading = Boolean(projectId) && (dbStages === undefined || project === undefined || accessLoading);
   
-  if (accessLoading) return <AccessLoading />;
-  if (!canViewSchedule) return <AccessDenied message="אין לך הרשאה לצפות בלוח הזמנים של פרויקט זה." />;
-
   const isEmpty = !projectId || (!loading && stages.length === 0);
   const validStages = React.useMemo(() => stages.filter(hasValidRange), [stages]);
   const invalidStages = React.useMemo(() => stages.filter((s) => !hasValidRange(s)), [stages]);
@@ -451,6 +448,11 @@ export const TimelineScreen = () => {
       drag.originalStages,
     );
   };
+
+  // Early returns must come after every hook (Rules of Hooks): returning
+  // before the hooks above changed the hook order once access info loaded.
+  if (accessLoading) return <AccessLoading />;
+  if (!canViewSchedule) return <AccessDenied message="אין לך הרשאה לצפות בלוח הזמנים של פרויקט זה." />;
 
   return (
     <>

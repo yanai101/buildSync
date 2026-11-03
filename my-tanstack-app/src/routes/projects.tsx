@@ -157,7 +157,7 @@ function ProjectsRoute() {
         alignItems: 'center',
         justifyContent: 'center',
         padding: 40,
-        background: 'radial-gradient(circle at top right, var(--accent-light) 0%, transparent 40%), radial-gradient(circle at bottom left, #fff7ed 0%, transparent 40%)',
+        background: 'radial-gradient(circle at top right, var(--accent-light) 0%, transparent 40%), radial-gradient(circle at bottom left, var(--accent-soft) 0%, transparent 40%)',
         borderRadius: 24,
         margin: 24,
         border: '1px solid var(--border)'
@@ -166,11 +166,11 @@ function ProjectsRoute() {
           width: 100,
           height: 100,
           borderRadius: 30,
-          background: 'linear-gradient(135deg, var(--accent) 0%, #c96b30 100%)',
+          background: 'linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          boxShadow: '0 20px 40px rgba(224, 122, 56, 0.3)',
+          boxShadow: '0 20px 40px var(--accent-glow)',
           marginBottom: 32
         }}>
           <Icon n="plus" s={48} c="#fff" />

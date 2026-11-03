@@ -3,7 +3,7 @@
 import * as React from 'react'
 import { Link, useNavigate, useRouterState, Outlet } from '@tanstack/react-router'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Icon, Btn, Modal, DarkModeToggle, useDarkMode } from './Shared'
+import { Icon, Btn, Modal, DarkModeToggle, useDarkMode, useColorScheme, isValidAccentScheme } from './Shared'
 import { WelcomeOnboardingModal } from './WelcomeOnboardingModal'
 import { useCurrentProject } from '~/hooks/useCurrentProject'
 import { useConvexAuth, useQuery, useMutation } from 'convex/react'
@@ -111,7 +111,7 @@ const LOADING_PHRASES = [
   "מסדרים את הבלטות..."
 ];
 
-// Applies saved dark/light/auto theme on every render to avoid flash
+// Applies saved dark/light/auto theme and accent scheme on every render to avoid flash
 const DarkModeInit = () => {
   React.useEffect(() => {
     const saved = localStorage.getItem('buildsync:theme');
@@ -122,6 +122,8 @@ const DarkModeInit = () => {
       prefersDark; // 'auto' or no saved value → follow OS
     document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
     document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';
+    const accent = localStorage.getItem('buildsync:accent');
+    document.documentElement.setAttribute('data-accent', isValidAccentScheme(accent) ? accent : 'orange');
   }, []);
   return null;
 };
@@ -275,7 +277,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const currentPath = routerState.location.pathname
   const navigate = useNavigate()
   const [tweaksOpen, setTweaksOpen] = React.useState(false)
-  const { project, projects, hasMultipleProjects, isLoading: isProjectLoading, accessInfo, subscription } = useCurrentProject()
+  const { project, projects, hasMultipleProjects, isLoading: isProjectLoading, accessInfo, subscription, user: currentUser } = useCurrentProject()
+  useColorScheme(currentUser?._id, currentUser?.accentScheme)
   
   const ROLE_LABEL: Record<string, string> = {
     owner: 'יזם',
@@ -1715,7 +1718,7 @@ function PWAInstallPrompt({ showPrompt, onInstall, onDismiss }: { showPrompt: bo
             background: 'var(--surface-elevated)',
             backdropFilter: 'blur(16px)',
             WebkitBackdropFilter: 'blur(16px)',
-            border: '1px solid rgba(224, 122, 56, 0.2)',
+            border: '1px solid var(--accent-glow-sm)',
             borderRadius: 20,
             padding: 16,
             boxShadow: 'var(--shadow-xl), 0 0 0 1px var(--accent-glow-sm)',
@@ -1731,12 +1734,12 @@ function PWAInstallPrompt({ showPrompt, onInstall, onDismiss }: { showPrompt: bo
               width: 42,
               height: 42,
               borderRadius: 12,
-              background: 'linear-gradient(135deg, var(--accent) 0%, #c96b30 100%)',
+              background: 'linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%)',
               color: '#fff',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              boxShadow: '0 8px 16px rgba(224, 122, 56, 0.25)'
+              boxShadow: '0 8px 16px var(--accent-glow-sm)'
             }}>
               <Icon n="download" s={20} c="#fff" />
             </div>
@@ -1930,14 +1933,14 @@ function MobileGuidesPromptModal({ onClose }: { onClose: (goToGuides: boolean) =
               width: 72,
               height: 72,
               borderRadius: 20,
-              background: 'linear-gradient(135deg, rgba(224, 122, 56, 0.15) 0%, rgba(201, 107, 48, 0.15) 100%)',
+              background: 'linear-gradient(135deg, var(--accent-light) 0%, var(--accent-glow-sm) 100%)',
               color: 'var(--accent)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               margin: '0 auto 20px auto',
-              boxShadow: '0 8px 20px rgba(224, 122, 56, 0.15)',
-              border: '1px solid rgba(224, 122, 56, 0.2)'
+              boxShadow: '0 8px 20px var(--accent-light)',
+              border: '1px solid var(--accent-glow-sm)'
             }}
           >
             <Icon n="video" s={34} c="var(--accent)" />
@@ -1975,7 +1978,7 @@ function MobileGuidesPromptModal({ onClose }: { onClose: (goToGuides: boolean) =
               fontSize: 14.5,
               fontWeight: 700,
               borderRadius: 14,
-              boxShadow: '0 4px 12px rgba(224, 122, 56, 0.25)'
+              boxShadow: '0 4px 12px var(--accent-glow-sm)'
             }}
           >
             כן, מעבר למדריכים <Icon n="arrow-left" s={16} style={{ marginRight: 6 }} />
