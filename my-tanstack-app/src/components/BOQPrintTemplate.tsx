@@ -1,159 +1,411 @@
 import React from 'react';
 import { Project, Room } from '../types';
 import { fmtMoney } from '../utils/mockData';
+import { BUILDSYNC_LOGO_BASE64 } from './BOQPrintLogo';
 
 export interface BOQPrintTemplateProps {
   project?: Project | null;
-  itemsGroupedByCategory?: Record<string, {name: string, cat: string, unit: string, total: number, rooms: {name: string, qty: number, notes?: string}[], notes?: string[]}>;
+  itemsGroupedByCategory?: Record<
+    string,
+    {
+      name: string;
+      cat: string;
+      unit: string;
+      total: number;
+      rooms: { name: string; qty: number; notes?: string }[];
+      notes?: string[];
+    }
+  >;
   itemsGroupedByRoom?: Record<string, any[]>;
   rooms?: Room[];
   totalCost?: number;
   title?: string;
+  generalNotes?: string;
 }
 
 export const BOQPrintTemplate = React.forwardRef<HTMLDivElement, BOQPrintTemplateProps>(
-  ({ project, itemsGroupedByCategory, itemsGroupedByRoom, rooms, totalCost, title = "רשימת כמויות (BOQ)" }, ref) => {
-    const date = new Date().toLocaleDateString('he-IL');
-    const notesBoxStyle: React.CSSProperties = {
-      marginTop: '6px',
-      padding: '7px 9px',
-      background: '#FFF7ED',
-      border: '1px solid #FED7AA',
-      borderRadius: '7px',
-      color: '#7C2D12',
-      fontSize: '10.5px',
-      lineHeight: 1.55,
-      fontWeight: 400,
-      whiteSpace: 'pre-wrap',
-    };
-    const notesLabelStyle: React.CSSProperties = {
-      display: 'inline-block',
-      marginInlineEnd: '5px',
-      color: '#9A3412',
-      fontWeight: 800,
-    };
-    
-    // Calculate total cost if not provided but we have room items
+  (
+    {
+      project,
+      itemsGroupedByCategory,
+      itemsGroupedByRoom,
+      rooms,
+      totalCost,
+      title = 'רשימת כמויות (BOQ)',
+      generalNotes,
+    },
+    ref,
+  ) => {
+    const date = new Date().toLocaleDateString('he-IL', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    });
+
+    // Calculate total cost
     let calculatedTotal = totalCost || 0;
     if (!totalCost && itemsGroupedByRoom) {
-      calculatedTotal = Object.values(itemsGroupedByRoom).flat().reduce((acc, item) => acc + (item.qty * (item.unitPrice || 0)), 0);
+      calculatedTotal = Object.values(itemsGroupedByRoom)
+        .flat()
+        .reduce((acc, item) => acc + item.qty * (item.unitPrice || 0), 0);
     }
     let calculatedPaid = 0;
     if (itemsGroupedByRoom) {
-      calculatedPaid = Object.values(itemsGroupedByRoom).flat().reduce(
-        (acc, item) => acc + (item.paid ? item.qty * (item.unitPrice || 0) : 0),
-        0,
-      );
+      calculatedPaid = Object.values(itemsGroupedByRoom)
+        .flat()
+        .reduce((acc, item) => acc + (item.paid ? item.qty * (item.unitPrice || 0) : 0), 0);
     }
     const paidPctOfTotal = calculatedTotal > 0 ? Math.round((calculatedPaid / calculatedTotal) * 100) : 0;
     const anyPaid = calculatedPaid > 0;
 
+    const totalItemsCount = itemsGroupedByCategory
+      ? Object.values(itemsGroupedByCategory).length
+      : itemsGroupedByRoom
+      ? Object.values(itemsGroupedByRoom).flat().length
+      : 0;
+
     return (
-      <div 
-        ref={ref} 
+      <div
+        ref={ref}
         style={{
           width: '210mm',
           minHeight: '297mm',
-          padding: '15mm 20mm',
+          padding: '16mm 18mm',
           background: '#ffffff',
-          color: '#1A1A1A',
+          color: '#0F172A',
           direction: 'rtl',
           fontFamily: '"Heebo", system-ui, -apple-system, sans-serif',
           boxSizing: 'border-box',
+          WebkitPrintColorAdjust: 'exact',
+          printColorAdjust: 'exact',
         }}
       >
-        {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '3px solid #EA580C', paddingBottom: '16px', marginBottom: '24px' }}>
+        {/* Top Header Card */}
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            paddingBottom: '16px',
+            borderBottom: '2px solid #E2E8F0',
+            marginBottom: '20px',
+          }}
+        >
           <div>
-            <h1 style={{ margin: 0, fontSize: '32px', color: '#EA580C', fontWeight: 900 }}>{title}</h1>
-            <h2 style={{ margin: '8px 0 0 0', fontSize: '20px', color: '#1F2937', fontWeight: 700 }}>{project?.name || 'פרויקט כללי'}</h2>
-            {project?.address && <div style={{ fontSize: '14px', color: '#6B7280', marginTop: '4px' }}>{project.address}</div>}
-          </div>
-          <div style={{ textAlign: 'left', color: '#4B5563', fontSize: '12px', display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-end' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-              <img src="/logo.png" alt="BuildSync Icon" style={{ width: '40px', height: '40px', objectFit: 'contain' }} />
-              <div dir="ltr" style={{ fontWeight: 800, color: '#111827', fontSize: '24px' }}>Build<span style={{color: '#EA580C'}}>Sync</span></div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span
+                style={{
+                  display: 'inline-block',
+                  verticalAlign: 'middle',
+                  background: '#FFF7ED',
+                  color: '#EA580C',
+                  border: '1px solid #FFEDD5',
+                  padding: '0 12px',
+                  borderRadius: '999px',
+                  fontSize: '11px',
+                  fontWeight: 800,
+                  height: '24px',
+                  lineHeight: '23px',
+                  letterSpacing: '0.3px',
+                  boxSizing: 'border-box',
+                }}
+              >
+                BuildSync • מסמך רכש רשמי
+              </span>
             </div>
-            <div>תאריך הפקה: {date}</div>
-            <div>מנהל פרויקט: {project?.manager || '—'}</div>
-          </div>
-        </div>
-
-        {/* Summary Boxes */}
-        <div style={{ display: 'flex', gap: '16px', marginBottom: '32px' }}>
-          {calculatedTotal > 0 && (
-            <div style={{ flex: 1, padding: '16px', background: '#FFF7ED', border: '1px solid #FED7AA', borderRadius: '12px' }}>
-              <div style={{ fontSize: '12px', color: '#9A3412', fontWeight: 700, marginBottom: '4px' }}>סה"כ עלות משוערת</div>
-              <div style={{ fontSize: '24px', color: '#C2410C', fontWeight: 900 }}>{fmtMoney(calculatedTotal)}</div>
-            </div>
-          )}
-          {anyPaid && (
-            <div style={{ flex: 1, padding: '16px', background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '12px' }}>
-              <div style={{ fontSize: '12px', color: '#166534', fontWeight: 700, marginBottom: '4px' }}>שולם עד כה</div>
-              <div style={{ fontSize: '24px', color: '#15803D', fontWeight: 900 }}>{fmtMoney(calculatedPaid)}</div>
-              {calculatedTotal > 0 && (
-                <div style={{ fontSize: '11px', color: '#166534', marginTop: '4px' }}>{paidPctOfTotal}% מהעלות</div>
+            <h1
+              style={{
+                margin: '6px 0 2px 0',
+                fontSize: '26px',
+                color: '#0F172A',
+                fontWeight: 900,
+                letterSpacing: '-0.4px',
+              }}
+            >
+              {title}
+            </h1>
+            <div style={{ fontSize: '15px', color: '#475569', fontWeight: 700 }}>
+              {project?.name || 'פרויקט כללי'}
+              {project?.address && (
+                <span style={{ fontSize: '12px', color: '#94A3B8', fontWeight: 500, marginRight: '8px' }}>
+                  • {project.address}
+                </span>
               )}
             </div>
-          )}
-          {itemsGroupedByCategory && (
-             <div style={{ flex: 1, padding: '16px', background: '#F3F4F6', border: '1px solid #E5E7EB', borderRadius: '12px' }}>
-              <div style={{ fontSize: '12px', color: '#4B5563', fontWeight: 700, marginBottom: '4px' }}>סה"כ קטגוריות</div>
-              <div style={{ fontSize: '24px', color: '#1F2937', fontWeight: 900 }}>{Object.keys(itemsGroupedByCategory).length}</div>
+          </div>
+
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'flex-end',
+              gap: '6px',
+            }}
+          >
+            <div dir="ltr" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <img
+                src={BUILDSYNC_LOGO_BASE64}
+                alt="BuildSync Logo"
+                style={{ width: '56px', height: '56px', objectFit: 'contain', display: 'block' }}
+              />
+              <div
+                style={{
+                  fontWeight: 900,
+                  color: '#0F172A',
+                  fontSize: '30px',
+                  letterSpacing: '-0.6px',
+                  lineHeight: '56px',
+                  display: 'flex',
+                  alignItems: 'center',
+                }}
+              >
+                Build<span style={{ color: '#EA580C' }}>Sync</span>
+              </div>
+            </div>
+            <div style={{ fontSize: '12px', color: '#64748B', fontWeight: 600 }}>
+              תאריך הפקה: <bdi dir="ltr">{date}</bdi>
+            </div>
+            {project?.manager && (
+              <div style={{ fontSize: '12px', color: '#64748B' }}>
+                מנהל פרויקט: <strong style={{ color: '#334155' }}>{project.manager}</strong>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Executive KPI Stats Cards */}
+        <div style={{ display: 'flex', gap: '12px', marginBottom: '22px' }}>
+          {rooms && (
+            <div
+              style={{
+                flex: 1,
+                padding: '12px 14px',
+                background: '#F8FAFC',
+                border: '1px solid #E2E8F0',
+                borderRadius: '12px',
+              }}
+            >
+              <div style={{ fontSize: '11px', color: '#64748B', fontWeight: 700, marginBottom: '2px' }}>
+                סה"כ חדרים
+              </div>
+              <div style={{ fontSize: '20px', color: '#0F172A', fontWeight: 900 }}>
+                <bdi>{rooms.length}</bdi> <span style={{ fontSize: '12px', fontWeight: 600, color: '#94A3B8' }}>חללים</span>
+              </div>
             </div>
           )}
-          {rooms && (
-             <div style={{ flex: 1, padding: '16px', background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '12px' }}>
-              <div style={{ fontSize: '12px', color: '#166534', fontWeight: 700, marginBottom: '4px' }}>סה"כ חדרים</div>
-              <div style={{ fontSize: '24px', color: '#15803D', fontWeight: 900 }}>{rooms.length}</div>
+
+          <div
+            style={{
+              flex: 1,
+              padding: '12px 14px',
+              background: '#F8FAFC',
+              border: '1px solid #E2E8F0',
+              borderRadius: '12px',
+            }}
+          >
+            <div style={{ fontSize: '11px', color: '#64748B', fontWeight: 700, marginBottom: '2px' }}>
+              סה"כ פריטים ברשימה
+            </div>
+            <div style={{ fontSize: '20px', color: '#0F172A', fontWeight: 900 }}>
+              <bdi>{totalItemsCount}</bdi> <span style={{ fontSize: '12px', fontWeight: 600, color: '#94A3B8' }}>פריטים</span>
+            </div>
+          </div>
+
+          {calculatedTotal > 0 && (
+            <div
+              style={{
+                flex: 1.2,
+                padding: '12px 14px',
+                background: '#FFF7ED',
+                border: '1px solid #FFEDD5',
+                borderRadius: '12px',
+              }}
+            >
+              <div style={{ fontSize: '11px', color: '#9A3412', fontWeight: 700, marginBottom: '2px' }}>
+                סה"כ עלות משוערת
+              </div>
+              <div style={{ fontSize: '20px', color: '#EA580C', fontWeight: 900 }}>
+                <bdi>{fmtMoney(calculatedTotal)}</bdi>
+              </div>
+            </div>
+          )}
+
+          {anyPaid && (
+            <div
+              style={{
+                flex: 1.2,
+                padding: '12px 14px',
+                background: '#F0FDF4',
+                border: '1px solid #DCFCE7',
+                borderRadius: '12px',
+              }}
+            >
+              <div style={{ fontSize: '11px', color: '#166534', fontWeight: 700, marginBottom: '2px' }}>
+                שולם עד כה ({paidPctOfTotal}%)
+              </div>
+              <div style={{ fontSize: '20px', color: '#16A34A', fontWeight: 900 }}>
+                <bdi>{fmtMoney(calculatedPaid)}</bdi>
+              </div>
             </div>
           )}
         </div>
 
-        {/* Content: Grouped By Category (Wizard View) */}
+        {/* General Order / Import Notes (if provided) */}
+        {generalNotes && generalNotes.trim().length > 0 && (
+          <div
+            style={{
+              padding: '12px 16px',
+              background: '#F8FAFC',
+              border: '1.5px solid #CBD5E1',
+              borderRadius: '12px',
+              marginBottom: '22px',
+              pageBreakInside: 'avoid',
+              breakInside: 'avoid',
+            }}
+          >
+            <div style={{ fontSize: '12px', color: '#0F172A', fontWeight: 800, marginBottom: '4px' }}>
+              📝 הנחיות והערות כלליות להזמנה / יבוא:
+            </div>
+            <div style={{ fontSize: '11.5px', color: '#334155', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+              {generalNotes.trim()}
+            </div>
+          </div>
+        )}
+
+        {/* ============================================================== */}
+        {/* VIEW 1: Aggregated / Import List (Grouped By Category)        */}
+        {/* ============================================================== */}
         {itemsGroupedByCategory && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            {Object.entries(itemsGroupedByCategory).map(([key, item], idx) => {
-              // Grouping them by category name
-              return null; // Handled below
-            })}
-            
-            {Array.from(new Set(Object.values(itemsGroupedByCategory).map(i => i.cat))).map(cat => (
-              <div key={cat} style={{ breakInside: 'avoid' }}>
-                <h3 style={{ margin: '0 0 12px 0', fontSize: '18px', color: '#111827', borderBottom: '2px solid #E5E7EB', paddingBottom: '8px' }}>{cat}</h3>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            {Array.from(new Set(Object.values(itemsGroupedByCategory).map((i) => i.cat))).map((cat) => (
+              <div
+                key={cat}
+                style={{
+                  pageBreakInside: 'avoid',
+                  breakInside: 'avoid',
+                  border: '1px solid #E2E8F0',
+                  borderRadius: '12px',
+                  overflow: 'hidden',
+                  background: '#FFFFFF',
+                }}
+              >
+                <div
+                  style={{
+                    padding: '10px 16px',
+                    background: '#F8FAFC',
+                    borderBottom: '1px solid #E2E8F0',
+                    fontSize: '13.5px',
+                    fontWeight: 800,
+                    color: '#0F172A',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                  }}
+                >
+                  <span>{cat}</span>
+                  <span style={{ fontSize: '11px', color: '#64748B', fontWeight: 600 }}>
+                    {Object.values(itemsGroupedByCategory).filter((i) => i.cat === cat).length} סוגי פריטים
+                  </span>
+                </div>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px' }}>
                   <thead>
-                    <tr style={{ background: '#F9FAFB', borderBottom: '1px solid #D1D5DB' }}>
-                      <th style={{ padding: '10px 8px', textAlign: 'right', fontWeight: 700, color: '#374151', width: '30%' }}>פריט</th>
-                      <th style={{ padding: '10px 8px', textAlign: 'center', fontWeight: 700, color: '#374151', width: '13%' }}>סה"כ</th>
-                      <th style={{ padding: '10px 8px', textAlign: 'center', fontWeight: 700, color: '#374151', width: '12%' }}>יחידה</th>
-                      <th style={{ padding: '10px 8px', textAlign: 'right', fontWeight: 700, color: '#374151', width: '45%' }}>פירוט לפי חדר והערות</th>
+                    <tr style={{ background: '#FFFFFF', borderBottom: '1px solid #E2E8F0' }}>
+                      <th style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 700, color: '#475569', width: '28%' }}>
+                        פריט
+                      </th>
+                      <th style={{ padding: '8px 12px', textAlign: 'center', fontWeight: 700, color: '#475569', width: '12%' }}>
+                        כמות כוללת
+                      </th>
+                      <th style={{ padding: '8px 12px', textAlign: 'center', fontWeight: 700, color: '#475569', width: '10%' }}>
+                        יחידה
+                      </th>
+                      <th style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 700, color: '#475569', width: '28%' }}>
+                        חלוקה לפי חדרים
+                      </th>
+                      <th style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 700, color: '#475569', width: '22%' }}>
+                        הערות ודגשים
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
-                    {Object.values(itemsGroupedByCategory).filter(i => i.cat === cat).map((item, i) => (
-                      <tr key={i} style={{ borderBottom: '1px solid #E5E7EB', background: i % 2 === 0 ? '#FFFFFF' : '#F9FAFB' }}>
-                        <td style={{ padding: '12px 8px', fontWeight: 700, color: '#111827', verticalAlign: 'top' }}>{item.name}</td>
-                        <td style={{ padding: '12px 8px', textAlign: 'center', fontWeight: 800, color: '#EA580C' }}>{item.total}</td>
-                        <td style={{ padding: '12px 8px', textAlign: 'center', color: '#6B7280' }}>{item.unit}</td>
-                        <td style={{ padding: '12px 8px', color: '#4B5563', fontSize: '11px', verticalAlign: 'top' }}>
-                          <div style={{display: 'flex', flexDirection: 'column', gap: '5px'}}>
-                            {item.rooms.filter(r => r.qty > 0).map((r, roomIndex) => (
-                              <div key={roomIndex} style={{breakInside: 'avoid'}}>
-                                <span style={{fontWeight: 700, color: '#374151'}}>{r.name}</span>
-                                <span> ({r.qty})</span>
-                                {r.notes && (
-                                  <div style={notesBoxStyle}>
-                                    <span style={notesLabelStyle}>הערות:</span>
-                                    {r.notes}
+                    {Object.values(itemsGroupedByCategory)
+                      .filter((i) => i.cat === cat)
+                      .map((item, i) => (
+                        <tr
+                          key={i}
+                          style={{
+                            borderBottom: '1px solid #F1F5F9',
+                            background: i % 2 === 0 ? '#FFFFFF' : '#F8FAFC',
+                            pageBreakInside: 'avoid',
+                            breakInside: 'avoid',
+                          }}
+                        >
+                          <td style={{ padding: '10px 12px', fontWeight: 700, color: '#0F172A', verticalAlign: 'top' }}>
+                            {item.name}
+                          </td>
+                          <td
+                            style={{
+                              padding: '10px 12px',
+                              textAlign: 'center',
+                              fontWeight: 900,
+                              color: '#EA580C',
+                              fontSize: '13px',
+                              verticalAlign: 'top',
+                            }}
+                          >
+                            <bdi>{item.total}</bdi>
+                          </td>
+                          <td style={{ padding: '10px 12px', textAlign: 'center', color: '#64748B', verticalAlign: 'top' }}>
+                            {item.unit}
+                          </td>
+                          <td style={{ padding: '10px 12px', verticalAlign: 'top' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                              {item.rooms
+                                .filter((r) => r.qty > 0)
+                                .map((r, ri) => (
+                                  <div
+                                    key={ri}
+                                    style={{
+                                      fontSize: '11px',
+                                      color: '#334155',
+                                      lineHeight: 1.5,
+                                    }}
+                                  >
+                                    <span style={{ color: '#64748B' }}>•</span>{' '}
+                                    <span style={{ fontWeight: 600 }}>{r.name}:</span>{' '}
+                                    <bdi style={{ fontWeight: 800, color: '#0F172A' }}>{r.qty}</bdi>
                                   </div>
-                                )}
+                                ))}
+                            </div>
+                          </td>
+                          <td style={{ padding: '10px 12px', verticalAlign: 'top', color: '#475569', fontSize: '10.5px' }}>
+                            {item.rooms.some((r) => r.notes) || (item.notes && item.notes.length > 0) ? (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                {item.rooms
+                                  .filter((r) => r.notes)
+                                  .map((r, ri) => (
+                                    <div
+                                      key={ri}
+                                      style={{
+                                        background: '#FFF7ED',
+                                        border: '1px solid #FFEDD5',
+                                        borderRadius: '6px',
+                                        padding: '4px 7px',
+                                        color: '#9A3412',
+                                        fontSize: '10px',
+                                        lineHeight: 1.4,
+                                      }}
+                                    >
+                                      <strong style={{ color: '#C2410C' }}>{r.name}:</strong> {r.notes}
+                                    </div>
+                                  ))}
                               </div>
-                            ))}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                            ) : (
+                              <span style={{ color: '#CBD5E1' }}>—</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
                   </tbody>
                 </table>
               </div>
@@ -161,92 +413,234 @@ export const BOQPrintTemplate = React.forwardRef<HTMLDivElement, BOQPrintTemplat
           </div>
         )}
 
-        {/* Content: Grouped By Room (Standard BOQ View) */}
+        {/* ============================================================== */}
+        {/* VIEW 2: Standard BOQ (Grouped By Room)                         */}
+        {/* ============================================================== */}
         {itemsGroupedByRoom && rooms && (
-           <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-             {rooms.filter(r => itemsGroupedByRoom[r.uid] && itemsGroupedByRoom[r.uid].length > 0).map(room => {
-               const roomItems = itemsGroupedByRoom[room.uid];
-               const roomSum = roomItems.reduce((acc: number, item: any) => acc + item.qty * (item.unitPrice || 0), 0);
-               const roomPaidSum = roomItems.reduce((acc: number, item: any) => acc + (item.paid ? item.qty * (item.unitPrice || 0) : 0), 0);
-               const roomHasPaid = roomPaidSum > 0;
-               return (
-                 <div key={room.uid} style={{ breakInside: 'avoid', border: '1px solid #E5E7EB', borderRadius: '8px', overflow: 'hidden' }}>
-                    <div style={{ background: '#F3F4F6', padding: '12px 16px', fontWeight: 800, fontSize: '16px', color: '#1F2937', borderBottom: '1px solid #E5E7EB' }}>
-                      {room.name}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            {rooms
+              .filter((r) => itemsGroupedByRoom[r.uid] && itemsGroupedByRoom[r.uid].length > 0)
+              .map((room) => {
+                const roomItems = itemsGroupedByRoom[room.uid];
+                const roomSum = roomItems.reduce((acc: number, item: any) => acc + item.qty * (item.unitPrice || 0), 0);
+                const roomPaidSum = roomItems.reduce(
+                  (acc: number, item: any) => acc + (item.paid ? item.qty * (item.unitPrice || 0) : 0),
+                  0,
+                );
+                const roomHasPaid = roomPaidSum > 0;
+
+                return (
+                  <div
+                    key={room.uid}
+                    style={{
+                      pageBreakInside: 'avoid',
+                      breakInside: 'avoid',
+                      border: '1px solid #E2E8F0',
+                      borderRadius: '12px',
+                      overflow: 'hidden',
+                      background: '#FFFFFF',
+                    }}
+                  >
+                    <div
+                      style={{
+                        background: '#F8FAFC',
+                        padding: '10px 16px',
+                        fontWeight: 800,
+                        fontSize: '14px',
+                        color: '#0F172A',
+                        borderBottom: '1px solid #E2E8F0',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                      }}
+                    >
+                      <span>{room.name}</span>
+                      <span style={{ fontSize: '11px', color: '#64748B', fontWeight: 600 }}>
+                        {roomItems.length} פריטים
+                      </span>
                     </div>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px' }}>
                       <thead>
-                        <tr style={{ borderBottom: '1px solid #D1D5DB' }}>
-                          <th style={{ padding: '8px 16px', textAlign: 'right', color: '#4B5563' }}>פריט</th>
-                          <th style={{ padding: '8px 16px', textAlign: 'right', color: '#4B5563' }}>כמות</th>
-                          <th style={{ padding: '8px 16px', textAlign: 'right', color: '#4B5563' }}>מחיר יח'</th>
-                          <th style={{ padding: '8px 16px', textAlign: 'right', color: '#4B5563' }}>סה"כ</th>
-                          <th style={{ padding: '8px 16px', textAlign: 'right', color: '#4B5563' }}>ספק</th>
-                          <th style={{ padding: '8px 16px', textAlign: 'right', color: '#4B5563' }}>תשלום</th>
+                        <tr style={{ background: '#FFFFFF', borderBottom: '1px solid #E2E8F0' }}>
+                          <th style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 700, color: '#475569', width: '30%' }}>
+                            פריט / מפרט
+                          </th>
+                          <th style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 700, color: '#475569', width: '14%' }}>
+                            קטגוריה
+                          </th>
+                          <th style={{ padding: '8px 12px', textAlign: 'center', fontWeight: 700, color: '#475569', width: '10%' }}>
+                            כמות
+                          </th>
+                          <th style={{ padding: '8px 12px', textAlign: 'center', fontWeight: 700, color: '#475569', width: '12%' }}>
+                            מחיר יח'
+                          </th>
+                          <th style={{ padding: '8px 12px', textAlign: 'center', fontWeight: 700, color: '#475569', width: '12%' }}>
+                            סה"כ
+                          </th>
+                          <th style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 700, color: '#475569', width: '12%' }}>
+                            ספק
+                          </th>
+                          <th style={{ padding: '8px 12px', textAlign: 'center', fontWeight: 700, color: '#475569', width: '10%' }}>
+                            תשלום
+                          </th>
                         </tr>
                       </thead>
                       <tbody>
                         {roomItems.map((item: any, i: number) => (
-                          <tr key={i} style={{ borderBottom: i === roomItems.length - 1 ? 'none' : '1px solid #F3F4F6', background: item.paid ? '#F0FDF4' : 'transparent' }}>
-                            <td style={{ padding: '10px 16px', fontWeight: 600, verticalAlign: 'top' }}>
-                              {item.name}
+                          <tr
+                            key={i}
+                            style={{
+                              borderBottom: i === roomItems.length - 1 ? 'none' : '1px solid #F1F5F9',
+                              background: item.paid ? '#F0FDF4' : i % 2 === 0 ? '#FFFFFF' : '#F8FAFC',
+                              pageBreakInside: 'avoid',
+                              breakInside: 'avoid',
+                            }}
+                          >
+                            <td style={{ padding: '9px 12px', verticalAlign: 'top' }}>
+                              <div style={{ fontWeight: 700, color: '#0F172A' }}>{item.name}</div>
                               {item.spec && (
-                                <div style={{ fontSize: '10px', color: '#6B7280', marginTop: '3px', fontWeight: 400, lineHeight: 1.45 }}>
-                                  <span style={{fontWeight: 700, color: '#4B5563'}}>מפרט:</span> {item.spec}
+                                <div style={{ fontSize: '10px', color: '#64748B', marginTop: '2px', lineHeight: 1.4 }}>
+                                  <strong style={{ color: '#475569' }}>מפרט:</strong> {item.spec}
                                 </div>
                               )}
                               {item.notes && (
-                                <div style={notesBoxStyle}>
-                                  <span style={notesLabelStyle}>הערות:</span>
-                                  {item.notes}
+                                <div
+                                  style={{
+                                    marginTop: '4px',
+                                    padding: '3px 6px',
+                                    background: '#FFF7ED',
+                                    border: '1px solid #FFEDD5',
+                                    borderRadius: '5px',
+                                    color: '#9A3412',
+                                    fontSize: '9.5px',
+                                    lineHeight: 1.4,
+                                  }}
+                                >
+                                  <strong>הערות:</strong> {item.notes}
                                 </div>
                               )}
                             </td>
-                            <td style={{ padding: '10px 16px' }}>{item.qty} {item.unit}</td>
-                            <td style={{ padding: '10px 16px' }}>{fmtMoney(item.unitPrice)}</td>
-                            <td style={{ padding: '10px 16px', fontWeight: 700 }}>{fmtMoney(item.qty * item.unitPrice)}</td>
-                            <td style={{ padding: '10px 16px', color: '#6B7280' }}>{item.supplier || '-'}</td>
-                            <td style={{ padding: '10px 16px' }}>
+                            <td style={{ padding: '9px 12px', verticalAlign: 'top', color: '#64748B' }}>
+                              <span
+                                dir="rtl"
+                                style={{
+                                  display: 'inline-block',
+                                  verticalAlign: 'middle',
+                                  fontSize: '10.5px',
+                                  height: '22px',
+                                  lineHeight: '20px',
+                                  padding: '0 8px',
+                                  borderRadius: '5px',
+                                  background: '#F1F5F9',
+                                  color: '#334155',
+                                  border: '1px solid #E2E8F0',
+                                  whiteSpace: 'nowrap',
+                                  boxSizing: 'border-box',
+                                }}
+                              >
+                                {item.cat}
+                              </span>
+                            </td>
+                            <td style={{ padding: '9px 12px', textAlign: 'center', verticalAlign: 'top', fontWeight: 700 }}>
+                              <bdi>{item.qty}</bdi> <span style={{ fontSize: '10px', color: '#64748B', fontWeight: 400 }}>{item.unit}</span>
+                            </td>
+                            <td style={{ padding: '9px 12px', textAlign: 'center', verticalAlign: 'top', color: '#334155' }}>
+                              <bdi>{fmtMoney(item.unitPrice)}</bdi>
+                            </td>
+                            <td
+                              style={{
+                                padding: '9px 12px',
+                                textAlign: 'center',
+                                verticalAlign: 'top',
+                                fontWeight: 800,
+                                color: '#0F172A',
+                              }}
+                            >
+                              <bdi>{fmtMoney(item.qty * item.unitPrice)}</bdi>
+                            </td>
+                            <td style={{ padding: '9px 12px', verticalAlign: 'top', color: '#64748B' }}>
+                              {item.supplier || '—'}
+                            </td>
+                            <td style={{ padding: '9px 12px', textAlign: 'center', verticalAlign: 'top' }}>
                               {item.paid ? (
-                                <span style={{ display: 'inline-block', padding: '3px 8px', borderRadius: '999px', background: '#DCFCE7', color: '#15803D', fontWeight: 700, fontSize: '11px', whiteSpace: 'nowrap' }}>
-                                  שולם{item.paidAt ? ` · ${item.paidAt}` : ''}
+                                <span
+                                  dir="rtl"
+                                  style={{
+                                    display: 'inline-block',
+                                    verticalAlign: 'middle',
+                                    padding: '0 10px',
+                                    borderRadius: '999px',
+                                    background: '#DCFCE7',
+                                    color: '#15803D',
+                                    fontWeight: 800,
+                                    fontSize: '10.5px',
+                                    height: '22px',
+                                    lineHeight: '20px',
+                                    border: '1px solid #BBF7D0',
+                                    whiteSpace: 'nowrap',
+                                    boxSizing: 'border-box',
+                                  }}
+                                >
+                                  שולם
                                 </span>
                               ) : (
-                                <span style={{ color: '#9CA3AF' }}>—</span>
+                                <span style={{ color: '#CBD5E1', fontSize: '11px' }}>—</span>
                               )}
                             </td>
                           </tr>
                         ))}
                       </tbody>
                       <tfoot>
-                        <tr style={{ background: '#F9FAFB', borderTop: '1px solid #E5E7EB' }}>
-                          <td colSpan={3} style={{ padding: '10px 16px', fontSize: '11px', color: '#4B5563', fontWeight: 700 }}>
-                            סה"כ חדר: <span style={{ color: '#111827', fontWeight: 800 }}>{fmtMoney(roomSum)}</span>
+                        <tr style={{ background: '#F8FAFC', borderTop: '1px solid #E2E8F0' }}>
+                          <td colSpan={4} style={{ padding: '9px 12px', fontSize: '11.5px', color: '#475569', fontWeight: 700 }}>
+                            סה"כ חדר: <bdi style={{ color: '#0F172A', fontWeight: 800 }}>{fmtMoney(roomSum)}</bdi>
                           </td>
-                          <td colSpan={3} style={{ padding: '10px 16px', fontSize: '11px', textAlign: 'left', fontWeight: 700, color: roomHasPaid ? '#15803D' : '#9CA3AF' }}>
-                            {roomHasPaid ? <>שולם בחדר: <span style={{ fontWeight: 800 }}>{fmtMoney(roomPaidSum)}</span></> : 'אין תשלומים בחדר'}
+                          <td
+                            colSpan={3}
+                            style={{
+                              padding: '9px 12px',
+                              fontSize: '11.5px',
+                              textAlign: 'left',
+                              fontWeight: 700,
+                              color: roomHasPaid ? '#15803D' : '#94A3B8',
+                            }}
+                          >
+                            {roomHasPaid ? (
+                              <>
+                                שולם בחדר: <bdi style={{ fontWeight: 800 }}>{fmtMoney(roomPaidSum)}</bdi>
+                              </>
+                            ) : (
+                              'אין תשלומים בחדר'
+                            )}
                           </td>
                         </tr>
                       </tfoot>
                     </table>
-                 </div>
-               );
-             })}
-           </div>
-        )}
-
-        {anyPaid && (
-          <div style={{ marginTop: '32px', padding: '14px 18px', background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', breakInside: 'avoid' }}>
-            <span style={{ fontSize: '13px', color: '#166534', fontWeight: 700 }}>סה"כ שולם עד כה</span>
-            <span style={{ fontSize: '20px', color: '#15803D', fontWeight: 900 }}>{fmtMoney(calculatedPaid)}</span>
+                  </div>
+                );
+              })}
           </div>
         )}
 
-        {/* Footer */}
-        <div style={{ marginTop: '40px', paddingTop: '20px', borderTop: '1px solid #E5E7EB', textAlign: 'center', fontSize: '10px', color: '#9CA3AF' }}>
-          מסמך זה הופק אוטומטית באמצעות מערכת BuildSync. לפרטים נוספים: support@buildsync.co.il
+        {/* Footer info */}
+        <div
+          style={{
+            marginTop: '36px',
+            paddingTop: '14px',
+            borderTop: '1px solid #E2E8F0',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            fontSize: '10px',
+            color: '#94A3B8',
+            pageBreakInside: 'avoid',
+            breakInside: 'avoid',
+          }}
+        >
+          <div>מסמך זה הופק אוטומטית באמצעות מערכת BuildSync • לפרטים: support@buildsync.co.il</div>
+          <div dir="ltr">www.buildsync.co.il</div>
         </div>
       </div>
     );
-  }
+  },
 );

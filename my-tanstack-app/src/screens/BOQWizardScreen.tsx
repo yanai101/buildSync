@@ -857,6 +857,7 @@ export const BOQWizardScreen = () => {
   const [isAutoFilling, setIsAutoFilling] = React.useState(false);
   const [itemDialog, setItemDialog] = React.useState<ItemDialogState>(null);
   const [copyOpen, setCopyOpen] = React.useState(false);
+  const [importNotes, setImportNotes] = React.useState('');
 
   // Track which rooms have been initialised so we don't overwrite local state on re-render
   const [initialised, setInitialised] = React.useState(false);
@@ -1672,6 +1673,23 @@ export const BOQWizardScreen = () => {
             ))}
           </div>
 
+          {/* Import Notes Card */}
+          <div className="card" style={{padding:20,borderRadius:16,marginBottom:8}}>
+            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8,fontWeight:700,fontSize:15,color:"var(--text1)"}}>
+              <Icon n="edit" s={16} c="var(--accent)"/>
+              <span>הנחיות והערות כלליות ליבוא / רכש</span>
+              <span style={{fontSize:12,color:"var(--text3)",fontWeight:400}}>(יופיעו בהבלטה בראש דוח ה-PDF)</span>
+            </div>
+            <textarea
+              className="bp-input"
+              value={importNotes}
+              onChange={e => setImportNotes(e.target.value)}
+              placeholder="לדוגמה: תאריך אספקה מבוקש למכולה עד 15.12, פריקה ברחוב הכרם 14. דגש על בדיקת תקינות לפני אריזה..."
+              rows={3}
+              style={{width:"100%",resize:"vertical",fontSize:13,lineHeight:1.6,fontFamily:"inherit"}}
+            />
+          </div>
+
           <div style={{display:"flex",flexDirection:"column",gap:24}}>
             {(summaryCats as string[]).map(cat => (
               <div key={cat} className="card" style={{borderRadius:20,overflow:"hidden"}}>
@@ -1694,19 +1712,27 @@ export const BOQWizardScreen = () => {
                           <td style={{padding:"20px 0",fontSize:15,fontWeight:700}}>{item.name}</td>
                           <td style={{padding:"20px 0",textAlign:"center",fontSize:18,fontWeight:900,color:"#F97316"}}>{item.total}</td>
                           <td style={{padding:"20px 0",textAlign:"center",fontSize:14,color:"var(--text3)"}}>{item.unit}</td>
-                          <td style={{padding:"20px 0"}}>
+                          <td style={{padding:"18px 0"}}>
                             <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
                               {item.rooms.filter(r=>r.qty>0).map((r, ri)=>(
-                                <span key={ri} style={{fontSize:11,padding:"4px 10px",borderRadius:20,background:"var(--surface-2)",color:"var(--text2)",fontWeight:500}}>
-                                  {r.name}: {r.qty}
+                                <span key={ri} style={{display:"inline-flex",alignItems:"center",gap:4,fontSize:11,lineHeight:"15px",padding:"3px 8px",borderRadius:6,background:"var(--surface-2)",color:"var(--text2)",fontWeight:600,border:"1px solid var(--border)"}}>
+                                  <span>{r.name}:</span> <strong style={{color:"var(--text1)"}}>{r.qty}</strong>
                                 </span>
                               ))}
                             </div>
-                            {item.notes.length > 0 && (
+                            {item.rooms.some(r => r.notes) ? (
+                              <div style={{display:"flex",flexDirection:"column",gap:4,marginTop:8}}>
+                                {item.rooms.filter(r => r.notes).map((r, ri) => (
+                                  <div key={ri} style={{fontSize:11,background:"var(--accent-light)",color:"var(--accent)",padding:"3px 8px",borderRadius:6,border:"1px solid var(--border)"}}>
+                                    <strong>{r.name}:</strong> {r.notes}
+                                  </div>
+                                ))}
+                              </div>
+                            ) : item.notes.length > 0 ? (
                               <div style={{fontSize:11,color:"var(--text3)",marginTop:8,lineHeight:1.5}}>
                                 הערות: {item.notes.join(' · ')}
                               </div>
-                            )}
+                            ) : null}
                           </td>
                         </tr>
                       ))}
@@ -1730,7 +1756,8 @@ export const BOQWizardScreen = () => {
               project={project as any}
               itemsGroupedByCategory={aggregated}
               rooms={rooms}
-              title="ריכוז כמויות כולל (סיכום אשף)"
+              title="רשימת יבוא מרוכזת (סיכום אשף)"
+              generalNotes={importNotes}
             />
           </div>
           </div>
