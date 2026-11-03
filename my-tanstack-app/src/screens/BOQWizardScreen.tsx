@@ -194,11 +194,13 @@ const ItemDialog = ({
 
   // Compute recommended category if the typed/chosen item name matches a catalog item
   const recommendedCategory = React.useMemo(() => {
-    const itemName = (pendingItem?.name || '').trim().toLowerCase();
-    if (!itemName) return null;
+    const itemRaw = (pendingItem?.name || '').trim();
+    if (!itemRaw) return null;
+    const itemNorm = normHebrew(itemRaw);
     const roomCatalog = getCatalogForRoom(roomType);
-    const match = roomCatalog.find(c => c.name.trim().toLowerCase() === itemName)
-      || getAllCatalogItems().find(c => c.name.trim().toLowerCase() === itemName);
+    const allItemsList = getAllCatalogItems();
+    const match = roomCatalog.find(c => norm(c.name) === norm(itemRaw) || normHebrew(c.name) === itemNorm)
+      || allItemsList.find(c => norm(c.name) === norm(itemRaw) || normHebrew(c.name) === itemNorm);
     if (!match) return null;
     return adaptCategoryForRoom({ name: match.name, cat: match.cat }, roomType);
   }, [pendingItem?.name, roomType]);
@@ -248,18 +250,31 @@ const ItemDialog = ({
     }
   }, [dialog]);
 
+  // Normalize Hebrew spelling variants (e.g. טלויזיה <-> טלוויזיה, כסא <-> כיסא)
+  const normHebrew = (s: string) =>
+    s
+      .trim()
+      .toLowerCase()
+      .replace(/וו/g, 'ו')
+      .replace(/יי/g, 'י')
+      .replace(/כיסא/g, 'כסא')
+      .replace(/כיסאות/g, 'כסאות');
+
   const norm = (s: string) => s.trim().toLowerCase();
   const existingNames = existingItems.map(i => norm(i.name));
   const suggestions = React.useMemo(() => {
-    const q = String(pendingItem?.name ?? '').trim();
-    if (isEdit || picked || !q) return [] as any[];
+    const qRaw = String(pendingItem?.name ?? '').trim();
+    if (isEdit || picked || !qRaw) return [] as any[];
+    const qNorm = normHebrew(qRaw);
     const roomCatalog = getCatalogForRoom(roomType);
     const seen = new Set<string>();
     const out: any[] = [];
     // Room-specific first, then every other catalog item, then free items typed elsewhere in the project.
     for (const c of [...roomCatalog, ...getAllCatalogItems(), ...projectItems]) {
       const key = norm(c.name);
-      if (seen.has(key) || !c.name.includes(q)) continue;
+      const cNorm = normHebrew(c.name);
+      const isMatch = c.name.toLowerCase().includes(qRaw.toLowerCase()) || cNorm.includes(qNorm);
+      if (seen.has(key) || !isMatch) continue;
       seen.add(key);
       out.push(c);
       if (out.length >= 10) break;
