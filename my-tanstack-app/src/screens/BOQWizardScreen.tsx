@@ -43,6 +43,123 @@ import { getFloorLabel } from './ProjectSetupScreen';
 
 const getRoomDbId = (room: any) => room?._id ?? room?.uid;
 
+// Module-level guard so concurrent component instances (e.g. during route
+// transition animations) never run duplicate cleanup/update mutations.
+const globalEnsuredLockedKeys = new Set<string>();
+
+type SmartRowTemplate = {
+  key: string;
+  label: string;
+  name: string;
+  category: string;
+  unit: string;
+  baseQty: number;
+  usesWaste: boolean;
+};
+
+const getQuickAddButtonsForRoom = (room: any, project: any): SmartRowTemplate[] => {
+  if (!room) return [];
+  const sizeSqm = Number(room.size ?? room.sizeSqm ?? 0);
+
+  if (room.type === 'yard') {
+    const paved = Number(project?.yardPavedArea || sizeSqm || 0);
+    const garden = Number(project?.yardGardenArea || sizeSqm || 0);
+    return [
+      {
+        key: 'yard_floor',
+        label: 'הוסף ריצוף חוץ',
+        name: 'ריצוף חוץ',
+        category: 'ריצוף וחיפוי',
+        unit: 'מ"ר',
+        baseQty: paved,
+        usesWaste: true,
+      },
+      {
+        key: 'yard_garden',
+        label: 'הוסף גינון ופיתוח',
+        name: 'גינון ופיתוח (דשא/שתילה)',
+        category: 'גינון ופיתוח שטח',
+        unit: 'מ"ר',
+        baseQty: garden,
+        usesWaste: false,
+      },
+    ];
+  }
+
+  if (room.type === 'pool') {
+    const poolType = project?.poolType || 'built';
+    if (poolType === 'built') {
+      return [
+        {
+          key: 'pool_mosaic',
+          label: 'הוסף חיפוי פסיפס',
+          name: 'חיפוי פסיפס / קרמיקה לבריכה',
+          category: "בריכות וג'קוזי",
+          unit: 'מ"ר',
+          baseQty: sizeSqm,
+          usesWaste: true,
+        },
+      ];
+    }
+    return [
+      {
+        key: 'pool_prefab',
+        label: 'הוסף בריכה מתועשת',
+        name: 'בריכה מתועשת קומפלט',
+        category: "בריכות וג'קוזי",
+        unit: "יח'",
+        baseQty: 1,
+        usesWaste: false,
+      },
+    ];
+  }
+
+  if (room.type === 'bathroom' || room.type === 'toilet') {
+    return [
+      {
+        key: 'room_floor',
+        label: 'הוסף ריצוף',
+        name: FLOOR_NAME,
+        category: FLOOR_CATEGORY,
+        unit: FLOOR_UNIT,
+        baseQty: sizeSqm,
+        usesWaste: true,
+      },
+      {
+        key: 'wet_wall_tile',
+        label: 'הוסף חיפוי קירות',
+        name: WALL_TILE_NAME,
+        category: WALL_TILE_CATEGORY,
+        unit: WALL_TILE_UNIT,
+        baseQty: Math.round(sizeSqm * 2),
+        usesWaste: true,
+      },
+    ];
+  }
+
+  return [
+    {
+      key: 'room_floor',
+      label: 'הוסף ריצוף',
+      name: FLOOR_NAME,
+      category: FLOOR_CATEGORY,
+      unit: FLOOR_UNIT,
+      baseQty: sizeSqm,
+      usesWaste: true,
+    },
+  ];
+};
+
+const isLegacyAutoDuplicate = (item: any, firstItem: any) => {
+  if (!item || !firstItem) return false;
+  if (item.source === 'manual' || item.userQty !== undefined) return false;
+  if (item.paid || item.spec || item.notes || item.imageUrl || item.projectFileId) return false;
+  const t1 = Number(firstItem._creationTime ?? 0);
+  const t2 = Number(item._creationTime ?? 0);
+  if (t1 > 0 && t2 > 0 && Math.abs(t2 - t1) > 5000) return false;
+  return true;
+};
+
 const AddItemWidget = ({
   roomUid, roomType, existingItems, onAdd, projectId, uploadProjectFile, globalCategories
 }: {
@@ -457,10 +574,23 @@ export const BOQWizardScreen = () => {
     const init: any = {};
 
     // Build a lookup: roomId -> DB items already saved
+    // Filter out only legacy auto-created duplicate locked rows (not user-added rows)
     const dbByRoom: Record<string, any[]> = {};
+    const seenLockedItems = new Map<string, any>();
     if (dbBoqItems && dbBoqItems.length > 0) {
       for (const dbItem of dbBoqItems) {
         const key = dbItem.roomId ?? 'global';
+        const isLockedItem = (dbItem as any).isLocked === true;
+        if (isLockedItem) {
+          const lockedKey = `${key}:${dbItem.category}:${dbItem.name}`;
+          const firstSeen = seenLockedItems.get(lockedKey);
+          if (firstSeen && isLegacyAutoDuplicate(dbItem, firstSeen)) {
+            continue;
+          }
+          if (!firstSeen) {
+            seenLockedItems.set(lockedKey, dbItem);
+          }
+        }
         if (!dbByRoom[key]) dbByRoom[key] = [];
         dbByRoom[key].push({
           id: dbItem._id,
@@ -474,7 +604,7 @@ export const BOQWizardScreen = () => {
           spec: dbItem.spec,
           notes: dbItem.notes,
           projectFileId: (dbItem as any).projectFileId,
-          isLocked: (dbItem as any).isLocked === true,
+          isLocked: isLockedItem,
           // Preserve isEnabled from DB so toggle state survives reloads.
           isEnabled: (dbItem as any).isEnabled,
           source: (dbItem as any).source,
@@ -486,8 +616,6 @@ export const BOQWizardScreen = () => {
     rooms.forEach((r: Room) => {
       const roomId = getRoomDbId(r);
       const roomDbItems = dbByRoom[roomId] ?? [];
-      // New rooms start empty — only the locked flooring/wall-tile rows
-      // (created by ensureLockedRows) appear automatically.
       init[r.uid] = roomDbItems;
     });
 
@@ -495,123 +623,75 @@ export const BOQWizardScreen = () => {
     setInitialised(true);
   }, [project, dbBoqItems, initialised]);
 
-  // Ensure every room has its two locked rows (floor + wall-tile). The floor
-  // row's qty tracks sizeSqm × waste; the wall-tile row's qty tracks the
-  // user's chosen wall area × waste. Runs whenever project waste, rooms, or
-  // dbBoqItems change.
+  // Clean up legacy auto-created duplicate locked rows and keep existing
+  // smart rows' quantities synced when project waste % changes.
   const ensuredRef = React.useRef<Set<string>>(new Set());
   React.useEffect(() => {
     if (!projectId || !project || dbBoqItems === undefined) return;
     const wastePct = (project as any).floorWastePct;
     const rooms: Room[] = (project as any).rooms ?? [];
 
-    const pushIntoLocal = (roomUid: string, row: any) => {
-      setAllItems((prev: any) => {
-        const list = prev[roomUid] ?? [];
-        if (list.some((i: any) => String(i.id) === String(row.id))) return prev;
-        return { ...prev, [roomUid]: [...list, row] };
-      });
-    };
-
-    rooms.forEach((room: any) => {
-      // `getWithDetails` projects rooms as `{ uid: r._id, ... }` and does NOT
-      // include `_id`; use `getRoomDbId` so this works for both shapes.
-      const roomId = getRoomDbId(room);
-      if (!roomId) return;
-      
-      const expectedRows: { name: string, category: string, unit: string, targetQty: number, initialQty: number, isEnabled: boolean }[] = [];
-      const sizeSqm = Number(room.size ?? room.sizeSqm ?? 0);
-
-      if (room.type === 'yard') {
-        const paved = Number((project as any).yardPavedArea || 0);
-        const garden = Number((project as any).yardGardenArea || 0);
-        if (paved > 0) {
-          expectedRows.push({ name: 'ריצוף חוץ', category: 'ריצוף וחיפוי', unit: 'מ"ר', targetQty: applyWaste(paved, wastePct), initialQty: applyWaste(paved, wastePct), isEnabled: true });
-        }
-        if (garden > 0) {
-          expectedRows.push({ name: 'גינון ופיתוח (דשא/שתילה)', category: 'גינון ופיתוח שטח', unit: 'מ"ר', targetQty: garden, initialQty: garden, isEnabled: true });
-        }
-      } else if (room.type === 'pool') {
-        const poolType = (project as any).poolType || 'built';
-        if (poolType === 'built') {
-          expectedRows.push({ name: 'חיפוי פסיפס / קרמיקה לבריכה', category: 'בריכות וג\'קוזי', unit: 'מ"ר', targetQty: applyWaste(sizeSqm, wastePct), initialQty: applyWaste(sizeSqm, wastePct), isEnabled: true });
-        } else {
-          expectedRows.push({ name: 'בריכה מתועשת קומפלט', category: 'בריכות וג\'קוזי', unit: 'יח\'', targetQty: 1, initialQty: 1, isEnabled: true });
-        }
-      } else {
-        // Regular internal room
-        expectedRows.push({ name: FLOOR_NAME, category: FLOOR_CATEGORY, unit: FLOOR_UNIT, targetQty: applyWaste(sizeSqm, wastePct), initialQty: applyWaste(sizeSqm, wastePct), isEnabled: true });
-        
-        if (room.type === 'bathroom' || room.type === 'toilet') {
-          // Wall tile defaults to 0 and disabled initially
-          expectedRows.push({ name: WALL_TILE_NAME, category: WALL_TILE_CATEGORY, unit: WALL_TILE_UNIT, targetQty: 0, initialQty: 0, isEnabled: false });
+    // Clean up any legacy auto-created duplicate locked rows in DB
+    const seenLockedInDb = new Map<string, any>();
+    const duplicateLockedIds: any[] = [];
+    for (const it of dbBoqItems ?? []) {
+      if ((it as any).isLocked !== true || !it.roomId) continue;
+      const dupKey = `${it.roomId}:${it.category}:${it.name}`;
+      const firstSeen = seenLockedInDb.get(dupKey);
+      if (!firstSeen) {
+        seenLockedInDb.set(dupKey, it);
+      } else if (isLegacyAutoDuplicate(it, firstSeen)) {
+        const cleanupKey = `cleanup-dup:${it._id}`;
+        if (!ensuredRef.current.has(cleanupKey) && !globalEnsuredLockedKeys.has(cleanupKey)) {
+          ensuredRef.current.add(cleanupKey);
+          globalEnsuredLockedKeys.add(cleanupKey);
+          duplicateLockedIds.push(it._id);
         }
       }
+    }
+    if (duplicateLockedIds.length > 0) {
+      deleteBoqItemsBatchMutation({ itemIds: duplicateLockedIds }).catch(() => {
+        duplicateLockedIds.forEach((id) => {
+          const cleanupKey = `cleanup-dup:${id}`;
+          ensuredRef.current.delete(cleanupKey);
+          globalEnsuredLockedKeys.delete(cleanupKey);
+        });
+      });
+    }
 
-      expectedRows.forEach(expectedRow => {
-        const existing = (dbBoqItems ?? []).find(
-          (it: any) => it.roomId === roomId && it.isLocked === true && it.category === expectedRow.category && it.name === expectedRow.name
-        );
-        
-        if (!existing) {
-          const key = `locked:${roomId}:${expectedRow.name}`;
-          if (!ensuredRef.current.has(key)) {
+    // Re-derive qty when waste % changes for existing enabled smart SQM rows
+    rooms.forEach((room: any) => {
+      const roomId = getRoomDbId(room);
+      if (!roomId) return;
+      const sizeSqm = Number(room.size ?? room.sizeSqm ?? 0);
+      const roomLockedItems = (dbBoqItems ?? []).filter(
+        (it: any) => it.roomId === roomId && it.isLocked === true && it.isEnabled !== false && !duplicateLockedIds.includes(it._id)
+      );
+
+      roomLockedItems.forEach((existing: any) => {
+        if (existing.unit !== 'מ"ר' || existing.name === 'גינון ופיתוח (דשא/שתילה)') return;
+        let defaultBase = sizeSqm;
+        if (existing.name === 'ריצוף חוץ') {
+          defaultBase = Number((project as any).yardPavedArea || sizeSqm || 0);
+        } else if (existing.name === WALL_TILE_NAME) {
+          defaultBase = 0;
+        }
+        const baseArea = existing.userQty !== undefined ? Number(existing.userQty) : defaultBase;
+        const target = applyWaste(baseArea, wastePct);
+        if (existing.qty !== target) {
+          const key = `locked-qty:${existing._id}:${target}`;
+          if (!ensuredRef.current.has(key) && !globalEnsuredLockedKeys.has(key)) {
             ensuredRef.current.add(key);
-            addBoqItemMutation({
-              projectId: projectId as any,
-              roomId: roomId as any,
-              category: expectedRow.category,
-              name: expectedRow.name,
-              qty: expectedRow.initialQty,
-              unit: expectedRow.unit,
-              unitPrice: 0,
-              isLocked: true,
-              isEnabled: expectedRow.isEnabled,
-              source: 'wizard_smart',
-            }).then((newId) => {
-              pushIntoLocal(room.uid, {
-                id: newId,
-                cat: expectedRow.category,
-                name: expectedRow.name,
-                qty: expectedRow.initialQty,
-                userQty: expectedRow.initialQty,
-                unit: expectedRow.unit,
-                isLocked: true,
-                isEnabled: expectedRow.isEnabled,
-                source: 'wizard_smart',
-                notes: '',
-                _persisted: true,
-              });
-            }).catch(() => {
+            globalEnsuredLockedKeys.add(key);
+            updateBoqItemMutation({ itemId: existing._id, qty: target }).catch(() => {
               ensuredRef.current.delete(key);
+              globalEnsuredLockedKeys.delete(key);
             });
-          }
-        } else if (existing.isEnabled !== false) {
-          // Re-derive qty when waste % changes, but only if it's a sqm row that scales with waste
-          let target = expectedRow.targetQty;
-          if (expectedRow.name === WALL_TILE_NAME) {
-            const base = Number(existing.userQty ?? 0);
-            target = applyWaste(base, wastePct);
-          } else if (expectedRow.unit === 'מ"ר' && expectedRow.name !== 'גינון ופיתוח (דשא/שתילה)') {
-            // Recalculate target for other SQM items (floor, yard paved, built pool)
-            let baseArea = sizeSqm;
-            if (expectedRow.name === 'ריצוף חוץ') baseArea = Number((project as any).yardPavedArea || 0);
-            target = applyWaste(baseArea, wastePct);
-          }
-          
-          if (existing.qty !== target) {
-            const key = `locked-qty:${roomId}:${expectedRow.name}:${target}`;
-            if (!ensuredRef.current.has(key)) {
-              ensuredRef.current.add(key);
-              updateBoqItemMutation({ itemId: existing._id, qty: target }).catch(() => {
-                ensuredRef.current.delete(key);
-              });
-            }
           }
         }
       });
     });
-  }, [project, dbBoqItems, projectId, addBoqItemMutation, updateBoqItemMutation]);
+  }, [project, dbBoqItems, projectId, updateBoqItemMutation, deleteBoqItemsBatchMutation]);
 
   const rooms = (project as any)?.rooms || [];
   const currentRoom = rooms[step];
@@ -666,21 +746,18 @@ export const BOQWizardScreen = () => {
     }
   };
 
-  // Toggle a locked row on/off. When turning off, qty drops to 0 (or userQty
-  // for wall row). When turning on, recompute qty from current waste %.
+  // Toggle a locked row on/off. When turning off, qty drops to 0.
+  // When turning on, recompute qty from current waste % and userQty/room size.
   const handleLockedToggle = async (item: any) => {
     const wastePct = (project as any)?.floorWastePct;
     const newEnabled = !(item.isEnabled !== false);
-    let nextQty = item.qty;
-    if (item.cat === FLOOR_CATEGORY) {
-      // floor qty derived from current room size
-      const room = rooms.find((r: any) => (r.uid && allItems[r.uid]?.some((i: any) => i.id === item.id)));
-      const sizeSqm = Number(room?.size ?? room?.sizeSqm ?? 0);
-      nextQty = newEnabled ? applyWaste(sizeSqm, wastePct) : 0;
-    } else if (item.cat === WALL_TILE_CATEGORY) {
-      const base = Number(item.userQty ?? 0);
-      nextQty = newEnabled ? applyWaste(base, wastePct) : 0;
-    }
+    const room = rooms.find((r: any) => (r.uid && allItems[r.uid]?.some((i: any) => i.id === item.id)));
+    const sizeSqm = Number(room?.size ?? room?.sizeSqm ?? 0);
+    const usesWaste = item.unit === 'מ"ר' && item.name !== 'גינון ופיתוח (דשא/שתילה)';
+    const base = Number(item.userQty ?? (item.cat === WALL_TILE_CATEGORY ? 0 : sizeSqm));
+    const nextQty = newEnabled
+      ? (usesWaste ? applyWaste(base, wastePct) : Math.max(1, base))
+      : 0;
     setAllItems((prev: any) => {
       const next: any = { ...prev };
       for (const ruid of Object.keys(next)) {
@@ -699,6 +776,69 @@ export const BOQWizardScreen = () => {
     } catch (err) {
       console.error('Toggle failed', err);
       setFeedback({ title: 'שגיאה', message: 'לא הצלחנו לעדכן', type: 'error' });
+    }
+  };
+
+  // Quick-add a room-type-specific smart row (flooring, wall cladding, mosaic, etc.).
+  // The user can click more than once if they want multiple tile/cladding rows in the same room.
+  const handleQuickAddSmartRow = async (template: SmartRowTemplate) => {
+    if (!currentRoom) return;
+    const roomUid = currentRoom.uid;
+    const roomId = getRoomDbId(currentRoom);
+    const wastePct = (project as any)?.floorWastePct;
+    const baseQty = Math.max(0, Number(template.baseQty) || 0);
+    const initialQty = template.usesWaste ? applyWaste(baseQty, wastePct) : Math.max(1, baseQty);
+    const localId = `smart_${roomUid}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+
+    const optimisticRow = {
+      id: localId,
+      cat: template.category,
+      name: template.name,
+      qty: initialQty,
+      userQty: baseQty,
+      unit: template.unit,
+      isLocked: true,
+      isEnabled: true,
+      source: 'manual',
+      spec: '',
+      notes: '',
+      _persisted: false,
+    };
+
+    setAllItems((prev: any) => ({
+      ...prev,
+      [roomUid]: [...(prev[roomUid] || []), optimisticRow],
+    }));
+
+    if (projectId && roomId) {
+      try {
+        const newId = await addBoqItemMutation({
+          projectId: projectId as any,
+          roomId: roomId as any,
+          category: template.category,
+          name: template.name,
+          qty: initialQty,
+          userQty: baseQty,
+          unit: template.unit,
+          unitPrice: 0,
+          isLocked: true,
+          isEnabled: true,
+          source: 'manual',
+        });
+        setAllItems((prev: any) => ({
+          ...prev,
+          [roomUid]: (prev[roomUid] || []).map((i: any) =>
+            i.id === localId ? { ...i, id: newId, _persisted: true } : i
+          ),
+        }));
+      } catch (err) {
+        setAllItems((prev: any) => ({
+          ...prev,
+          [roomUid]: (prev[roomUid] || []).filter((i: any) => i.id !== localId),
+        }));
+        console.error('Quick add smart row failed', err);
+        setFeedback({ title: 'שגיאה בשמירה', message: 'לא הצלחנו להוסיף את הפריט. נסה שוב.', type: 'error' });
+      }
     }
   };
 
@@ -949,14 +1089,14 @@ export const BOQWizardScreen = () => {
       targetRooms.forEach((room: any) => {
         const roomItems = allItems[room.uid] || [];
         roomItems.forEach((item: any) => {
-          if (!item.isLocked && item.source === 'wizard_smart') {
+          if (!item.paid) {
             itemsToDelete.push({ roomUid: room.uid, id: item.id, _persisted: item._persisted });
           }
         });
       });
       
       if (itemsToDelete.length === 0) {
-        setFeedback({ title: 'אין מה לאפס', message: 'אין פריטים להסרה (פריטי מערכת נעולים לא ניתנים להסרה).', type: 'success' });
+        setFeedback({ title: 'אין מה לאפס', message: 'אין פריטים להסרה בחדר זה.', type: 'success' });
         setResetModal({ open: false, scope: 'all' });
         return;
       }
@@ -973,7 +1113,7 @@ export const BOQWizardScreen = () => {
         const next: any = { ...prev };
         targetRooms.forEach((room: any) => {
           const roomItems = next[room.uid] || [];
-          next[room.uid] = roomItems.filter((i: any) => i.isLocked || i.source !== 'wizard_smart');
+          next[room.uid] = roomItems.filter((i: any) => Boolean(i.paid));
         });
         return next;
       });
@@ -1278,8 +1418,8 @@ export const BOQWizardScreen = () => {
               </div>
             </div>
 
-            {/* Add Item button and Auto-fill buttons */}
-            <div style={{display:"flex",justifyContent:"flex-start", gap: 12}}>
+            {/* Add Item button, Quick-Add smart buttons per room type, and Auto-fill buttons */}
+            <div style={{display:"flex",flexWrap:"wrap",justifyContent:"flex-start",alignItems:"center",gap:10}}>
               <AddItemWidget
                 roomUid={currentRoom.uid}
                 roomType={currentRoom.type || 'general'}
@@ -1289,6 +1429,47 @@ export const BOQWizardScreen = () => {
                 uploadProjectFile={uploadProjectFile}
                 globalCategories={globalCategories}
               />
+
+              {getQuickAddButtonsForRoom(currentRoom, project).map((tpl) => {
+                const existingCount = items.filter(
+                  (i: any) => i.cat === tpl.category && i.name === tpl.name
+                ).length;
+                return (
+                  <button
+                    key={tpl.key}
+                    type="button"
+                    onClick={() => void handleQuickAddSmartRow(tpl)}
+                    title={existingCount > 0 ? `כבר קיים בחדר (${existingCount}) — לחץ להוספת שורה נוספת` : `${tpl.label} לחדר זה`}
+                    style={{
+                      display:"flex", alignItems:"center", gap:7,
+                      padding:"8px 14px", borderRadius:10,
+                      border:"1.5px solid var(--border)",
+                      background:"var(--surface)", color:"var(--text1)",
+                      fontWeight:700, fontSize:13, cursor:"pointer",
+                      transition:"border-color 0.15s, color 0.15s",
+                    }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.borderColor = "var(--accent)";
+                      e.currentTarget.style.color = "var(--accent)";
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.borderColor = "var(--border)";
+                      e.currentTarget.style.color = "var(--text1)";
+                    }}
+                  >
+                    <Icon n="plus" s={14} c="var(--accent)" />
+                    <span>{tpl.label}</span>
+                    {existingCount > 0 && (
+                      <span style={{
+                        fontSize:11, fontWeight:800, padding:"1px 6px",
+                        borderRadius:999, background:"var(--accent-light)", color:"var(--accent)"
+                      }}>
+                        {existingCount}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
               
               <MagicActionsWidget 
                 step={step}
@@ -1300,6 +1481,11 @@ export const BOQWizardScreen = () => {
             </div>
 
             <div style={{display:"flex",flexDirection:"column",gap:16}}>
+              {cats.length === 0 && (
+                <div className="card" style={{borderRadius:16,padding:"32px 24px",textAlign:"center",color:"var(--text3)",fontSize:14}}>
+                  עדיין לא נוספו פריטים לחדר זה. לחץ על <strong>הוסף ריצוף / חיפוי</strong>, <strong>הוסף פריט</strong>, או <strong>פעולות תבנית</strong> כדי להתחיל.
+                </div>
+              )}
               {(cats as string[]).map(cat => (
                 <div key={cat} className="card" style={{borderRadius:16,overflow:"hidden"}}>
                   <div style={{padding:"14px 20px",background:"var(--surface)",borderBottom:"1px solid var(--border)",fontSize:13,fontWeight:700,display:"flex",justifyContent:"space-between"}}>
@@ -1311,8 +1497,10 @@ export const BOQWizardScreen = () => {
                       const locked = item.isLocked === true;
                       const enabled = item.isEnabled !== false;
                       const isWallTile = item.cat === WALL_TILE_CATEGORY;
+                      const usesWasteSqm = locked && item.unit === 'מ"ר' && item.name !== 'גינון ופיתוח (דשא/שתילה)';
                       const wastePct = (project as any)?.floorWastePct ?? DEFAULT_FLOOR_WASTE_PCT;
                       const roomSize = Number(currentRoom.size ?? currentRoom.sizeSqm ?? 0);
+                      const netSqm = item.userQty !== undefined ? Number(item.userQty) : (isWallTile ? 0 : roomSize);
                       const dimmedStyle = locked && !enabled ? { opacity: 0.55 } : {};
                       return (
                       <div key={item.id} style={{display:"flex",flexWrap:"wrap",alignItems:"flex-start",gap:16,padding:"16px 20px",borderBottom:"1px solid var(--border)", ...dimmedStyle}}>
@@ -1370,17 +1558,16 @@ export const BOQWizardScreen = () => {
                         <div style={{flex:"1 1 180px", minWidth:"180px"}}>
                           <div style={{display:"flex",alignItems:"center",gap:6}}>
                             <div style={{fontSize:15,fontWeight:600}}>{item.name}</div>
-                            {locked && <Icon n="lock" s={12} c="var(--text3)"/>}
                           </div>
                           {locked ? (
                             <div style={{fontSize:12,color:"var(--text3)",marginTop:2}}>
                               {!enabled
                                 ? (isWallTile ? 'לא נבחר חיפוי קירות בריצוף' : 'לא מרצפים את החדר')
-                                : isWallTile
-                                  ? `כמות נדרשת = השטח שבחרת × ${wastePct}% פחת`
-                                  : `מחושב אוטומטית: ${roomSize} מ"ר × ${wastePct}% פחת`}
+                                : usesWasteSqm
+                                  ? `מחושב עם פחת: ${netSqm} מ"ר נטו × ${wastePct}% פחת = ${item.qty} מ"ר`
+                                  : `כמות: ${item.qty} ${item.unit}`}
                             </div>
-                          ) : item.hint && (
+                          ) : item.hint && item.hint !== 'manual_smart' && (
                             <div style={{fontSize:12,color:"var(--text3)",marginTop:2}}>{item.hint}</div>
                           )}
                           {locked && enabled && (
@@ -1430,13 +1617,13 @@ export const BOQWizardScreen = () => {
                               >
                                 {enabled ? '✓ מרצפים' : 'לא מרצפים'}
                               </button>
-                              {/* Wall: user enters base m²; floor: just shows derived qty */}
-                              {enabled && isWallTile && (
+                              {/* User can adjust base net m² on any waste-calculated SQM smart row */}
+                              {enabled && usesWasteSqm && (
                                 <div style={{display:"flex",alignItems:"center",gap:6,background:"var(--bg)",borderRadius:10,padding:"4px 8px",border:"1px solid var(--border)"}}>
                                   <input
                                     type="number"
                                     min={0}
-                                    value={item.userQty ?? 0}
+                                    value={netSqm}
                                     onChange={e => handleWallUserQty(item, e.target.value)}
                                     style={{width:60,textAlign:"center",background:"transparent",border:"none",fontWeight:700,fontSize:15}}
                                   />
@@ -1449,6 +1636,7 @@ export const BOQWizardScreen = () => {
                                   <span style={{fontSize:13,color:"var(--text3)"}}>{item.unit}</span>
                                 </div>
                               )}
+                              <button onClick={()=>removeItem(currentRoom.uid,item.id)} title="מחק פריט" style={{background:"none",border:"none",cursor:"pointer",color:"#DDD",transition:"color .2s"}} onMouseEnter={e=>e.currentTarget.style.color="var(--danger)"} onMouseLeave={e=>e.currentTarget.style.color="#DDD"}><Icon n="x" s={18}/></button>
                             </>
                           ) : (
                             <>
@@ -1569,8 +1757,8 @@ export const BOQWizardScreen = () => {
               </div>
               <div style={{fontSize:15,color:"var(--text2)",lineHeight:1.6,marginBottom:24}}>
                 {resetModal.scope === 'all'
-                  ? 'פעולה זו תמחק את כל הפריטים שהוספת בכל החדרים בפרויקט. פריטי מערכת נעולים לא יימחקו.'
-                  : 'פעולה זו תמחק את כל הפריטים שהוספת בחדר זה. פריטי מערכת נעולים לא יימחקו.'}
+                  ? 'פעולה זו תמחק את כל הפריטים בכל החדרים בפרויקט (למעט פריטים שכבר שולמו).'
+                  : 'פעולה זו תמחק את כל הפריטים בחדר זה (למעט פריטים שכבר שולמו).'}
                 <br/><br/>
                 <strong>שים לב:</strong> פעולה זו היא בלתי הפיכה.
               </div>

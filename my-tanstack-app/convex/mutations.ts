@@ -1785,11 +1785,7 @@ export const deleteBoqItemsBatch = mutation({
   handler: async (ctx, args) => {
     for (const itemId of args.itemIds) {
       const item = await ctx.db.get(itemId);
-      if (!item) continue;
-      
-      if (item.isLocked) {
-        continue; // Skip locked items silently
-      }
+      if (!item || item.paid) continue;
 
       // Clean up linked project file (and its storage) if present
       if (item.projectFileId) {
@@ -1813,8 +1809,8 @@ export const deleteBoqItem = mutation({
     const item = await ctx.db.get(args.itemId);
     if (!item) return;
 
-    if (item.isLocked) {
-      throw new Error('אי אפשר למחוק פריט מערכת');
+    if (item.paid) {
+      throw new Error('אי אפשר למחוק פריט שכבר סומן כשולם');
     }
 
     // Clean up linked project file (and its storage) if present
