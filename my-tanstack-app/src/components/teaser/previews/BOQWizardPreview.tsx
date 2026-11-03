@@ -70,23 +70,23 @@ export const BOQWizardPreview = () => {
           </Btn>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(135px, 1fr))', gap: 10 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 14 }}>
           {[
             { label: 'סה"כ ריצוף וחיפוי', val: `${totalFlooring} מ"ר`, color: 'var(--accent)' },
             { label: 'נקודות תאורה', val: `${totalLights} יח׳`, color: 'var(--accent)' },
             { label: 'נקודות חשמל', val: `${totalSockets} יח׳`, color: 'var(--success)' },
             { label: 'חדרים באשף', val: `${wizardRooms.length} חדרים`, color: 'var(--text1)' },
           ].map((s) => (
-            <div key={s.label} className="card" style={{ padding: 14, textAlign: 'center' }}>
+            <div key={s.label} className="card" style={{ padding: '16px 18px', textAlign: 'center' }}>
               <div style={{ fontSize: 22, fontWeight: 900, color: s.color }}>{s.val}</div>
-              <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 4 }}>{s.label}</div>
+              <div style={{ fontSize: 12.5, color: 'var(--text2)', marginTop: 4 }}>{s.label}</div>
             </div>
           ))}
         </div>
 
         {summaryCats.map((cat) => (
           <div key={cat} className="card" style={{ overflow: 'hidden' }}>
-            <div className="card-header" style={{ fontSize: 13 }}>{cat}</div>
+            <div className="card-header" style={{ fontSize: 13.5, padding: '14px 18px' }}>{cat}</div>
             <div tabIndex={0} role="region" aria-label={`סיכום ${cat}`} className="teaser-table-wrap">
               <table className="teaser-table">
                 <thead>
@@ -101,14 +101,14 @@ export const BOQWizardPreview = () => {
                     .filter((i) => i.cat === cat)
                     .map((item) => (
                       <tr key={`${item.name}-${item.cat}`}>
-                        <th scope="row">{item.name}</th>
+                        <th scope="row" style={{ whiteSpace: 'normal' }}>{item.name}</th>
                         <td data-label="סה״כ להזמנה" style={{ fontWeight: 800, color: 'var(--accent)' }}>
                           {item.total} {item.unit}
                         </td>
-                        <td data-label="פירוט לפי חדר">
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                        <td data-label="פירוט לפי חדר" style={{ whiteSpace: 'normal' }}>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                             {item.rooms.map((r, ri) => (
-                              <span key={ri} style={{ fontSize: 11, padding: '3px 9px', borderRadius: 999, background: 'var(--surface-2)', color: 'var(--text2)', fontWeight: 600 }}>
+                              <span key={ri} style={{ fontSize: 12, padding: '4px 10px', borderRadius: 999, background: 'var(--surface-2)', color: 'var(--text2)', fontWeight: 600 }}>
                                 {r.name}: {r.qty}
                               </span>
                             ))}
@@ -126,10 +126,10 @@ export const BOQWizardPreview = () => {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {/* Room pills + Summary toggle */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
-        <div role="tablist" aria-label="חדרים באשף" style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+        <div role="tablist" aria-label="חדרים באשף" style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
           {wizardRooms.map((r, idx) => {
             const active = step === idx;
             return (
@@ -140,7 +140,7 @@ export const BOQWizardPreview = () => {
                 aria-selected={active}
                 onClick={() => setStep(idx)}
                 style={{
-                  padding: '8px 14px',
+                  padding: '9px 16px',
                   borderRadius: 10,
                   cursor: 'pointer',
                   display: 'inline-flex',
@@ -150,7 +150,7 @@ export const BOQWizardPreview = () => {
                   background: active ? 'var(--accent-light)' : 'var(--surface)',
                   color: active ? 'var(--text1)' : 'var(--text2)',
                   fontWeight: active ? 700 : 500,
-                  fontSize: 13,
+                  fontSize: 13.5,
                 }}
               >
                 <span style={{ width: 22, height: 22, borderRadius: '50%', background: active ? 'var(--accent)' : 'var(--border)', color: active ? '#fff' : 'var(--text3)', display: 'grid', placeItems: 'center', fontSize: 12, fontWeight: 800 }}>
@@ -168,10 +168,10 @@ export const BOQWizardPreview = () => {
       </div>
 
       {/* Room header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8, background: 'var(--surface)', padding: '12px 14px', borderRadius: 12, border: '1px solid var(--border)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, background: 'var(--surface)', padding: '14px 18px', borderRadius: 12, border: '1px solid var(--border)' }}>
         <div>
           <div style={{ fontWeight: 800, fontSize: 16, color: 'var(--text1)' }}>{currentRoom.name}</div>
-          <div style={{ fontSize: 12, color: 'var(--text3)' }}>
+          <div style={{ fontSize: 12.5, color: 'var(--text3)', marginTop: 3, lineHeight: 1.45 }}>
             {getFloorLabel(currentRoom.floor, demoProject.housingUnits)} · שטח חדר: {currentRoom.size} מ"ר · פחת ריצוף מוגדר: {DEMO_WASTE_PCT}%
           </div>
         </div>
@@ -191,7 +191,7 @@ export const BOQWizardPreview = () => {
       {/* Category items */}
       {cats.map((cat) => (
         <div key={cat} className="card" style={{ overflow: 'hidden' }}>
-          <div className="card-header" style={{ fontSize: 13, display: 'flex', justifyContent: 'space-between' }}>
+          <div className="card-header" style={{ fontSize: 13.5, display: 'flex', justifyContent: 'space-between', padding: '14px 18px' }}>
             <span>{cat}</span>
             <span style={{ fontWeight: 500, color: 'var(--text3)' }}>
               {roomItems.filter((i) => i.cat === cat).length} פריטים
@@ -211,49 +211,49 @@ export const BOQWizardPreview = () => {
                       flexWrap: 'wrap',
                       justifyContent: 'space-between',
                       alignItems: 'center',
-                      gap: 12,
-                      padding: '12px 16px',
+                      gap: 16,
+                      padding: '14px 18px',
                       borderBottom: '1px solid var(--border)',
                     }}
                   >
-                    <div style={{ flex: '1 1 200px', minWidth: 0 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700, fontSize: 14, color: 'var(--text1)' }}>
+                    <div style={{ flex: '1 1 240px', minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700, fontSize: 14, color: 'var(--text1)', lineHeight: 1.4 }}>
                         <span>{item.name}</span>
                         {locked && <Icon n="lock" s={12} c="var(--text3)" />}
                       </div>
-                      <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2 }}>
+                      <div style={{ fontSize: 12.5, color: 'var(--text2)', marginTop: 4, lineHeight: 1.45 }}>
                         {locked
                           ? isWallTile
                             ? `שטח חיפוי ${item.userQty} מ"ר × ${DEMO_WASTE_PCT}% פחת = ${item.qty} מ"ר להזמנה`
                             : `מחושב אוטומטית: ${currentRoom.size} מ"ר × ${DEMO_WASTE_PCT}% פחת = ${item.qty} מ"ר להזמנה`
                           : item.notes}
                       </div>
-                      {item.spec && <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>מפרט: {item.spec}</div>}
+                      {item.spec && <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 3, lineHeight: 1.4 }}>מפרט: {item.spec}</div>}
                     </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       {locked && !isWallTile ? (
-                        <span style={{ fontWeight: 800, fontSize: 15, color: 'var(--accent)', padding: '4px 10px', borderRadius: 8, background: 'var(--accent-light)' }}>
+                        <span style={{ fontWeight: 800, fontSize: 15, color: 'var(--accent)', padding: '6px 12px', borderRadius: 8, background: 'var(--accent-light)', whiteSpace: 'nowrap' }}>
                           {item.qty} {item.unit}
                         </span>
                       ) : (
-                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 10, padding: '4px 8px' }}>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 10, padding: '5px 10px' }}>
                           <button
                             type="button"
                             aria-label={`הפחת ${item.name}`}
                             onClick={() => changeQty(item.id, -1)}
-                            style={{ width: 26, height: 26, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text1)', cursor: 'pointer', fontWeight: 800 }}
+                            style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text1)', cursor: 'pointer', fontWeight: 800 }}
                           >
                             -
                           </button>
-                          <span style={{ minWidth: 54, textAlign: 'center', fontWeight: 800, fontSize: 14, color: 'var(--text1)' }}>
+                          <span style={{ minWidth: 58, textAlign: 'center', fontWeight: 800, fontSize: 14, color: 'var(--text1)', whiteSpace: 'nowrap' }}>
                             {item.qty} {item.unit}
                           </span>
                           <button
                             type="button"
                             aria-label={`הוסף ${item.name}`}
                             onClick={() => changeQty(item.id, 1)}
-                            style={{ width: 26, height: 26, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text1)', cursor: 'pointer', fontWeight: 800 }}
+                            style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text1)', cursor: 'pointer', fontWeight: 800 }}
                           >
                             +
                           </button>

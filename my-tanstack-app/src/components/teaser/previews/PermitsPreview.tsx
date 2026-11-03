@@ -27,33 +27,33 @@ export const PermitsPreview = () => {
         <option value="הג״א" />
       </datalist>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 12 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
         {permits.map((permit) => (
           <div
             key={permit._id}
             style={{
               border: '1px solid var(--border)',
-              borderRadius: 12,
-              padding: 14,
+              borderRadius: 14,
+              padding: 18,
               background: 'var(--surface)',
               display: 'flex',
               flexDirection: 'column',
-              gap: 10,
+              gap: 12,
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-              <div style={{ background: 'var(--accent-light)', width: 38, height: 38, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent)', flexShrink: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+              <div style={{ background: 'var(--accent-light)', width: 40, height: 40, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent)', flexShrink: 0 }}>
                 <Icon n="file-text" s={18} />
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text1)' }}>{permit.title}</div>
+                <div style={{ fontSize: 14.5, fontWeight: 700, color: 'var(--text1)', lineHeight: 1.35 }}>{permit.title}</div>
                 <input
                   list="demo-authorities-list"
                   aria-label={`רשות עבור ${permit.title}`}
                   className="bp-input"
                   value={permit.authority}
                   onChange={(e) => updateField(permit._id, 'authority', e.target.value)}
-                  style={{ width: '100%', fontSize: 12, padding: '4px 8px', marginTop: 4, height: 28 }}
+                  style={{ width: '100%', fontSize: 12.5, padding: '6px 10px', marginTop: 6, height: 34 }}
                 />
               </div>
             </div>
@@ -64,11 +64,11 @@ export const PermitsPreview = () => {
               value={permit.notes}
               onChange={(e) => updateField(permit._id, 'notes', e.target.value)}
               rows={2}
-              style={{ width: '100%', resize: 'vertical', fontSize: 12, padding: '6px 10px', borderRadius: 8, background: 'var(--bg)' }}
+              style={{ width: '100%', resize: 'vertical', fontSize: 12.5, lineHeight: 1.5, padding: '8px 12px', borderRadius: 8, background: 'var(--bg)' }}
             />
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginTop: 'auto' }}>
-              <span style={{ fontSize: 11, color: 'var(--text3)' }}>אושר: {permit.approvedDate}</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, marginTop: 'auto', paddingTop: 2 }}>
+              <span style={{ fontSize: 12, color: 'var(--text3)', whiteSpace: 'nowrap' }}>אושר: {permit.approvedDate}</span>
               <Btn size="sm" variant="secondary" onClick={() => setPreviewPermit(permit)}>
                 <Icon n="eye" s={14} /> צפה במסמך
               </Btn>

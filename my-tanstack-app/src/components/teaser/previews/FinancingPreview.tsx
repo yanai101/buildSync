@@ -164,16 +164,16 @@ export const FinancingPreview = () => {
               </button>
 
               {isExpanded && (
-                <div style={{ padding: '12px 16px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
+                <div style={{ padding: '14px 18px 18px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12 }}>
                     {[
                       { label: 'סה"כ צפוי', val: source.expectedTotal },
                       { label: 'התקבל', val: source.totalReceived, color: 'var(--success)' },
                       { label: 'נותר', val: source.remainingExpected, color: source.remainingExpected > 0 ? 'var(--accent)' : 'var(--text3)' },
                     ].map((item) => (
-                      <div key={item.label} style={{ flex: '1 1 80px' }}>
+                      <div key={item.label} style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px' }}>
                         <div style={{ fontSize: 16, fontWeight: 800, color: item.color ?? 'var(--text1)' }}>{fmtMoney(item.val)}</div>
-                        <div style={{ fontSize: 11, color: 'var(--text3)', fontWeight: 600 }}>{item.label}</div>
+                        <div style={{ fontSize: 12, color: 'var(--text3)', fontWeight: 600, marginTop: 2 }}>{item.label}</div>
                       </div>
                     ))}
                   </div>

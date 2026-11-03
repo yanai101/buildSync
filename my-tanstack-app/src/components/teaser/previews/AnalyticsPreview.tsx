@@ -38,12 +38,12 @@ export const AnalyticsPreview = () => {
               transition: 'background 0.15s, border-color 0.15s',
             }}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13, marginBottom: 6 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, fontSize: 13.5, marginBottom: 7 }}>
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontWeight: 700, color: 'var(--text1)' }}>
                 <span style={{ width: 10, height: 10, borderRadius: '50%', background: cat.color, flexShrink: 0 }} />
                 {cat.name}
               </span>
-              <span style={{ fontWeight: 800, color: 'var(--text1)' }}>
+              <span style={{ fontWeight: 800, color: 'var(--text1)', whiteSpace: 'nowrap' }}>
                 {fmtMoney(cat.value)} <span style={{ color: 'var(--text3)', fontWeight: 600, fontSize: 12 }}>({pct}%)</span>
               </span>
             </div>

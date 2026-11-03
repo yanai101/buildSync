@@ -955,6 +955,7 @@ body {
 }
 .bp-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
 .bp-input::placeholder { color: var(--text3); }
+select.bp-input { padding-inline-end: 32px; }
 [data-theme="dark"] .bp-input {
   box-shadow: none;
   color-scheme: dark;
@@ -1152,26 +1153,66 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
 .mobile-only { display: none !important; }
 
 /* ── FeatureTeaser (paywall preview) ─────────────────────────────────────────
-   Size-aware via container queries: stacked on narrow containers (upgrade
-   card first so the CTA is visible immediately), side-by-side with a sticky
-   upgrade card on wide containers. */
+   Size-aware via container queries: compact top upgrade card + full-width
+   interactive preview below so tables, charts, and cards get 100% of the
+   desktop page width while the upgrade CTA remains immediately visible at top. */
 .feature-teaser { container-type: inline-size; }
-.feature-teaser__layout { display: flex; flex-direction: column; gap: 16px; }
+.feature-teaser__layout { display: flex; flex-direction: column; gap: 18px; }
+.feature-teaser__card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.feature-teaser__card-main {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  flex: 1;
+}
+.feature-teaser__benefits {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+.feature-teaser__card-cta {
+  width: 100%;
+}
+.feature-teaser__preview-body {
+  padding: 14px;
+}
 .feature-teaser__bottom-cta { display: flex; }
-@container (min-width: 880px) {
-  .feature-teaser__layout {
-    display: grid;
-    grid-template-columns: minmax(300px, 360px) minmax(0, 1fr);
-    align-items: start;
-    gap: 20px;
+
+@container (min-width: 720px) {
+  .feature-teaser__card {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
   }
-  .feature-teaser__card { position: sticky; top: 16px; }
-  .feature-teaser__bottom-cta { display: none; }
+  .feature-teaser__benefits {
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 8px 18px;
+    padding-inline-start: 54px !important;
+  }
+  .feature-teaser__card-cta {
+    width: auto;
+    min-width: 220px;
+    flex-shrink: 0;
+  }
+  .feature-teaser__preview-body {
+    padding: 20px;
+  }
+  .feature-teaser__bottom-cta {
+    max-width: 360px;
+    align-self: center;
+    width: 100%;
+  }
 }
 
 /* Container-aware responsive data tables inside teaser previews */
 .teaser-table-wrap {
-  overflow: auto;
+  overflow-x: auto;
   max-inline-size: 100%;
   container-type: inline-size;
 }
@@ -1179,7 +1220,7 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
-  font-size: 13px;
+  font-size: 13.5px;
 }
 .teaser-table thead {
   position: sticky;
@@ -1189,14 +1230,21 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
 }
 .teaser-table th,
 .teaser-table td {
-  padding: 10px 12px;
+  padding: 13px 16px;
   text-align: right;
   border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+  line-height: 1.5;
+}
+.teaser-table tbody tr:last-child th,
+.teaser-table tbody tr:last-child td {
+  border-bottom: none;
 }
 .teaser-table thead th {
   font-size: 12px;
   font-weight: 700;
   color: var(--text2);
+  white-space: nowrap;
 }
 .teaser-table tbody th {
   position: sticky;
@@ -1204,8 +1252,12 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
   background: var(--surface);
   font-weight: 700;
   color: var(--text1);
+  min-width: 220px;
 }
-@container (width < 560px) {
+.teaser-table td {
+  white-space: nowrap;
+}
+@container (width < 640px) {
   .teaser-table,
   .teaser-table thead,
   .teaser-table tbody,
@@ -1218,9 +1270,9 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
     display: none;
   }
   .teaser-table tr {
-    margin-block-end: 10px;
+    margin-block-end: 12px;
     border: 1px solid var(--border);
-    border-radius: 10px;
+    border-radius: 12px;
     overflow: hidden;
     background: var(--surface);
   }
@@ -1229,18 +1281,22 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
     inset-block-start: 0;
     z-index: 2;
     background: var(--surface-2);
+    min-width: 0;
+    padding: 12px 14px;
   }
   .teaser-table td {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 8px;
-    padding: 8px 12px;
+    gap: 10px;
+    padding: 10px 14px;
+    white-space: normal;
   }
   .teaser-table td[data-label]::before {
     content: attr(data-label) ": ";
     font-weight: 600;
     color: var(--text2);
+    flex-shrink: 0;
   }
 }
 .mobile-block-only { display: none !important; }

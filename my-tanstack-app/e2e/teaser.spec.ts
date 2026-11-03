@@ -47,39 +47,50 @@ for (const colorScheme of ['light', 'dark'] as const) {
       const analytics = page.getByTestId('teaser-analytics-owner');
       await analytics.scrollIntoViewIfNeeded();
       await expect(analytics.getByText('₪2,450,000')).toBeVisible();
+      await analytics.screenshot({ path: testInfo.outputPath(`analytics-teaser-${colorScheme}.png`) });
       await analytics.getByRole('button', { name: 'הגדל התפלגות הוצאות לפי קטגוריה' }).click();
       await expect(page.getByRole('dialog')).toBeVisible();
       await page.keyboard.press('Escape');
 
-      // 3. BOQ teaser (switch rooms + toggle paid status locally)
+      // 3. BOQ teaser (switch rooms + toggle paid status locally + verify desktop width is not cramped)
       const boq = page.getByTestId('teaser-boq-owner');
       await boq.scrollIntoViewIfNeeded();
+      const viewport = page.viewportSize();
+      if (viewport && viewport.width >= 1024) {
+        const previewBox = await boq.locator('.feature-teaser__preview-body').boundingBox();
+        expect(previewBox?.width ?? 0).toBeGreaterThanOrEqual(800);
+      }
       await boq.getByLabel('בחירת חדר').selectOption('r_master_bath');
       await expect(boq.getByText('אסלה תלויה + מיכל הדחה סמוי')).toBeVisible();
+      await boq.screenshot({ path: testInfo.outputPath(`boq-teaser-${colorScheme}.png`) });
 
       // 4. BOQ Wizard teaser (+/- stepper + summary view)
       const wizard = page.getByTestId('teaser-boqwizard-owner');
       await wizard.scrollIntoViewIfNeeded();
       await wizard.getByRole('button', { name: 'הוסף שקע כוח מוגן מים' }).click();
       await expect(wizard.getByText("9 יח'").first()).toBeVisible();
+      await wizard.screenshot({ path: testInfo.outputPath(`wizard-teaser-${colorScheme}.png`) });
       await wizard.getByRole('button', { name: 'צפה ברשימת יבוא מרוכזת' }).click();
       await expect(wizard.getByText('רשימת יבוא מרוכזת')).toBeVisible();
 
       // 5. Daily Logs teaser (switch between daily log and history tab)
       const logs = page.getByTestId('teaser-dailylogs-owner');
       await logs.scrollIntoViewIfNeeded();
+      await logs.screenshot({ path: testInfo.outputPath(`logs-teaser-${colorScheme}.png`) });
       await logs.getByRole('tab', { name: /היסטוריית יומנים/ }).click();
       await expect(logs.getByText('דוחות נעולים').first()).toBeVisible();
 
       // 6. Orders teaser (filter by pending/partial)
       const orders = page.getByTestId('teaser-orders-owner');
       await orders.scrollIntoViewIfNeeded();
+      await orders.screenshot({ path: testInfo.outputPath(`orders-teaser-${colorScheme}.png`) });
       await orders.getByRole('button', { name: /בהמתנה לאספקה/ }).first().click();
       await expect(orders.getByText('חזי בנק')).toBeVisible();
 
       // 7. Permits teaser (open permit document preview modal)
       const permits = page.getByTestId('teaser-permits-owner');
       await permits.scrollIntoViewIfNeeded();
+      await permits.screenshot({ path: testInfo.outputPath(`permits-teaser-${colorScheme}.png`) });
       await permits.getByRole('button', { name: 'צפה במסמך' }).first().click();
       await expect(page.getByText('היתר_בנייה_חתום_2026.pdf')).toBeVisible();
       await page.keyboard.press('Escape');
@@ -90,6 +101,7 @@ for (const colorScheme of ['light', 'dark'] as const) {
       await expect(financing.getByText('משכנתא לבנייה עצמית — בנק לאומי')).toBeVisible();
       await financing.getByRole('button', { name: /הון עצמי/ }).click();
       await expect(financing.getByText('שימש לתשלומי אגרות, תכנון, ביסוס ומקדמות שלד')).toBeVisible();
+      await financing.screenshot({ path: testInfo.outputPath(`financing-teaser-${colorScheme}.png`) });
 
       // No upgrade popup has opened automatically during any of this interaction!
       await expect(page.getByRole('button', { name: /שדרג למנוי שנתי/ })).toHaveCount(0);

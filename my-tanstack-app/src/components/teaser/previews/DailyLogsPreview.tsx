@@ -167,16 +167,16 @@ export const DailyLogsPreview = () => {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           {/* Status & Weather bar */}
-          <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 12, background: 'var(--surface)', padding: '12px 16px', borderRadius: 12, border: '1px solid var(--border)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', fontSize: 13 }}>
-              <span style={{ fontWeight: 700, color: 'var(--text1)' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 14, background: 'var(--surface)', padding: '14px 18px', borderRadius: 12, border: '1px solid var(--border)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px 20px', flexWrap: 'wrap', fontSize: 13.5 }}>
+              <span style={{ fontWeight: 700, color: 'var(--text1)', display: 'inline-flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
                 <Icon n="calendar" s={14} c="var(--accent)" /> תאריך: {fmtDate(currentLog.date)}
               </span>
-              <span style={{ color: 'var(--text2)' }}>מזג אוויר: <strong>{currentLog.weather} · {currentLog.temperature}°C</strong></span>
-              <span style={{ color: 'var(--text2)' }}>סה"כ עובדים באתר: <strong>{totalWorkers}</strong></span>
+              <span style={{ color: 'var(--text2)', whiteSpace: 'nowrap' }}>מזג אוויר: <strong>{currentLog.weather} · {currentLog.temperature}°C</strong></span>
+              <span style={{ color: 'var(--text2)', whiteSpace: 'nowrap' }}>סה"כ עובדים באתר: <strong>{totalWorkers}</strong></span>
             </div>
             {currentLog.status === 'locked' ? (
-              <div style={{ background: 'rgba(16, 185, 129, 0.12)', color: 'var(--success)', padding: '5px 10px', borderRadius: 8, fontSize: 12, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <div style={{ background: 'rgba(16, 185, 129, 0.12)', color: 'var(--success)', padding: '6px 12px', borderRadius: 8, fontSize: 12.5, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
                 <Icon n="lock" s={13} /> דוח נעול וחתום
               </div>
             ) : (
@@ -187,14 +187,14 @@ export const DailyLogsPreview = () => {
           {/* Workforce */}
           <div className="card" style={{ overflow: 'hidden' }}>
             {sectionHeader(`כוח אדם באתר (${totalWorkers} עובדים)`, 'users')}
-            <div style={{ padding: 12, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 8 }}>
+            <div style={{ padding: 16, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
               {currentLog.workforce.map((w, i) => (
-                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg)', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 13 }}>
+                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, background: 'var(--bg)', padding: '10px 14px', borderRadius: 10, border: '1px solid var(--border)', fontSize: 13.5 }}>
                   <div>
                     <div style={{ fontWeight: 700, color: 'var(--text1)' }}>{w.role}</div>
-                    <div style={{ fontSize: 11, color: 'var(--text3)' }}>{w.contractor}</div>
+                    <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 2 }}>{w.contractor}</div>
                   </div>
-                  <span style={{ fontWeight: 800, color: 'var(--accent)', fontSize: 14 }}>{w.count} עובדים</span>
+                  <span style={{ fontWeight: 800, color: 'var(--accent)', fontSize: 14, whiteSpace: 'nowrap' }}>{w.count} עובדים</span>
                 </div>
               ))}
             </div>
@@ -203,9 +203,9 @@ export const DailyLogsPreview = () => {
           {/* Activities */}
           <div className="card" style={{ overflow: 'hidden' }}>
             {sectionHeader('פעילויות ועבודות שבוצעו', 'check-circle')}
-            <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
               {currentLog.activities.map((a, i) => (
-                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, padding: '8px 12px', background: 'var(--bg)', borderRadius: 8, border: '1px solid var(--border)', fontSize: 13 }}>
+                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 14, padding: '10px 14px', background: 'var(--bg)', borderRadius: 10, border: '1px solid var(--border)', fontSize: 13.5, lineHeight: 1.5 }}>
                   <span style={{ color: 'var(--text1)', fontWeight: 500 }}>{a.description}</span>
                   <Badge type={a.status === 'completed' ? 'done' : 'in_progress'}>
                     {a.status === 'completed' ? 'הושלם' : 'בביצוע'}
@@ -221,11 +221,11 @@ export const DailyLogsPreview = () => {
               {currentLog.deliveries.length > 0 && (
                 <div className="card" style={{ overflow: 'hidden' }}>
                   {sectionHeader('אספקות חומרים לאתר', 'clipboard')}
-                  <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13 }}>
+                  <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 10, fontSize: 13.5, lineHeight: 1.5 }}>
                     {currentLog.deliveries.map((d, i) => (
-                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text1)' }}>
+                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, color: 'var(--text1)', padding: '6px 0' }}>
                         <span><strong>{d.item}</strong> ({d.supplier})</span>
-                        <span style={{ fontWeight: 700, color: 'var(--accent)' }}>{d.quantity}</span>
+                        <span style={{ fontWeight: 700, color: 'var(--accent)', whiteSpace: 'nowrap' }}>{d.quantity}</span>
                       </div>
                     ))}
                   </div>
@@ -235,16 +235,16 @@ export const DailyLogsPreview = () => {
               {(currentLog.instructions.length > 0 || currentLog.issues.length > 0) && (
                 <div className="card" style={{ overflow: 'hidden' }}>
                   {sectionHeader('הנחיות מפקח וחריגות', 'alert-circle')}
-                  <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 8, fontSize: 13 }}>
+                  <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 10, fontSize: 13.5, lineHeight: 1.5 }}>
                     {currentLog.issues.map((iss, i) => (
-                      <div key={i} style={{ padding: '8px 10px', borderRadius: 8, background: 'var(--warning-light)', color: 'var(--text1)' }}>
+                      <div key={i} style={{ padding: '10px 12px', borderRadius: 8, background: 'var(--warning-light)', color: 'var(--text1)' }}>
                         <strong>חריגת איכות:</strong> {iss.description}
                       </div>
                     ))}
                     {currentLog.instructions.map((ins, i) => (
                       <div key={i} style={{ color: 'var(--text1)' }}>
                         <div>"{ins.text}"</div>
-                        <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>— {ins.givenBy}</div>
+                        <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 4 }}>— {ins.givenBy}</div>
                       </div>
                     ))}
                   </div>

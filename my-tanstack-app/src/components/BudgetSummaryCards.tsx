@@ -18,8 +18,8 @@ export function BudgetSummaryCards({ summary, style }: BudgetSummaryCardsProps) 
     <motion.div
       style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-        gap: 16,
+        gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+        gap: 14,
         ...style
       }}
       variants={{ show: { transition: { staggerChildren: 0.1 } } }}

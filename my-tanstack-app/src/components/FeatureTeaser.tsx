@@ -257,45 +257,48 @@ export const FeatureTeaser = ({
         <div
           className="feature-teaser__card"
           style={{
-            background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 20, padding: '20px 20px 18px',
-            boxShadow: '0 12px 30px rgba(0,0,0,0.10)', display: 'flex', flexDirection: 'column', gap: 12,
+            background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 20, padding: '20px 22px',
+            boxShadow: '0 10px 28px rgba(0,0,0,0.08)',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div
-              style={{
-                width: 40, height: 40, borderRadius: 12, flexShrink: 0, display: 'grid', placeItems: 'center', color: '#fff',
-                background: 'linear-gradient(135deg, #FBBF24 0%, #D97706 100%)', boxShadow: '0 6px 14px rgba(217,119,6,0.3)',
-              }}
-            >
-              <Icon n="lock" s={18} />
+          <div className="feature-teaser__card-main">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div
+                style={{
+                  width: 42, height: 42, borderRadius: 12, flexShrink: 0, display: 'grid', placeItems: 'center', color: '#fff',
+                  background: 'linear-gradient(135deg, #FBBF24 0%, #D97706 100%)', boxShadow: '0 6px 14px rgba(217,119,6,0.3)',
+                }}
+              >
+                <Icon n="lock" s={18} />
+              </div>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <span style={{ display: 'inline-block', fontSize: 10.5, fontWeight: 800, letterSpacing: '.4px', color: '#fff', background: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)', borderRadius: 999, padding: '2px 9px' }}>
+                    {tierLabel}
+                  </span>
+                  <h3 id={headingId} style={{ margin: 0, fontSize: 18, fontWeight: 800, color: 'var(--text1)' }}>{title}</h3>
+                </div>
+                <p style={{ margin: '4px 0 0', fontSize: 13.5, color: 'var(--text2)', lineHeight: 1.55 }}>{description}</p>
+              </div>
             </div>
-            <div style={{ minWidth: 0 }}>
-              <span style={{ display: 'inline-block', fontSize: 10, fontWeight: 800, letterSpacing: '.4px', color: '#fff', background: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)', borderRadius: 999, padding: '1px 8px' }}>
-                {tierLabel}
-              </span>
-              <h3 id={headingId} style={{ margin: '4px 0 0', fontSize: 18, fontWeight: 800, color: 'var(--text1)' }}>{title}</h3>
-            </div>
+
+            <ul className="feature-teaser__benefits" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+              {benefits.map((b) => (
+                <li key={b} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 13.5, color: 'var(--text1)', lineHeight: 1.45 }}>
+                  <span style={{ color: 'var(--success, #10B981)', display: 'inline-flex', marginTop: 2, flexShrink: 0 }}>
+                    <Icon n="check" s={15} />
+                  </span>
+                  <span>{b}</span>
+                </li>
+              ))}
+            </ul>
           </div>
 
-          <p style={{ margin: 0, fontSize: 14, color: 'var(--text2)', lineHeight: 1.6 }}>{description}</p>
-
-          <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {benefits.map((b) => (
-              <li key={b} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 14, color: 'var(--text1)', lineHeight: 1.45 }}>
-                <span style={{ color: 'var(--success, #10B981)', display: 'inline-flex', marginTop: 2, flexShrink: 0 }}>
-                  <Icon n="check" s={16} />
-                </span>
-                {b}
-              </li>
-            ))}
-          </ul>
-
-          <div style={{ marginTop: 4 }}>{cta}</div>
+          <div className="feature-teaser__card-cta">{cta}</div>
         </div>
 
         {/* Preview */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14, minWidth: 0 }}>
           <div
             style={{
               position: 'relative', border: '2px dashed var(--accent)', borderRadius: 16, background: 'var(--bg)', overflow: 'hidden',
@@ -304,17 +307,17 @@ export const FeatureTeaser = ({
           >
             {demoBanner('top')}
             {interactive ? (
-              <div style={{ padding: 14 }}>{preview}</div>
+              <div className="feature-teaser__preview-body">{preview}</div>
             ) : (
               <>
-                <div aria-hidden="true" inert style={{ padding: 14, pointerEvents: 'none', userSelect: 'none' }}>{preview}</div>
+                <div aria-hidden="true" inert className="feature-teaser__preview-body" style={{ pointerEvents: 'none', userSelect: 'none' }}>{preview}</div>
                 <div aria-hidden="true" style={{ position: 'absolute', insetInline: 0, bottom: 0, height: '35%', background: 'linear-gradient(180deg, transparent 0%, var(--bg) 95%)' }} />
               </>
             )}
             {interactive && demoBanner('bottom')}
           </div>
 
-          {/* Narrow screens: repeat the CTA after the demo (hidden on wide layouts, where the card is sticky). */}
+          {/* Repeat CTA after the demo so users who scrolled through the interactive preview can upgrade right away. */}
           {canPurchase && (
             <div className="feature-teaser__bottom-cta" style={{ flexDirection: 'column', gap: 8 }}>{cta}</div>
           )}
