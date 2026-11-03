@@ -25,7 +25,7 @@ import { api } from '../../convex/_generated/api';
 import html2pdf from 'html2pdf.js';
 import { BOQPrintTemplate } from '../components/BOQPrintTemplate';
 import { useProjectFileUploader } from '../hooks/useProjectFileUploader';
-import { getCatalogForRoom } from '../data/boqCatalog';
+import { getCatalogForRoom, getAllCatalogItems, adaptCategoryForRoom, getCategoriesForRoomType } from '../data/boqCatalog';
 import { useRequireRole } from '../hooks/useRequireRole';
 import { AccessDenied, AccessLoading } from '../components/AccessDenied';
 import type { Id } from '../../convex/_generated/dataModel';
@@ -38,7 +38,7 @@ import { getFloorLabel } from './ProjectSetupScreen';
 
 // Smart-suggestion auto-population was removed — new rooms start empty
 // (only the locked flooring/wall-tile rows appear, see ensureLockedRows).
-// The catalog (`AddItemWidget`) is still available for the user to add items
+// The catalog (`ItemDialog`) is still available for the user to add items
 // manually.
 
 const getRoomDbId = (room: any) => room?._id ?? room?.uid;
@@ -160,43 +160,112 @@ const isLegacyAutoDuplicate = (item: any, firstItem: any) => {
   return true;
 };
 
-const AddItemWidget = ({
-  roomUid, roomType, existingItems, onAdd, projectId, uploadProjectFile, globalCategories
+type ItemDialogState = { mode: 'add' } | { mode: 'edit'; roomUid: string; item: any } | null;
+
+const UNIT_OPTIONS = ["יח'", "מ'", 'מ"ר', "קומפ'", "ק\"ג", "סט"];
+
+const ItemDialog = ({
+  dialog, onClose, roomType, existingItems, projectItems, projectCategories, onAdd, onEdit, projectId, uploadProjectFile, globalCategories
 }: {
-  roomUid: string;
+  dialog: ItemDialogState;
+  onClose: () => void;
   roomType: string;
   existingItems: any[];
+  projectItems: any[];
+  projectCategories: string[];
   onAdd: (item: any) => Promise<void>;
+  onEdit: (roomUid: string, itemId: string, patch: any) => Promise<void>;
   projectId: Id<'projects'> | null;
   uploadProjectFile: any;
   globalCategories: string[];
 }) => {
-  const [open, setOpen] = React.useState(false);
-  const [query, setQuery] = React.useState("");
+  const [picked, setPicked] = React.useState(false);
   const [pendingItem, setPendingItem] = React.useState<any>(null);
   const [imagePreview, setImagePreview] = React.useState<string | null>(null);
   const [uploading, setUploading] = React.useState(false);
   const [savingItem, setSavingItem] = React.useState(false);
   const [imageUploadError, setImageUploadError] = React.useState<string | null>(null);
+  const [formError, setFormError] = React.useState<string | null>(null);
+  const [catDropdownOpen, setCatDropdownOpen] = React.useState(false);
+
+  const allUniqueCategories = React.useMemo(() => {
+    return Array.from(new Set([...projectCategories, ...getCategoriesForRoomType(roomType), ...globalCategories]));
+  }, [projectCategories, roomType, globalCategories]);
+
+  const filteredCategoryOptions = React.useMemo(() => {
+    const q = (pendingItem?.cat || '').trim().toLowerCase();
+    if (!q) return allUniqueCategories;
+    return allUniqueCategories.filter(c => c.toLowerCase().includes(q));
+  }, [allUniqueCategories, pendingItem?.cat]);
+
+  const filteredCategoryChips = React.useMemo(() => {
+    const q = (pendingItem?.cat || '').trim().toLowerCase();
+    if (!q) return allUniqueCategories.slice(0, 16);
+    return allUniqueCategories.filter(c => c.toLowerCase().includes(q)).slice(0, 16);
+  }, [allUniqueCategories, pendingItem?.cat]);
   const inputRef = React.useRef<HTMLInputElement>(null);
   const imgInputRef = React.useRef<HTMLInputElement>(null);
 
-  const catalog = getCatalogForRoom(roomType);
-  const existingNames = existingItems.map(i=>i.name.trim().toLowerCase());
-  const allSuggestions = query.trim().length >= 1
-    ? catalog.filter(c => c.name.includes(query.trim())).slice(0, 8)
-    : [];
+  const isEdit = dialog?.mode === 'edit';
 
-  const close = () => { setOpen(false); setQuery(""); setPendingItem(null); setImagePreview(null); setImageUploadError(null); };
+  // Reset / hydrate every time the dialog opens or switches target.
+  React.useEffect(() => {
+    setPicked(false);
+    setImageUploadError(null);
+    setFormError(null);
+    setSavingItem(false);
+    if (dialog?.mode === 'edit') {
+      const it = dialog.item;
+      setPendingItem({
+        id: it.id, cat: it.cat ?? '', name: it.name ?? '', qty: it.userQty ?? it.qty ?? 1,
+        unit: it.unit || "יח'", notes: it.notes ?? '', imageUrl: it.imageUrl ?? null,
+        projectFileId: it.projectFileId,
+      });
+      setImagePreview(it.imageUrl ?? null);
+    } else {
+      setImagePreview(null);
+      if (dialog) {
+        setPendingItem({ id: `cat_${Date.now()}`, cat: '', name: '', qty: 1, unit: "יח'", notes: '', imageUrl: null });
+        setTimeout(() => inputRef.current?.focus(), 50);
+      } else {
+        setPendingItem(null);
+      }
+    }
+  }, [dialog]);
+
+  const norm = (s: string) => s.trim().toLowerCase();
+  const existingNames = existingItems.map(i => norm(i.name));
+  const suggestions = React.useMemo(() => {
+    const q = String(pendingItem?.name ?? '').trim();
+    if (isEdit || picked || !q) return [] as any[];
+    const roomCatalog = getCatalogForRoom(roomType);
+    const seen = new Set<string>();
+    const out: any[] = [];
+    // Room-specific first, then every other catalog item, then free items typed elsewhere in the project.
+    for (const c of [...roomCatalog, ...getAllCatalogItems(), ...projectItems]) {
+      const key = norm(c.name);
+      if (seen.has(key) || !c.name.includes(q)) continue;
+      seen.add(key);
+      out.push(c);
+      if (out.length >= 10) break;
+    }
+    return out;
+  }, [pendingItem?.name, picked, isEdit, roomType, projectItems]);
 
   const selectItem = (item: any) => {
-    setPendingItem({id:`cat_${Date.now()}`, cat:item.cat, name:item.name, qty:item.qty, unit:item.unit, userQty:item.qty, imageUrl: null, notes: '', isCustom: item.isCustom});
+    setPicked(true);
+    setPendingItem((p: any) => ({
+      ...p,
+      name: item.name,
+      cat: adaptCategoryForRoom({ name: item.name, cat: item.cat || '' }, roomType),
+      qty: item.qty ?? 1,
+      unit: item.unit || "יח'",
+    }));
   };
 
   const handleImagePick = async (file: File | null) => {
     if (!file) return;
     setImageUploadError(null);
-    // Show local preview immediately
     const localUrl = URL.createObjectURL(file);
     setImagePreview(localUrl);
     if (!projectId || !uploadProjectFile) {
@@ -207,198 +276,424 @@ const AddItemWidget = ({
     setUploading(true);
     try {
       const uploaded = await uploadProjectFile({ projectId, file, usage: 'document', kind: 'image' });
-      // We don't have a URL back from uploader directly; store fileId and use local preview for now
       setPendingItem((prev: any) => prev ? {...prev, imageUrl: localUrl, projectFileId: uploaded.fileId} : prev);
     } catch {
       setPendingItem((prev: any) => prev ? {...prev, imageUrl: null, projectFileId: undefined} : prev);
-      setImageUploadError("העלאת התמונה נכשלה. נסה שוב או הסר את התמונה לפני ההוספה.");
+      setImageUploadError("העלאת התמונה נכשלה. נסה שוב או הסר את התמונה לפני השמירה.");
     } finally {
       setUploading(false);
     }
   };
 
-  const confirmAdd = async () => {
-    if (!pendingItem) return;
+  const confirm = async () => {
+    if (!pendingItem || !dialog) return;
+    const name = String(pendingItem.name || '').trim();
+    if (!name) { setFormError('יש להזין שם פריט'); return; }
+    const qty = Math.max(0, Number(pendingItem.qty) || 0);
+    const payload = {
+      ...pendingItem, name, qty, userQty: qty,
+      cat: pendingItem.cat?.trim() || 'כללי',
+      unit: pendingItem.unit?.trim() || "יח'",
+    };
     setSavingItem(true);
     try {
-      await onAdd({ ...pendingItem, cat: pendingItem.cat?.trim() || 'כללי' });
-      close();
+      if (dialog.mode === 'edit') await onEdit(dialog.roomUid, dialog.item.id, payload);
+      else await onAdd(payload);
+      onClose();
+    } catch {
+      /* the screen already surfaces an error modal */
     } finally {
       setSavingItem(false);
     }
   };
 
+  if (!dialog) return null;
+  const busy = uploading || savingItem;
+
   return (
-    <>
-      <button
-        onClick={() => { setOpen(true); setTimeout(() => inputRef.current?.focus(), 50); }}
-        style={{
-          display:"flex", alignItems:"center", gap:8,
-          padding:"8px 18px", borderRadius:10,
-          border:"1.5px solid var(--accent)",
-          background:"var(--accent-light)", color:"var(--accent)",
-          fontWeight:700, fontSize:14, cursor:"pointer",
-        }}
-      >
-        <Icon n="plus" s={15}/> הוסף פריט
-      </button>
+    <div
+      onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+      style={{ position:"fixed", inset:0, zIndex:200, background:"rgba(0,0,0,0.4)", display:"flex", alignItems:"center", justifyContent:"center" }}
+    >
+      <div style={{
+        background:"var(--surface)", borderRadius:20, width:480, maxWidth:"94vw", maxHeight:"92vh", overflowY:"auto",
+        boxShadow:"0 24px 64px rgba(0,0,0,0.2)", padding:28, display:"flex", flexDirection:"column", gap:16,
+      }}>
+        <div style={{display:"flex", justifyContent:"space-between", alignItems:"center"}}>
+          <span style={{fontWeight:800, fontSize:17}}>
+            {isEdit ? "עריכת פריט" : "הוספת פריט לחדר"}
+          </span>
+          <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",color:"var(--text3)"}}>
+            <Icon n="x" s={18}/>
+          </button>
+        </div>
 
-      {open && (
-        <div
-          onClick={e => { if (e.target === e.currentTarget) close(); }}
-          style={{
-            position:"fixed", inset:0, zIndex:200,
-            background:"rgba(0,0,0,0.4)",
-            display:"flex", alignItems:"center", justifyContent:"center",
-          }}
-        >
-          <div style={{
-            background:"var(--surface)", borderRadius:20, width:480, maxWidth:"94vw",
-            boxShadow:"0 24px 64px rgba(0,0,0,0.2)",
-            padding:28, display:"flex", flexDirection:"column", gap:16,
-          }}>
-            {/* Header */}
-            <div style={{display:"flex", justifyContent:"space-between", alignItems:"center"}}>
-              <span style={{fontWeight:800, fontSize:17}}>
-                {pendingItem ? pendingItem.name : "הוספת פריט לחדר"}
-              </span>
-              <button onClick={close} style={{background:"none",border:"none",cursor:"pointer",color:"var(--text3)"}}>
-                <Icon n="x" s={18}/>
-              </button>
-            </div>
-
-            {!pendingItem ? (
-              <>
-                {/* Search */}
-                <input
-                  ref={inputRef}
-                  className="bp-input"
-                  value={query}
-                  onChange={e => setQuery(e.target.value)}
-                  placeholder="חפש בקטלוג או הקלד שם פריט..."
-                  style={{fontSize:15}}
-                />
-                <div style={{maxHeight:260, overflowY:"auto", border:"1px solid var(--border)", borderRadius:10}}>
-                  {allSuggestions.length > 0 ? allSuggestions.map((s,i) => {
-                    const alreadyInRoom = existingNames.includes(s.name.trim().toLowerCase());
+        {pendingItem && (
+          <>
+            <div style={{display:"flex",flexDirection:"column",gap:6}}>
+              <label style={{fontSize:13,fontWeight:600,color:"var(--text2)"}}>שם פריט *</label>
+              <input
+                ref={inputRef}
+                className="bp-input"
+                value={pendingItem.name}
+                onChange={e => { setPicked(false); setPendingItem((p:any) => ({...p, name: e.target.value})); }}
+                placeholder={isEdit ? "" : "הקלד שם פריט או חפש בקטלוג..."}
+                style={{fontSize:14}}
+              />
+              {suggestions.length > 0 && (
+                <div style={{maxHeight:200, overflowY:"auto", border:"1px solid var(--border)", borderRadius:10}}>
+                  {suggestions.map((sg, i) => {
+                    const alreadyInRoom = existingNames.includes(norm(sg.name));
                     return (
-                    <div
-                      key={i}
-                      onClick={() => selectItem(s)}
-                      style={{padding:"11px 16px",cursor:"pointer",fontSize:14,borderBottom:"1px solid var(--border)",display:"flex",alignItems:"center",justifyContent:"space-between"}}
-                      onMouseEnter={e => (e.currentTarget.style.background="var(--accent-light)")}
-                      onMouseLeave={e => (e.currentTarget.style.background="transparent")}
-                    >
-                      <div style={{display:"flex",alignItems:"center",gap:8}}>
-                        <span style={{fontWeight:600}}>{s.name}</span>
-                        {alreadyInRoom && (
-                          <span style={{fontSize:11,color:"var(--accent)",background:"var(--accent-light)",borderRadius:6,padding:"1px 6px",fontWeight:700}}>
-                            כבר בחדר
-                          </span>
+                      <div
+                        key={i}
+                        onClick={() => selectItem(sg)}
+                        style={{padding:"9px 14px",cursor:"pointer",fontSize:14,borderBottom:"1px solid var(--border)",display:"flex",alignItems:"center",justifyContent:"space-between"}}
+                        onMouseEnter={e => (e.currentTarget.style.background="var(--accent-light)")}
+                        onMouseLeave={e => (e.currentTarget.style.background="transparent")}
+                      >
+                        <div style={{display:"flex",alignItems:"center",gap:8}}>
+                          <span style={{fontWeight:600}}>{sg.name}</span>
+                          {alreadyInRoom && (
+                            <span style={{fontSize:11,color:"var(--accent)",background:"var(--accent-light)",borderRadius:6,padding:"1px 6px",fontWeight:700}}>כבר בחדר</span>
+                          )}
+                        </div>
+                        <span style={{fontSize:12,color:"var(--text3)",background:"var(--border)",borderRadius:6,padding:"2px 8px"}}>{adaptCategoryForRoom({ name: sg.name, cat: sg.cat }, roomType)}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+            <div style={{display:"flex",flexDirection:"column",gap:6,position:"relative"}}>
+              <label style={{fontSize:13,fontWeight:600,color:"var(--text2)"}}>קטגוריה</label>
+              <div style={{position:"relative"}}>
+                <input
+                  className="bp-input"
+                  value={pendingItem.cat}
+                  onChange={e => {
+                    setCatDropdownOpen(true);
+                    setPendingItem((p:any) => ({...p, cat: e.target.value}));
+                  }}
+                  onFocus={() => setCatDropdownOpen(true)}
+                  onBlur={() => setTimeout(() => setCatDropdownOpen(false), 200)}
+                  placeholder="בחר או הקלד קטגוריה..."
+                  style={{fontSize:14,width:"100%"}}
+                />
+                {catDropdownOpen && (
+                  <div
+                    style={{
+                      position:"absolute",
+                      top:"calc(100% + 4px)",
+                      right:0,
+                      left:0,
+                      zIndex:50,
+                      background:"var(--surface)",
+                      border:"1px solid var(--border)",
+                      borderRadius:10,
+                      boxShadow:"var(--shadow-lg)",
+                      maxHeight:220,
+                      overflowY:"auto",
+                    }}
+                  >
+                    {filteredCategoryOptions.map(option => (
+                      <div
+                        key={option}
+                        onMouseDown={e => {
+                          e.preventDefault();
+                          setPendingItem((p:any) => ({...p, cat: option}));
+                          setCatDropdownOpen(false);
+                        }}
+                        style={{
+                          padding:"9px 12px",
+                          fontSize:13,
+                          cursor:"pointer",
+                          borderBottom:"1px solid var(--border)",
+                          background: pendingItem.cat === option ? "var(--accent-light)" : "transparent",
+                          color: pendingItem.cat === option ? "var(--accent)" : "var(--text1)",
+                          fontWeight: pendingItem.cat === option ? 700 : 500,
+                          display:"flex",
+                          justifyContent:"space-between",
+                          alignItems:"center",
+                        }}
+                        onMouseEnter={e => (e.currentTarget.style.background = "var(--accent-light)")}
+                        onMouseLeave={e => (e.currentTarget.style.background = pendingItem.cat === option ? "var(--accent-light)" : "transparent")}
+                      >
+                        <span>{option}</span>
+                        {projectCategories.includes(option) && (
+                          <span style={{fontSize:11,color:"var(--accent)",opacity:0.8}}>בשימוש בפרויקט</span>
                         )}
                       </div>
-                      <span style={{fontSize:12,color:"var(--text3)",background:"var(--border)",borderRadius:6,padding:"2px 8px"}}>{s.cat}</span>
-                    </div>
-                    );
-                  }) : (
-                    <div style={{padding:"14px 16px",fontSize:13,color:"var(--text3)"}}>
-                      {query.trim().length === 0 ? "התחל להקליד כדי לחפש..." : "לא נמצאו תוצאות. תוכל להוסיף כפריט חופשי."}
-                    </div>
-                  )}
-                </div>
-                {query.trim() && !allSuggestions.some(s => s.name === query.trim()) && (
-                  <button
-                    onClick={() => selectItem({cat:"",name:query.trim(),qty:1,unit:"יח'",userQty:1,isCustom:true})}
-                    style={{padding:"10px",borderRadius:10,border:"2px dashed var(--accent)",background:"var(--accent-light)",color:"var(--accent)",fontWeight:700,fontSize:14,cursor:"pointer"}}
-                  >
-                    <Icon n="plus" s={14}/> הוסף "{query.trim()}" כפריט חופשי
-                  </button>
-                )}
-              </>
-            ) : (
-              <>
-                {pendingItem.isCustom && (
-                  <div style={{display:"flex",flexDirection:"column",gap:6}}>
-                    <label style={{fontSize:13,fontWeight:600,color:"var(--text2)"}}>קטגוריה *</label>
-                    <input
-                      className="bp-input"
-                      value={pendingItem.cat}
-                      onChange={e => setPendingItem((prev:any)=>({...prev,cat:e.target.value}))}
-                      list="global-categories"
-                      placeholder="כללי (ברירת מחדל)"
-                      style={{fontSize:14}}
-                    />
-                    <datalist id="global-categories">
-                      {globalCategories.map(c => <option key={c} value={c} />)}
-                    </datalist>
-                  </div>
-                )}
-                {/* Image upload area */}
-                <input
-                  ref={imgInputRef}
-                  type="file"
-                  accept="image/*"
-                  style={{display:"none"}}
-                  onChange={e => { handleImagePick(e.target.files?.[0] ?? null); e.currentTarget.value=""; }}
-                />
-                {imagePreview ? (
-                  <div style={{position:"relative",borderRadius:12,overflow:"hidden",height:160}}>
-                    <img src={imagePreview} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>
-                    {uploading && (
-                      <div style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.45)",display:"flex",alignItems:"center",justifyContent:"center"}}>
-                        <Icon n="loader" s={28} c="#fff"/>
+                    ))}
+                    {pendingItem.cat.trim() && !allUniqueCategories.some(c => c.toLowerCase() === pendingItem.cat.trim().toLowerCase()) && (
+                      <div
+                        onMouseDown={e => {
+                          e.preventDefault();
+                          setCatDropdownOpen(false);
+                        }}
+                        style={{
+                          padding:"10px 12px",
+                          fontSize:13,
+                          fontWeight:700,
+                          color:"var(--accent)",
+                          cursor:"pointer",
+                          background:"var(--accent-light)",
+                        }}
+                      >
+                        + שימוש בקטגוריה חדשה: "{pendingItem.cat.trim()}"
                       </div>
                     )}
+                    {filteredCategoryOptions.length === 0 && !pendingItem.cat.trim() && (
+                      <div style={{padding:"10px 12px",fontSize:13,color:"var(--text3)"}}>אין קטגוריות להצגה</div>
+                    )}
+                  </div>
+                )}
+              </div>
+              {filteredCategoryChips.length > 0 && (
+                <div style={{display:"flex",flexWrap:"wrap",gap:6,maxHeight:80,overflowY:"auto",marginTop:4}}>
+                  {filteredCategoryChips.map(c => (
                     <button
-                      onClick={() => { setImagePreview(null); setImageUploadError(null); setPendingItem((p:any)=>({...p, imageUrl:null, projectFileId:undefined})); }}
-                      style={{position:"absolute",top:8,left:8,background:"rgba(0,0,0,0.55)",border:"none",borderRadius:"50%",width:28,height:28,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",color:"#fff"}}
+                      key={c}
+                      type="button"
+                      onMouseDown={e => {
+                        e.preventDefault();
+                        setPendingItem((p:any) => ({...p, cat: c}));
+                      }}
+                      style={{
+                        fontSize:12,
+                        padding:"3px 10px",
+                        borderRadius:999,
+                        cursor:"pointer",
+                        fontWeight:600,
+                        border:`1px solid ${pendingItem.cat === c ? "var(--accent)" : "var(--border)"}`,
+                        background: pendingItem.cat === c ? "var(--accent-light)" : "var(--surface)",
+                        color: pendingItem.cat === c ? "var(--accent)" : "var(--text2)",
+                        transition:"all .15s",
+                      }}
                     >
-                      <Icon n="x" s={13} c="#fff"/>
+                      {c}
                     </button>
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => imgInputRef.current?.click()}
-                    style={{width:"100%",height:120,border:"2px dashed var(--border)",borderRadius:12,background:"var(--surface)",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:8,color:"var(--text3)",fontSize:14}}
-                  >
-                    <Icon n="camera" s={24} c="var(--text3)"/>
-                    <span>הוסף תמונה לפריט <span style={{fontSize:12}}>(אופציונלי)</span></span>
-                    <span style={{fontSize:11,color:"var(--text3)"}}>נשמר כ-AVIF לחיסכון בנפח</span>
-                  </button>
-                )}
-                {imageUploadError && (
-                  <div style={{fontSize:12,color:"var(--danger)",lineHeight:1.5}}>
-                    {imageUploadError}
-                  </div>
-                )}
-                <textarea
-                  value={pendingItem.notes ?? ''}
-                  placeholder="הערות לפריט (אופציונלי)"
-                  onChange={e => setPendingItem((prev: any) => prev ? { ...prev, notes: e.target.value } : prev)}
-                  rows={3}
-                  style={{width:"100%",resize:"vertical",fontFamily:"'Heebo',sans-serif",fontSize:13,padding:"8px 10px",border:"1px solid var(--border)",borderRadius:10,background:"var(--surface)",color:"var(--text1)"}}
-                />
-                <div style={{display:"flex",gap:10}}>
-                  <button
-                    onClick={() => setPendingItem(null)}
-                    style={{flex:1,padding:"11px",borderRadius:10,border:"1px solid var(--border)",background:"var(--surface)",cursor:"pointer",fontSize:14,fontWeight:600,color:"var(--text2)"}}
-                  >
-                    חזרה
-                  </button>
-                  <button
-                    onClick={confirmAdd}
-                    disabled={uploading || savingItem || !!imageUploadError}
-                    style={{flex:2,padding:"11px",borderRadius:10,border:"none",background:"var(--accent)",color:"#fff",cursor:(uploading || savingItem || imageUploadError)?"wait":"pointer",fontSize:14,fontWeight:700,opacity:(uploading || savingItem || imageUploadError)?0.7:1}}
-                  >
-                    {uploading ? "מעלה תמונה..." : savingItem ? "שומר פריט..." : "הוסף פריט"}
-                  </button>
+                  ))}
                 </div>
-              </>
+              )}
+            </div>
+            <div style={{display:"flex",gap:10}}>
+              <div style={{display:"flex",flexDirection:"column",gap:6,flex:1}}>
+                <label style={{fontSize:13,fontWeight:600,color:"var(--text2)"}}>כמות</label>
+                <input
+                  className="bp-input"
+                  type="number"
+                  min={0}
+                  value={pendingItem.qty}
+                  onChange={e => setPendingItem((p:any) => ({...p, qty: e.target.value}))}
+                  style={{fontSize:14}}
+                />
+              </div>
+              <div style={{display:"flex",flexDirection:"column",gap:6,flex:1}}>
+                <label style={{fontSize:13,fontWeight:600,color:"var(--text2)"}}>יחידה</label>
+                <input
+                  className="bp-input"
+                  value={pendingItem.unit}
+                  onChange={e => setPendingItem((p:any) => ({...p, unit: e.target.value}))}
+                  list="boq-units"
+                  style={{fontSize:14}}
+                />
+                <datalist id="boq-units">
+                  {UNIT_OPTIONS.map(u => <option key={u} value={u} />)}
+                </datalist>
+              </div>
+            </div>
+            <input
+              ref={imgInputRef}
+              type="file"
+              accept="image/*"
+              style={{display:"none"}}
+              onChange={e => { handleImagePick(e.target.files?.[0] ?? null); e.currentTarget.value=""; }}
+            />
+            {imagePreview ? (
+              <div style={{position:"relative",borderRadius:12,overflow:"hidden",height:160}}>
+                <img src={imagePreview} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>
+                {uploading && (
+                  <div style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.45)",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                    <Icon n="loader" s={28} c="#fff"/>
+                  </div>
+                )}
+                <button
+                  onClick={() => { setImagePreview(null); setImageUploadError(null); setPendingItem((p:any)=>({...p, imageUrl:null, projectFileId:undefined})); }}
+                  style={{position:"absolute",top:8,left:8,background:"rgba(0,0,0,0.55)",border:"none",borderRadius:"50%",width:28,height:28,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",color:"#fff"}}
+                >
+                  <Icon n="x" s={13} c="#fff"/>
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => imgInputRef.current?.click()}
+                style={{width:"100%",height:120,border:"2px dashed var(--border)",borderRadius:12,background:"var(--surface)",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:8,color:"var(--text3)",fontSize:14}}
+              >
+                <Icon n="camera" s={24} c="var(--text3)"/>
+                <span>הוסף תמונה לפריט <span style={{fontSize:12}}>(אופציונלי)</span></span>
+                <span style={{fontSize:11,color:"var(--text3)"}}>נשמר כ-AVIF לחיסכון בנפח</span>
+              </button>
             )}
-          </div>
+            {imageUploadError && (
+              <div style={{fontSize:12,color:"var(--danger)",lineHeight:1.5}}>{imageUploadError}</div>
+            )}
+            <textarea
+              value={pendingItem.notes ?? ''}
+              placeholder="הערות לפריט (אופציונלי)"
+              onChange={e => setPendingItem((prev: any) => prev ? { ...prev, notes: e.target.value } : prev)}
+              rows={3}
+              style={{width:"100%",resize:"vertical",fontFamily:"'Heebo',sans-serif",fontSize:13,padding:"8px 10px",border:"1px solid var(--border)",borderRadius:10,background:"var(--surface)",color:"var(--text1)"}}
+            />
+            {formError && <div style={{fontSize:12,color:"var(--danger)",fontWeight:600}}>{formError}</div>}
+            <div style={{display:"flex",gap:10}}>
+              <button
+                onClick={onClose}
+                style={{flex:1,padding:"11px",borderRadius:10,border:"1px solid var(--border)",background:"var(--surface)",cursor:"pointer",fontSize:14,fontWeight:600,color:"var(--text2)"}}
+              >
+                ביטול
+              </button>
+              <button
+                onClick={confirm}
+                disabled={busy || !!imageUploadError}
+                style={{flex:2,padding:"11px",borderRadius:10,border:"none",background:"var(--accent)",color:"#fff",cursor:(busy || imageUploadError)?"wait":"pointer",fontSize:14,fontWeight:700,opacity:(busy || imageUploadError)?0.7:1}}
+              >
+                {uploading ? "מעלה תמונה..." : savingItem ? "שומר..." : isEdit ? "שמור שינויים" : "הוסף פריט"}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const CopyFromRoomDialog = ({
+  open, onClose, rooms, currentRoom, allItems, onCopy
+}: {
+  open: boolean;
+  onClose: () => void;
+  rooms: any[];
+  currentRoom: any;
+  allItems: Record<string, any[]>;
+  onCopy: (items: any[]) => Promise<void>;
+}) => {
+  const norm = (s: string) => s.trim().toLowerCase();
+  const copyable = (uid: string) => (allItems[uid] || []).filter((i: any) => i.isLocked !== true);
+  const sourceRooms = rooms.filter(r => r.uid !== currentRoom?.uid && copyable(r.uid).length > 0);
+
+  const [sourceUid, setSourceUid] = React.useState("");
+  const [sel, setSel] = React.useState<Record<string, { checked: boolean; qty: number | string }>>({});
+  const [saving, setSaving] = React.useState(false);
+
+  const targetNames = React.useMemo(
+    () => new Set((allItems[currentRoom?.uid] || []).map((i: any) => norm(i.name))),
+    [allItems, currentRoom?.uid]
+  );
+
+  // Pick a default source when opened: same room type first.
+  React.useEffect(() => {
+    if (!open) return;
+    const same = sourceRooms.find(r => r.type === currentRoom?.type);
+    setSourceUid((same ?? sourceRooms[0])?.uid ?? "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, currentRoom?.uid]);
+
+  React.useEffect(() => {
+    if (!open || !sourceUid) { setSel({}); return; }
+    const next: Record<string, { checked: boolean; qty: number | string }> = {};
+    copyable(sourceUid).forEach((i: any) => {
+      next[i.id] = { checked: !targetNames.has(norm(i.name)), qty: i.userQty ?? i.qty ?? 1 };
+    });
+    setSel(next);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, sourceUid]);
+
+  if (!open) return null;
+  const sourceItems = sourceUid ? copyable(sourceUid) : [];
+  const selectedCount = sourceItems.filter(i => sel[i.id]?.checked).length;
+  const setAll = (checked: boolean) =>
+    setSel(prev => Object.fromEntries(Object.entries(prev).map(([k, v]) => [k, { ...v, checked }])));
+
+  const doCopy = async () => {
+    const chosen = sourceItems.filter(i => sel[i.id]?.checked).map(i => ({
+      cat: i.cat, name: i.name, unit: i.unit, notes: i.notes ?? '',
+      qty: Math.max(0, Number(sel[i.id].qty) || 0),
+    }));
+    if (!chosen.length) return;
+    setSaving(true);
+    try { await onCopy(chosen); onClose(); } finally { setSaving(false); }
+  };
+
+  return (
+    <div
+      onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+      style={{ position:"fixed", inset:0, zIndex:200, background:"rgba(0,0,0,0.4)", display:"flex", alignItems:"center", justifyContent:"center" }}
+    >
+      <div style={{ background:"var(--surface)", borderRadius:20, width:560, maxWidth:"94vw", maxHeight:"90vh", display:"flex", flexDirection:"column", boxShadow:"0 24px 64px rgba(0,0,0,0.2)", padding:28, gap:14 }}>
+        <div style={{display:"flex", justifyContent:"space-between", alignItems:"center"}}>
+          <span style={{fontWeight:800, fontSize:17}}>העתקה מחדר אחר ← {currentRoom?.name}</span>
+          <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",color:"var(--text3)"}}><Icon n="x" s={18}/></button>
         </div>
-      )}
-    </>
+        {sourceRooms.length === 0 ? (
+          <div style={{padding:"24px 0",textAlign:"center",color:"var(--text3)",fontSize:14}}>
+            אין עדיין חדרים אחרים עם פריטים להעתקה.
+          </div>
+        ) : (
+          <>
+            <div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
+              <span style={{fontSize:13,fontWeight:600,color:"var(--text2)"}}>העתק מ:</span>
+              <select className="bp-input" value={sourceUid} onChange={e => setSourceUid(e.target.value)} style={{width:"auto",minWidth:200}}>
+                {sourceRooms.map(r => <option key={r.uid} value={r.uid}>{r.name}</option>)}
+              </select>
+              <button onClick={() => setAll(true)} style={{background:"none",border:"none",color:"var(--accent)",cursor:"pointer",fontSize:13,fontWeight:700}}>בחר הכל</button>
+              <button onClick={() => setAll(false)} style={{background:"none",border:"none",color:"var(--text3)",cursor:"pointer",fontSize:13,fontWeight:700}}>נקה</button>
+            </div>
+            <div style={{overflowY:"auto",border:"1px solid var(--border)",borderRadius:10,flex:1,minHeight:120}}>
+              {sourceItems.map(i => {
+                const s = sel[i.id];
+                const exists = targetNames.has(norm(i.name));
+                return (
+                  <div key={i.id} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 14px",borderBottom:"1px solid var(--border)",opacity:s?.checked ? 1 : 0.6}}>
+                    <input
+                      type="checkbox"
+                      checked={!!s?.checked}
+                      onChange={e => setSel(prev => ({...prev, [i.id]: {...prev[i.id], checked: e.target.checked}}))}
+                    />
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontSize:14,fontWeight:600}}>
+                        {i.name}
+                        {exists && <span style={{marginInlineStart:8,fontSize:11,color:"var(--accent)",background:"var(--accent-light)",borderRadius:6,padding:"1px 6px",fontWeight:700}}>כבר בחדר</span>}
+                      </div>
+                      <div style={{fontSize:11,color:"var(--text3)"}}>{i.cat}</div>
+                    </div>
+                    <input
+                      type="number"
+                      min={0}
+                      className="bp-input"
+                      value={s?.qty ?? 1}
+                      onChange={e => setSel(prev => ({...prev, [i.id]: {...prev[i.id], qty: e.target.value}}))}
+                      style={{width:70,textAlign:"center"}}
+                    />
+                    <span style={{fontSize:12,color:"var(--text3)",width:36}}>{i.unit}</span>
+                  </div>
+                );
+              })}
+            </div>
+            <div style={{display:"flex",gap:10}}>
+              <button onClick={onClose} style={{flex:1,padding:"11px",borderRadius:10,border:"1px solid var(--border)",background:"var(--surface)",cursor:"pointer",fontSize:14,fontWeight:600,color:"var(--text2)"}}>ביטול</button>
+              <button
+                onClick={doCopy}
+                disabled={saving || selectedCount === 0}
+                style={{flex:2,padding:"11px",borderRadius:10,border:"none",background:"var(--accent)",color:"#fff",cursor:saving?"wait":"pointer",fontSize:14,fontWeight:700,opacity:(saving || selectedCount === 0)?0.6:1}}
+              >
+                {saving ? "מעתיק..." : `העתק ${selectedCount} פריטים`}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
   );
 };
 
@@ -560,6 +855,8 @@ export const BOQWizardScreen = () => {
   const [autoFillModal, setAutoFillModal] = React.useState<{ open: boolean; scope: 'all' | 'current' }>({ open: false, scope: 'all' });
   const [resetModal, setResetModal] = React.useState<{ open: boolean; scope: 'all' | 'current' }>({ open: false, scope: 'all' });
   const [isAutoFilling, setIsAutoFilling] = React.useState(false);
+  const [itemDialog, setItemDialog] = React.useState<ItemDialogState>(null);
+  const [copyOpen, setCopyOpen] = React.useState(false);
 
   // Track which rooms have been initialised so we don't overwrite local state on re-render
   const [initialised, setInitialised] = React.useState(false);
@@ -572,6 +869,27 @@ export const BOQWizardScreen = () => {
       if (i.cat) cats.add(i.cat);
     });
     return Array.from(cats);
+  }, [allItems]);
+
+  // Categories already used in this project (incl. custom ones), shown first as chips.
+  const projectCategories = React.useMemo(() => {
+    const set = new Set<string>();
+    Object.values(allItems).flat().forEach((i: any) => { if (i.cat && i.isLocked !== true) set.add(i.cat); });
+    return Array.from(set);
+  }, [allItems]);
+
+  // Free-text items already used anywhere in the project, offered as autocomplete suggestions.
+  const projectItems = React.useMemo(() => {
+    const seen = new Set<string>();
+    const out: any[] = [];
+    Object.values(allItems).flat().forEach((i: any) => {
+      if (i.isLocked === true || !i.name) return;
+      const key = String(i.name).trim().toLowerCase();
+      if (seen.has(key)) return;
+      seen.add(key);
+      out.push({ name: i.name, cat: i.cat, unit: i.unit, qty: i.userQty ?? i.qty ?? 1 });
+    });
+    return out;
   }, [allItems]);
 
   React.useEffect(() => {
@@ -1007,6 +1325,86 @@ export const BOQWizardScreen = () => {
     }
   };
 
+  const editItem = async (roomUid: string, itemId: string, patch: any) => {
+    const target = (allItems[roomUid] || []).find((i: any) => i.id === itemId);
+    if (!target || target.isLocked) return;
+    const isBlobUrl = (url: string) => url?.startsWith('blob:');
+    setAllItems((prev: any) => ({
+      ...prev,
+      [roomUid]: (prev[roomUid] || []).map((i: any) => i.id === itemId ? {
+        ...i,
+        cat: patch.cat, name: patch.name, qty: patch.qty, userQty: patch.qty, unit: patch.unit,
+        notes: patch.notes, imageUrl: patch.imageUrl, projectFileId: patch.projectFileId,
+      } : i),
+    }));
+    if (target._persisted && projectId) {
+      try {
+        await updateBoqItemMutation({
+          itemId: itemId as any,
+          category: patch.cat,
+          name: patch.name,
+          qty: patch.qty,
+          userQty: patch.qty,
+          unit: patch.unit,
+          notes: patch.notes ?? '',
+          ...(patch.projectFileId ? { projectFileId: patch.projectFileId as any } : {}),
+          imageUrl: patch.imageUrl && !isBlobUrl(patch.imageUrl) ? patch.imageUrl : (patch.imageUrl ? target.imageUrl ?? '' : ''),
+        });
+      } catch (err) {
+        console.error('Failed to update BOQ item', err);
+        setAllItems((prev: any) => ({
+          ...prev,
+          [roomUid]: (prev[roomUid] || []).map((i: any) => i.id === itemId ? target : i),
+        }));
+        setFeedback({ title: 'שגיאה בשמירה', message: 'לא הצלחנו לעדכן את הפריט. נסה שוב.', type: 'error' });
+        throw err;
+      }
+    }
+  };
+
+  const handleCopyItems = async (copied: any[]) => {
+    if (!projectId || !currentRoom || copied.length === 0) return;
+    const roomUid = currentRoom.uid;
+    const roomId = getRoomDbId(currentRoom);
+    const prepared = copied.map((c, idx) => ({
+      ...c,
+      cat: adaptCategoryForRoom({ name: c.name, cat: c.cat }, currentRoom.type),
+      localId: `copy_${roomUid}_${Date.now()}_${idx}`,
+    }));
+    try {
+      const results = await addBoqItemsBatchMutation({
+        projectId: projectId as any,
+        items: prepared.map(c => ({
+          roomId: roomId as any,
+          category: c.cat || 'כללי',
+          name: c.name,
+          qty: c.qty,
+          unit: c.unit || "יח'",
+          unitPrice: 0,
+          userQty: c.qty,
+          source: 'manual' as const,
+          localId: c.localId,
+          ...(c.notes?.trim() ? { notes: c.notes.trim() } : {}),
+        })),
+      });
+      setAllItems((prev: any) => {
+        const added = prepared.flatMap(c => {
+          const res = results.find((r: any) => r.localId === c.localId);
+          return res ? [{
+            id: res.dbId, cat: c.cat || 'כללי', name: c.name, qty: c.qty, userQty: c.qty, unit: c.unit || "יח'",
+            notes: c.notes ?? '', isLocked: false, isEnabled: true, source: 'manual', _persisted: true,
+          }] : [];
+        });
+        return { ...prev, [roomUid]: [...(prev[roomUid] || []), ...added] };
+      });
+      setFeedback({ title: 'ההעתקה הושלמה', message: `הועתקו ${copied.length} פריטים. אפשר לערוך כל פריט.`, type: 'success' });
+    } catch (err) {
+      console.error('Copy items failed', err);
+      setFeedback({ title: 'שגיאה בהעתקה', message: 'לא הצלחנו להעתיק את הפריטים. נסה שוב.', type: 'error' });
+      throw err;
+    }
+  };
+
   const handleAutoFillFromTemplates = async () => {
     if (!projectId || !project || !rooms.length) return;
     const scope = autoFillModal.scope;
@@ -1022,6 +1420,7 @@ export const BOQWizardScreen = () => {
         const existingNames = (allItems[room.uid] || []).map((i: any) => i.name.trim().toLowerCase());
         
         catalog.forEach((catItem) => {
+          if (catItem.optional) return; // optional items are autocomplete-only
           if (!existingNames.includes(catItem.name.toLowerCase())) {
             const localId = `cat_${room.uid}_${Date.now()}_${Math.random()}`;
             itemsToInsert.push({
@@ -1440,15 +1839,18 @@ export const BOQWizardScreen = () => {
 
             {/* Add Item button, Quick-Add smart buttons per room type, and Auto-fill buttons */}
             <div style={{display:"flex",flexWrap:"wrap",justifyContent:"flex-start",alignItems:"center",gap:10}}>
-              <AddItemWidget
-                roomUid={currentRoom.uid}
-                roomType={currentRoom.type || 'general'}
-                existingItems={items}
-                onAdd={item=>addItem(currentRoom.uid, item)}
-                projectId={projectId as any}
-                uploadProjectFile={uploadProjectFile}
-                globalCategories={globalCategories}
-              />
+              <button
+                onClick={() => setItemDialog({ mode: 'add' })}
+                style={{display:"flex",alignItems:"center",gap:8,padding:"8px 18px",borderRadius:10,border:"1.5px solid var(--accent)",background:"var(--accent-light)",color:"var(--accent)",fontWeight:700,fontSize:14,cursor:"pointer"}}
+              >
+                <Icon n="plus" s={15}/> הוסף פריט
+              </button>
+              <button
+                onClick={() => setCopyOpen(true)}
+                style={{display:"flex",alignItems:"center",gap:8,padding:"8px 14px",borderRadius:10,border:"1.5px solid var(--border)",background:"var(--surface)",color:"var(--text1)",fontWeight:700,fontSize:13,cursor:"pointer"}}
+              >
+                <Icon n="layers" s={14}/> העתק מחדר אחר
+              </button>
 
               {getQuickAddButtonsForRoom(currentRoom, project).map((tpl) => {
                 const existingCount = items.filter(
@@ -1666,6 +2068,7 @@ export const BOQWizardScreen = () => {
                                 <button onClick={()=>setQty(currentRoom.uid,item.id,item.userQty+1)} style={{width:32,height:32,borderRadius:8,border:"none",background:"var(--surface-2)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"var(--shadow-xs)"}}><Icon n="plus" s={14}/></button>
                               </div>
                               <span style={{fontSize:14,color:"var(--text3)",width:30}}>{item.unit}</span>
+                              <button onClick={()=>setItemDialog({ mode: 'edit', roomUid: currentRoom.uid, item })} title="ערוך פריט" style={{display:"flex",alignItems:"center",gap:4,background:"none",border:"1px solid var(--border)",borderRadius:8,padding:"5px 9px",cursor:"pointer",color:"var(--text2)",fontSize:12,fontWeight:600}}><Icon n="edit" s={13}/> עריכה</button>
                               <button onClick={()=>removeItem(currentRoom.uid,item.id)} style={{background:"none",border:"none",cursor:"pointer",color:"#DDD",transition:"color .2s"}} onMouseEnter={e=>e.currentTarget.style.color="var(--danger)"} onMouseLeave={e=>e.currentTarget.style.color="#DDD"}><Icon n="x" s={18}/></button>
                             </>
                           )}
@@ -1676,10 +2079,45 @@ export const BOQWizardScreen = () => {
                   </div>
                 </div>
               ))}
+              <div style={{display:"flex",flexWrap:"wrap",gap:10}}>
+                <button
+                  onClick={() => setItemDialog({ mode: 'add' })}
+                  style={{display:"flex",alignItems:"center",gap:8,padding:"10px 20px",borderRadius:10,border:"1.5px solid var(--accent)",background:"var(--accent-light)",color:"var(--accent)",fontWeight:700,fontSize:14,cursor:"pointer"}}
+                >
+                  <Icon n="plus" s={15}/> הוסף פריט
+                </button>
+                <button
+                  onClick={() => setCopyOpen(true)}
+                  style={{display:"flex",alignItems:"center",gap:8,padding:"10px 16px",borderRadius:10,border:"1.5px solid var(--border)",background:"var(--surface)",color:"var(--text1)",fontWeight:700,fontSize:13,cursor:"pointer"}}
+                >
+                  <Icon n="layers" s={14}/> העתק מחדר אחר
+                </button>
+              </div>
             </div>
           </div>
 
         </div>
+        <ItemDialog
+          dialog={itemDialog}
+          onClose={() => setItemDialog(null)}
+          roomType={currentRoom?.type || 'general'}
+          existingItems={items}
+          projectItems={projectItems}
+          projectCategories={projectCategories}
+          onAdd={item => addItem(currentRoom.uid, item)}
+          onEdit={editItem}
+          projectId={projectId as any}
+          uploadProjectFile={uploadProjectFile}
+          globalCategories={globalCategories}
+        />
+        <CopyFromRoomDialog
+          open={copyOpen}
+          onClose={() => setCopyOpen(false)}
+          rooms={rooms}
+          currentRoom={currentRoom}
+          allItems={allItems}
+          onCopy={handleCopyItems}
+        />
         {feedback && (
           <FeedbackModal
             title={feedback.title}
