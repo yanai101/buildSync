@@ -6,6 +6,7 @@ import {
   MAX_NOTE_LENGTH,
   MAX_PHOTOS_PER_ROOM_STAGE,
   ROOM_PHOTO_CATEGORIES,
+  ROOM_PHOTO_CATEGORY_COLORS,
   ROOM_PHOTO_CATEGORY_LABELS,
   type RoomPhotoCategory,
 } from '../../../convex/_lib/roomArchiveShared';
@@ -51,9 +52,70 @@ export const CategorySelect = ({ value, onChange }: { value: RoomPhotoCategory; 
   </select>
 );
 
+export const CategoryMultiSelect = ({
+  value,
+  onChange,
+}: {
+  value: RoomPhotoCategory[];
+  onChange: (v: RoomPhotoCategory[]) => void;
+}) => {
+  const toggle = (cat: RoomPhotoCategory) => {
+    if (value.includes(cat)) {
+      if (value.length === 1) return; // Keep at least one category selected
+      onChange(value.filter((c) => c !== cat));
+    } else {
+      onChange([...value, cat]);
+    }
+  };
+
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+      {ROOM_PHOTO_CATEGORIES.map((c) => {
+        const active = value.includes(c);
+        const col = ROOM_PHOTO_CATEGORY_COLORS[c];
+        return (
+          <button
+            key={c}
+            type="button"
+            onClick={() => toggle(c)}
+            style={{
+              all: 'unset',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 5,
+              padding: '3px 8px',
+              borderRadius: 999,
+              fontSize: 12,
+              fontWeight: active ? 700 : 500,
+              cursor: 'pointer',
+              border: `1.5px solid ${active ? col : 'var(--border)'}`,
+              background: active ? `${col}22` : 'var(--surface-2)',
+              color: active ? col : 'var(--text2)',
+              boxShadow: active ? `0 0 0 1px ${col}44` : 'none',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            <span style={{ width: 7, height: 7, borderRadius: '50%', background: col, flexShrink: 0 }} />
+            {ROOM_PHOTO_CATEGORY_LABELS[c]}
+            {active && <Icon n="check" s={11} />}
+          </button>
+        );
+      })}
+    </div>
+  );
+};
+
 // ── Upload modal ────────────────────────────────────────────────────────────
 
-type StagedItem = { id: string; file: File; category: RoomPhotoCategory; description: string; note: string };
+type StagedItem = {
+  id: string;
+  file: File;
+  category: RoomPhotoCategory;
+  categories: RoomPhotoCategory[];
+  isCover?: boolean;
+  description: string;
+  note: string;
+};
 
 export const UploadRoomPhotosModal = ({
   files, roomName, stages, initialStageId, bucketCounts, onClose, onUpload,
@@ -72,6 +134,8 @@ export const UploadRoomPhotosModal = ({
       id: `${i}-${file.name}`,
       file,
       category: 'general',
+      categories: ['general'],
+      isCover: false,
       description: '',
       note: '',
     })),
@@ -96,7 +160,8 @@ export const UploadRoomPhotosModal = ({
   const update = (id: string, patch: Partial<StagedItem>) =>
     setItems((prev) => prev.map((it) => (it.id === id ? { ...it, ...patch } : it)));
 
-  const setAllCategory = (c: RoomPhotoCategory) => setItems((prev) => prev.map((it) => ({ ...it, category: c })));
+  const setAllCategories = (cats: RoomPhotoCategory[]) =>
+    setItems((prev) => prev.map((it) => ({ ...it, categories: cats, category: cats[0] ?? 'general' })));
 
   const submit = async () => {
     if (busy || overLimit || items.length === 0) return;
@@ -117,9 +182,9 @@ export const UploadRoomPhotosModal = ({
             <StageSelect stages={stages} value={stageId} onChange={setStageId} counts={bucketCounts} />
           </div>
           {items.length > 1 && (
-            <div>
-              <span style={label}>קטגוריה לכל התמונות</span>
-              <CategorySelect value={items[0].category} onChange={setAllCategory} />
+            <div style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 10, padding: 10 }}>
+              <span style={label}>קטגוריות לכל התמונות (ניתן לבחור יותר מאחת)</span>
+              <CategoryMultiSelect value={items[0].categories} onChange={setAllCategories} />
             </div>
           )}
         </div>
@@ -139,10 +204,18 @@ export const UploadRoomPhotosModal = ({
                   : <Icon n="image" s={24} />}
               </div>
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 }}>
-                <CategorySelect value={it.category} onChange={(c) => update(it.id, { category: c })} />
+                <div>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text3)', display: 'block', marginBottom: 4 }}>
+                    קטגוריות (ניתן לבחור כמה ביחד):
+                  </span>
+                  <CategoryMultiSelect
+                    value={it.categories}
+                    onChange={(cats) => update(it.id, { categories: cats, category: cats[0] ?? 'general' })}
+                  />
+                </div>
                 <input
                   className="bp-input"
-                  placeholder="תיאור קצר (למשל: צנרת מים בקיר המזרחי)"
+                  placeholder="תיאור קצר (למשל: צנרת מים וחשמל בקיר המזרחי)"
                   maxLength={MAX_DESCRIPTION_LENGTH}
                   value={it.description}
                   onChange={(e) => update(it.id, { description: e.target.value })}
@@ -156,6 +229,19 @@ export const UploadRoomPhotosModal = ({
                   onChange={(e) => update(it.id, { note: e.target.value })}
                   style={{ resize: 'vertical' }}
                 />
+                <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, cursor: 'pointer', color: it.isCover ? '#d97706' : 'var(--text3)', marginTop: 2 }}>
+                  <input
+                    type="checkbox"
+                    checked={!!it.isCover}
+                    onChange={(e) => {
+                      const checked = e.target.checked;
+                      setItems((prev) => prev.map((x) => ({ ...x, isCover: x.id === it.id ? checked : false })));
+                    }}
+                    style={{ accentColor: '#f59e0b' }}
+                  />
+                  <Icon n="star" s={13} fill={it.isCover ? '#f59e0b' : 'none'} c={it.isCover ? '#f59e0b' : 'currentColor'} />
+                  <span>קבע כתמונת חדר ראשית (בכרטיס החדר)</span>
+                </label>
               </div>
               {!busy && (
                 <button type="button" aria-label="הסר תמונה" onClick={() => setItems((p) => p.filter((x) => x.id !== it.id))}
@@ -189,18 +275,28 @@ export const EditRoomPhotoModal = ({
   photo: RoomPhoto;
   stages: RoomStage[];
   onClose: () => void;
-  onSave: (patch: { description: string; note: string; category: RoomPhotoCategory; stageId: Id<'stages'> | null }) => Promise<void>;
+  onSave: (patch: { description: string; note: string; category: RoomPhotoCategory; categories: RoomPhotoCategory[]; isCover: boolean; stageId: Id<'stages'> | null }) => Promise<void>;
 }) => {
   const [description, setDescription] = React.useState(photo.description);
   const [note, setNote] = React.useState(photo.note);
-  const [category, setCategory] = React.useState<RoomPhotoCategory>(photo.category);
+  const [categories, setCategories] = React.useState<RoomPhotoCategory[]>(
+    photo.categories && photo.categories.length > 0 ? photo.categories : [photo.category],
+  );
+  const [isCover, setIsCover] = React.useState<boolean>(!!photo.isCover);
   const [stageId, setStageId] = React.useState<Id<'stages'> | undefined>(photo.stageId ?? undefined);
   const [busy, setBusy] = React.useState(false);
 
   const save = async () => {
     setBusy(true);
     try {
-      await onSave({ description, note, category, stageId: stageId ?? null });
+      await onSave({
+        description,
+        note,
+        category: categories[0] ?? 'general',
+        categories,
+        isCover,
+        stageId: stageId ?? null,
+      });
       onClose();
     } finally {
       setBusy(false);
@@ -208,23 +304,21 @@ export const EditRoomPhotoModal = ({
   };
 
   return (
-    <Modal onClose={onClose} title="עריכת פרטי תמונה" width={520}>
+    <Modal onClose={onClose} title="עריכת פרטי תמונה" width={540}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         {photo.url && (
           <img src={photo.url} alt={photo.description || 'תמונת חדר'} style={{ width: '100%', maxHeight: 240, objectFit: 'contain', borderRadius: 10, background: 'var(--surface-2)' }} />
         )}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
-          <div>
-            <span style={label}>קטגוריה</span>
-            <CategorySelect value={category} onChange={setCategory} />
-          </div>
-          <div>
-            <span style={label}>שלב בנייה</span>
-            <StageSelect stages={stages} value={stageId} onChange={setStageId} />
-            {photo.stageDeleted && stageId === undefined && (
-              <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 4 }}>השלב המקורי ("{photo.stageName}") נמחק</div>
-            )}
-          </div>
+        <div>
+          <span style={label}>קטגוריות (ניתן לבחור יותר מאחת, למשל: חשמל ואינסטלציה יחד)</span>
+          <CategoryMultiSelect value={categories} onChange={setCategories} />
+        </div>
+        <div>
+          <span style={label}>שלב בנייה</span>
+          <StageSelect stages={stages} value={stageId} onChange={setStageId} />
+          {photo.stageDeleted && stageId === undefined && (
+            <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 4 }}>השלב המקורי ("{photo.stageName}") נמחק</div>
+          )}
         </div>
         <div>
           <span style={label}>תיאור קצר</span>
@@ -232,8 +326,20 @@ export const EditRoomPhotoModal = ({
         </div>
         <div>
           <span style={label}>הערות</span>
-          <textarea className="bp-input" rows={5} maxLength={MAX_NOTE_LENGTH} value={note} onChange={(e) => setNote(e.target.value)} style={{ resize: 'vertical' }} />
+          <textarea className="bp-input" rows={4} maxLength={MAX_NOTE_LENGTH} value={note} onChange={(e) => setNote(e.target.value)} style={{ resize: 'vertical' }} />
         </div>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer', padding: '8px 12px', background: isCover ? 'var(--accent-light)' : 'var(--surface-2)', borderRadius: 8, border: `1px solid ${isCover ? 'var(--accent)' : 'var(--border)'}`, color: 'var(--text1)' }}>
+          <input
+            type="checkbox"
+            checked={isCover}
+            onChange={(e) => setIsCover(e.target.checked)}
+            style={{ accentColor: '#f59e0b' }}
+          />
+          <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}>
+            <Icon n="star" s={15} fill={isCover ? '#f59e0b' : 'none'} c={isCover ? '#f59e0b' : 'currentColor'} />
+            הגדר כתמונת חדר ראשית (תוצג בכרטיס החדר בארכיון)
+          </span>
+        </label>
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
           <Btn variant="ghost" onClick={onClose} disabled={busy}>ביטול</Btn>
           <Btn onClick={save} disabled={busy}>{busy ? 'שומר…' : 'שמור'}</Btn>

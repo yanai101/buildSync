@@ -552,7 +552,8 @@ export async function buildProjectZip(
       const stageDir = p.stageName
         ? safe(`${p.stageSortOrder != null ? String(p.stageSortOrder).padStart(2, '0') + '_' : ''}${p.stageName}`)
         : 'ללא_שלב';
-      const categoryName = ROOM_PHOTO_CATEGORY_LABELS[p.category as RoomPhotoCategory] ?? p.category;
+      const cats = ((p as any).categories && (p as any).categories.length > 0) ? (p as any).categories : [p.category];
+      const categoryName = cats.map((c: any) => ROOM_PHOTO_CATEGORY_LABELS[c as RoomPhotoCategory] ?? c).join(', ');
       const counterKey = `${roomDir}/${stageDir}/${categoryName}`;
       const n = (counters.get(counterKey) ?? 0) + 1;
       counters.set(counterKey, n);

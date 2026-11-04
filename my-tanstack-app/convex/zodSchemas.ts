@@ -145,6 +145,7 @@ export const zProjectRoom = {
   isWet: z.boolean(),
   needsAc: z.boolean(),
   sortOrder: z.number(),
+  coverPhotoId: zid('roomPhotos').optional(),
 };
 
 export const zStagePayment = z.object({

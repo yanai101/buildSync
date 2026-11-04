@@ -15,7 +15,9 @@ import {
   categoryLabel,
   defaultStageId,
   formatDate,
+  getPhotoCategories,
   groupPhotosByStage,
+  hasCategory,
   NO_STAGE_KEY,
   photoBucketKey,
   roomTypeLabel,
@@ -52,7 +54,7 @@ const errMsg = (err: unknown) => (err instanceof Error ? err.message.replace(/^.
 // ── Photo card ──────────────────────────────────────────────────────────────
 
 export const PhotoCard = ({
-  photo, canUpload, selected, selecting, onToggleSelect, onOpen, onEdit, onDelete, compact,
+  photo, canUpload, selected, selecting, onToggleSelect, onOpen, onEdit, onDelete, onToggleCover, compact,
 }: {
   photo: RoomPhoto;
   canUpload: boolean;
@@ -62,9 +64,10 @@ export const PhotoCard = ({
   onOpen: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  onToggleCover?: () => void;
   compact?: boolean;
 }) => {
-  const color = ROOM_PHOTO_CATEGORY_COLORS[photo.category];
+  const categories = getPhotoCategories(photo);
   return (
     <div
       style={{
@@ -80,15 +83,52 @@ export const PhotoCard = ({
           style={{ all: 'unset', cursor: 'pointer', display: 'block', width: '100%', height: '100%' }}
         >
           {photo.url ? (
-            <img src={photo.url} alt={photo.description || categoryLabel(photo.category)} loading="lazy"
+            <img src={photo.url} alt={photo.description || categories.map(categoryLabel).join(', ')} loading="lazy"
               style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
           ) : (
             <div style={{ display: 'grid', placeItems: 'center', height: '100%', color: 'var(--text3)' }}><Icon n="image" s={28} /></div>
           )}
         </button>
-        <span style={{ position: 'absolute', top: 8, insetInlineStart: 8, background: color, color: '#fff', fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999 }}>
-          {categoryLabel(photo.category)}
-        </span>
+        <div style={{ position: 'absolute', top: 8, insetInlineStart: 8, display: 'flex', flexWrap: 'wrap', gap: 4, maxWidth: 'calc(100% - 44px)' }}>
+          {categories.map((c) => (
+            <span
+              key={c}
+              style={{
+                background: ROOM_PHOTO_CATEGORY_COLORS[c],
+                color: '#fff',
+                fontSize: 10,
+                fontWeight: 700,
+                padding: '2px 7px',
+                borderRadius: 999,
+                boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+              }}
+            >
+              {categoryLabel(c)}
+            </span>
+          ))}
+        </div>
+        {photo.isCover && (
+          <span
+            style={{
+              position: 'absolute',
+              top: 8,
+              insetInlineEnd: selecting ? 36 : 8,
+              background: '#f59e0b',
+              color: '#fff',
+              fontSize: 11,
+              fontWeight: 700,
+              padding: '2px 8px',
+              borderRadius: 999,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+              boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+              zIndex: 1,
+            }}
+          >
+            <Icon n="star" s={11} fill="#fff" /> תמונת חדר
+          </span>
+        )}
         {selecting && (
           <input
             type="checkbox"
@@ -110,9 +150,22 @@ export const PhotoCard = ({
           {formatDate(photo.takenOn ?? photo.uploadedAt)} · {photo.uploaderName}
         </div>
         {canUpload && !selecting && (
-          <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
+          <div style={{ display: 'flex', gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
             <Btn size="sm" variant="ghost" onClick={onEdit} aria-label="ערוך"><Icon n="edit" s={13} /> {compact ? '' : 'ערוך'}</Btn>
-            <Btn size="sm" variant="ghost" onClick={onDelete} aria-label="מחק" style={{ color: 'var(--danger)' }}><Icon n="trash" s={13} /></Btn>
+            {onToggleCover && (
+              <Btn
+                size="sm"
+                variant="ghost"
+                onClick={onToggleCover}
+                aria-label={photo.isCover ? 'בטל תמונת חדר' : 'קבע כתמונת חדר'}
+                style={{ color: photo.isCover ? '#d97706' : 'var(--text2)' }}
+                title={photo.isCover ? 'תמונת החדר הראשית (לחץ לביטול)' : 'קבע כתמונת החדר הראשית בארכיון'}
+              >
+                <Icon n="star" s={13} fill={photo.isCover ? '#f59e0b' : 'none'} c={photo.isCover ? '#f59e0b' : 'currentColor'} />
+                {!compact && (photo.isCover ? 'תמונת חדר' : 'קבע כראשית')}
+              </Btn>
+            )}
+            <Btn size="sm" variant="ghost" onClick={onDelete} aria-label="מחק" style={{ color: 'var(--danger)', marginInlineStart: 'auto' }}><Icon n="trash" s={13} /></Btn>
           </div>
         )}
       </div>
@@ -165,6 +218,7 @@ export const RoomDetail = ({
 }) => {
   const data = useQuery(api.roomArchive.listRoomPhotos, { projectId, roomId });
   const updatePhoto = useMutation(api.roomArchive.updateRoomPhoto);
+  const setCoverPhoto = useMutation(api.roomArchive.setRoomCoverPhoto);
   const deletePhotos = useMutation(api.roomArchive.deleteRoomPhotos);
   const uploadPhoto = useRoomPhotoUploader(projectId);
 
@@ -200,7 +254,7 @@ export const RoomDetail = ({
 
   const filtered = React.useMemo(
     () => photos.filter((p) =>
-      (categoryFilter === 'all' || p.category === categoryFilter)
+      (categoryFilter === 'all' || hasCategory(p, categoryFilter))
       && (stageFilter === 'all' || photoBucketKey(p) === stageFilter)),
     [photos, categoryFilter, stageFilter],
   );
@@ -262,7 +316,16 @@ export const RoomDetail = ({
     const errors: string[] = [];
     for (const it of items) {
       try {
-        await uploadPhoto({ file: it.file, roomId, stageId, category: it.category, description: it.description, note: it.note });
+        await uploadPhoto({
+          file: it.file,
+          roomId,
+          stageId,
+          category: it.category,
+          categories: it.categories,
+          isCover: it.isCover,
+          description: it.description,
+          note: it.note,
+        });
         ok++;
       } catch (err) {
         errors.push(errMsg(err));
@@ -272,6 +335,23 @@ export const RoomDetail = ({
     setUploadFiles(null);
     if (ok > 0) notify({ title: ok === 1 ? 'התמונה נשמרה' : `${ok} תמונות נשמרו`, kind: 'success' });
     if (errors.length > 0) notify({ title: `${errors.length} תמונות לא הועלו`, body: errors[0], kind: 'error' });
+  };
+
+  const handleToggleCover = async (photo: RoomPhoto) => {
+    try {
+      const isAlreadyCover = photo.isCover || room.coverPhotoId === photo.id;
+      await setCoverPhoto({
+        projectId,
+        roomId,
+        photoId: isAlreadyCover ? undefined : photo.id,
+      });
+      notify({
+        title: isAlreadyCover ? 'תמונת החדר הוסרה' : 'התמונה נקבעה כתמונת החדר הראשית',
+        kind: 'success',
+      });
+    } catch (err) {
+      notify({ title: 'שגיאה בעדכון תמונת החדר', body: errMsg(err), kind: 'error' });
+    }
   };
 
   const toggleSelect = (id: string) =>
@@ -323,6 +403,7 @@ export const RoomDetail = ({
       onOpen={() => openGallery(list, p)}
       onEdit={() => setEditing(p)}
       onDelete={() => setDeleteTarget({ ids: [p.id] })}
+      onToggleCover={() => handleToggleCover(p)}
     />
   );
 
@@ -385,9 +466,9 @@ export const RoomDetail = ({
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 2 }}>
             <button type="button" style={chip(categoryFilter === 'all')} onClick={() => setCategoryFilter('all')}>כל הקטגוריות ({photos.length})</button>
-            {ROOM_PHOTO_CATEGORIES.filter((c) => photos.some((p) => p.category === c)).map((c) => (
+            {ROOM_PHOTO_CATEGORIES.filter((c) => photos.some((p) => hasCategory(p, c))).map((c) => (
               <button key={c} type="button" style={chip(categoryFilter === c, ROOM_PHOTO_CATEGORY_COLORS[c])} onClick={() => setCategoryFilter(c)}>
-                {categoryLabel(c)} ({photos.filter((p) => p.category === c).length})
+                {categoryLabel(c)} ({photos.filter((p) => hasCategory(p, c)).length})
               </button>
             ))}
           </div>
@@ -535,6 +616,8 @@ export const RoomDetail = ({
                 description: patch.description,
                 note: patch.note,
                 category: patch.category,
+                categories: patch.categories,
+                isCover: patch.isCover,
                 // Only send a stage change if it actually changed (keeps deleted-stage photos intact).
                 ...((patch.stageId ?? null) !== (editing.stageId ?? null) && !(editing.stageDeleted && patch.stageId === null)
                   ? { stageId: patch.stageId }

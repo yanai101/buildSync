@@ -10,7 +10,9 @@ export type RoomPhotoUploadInput = {
   file: File;
   roomId: Id<'projectRooms'>;
   stageId?: Id<'stages'>;
-  category: RoomPhotoCategory;
+  category?: RoomPhotoCategory;
+  categories?: RoomPhotoCategory[];
+  isCover?: boolean;
   description: string;
   note: string;
 };
@@ -46,6 +48,8 @@ export function useRoomPhotoUploader(projectId: Id<'projects'> | null) {
       originalName: optimized.storedName || input.file.name,
       originalSize: input.file.size,
       category: input.category,
+      categories: input.categories,
+      isCover: input.isCover,
       description: input.description,
       note: input.note,
       takenOn: new Date().toISOString().slice(0, 10),

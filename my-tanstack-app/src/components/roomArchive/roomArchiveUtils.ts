@@ -19,6 +19,8 @@ export type RoomPhoto = {
   url: string | null;
   originalName: string;
   category: RoomPhotoCategory;
+  categories?: RoomPhotoCategory[];
+  isCover?: boolean;
   description: string;
   note: string;
   stageId: Id<'stages'> | null;
@@ -45,6 +47,16 @@ export const roomTypeLabel = (type: string) =>
   ROOM_TYPE_OPTS.find((o) => o.id === type)?.label ?? type;
 
 export const categoryLabel = (c: RoomPhotoCategory) => ROOM_PHOTO_CATEGORY_LABELS[c] ?? c;
+
+export const getPhotoCategories = (p: { categories?: RoomPhotoCategory[]; category?: RoomPhotoCategory }): RoomPhotoCategory[] => {
+  if (p.categories && p.categories.length > 0) return p.categories;
+  if (p.category) return [p.category];
+  return ['general'];
+};
+
+export const hasCategory = (p: { categories?: RoomPhotoCategory[]; category?: RoomPhotoCategory }, c: RoomPhotoCategory): boolean => {
+  return getPhotoCategories(p).includes(c);
+};
 
 export const stageStatusLabel = (status: string) =>
   status === 'done' ? 'הושלם' : status === 'active' ? 'בביצוע' : 'מתוכנן';

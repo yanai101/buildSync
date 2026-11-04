@@ -11,6 +11,7 @@ import {
   MAX_NOTE_LENGTH,
   MAX_PHOTOS_PER_ROOM_READ,
   MAX_PHOTOS_PER_ROOM_STAGE,
+  type RoomPhotoCategory,
 } from './_lib/roomArchiveShared';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -142,7 +143,10 @@ export const listRooms = query({
           .withIndex('by_room', (q) => q.eq('roomId', room._id))
           .order('desc')
           .take(MAX_PHOTOS_PER_ROOM_READ);
-        const cover = photos[0];
+        const coverPhoto = room.coverPhotoId
+          ? (photos.find((p) => p._id === room.coverPhotoId) ?? (await ctx.db.get(room.coverPhotoId)))
+          : photos.find((p) => p.isCover);
+        const cover = (coverPhoto && coverPhoto.roomId === room._id) ? coverPhoto : photos[0];
         return {
           id: room._id,
           name: room.name,
@@ -190,7 +194,14 @@ export const listRoomPhotos = query({
     const stageNames = new Map<string, string>(stages.map((s) => [s._id, s.name]));
 
     return {
-      room: { id: room._id, name: room.name, type: room.type, floor: room.floor, sizeSqm: room.sizeSqm },
+      room: {
+        id: room._id,
+        name: room.name,
+        type: room.type,
+        floor: room.floor,
+        sizeSqm: room.sizeSqm,
+        coverPhotoId: room.coverPhotoId ?? null,
+      },
       stages: stages.map((s) => ({
         id: s._id,
         name: s.name,
@@ -206,6 +217,8 @@ export const listRoomPhotos = query({
           originalName: p.originalName,
           mimeType: p.mimeType,
           category: p.category,
+          categories: (p.categories && p.categories.length > 0) ? p.categories : [p.category],
+          isCover: room.coverPhotoId === p._id || !!p.isCover,
           description: p.description,
           note: p.note,
           // A stageId that no longer exists means the stage was deleted.
@@ -285,7 +298,9 @@ export const createRoomPhoto = mutation({
     storageId: v.id('_storage'),
     originalName: v.string(),
     originalSize: v.number(),
-    category: roomPhotoCategoryValidator,
+    category: v.optional(roomPhotoCategoryValidator),
+    categories: v.optional(v.array(roomPhotoCategoryValidator)),
+    isCover: v.optional(v.boolean()),
     description: v.string(),
     note: v.string(),
     takenOn: v.optional(v.string()),
@@ -315,7 +330,12 @@ export const createRoomPhoto = mutation({
     }
     const contentType = rawType || 'image/jpeg';
 
-    return await ctx.db.insert('roomPhotos', {
+    const categories: RoomPhotoCategory[] = (args.categories && args.categories.length > 0)
+      ? args.categories
+      : (args.category ? [args.category] : ['general']);
+    const primaryCategory: RoomPhotoCategory = categories[0] ?? 'general';
+
+    const photoId = await ctx.db.insert('roomPhotos', {
       projectId: args.projectId,
       roomId: args.roomId,
       ...(stage ? { stageId: stage._id, stageNameSnapshot: stage.name } : {}),
@@ -324,13 +344,30 @@ export const createRoomPhoto = mutation({
       mimeType: contentType,
       originalSize: args.originalSize,
       storedSize: metadata.size,
-      category: args.category,
+      category: primaryCategory,
+      categories,
       description: clampText(args.description, MAX_DESCRIPTION_LENGTH),
       note: clampText(args.note, MAX_NOTE_LENGTH),
       takenOn: args.takenOn,
+      isCover: !!args.isCover,
       uploaderUserId: access.userId,
       uploadedAt: Date.now(),
     });
+
+    if (args.isCover) {
+      await ctx.db.patch(args.roomId, { coverPhotoId: photoId });
+      const otherPhotos = await ctx.db
+        .query('roomPhotos')
+        .withIndex('by_room', (q) => q.eq('roomId', args.roomId))
+        .collect();
+      for (const p of otherPhotos) {
+        if (p._id !== photoId && p.isCover) {
+          await ctx.db.patch(p._id, { isCover: false });
+        }
+      }
+    }
+
+    return photoId;
   },
 });
 
@@ -340,6 +377,8 @@ export const updateRoomPhoto = mutation({
     description: v.optional(v.string()),
     note: v.optional(v.string()),
     category: v.optional(roomPhotoCategoryValidator),
+    categories: v.optional(v.array(roomPhotoCategoryValidator)),
+    isCover: v.optional(v.boolean()),
     /** Pass a stage id to move the photo, or null for "no stage". Omit to keep. */
     stageId: v.optional(v.union(v.id('stages'), v.null())),
   },
@@ -360,13 +399,71 @@ export const updateRoomPhoto = mutation({
       }
     }
 
+    let categoryPatch: { category?: RoomPhotoCategory; categories?: RoomPhotoCategory[] } = {};
+    if (args.categories !== undefined) {
+      const cats: RoomPhotoCategory[] = args.categories.length > 0 ? (args.categories as RoomPhotoCategory[]) : ['general'];
+      categoryPatch = { categories: cats, category: cats[0] };
+    } else if (args.category !== undefined) {
+      categoryPatch = { category: args.category as RoomPhotoCategory, categories: [args.category as RoomPhotoCategory] };
+    }
+
+    if (args.isCover !== undefined) {
+      const room = await ctx.db.get(photo.roomId);
+      if (room) {
+        if (args.isCover) {
+          await ctx.db.patch(room._id, { coverPhotoId: photo._id });
+          const otherPhotos = await ctx.db
+            .query('roomPhotos')
+            .withIndex('by_room', (q) => q.eq('roomId', photo.roomId))
+            .collect();
+          for (const p of otherPhotos) {
+            if (p._id !== photo._id && p.isCover) {
+              await ctx.db.patch(p._id, { isCover: false });
+            }
+          }
+        } else if (room.coverPhotoId === photo._id) {
+          await ctx.db.patch(room._id, { coverPhotoId: undefined });
+        }
+      }
+    }
+
     await ctx.db.patch(args.photoId, {
       ...(args.description !== undefined ? { description: clampText(args.description, MAX_DESCRIPTION_LENGTH) } : {}),
       ...(args.note !== undefined ? { note: args.note.slice(0, MAX_NOTE_LENGTH) } : {}),
-      ...(args.category !== undefined ? { category: args.category } : {}),
+      ...(args.isCover !== undefined ? { isCover: args.isCover } : {}),
+      ...categoryPatch,
       ...(stagePatch ?? {}),
       updatedAt: Date.now(),
     });
+  },
+});
+
+export const setRoomCoverPhoto = mutation({
+  args: {
+    projectId: v.id('projects'),
+    roomId: v.id('projectRooms'),
+    photoId: v.optional(v.id('roomPhotos')),
+  },
+  handler: async (ctx, args) => {
+    await requireAccess(ctx, args.projectId, 'upload');
+    await requireRoomInProject(ctx, args.roomId, args.projectId);
+    if (args.photoId) {
+      const photo = await ctx.db.get(args.photoId);
+      if (!photo || photo.roomId !== args.roomId) {
+        throw new Error('התמונה לא שייכת לחדר זה');
+      }
+    }
+    await ctx.db.patch(args.roomId, { coverPhotoId: args.photoId ?? undefined });
+    const roomPhotos = await ctx.db
+      .query('roomPhotos')
+      .withIndex('by_room', (q) => q.eq('roomId', args.roomId))
+      .collect();
+    for (const p of roomPhotos) {
+      const shouldBeCover = p._id === args.photoId;
+      if (p.isCover !== shouldBeCover) {
+        await ctx.db.patch(p._id, { isCover: shouldBeCover });
+      }
+    }
   },
 });
 
@@ -384,6 +481,10 @@ export const deleteRoomPhotos = mutation({
     for (const photoId of args.photoIds) {
       const photo = await ctx.db.get(photoId);
       if (!photo || photo.projectId !== args.projectId) continue;
+      const room = await ctx.db.get(photo.roomId);
+      if (room && room.coverPhotoId === photo._id) {
+        await ctx.db.patch(room._id, { coverPhotoId: undefined });
+      }
       try { await ctx.storage.delete(photo.storageId); } catch { /* already gone */ }
       await ctx.db.delete(photo._id);
       deletedCount++;

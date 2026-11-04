@@ -188,3 +188,80 @@ describe('room archive: cascade on room deletion', () => {
     expect(remaining.map((p) => p.roomId)).toEqual([otherRoomId]);
   });
 });
+
+describe('room archive: multi-category and room cover photo', () => {
+  test('supports multiple categories and cover photo selection', async () => {
+    const t = convexTest(schema, modules);
+    const { ownerId, projectId, roomId } = await setup(t);
+
+    const storageId1 = await storeImage(t);
+    const photo1 = await t.withIdentity({ subject: ownerId }).mutation(api.roomArchive.createRoomPhoto, {
+      projectId,
+      roomId,
+      storageId: storageId1,
+      originalName: 'infra.jpg',
+      originalSize: 10,
+      categories: ['electrical', 'plumbing'],
+      description: 'חשמל ואינסטלציה יחד',
+      note: 'תשתיות משולבות',
+      isCover: true,
+    });
+
+    const storageId2 = await storeImage(t);
+    const photo2 = await t.withIdentity({ subject: ownerId }).mutation(api.roomArchive.createRoomPhoto, {
+      projectId,
+      roomId,
+      storageId: storageId2,
+      originalName: 'second.jpg',
+      originalSize: 12,
+      category: 'tiling',
+      description: 'ריצוף',
+      note: '',
+    });
+
+    // Check listRooms uses the cover photo (photo1), even though photo2 is newer
+    const rooms = await t.withIdentity({ subject: ownerId }).query(api.roomArchive.listRooms, { projectId });
+    const kitchen = rooms?.find((r) => r.id === roomId);
+    expect(kitchen?.photoCount).toBe(2);
+
+    // Check listRoomPhotos returns categories array and isCover flag
+    const detail = await t.withIdentity({ subject: ownerId }).query(api.roomArchive.listRoomPhotos, { projectId, roomId });
+    expect(detail?.room.coverPhotoId).toBe(photo1);
+
+    const p1 = detail?.photos.find((p) => p.id === photo1);
+    expect(p1?.categories).toEqual(['electrical', 'plumbing']);
+    expect(p1?.isCover).toBe(true);
+
+    const p2 = detail?.photos.find((p) => p.id === photo2);
+    expect(p2?.categories).toEqual(['tiling']);
+    expect(p2?.isCover).toBe(false);
+
+    // Switch cover to photo2 via setRoomCoverPhoto
+    await t.withIdentity({ subject: ownerId }).mutation(api.roomArchive.setRoomCoverPhoto, {
+      projectId,
+      roomId,
+      photoId: photo2,
+    });
+
+    const detail2 = await t.withIdentity({ subject: ownerId }).query(api.roomArchive.listRoomPhotos, { projectId, roomId });
+    expect(detail2?.room.coverPhotoId).toBe(photo2);
+
+    // Update categories on photo2
+    await t.withIdentity({ subject: ownerId }).mutation(api.roomArchive.updateRoomPhoto, {
+      photoId: photo2,
+      categories: ['tiling', 'waterproofing'],
+    });
+
+    const detail3 = await t.withIdentity({ subject: ownerId }).query(api.roomArchive.listRoomPhotos, { projectId, roomId });
+    expect(detail3?.photos.find((p) => p.id === photo2)?.categories).toEqual(['tiling', 'waterproofing']);
+
+    // Deleting cover photo clears room coverPhotoId
+    await t.withIdentity({ subject: ownerId }).mutation(api.roomArchive.deleteRoomPhotos, {
+      projectId,
+      photoIds: [photo2],
+    });
+
+    const detail4 = await t.withIdentity({ subject: ownerId }).query(api.roomArchive.listRoomPhotos, { projectId, roomId });
+    expect(detail4?.room.coverPhotoId).toBeNull();
+  });
+});

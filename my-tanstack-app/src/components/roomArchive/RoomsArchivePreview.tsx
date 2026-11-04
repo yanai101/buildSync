@@ -35,6 +35,8 @@ const photo = (
   url: sampleArt(art),
   originalName: `${art}.jpg`,
   category,
+  categories: [category],
+  isCover: false,
   description,
   note,
   stageId: STAGES[stage].id,

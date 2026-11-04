@@ -4,6 +4,7 @@ import {
   categoryLabel,
   formatDate,
   groupPhotosByStage,
+  hasCategory,
   roomTypeLabel,
   type RoomPhoto,
   type RoomStage,
@@ -74,7 +75,7 @@ export async function generateRoomPdfReport(opts: {
       }, `שלב: ${bucket.label}${dates}`));
 
       for (const category of ROOM_PHOTO_CATEGORIES) {
-        const items = bucket.photos.filter((p) => p.category === category);
+        const items = bucket.photos.filter((p) => hasCategory(p, category));
         if (items.length === 0) continue;
         stageBlock.append(el('div', { fontSize: '14px', fontWeight: '700', color: '#444', margin: '8px 0' }, categoryLabel(category)));
 

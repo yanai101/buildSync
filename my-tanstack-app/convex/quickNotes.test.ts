@@ -217,6 +217,7 @@ describe('Quick Notes', () => {
     ]);
 
     // Now inspector shares the older note with the owner -> it should appear at the top!
+    await new Promise((r) => setTimeout(r, 10));
     await asInspector.mutation(api.quickNotes.share, {
       noteId: olderInspectorNoteId,
       userId: ownerId,
