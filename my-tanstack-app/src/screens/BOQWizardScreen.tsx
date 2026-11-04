@@ -176,7 +176,9 @@ const normHebrew = (s: string) =>
     .replace(/מתלי/g, 'מתלה')
     .replace(/מתלים/g, 'מתלה')
     .replace(/רמקולים/g, 'רמקול')
-    .replace(/שקועים/g, 'שקוע');
+    .replace(/שקועים/g, 'שקוע')
+    .replace(/קו 0/g, 'קו אפס')
+    .replace(/קו-0/g, 'קו אפס');
 
 const norm = (s: string) => s.trim().toLowerCase();
 
