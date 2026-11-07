@@ -74,17 +74,49 @@ describe('performProjectDeletion leaves no orphans', () => {
         sizeSqm: 20, isWet: false, needsAc: false, sortOrder: 0,
       } as any);
 
-      // The two that held files and were never cleaned.
+      // Files and blobs that must be cleaned:
       const blobA = await ctx.storage.store(new Blob(['personal']));
       await ctx.db.insert('personalFiles', {
         ownerUserId: s.ownerId, projectId: s.projectId, storageId: blobA,
         originalName: 'a.pdf', storedName: 'a.gz', originalMimeType: 'application/pdf',
         originalSize: 8, storedSize: 8, note: '', uploadedAt: Date.now(),
       } as any);
+
       const blobB = await ctx.storage.store(new Blob(['plan']));
+      const blobBThumb = await ctx.storage.store(new Blob(['thumb']));
       await ctx.db.insert('projectPlans', {
-        projectId: s.projectId, storageId: blobB, name: 'תוכנית',
-        uploadedAt: Date.now(),
+        projectId: s.projectId, storageId: blobB, thumbnailStorageId: blobBThumb,
+        name: 'תוכנית', uploadedAt: Date.now(),
+      } as any);
+
+      const blobPermit = await ctx.storage.store(new Blob(['permit']));
+      await ctx.db.insert('permits', {
+        projectId: s.projectId, title: 'היתר', status: 'in_progress', fileId: blobPermit,
+      } as any);
+
+      const blobLog = await ctx.storage.store(new Blob(['logImg']));
+      await ctx.db.insert('dailyLogs', {
+        projectId: s.projectId, date: '2026-11-07', status: 'draft', createdBy: s.ownerId, updatedAt: Date.now(),
+        images: [{ storageId: blobLog }],
+      } as any);
+
+      const blobOrder = await ctx.storage.store(new Blob(['orderDoc']));
+      await ctx.db.insert('orders', {
+        projectId: s.projectId, title: 'הזמנה', status: 'pending', orderedQuantity: 1, receivedQuantity: 0,
+        unit: 'יח', deliveryDocuments: [{ storageId: blobOrder, name: 'תעודה' }],
+      } as any);
+
+      await ctx.db.insert('quoteTopics', {
+        projectId: s.projectId, key: 'custom_123', name: 'נושא אישי', icon: 'tag', isBuiltin: false,
+      } as any);
+
+      const quoteId = await ctx.db.insert('priceQuotes', {
+        projectId: s.projectId, topicKey: 'custom_123', supplier: 'ספק', total: 1000,
+        status: 'received', createdAt: '2026-11-07',
+      } as any);
+
+      await ctx.db.insert('quoteExtractions', {
+        quoteId, projectId: s.projectId, extractedJson: '{}', modelUsed: 'gpt-4o', extractedAt: Date.now(),
       } as any);
 
       await ctx.db.insert('quickNotes', {
@@ -141,18 +173,18 @@ describe('performProjectDeletion leaves no orphans', () => {
   });
 
   test('uploaded file blobs are deleted, not just their rows', async () => {
-    // personalFiles and projectPlans both hold a storageId. Before this, their
-    // rows AND their blobs survived — paid storage nobody could ever reach.
+    // personalFiles, projectPlans, permits, dailyLogs, and orders all hold storageIds.
+    // Ensure all stored blobs belonging to the project are deleted.
     const t = convexTest(schema, modules);
     const s = await seedEverything(t);
 
     const before = await t.run(async (ctx) => (await ctx.db.system.query('_storage').collect()).length);
-    expect(before).toBeGreaterThanOrEqual(2);
+    expect(before).toBeGreaterThanOrEqual(5);
 
     await t.run(async (ctx) => performProjectDeletion(ctx as any, s.projectId));
 
     const after = await t.run(async (ctx) => (await ctx.db.system.query('_storage').collect()).length);
-    expect(after, 'file blobs were orphaned').toBeLessThan(before);
+    expect(after, 'file blobs were orphaned').toBe(0);
   });
 
   test('another project is untouched', async () => {

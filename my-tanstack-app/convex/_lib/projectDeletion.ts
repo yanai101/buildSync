@@ -132,7 +132,7 @@ export async function performProjectDeletion(ctx: MutationCtx, projectId: Id<'pr
     await ctx.db.delete(file._id);
   }
 
-  // 5c. Uploaded plans, plus their blobs.
+  // 5c. Uploaded plans, plus their blobs (and thumbnails).
   const plans = await ctx.db
     .query('projectPlans')
     .withIndex('by_project', (q) => q.eq('projectId', projectId))
@@ -142,10 +142,70 @@ export async function performProjectDeletion(ctx: MutationCtx, projectId: Id<'pr
     if (plan.storageId) {
       try { await ctx.storage.delete(plan.storageId); } catch {}
     }
+    if (plan.thumbnailStorageId) {
+      try { await ctx.storage.delete(plan.thumbnailStorageId); } catch {}
+    }
     await ctx.db.delete(plan._id);
   }
 
-  // 5d. AI quote cache. Only a compound index exists; a prefix lookup is fine.
+  // 5d. Permits, plus their uploaded documents.
+  const permits = await ctx.db
+    .query('permits')
+    .withIndex('by_project', (q) => q.eq('projectId', projectId))
+    .collect();
+
+  for (const permit of permits) {
+    if (permit.fileId) {
+      try { await ctx.storage.delete(permit.fileId); } catch {}
+    }
+    await ctx.db.delete(permit._id);
+  }
+
+  // 5e. Daily logs, plus their attached images.
+  const dailyLogs = await ctx.db
+    .query('dailyLogs')
+    .withIndex('by_project', (q) => q.eq('projectId', projectId))
+    .collect();
+
+  for (const log of dailyLogs) {
+    if (log.images) {
+      for (const img of log.images) {
+        if (img.storageId) {
+          try { await ctx.storage.delete(img.storageId); } catch {}
+        }
+      }
+    }
+    await ctx.db.delete(log._id);
+  }
+
+  // 5f. Orders, plus their delivery documents.
+  const orders = await ctx.db
+    .query('orders')
+    .withIndex('by_project', (q) => q.eq('projectId', projectId))
+    .collect();
+
+  for (const order of orders) {
+    if (order.deliveryDocuments) {
+      for (const doc of order.deliveryDocuments) {
+        if (doc.storageId) {
+          try { await ctx.storage.delete(doc.storageId); } catch {}
+        }
+      }
+    }
+    await ctx.db.delete(order._id);
+  }
+
+  // 5g. Custom quote topics for this project (quoteTopics has no by_project index).
+  const customTopics = await ctx.db
+    .query('quoteTopics')
+    .filter((q) => q.eq(q.field('projectId'), projectId))
+    .collect();
+
+  for (const topic of customTopics) {
+    await ctx.db.delete(topic._id);
+  }
+
+  // 5h. AI quote cache. Only a compound index exists; a prefix lookup is fine.
   const aiCache = await ctx.db
     .query('aiQuoteCache')
     .withIndex('by_project_topic', (q) => q.eq('projectId', projectId))
@@ -162,8 +222,8 @@ export async function performProjectDeletion(ctx: MutationCtx, projectId: Id<'pr
     'projectRooms', 'boqItems', 'expenses', 'messages',
     'budgetCategories', 'activityFeed', 'timelineBars',
     'priceQuotes', 'projectInvitations', 'checklists',
-    'permits', 'dailyLogs', 'projectAlerts',
-    'fundingSources', 'fundingTransactions', 'mortgageDraws', 'orders',
+    'projectAlerts',
+    'fundingSources', 'fundingTransactions', 'mortgageDraws',
     'quickNotes', 'quoteExtractions',
   ] as const;
 
