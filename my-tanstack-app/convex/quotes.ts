@@ -45,6 +45,12 @@ export const listQuotes = query({
 export const listTopics = query({
   args: { projectId: v.optional(v.id('projects')) },
   handler: async (ctx, args) => {
+    // projectId is optional: without it this returns only the builtin topic
+    // list, which is not project data. With it, the caller must be a member —
+    // the custom topics below belong to that project.
+    if (args.projectId) {
+      await requireProjectMember(ctx, args.projectId);
+    }
     const builtins = await ctx.db
       .query('quoteTopics')
       .withIndex('by_key')

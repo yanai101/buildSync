@@ -26,6 +26,32 @@ const sources = Object.entries(
  */
 const AUTH_CALL = /\b(require[A-Z]\w*|check[A-Z]\w*|assert[A-Z]\w*|canUser\w*|resolveAccess|getAuthUserId)\b|ctx\.auth/;
 
+/**
+ * Extracts the DECLARED `args: { ... }` block by matching braces.
+ *
+ * Two mistakes were made here before, and both understated the problem:
+ *   - matching any mention of projectId in the body reported 34 offenders when
+ *     the real figure was different, because a body may merely mention it;
+ *   - a regex requiring a newline before the closing brace silently SKIPPED
+ *     every single-line `args: { projectId: v.id('projects') },` — which hid
+ *     nearly half the project-scoped functions, 101 rather than 53.
+ * Brace matching handles both forms.
+ */
+function argsBlock(chunk: string): string | null {
+  const key = chunk.search(/\bargs\s*:\s*\{/);
+  if (key < 0) return null;
+  const start = chunk.indexOf('{', key);
+  let depth = 0;
+  for (let i = start; i < chunk.length; i++) {
+    if (chunk[i] === '{') depth++;
+    else if (chunk[i] === '}') {
+      depth--;
+      if (depth === 0) return chunk.slice(start + 1, i);
+    }
+  }
+  return null;
+}
+
 interface PublicFn {
   id: string;
   body: string;
@@ -40,14 +66,11 @@ function publicFunctions(file: string, code: string): PublicFn[] {
     .filter((chunk) => /^\w+\s*=\s*(query|mutation|action)\(/.test(chunk))
     .map((chunk) => {
       const name = chunk.match(/^(\w+)/)?.[1] ?? '?';
-      // Only the DECLARED args block. Matching any mention of projectId in the
-      // body gives false positives — that mistake made this scan report 34
-      // offenders when the real number was 7.
-      const args = chunk.match(/args\s*:\s*\{([\s\S]*?)\n\s*\}\s*,\s*\n\s*(handler|returns)/);
+      const args = argsBlock(chunk);
       return {
         id: `${file.replace('../', '')}:${name}`,
         body: chunk,
-        declaresProjectId: !!args && /\bprojectId\s*:/.test(args[1]),
+        declaresProjectId: args !== null && /\bprojectId\s*:/.test(args),
       };
     });
 }
@@ -58,31 +81,26 @@ const projectScoped = allPublic.filter((fn) => fn.declaresProjectId);
 /**
  * Public, project-scoped functions with NO authentication or authorisation.
  *
- * Every entry is a real hole: the function accepts a projectId and acts on it
- * without establishing who is calling. Verified by reading each handler.
+ * EMPTY, and it must stay that way. All 14 that were found have been guarded:
  *
- *   checklists.ts:addChecklist      inserts a checklist into any project
- *   dashboard.ts:getOverview        returns stages, BUDGET CATEGORIES, activity,
- *                                   alerts, orders and defects for any project
- *   mutations.ts:createContractor   inserts a contractor into any project
- *   projects.ts:saveProjectSetup    writes project setup for any project
- *   projects.ts:updateBudgetTotal   rewrites any project's total budget
- *   stages.ts:createFromTemplate    patches any project and replaces its stages
- *   stages.ts:addStage              appends a stage to any project
+ *   projects.ts:updateBudgetTotal        -> requireProjectOwner
+ *   projects.ts:saveProjectSetup         -> requireProjectOwner
+ *   projects.ts:getWithDetails           -> requireProjectMember
+ *   projects.ts:getOwnerSubscription     -> requireProjectMember
+ *   dashboard.ts:getOverview             -> requireProjectMember + financial redaction
+ *   dashboard.ts:seedAlert               -> requireProjectMember
+ *   dashboard.ts:deleteAllAlerts         -> requireProjectMember
+ *   checklists.ts:list                   -> requireProjectMember
+ *   checklists.ts:addChecklist           -> requireProjectMember
+ *   mutations.ts:createContractor        -> requireProjectMember
+ *   stages.ts:addStage                   -> requireProjectMember
+ *   stages.ts:createFromTemplate         -> requireProjectMember
+ *   stages.ts:backfillStageContractors   -> requireProjectOwner
+ *   quotes.ts:listTopics                 -> requireProjectMember when project-scoped
  *
- * This list exists to stop the problem GROWING while the holes are closed one
- * at a time. Shrink it — never add to it. When a function is fixed, remove its
- * entry; the test then fails if it is still listed, so the list cannot rot.
+ * Do not add to this list to make a failing build pass. Guard the function.
  */
-const KNOWN_UNAUTHENTICATED = [
-  'checklists.ts:addChecklist',
-  'dashboard.ts:getOverview',
-  'mutations.ts:createContractor',
-  'projects.ts:saveProjectSetup',
-  'stages.ts:addStage',
-  'stages.ts:createFromTemplate',
-  'projects.ts:updateBudgetTotal',
-].sort();
+const KNOWN_UNAUTHENTICATED: string[] = [];
 
 describe('public function authorisation sweep', () => {
   test('the scan actually found the backend', () => {

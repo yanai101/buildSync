@@ -30,6 +30,18 @@ const baseURL = deployedURL ?? `http://localhost:${PORT}`;
 export default defineConfig({
   ...base,
   use: { ...base.use, baseURL },
+  // Drop teaser.spec.ts. It visits /dev/teasers, which does
+  // `if (!import.meta.env.DEV) throw notFound()` (src/routes/dev.teasers.tsx),
+  // so against a PRODUCTION build that route legitimately 404s. Inheriting the
+  // base config's projects unchanged made it fail here for a reason unrelated
+  // to whatever change was being verified — a false alarm in /verify is worse
+  // than no check. The teaser gallery is covered by the dev-server config.
+  projects: base.projects?.map((project) => {
+    const match = project.testMatch;
+    if (!(match instanceof RegExp)) return project;
+    const withoutTeaser = match.source.replace(/\|?teaser/, '');
+    return { ...project, testMatch: new RegExp(withoutTeaser) };
+  }),
   // Against a deployed URL there is nothing to start locally.
   webServer: deployedURL
     ? undefined

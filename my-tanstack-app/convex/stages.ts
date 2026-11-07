@@ -4,7 +4,12 @@ import type { MutationCtx } from './_generated/server';
 import { v } from 'convex/values';
 import { insertActivity } from './_lib/activity';
 import { patchStageDatesWithCascade } from './_lib/stageSchedule';
-import { requireProjectScheduleView, requireProjectMember, canUserViewSchedule } from './_lib/projectAccess';
+import {
+  requireProjectScheduleView,
+  requireProjectMember,
+  requireProjectOwner,
+  canUserViewSchedule,
+} from './_lib/projectAccess';
 import {
   hasSyncedStageContractorLinks,
   syncContractorStagePayments,
@@ -482,6 +487,8 @@ export const createFromTemplate = mutation({
     stages: v.array(stageTemplateValidator),
   },
   handler: async (ctx, args) => {
+    // Replaces the project's whole stage list and patches the project.
+    await requireProjectMember(ctx, args.projectId);
     const existing = await ctx.db
       .query('stages')
       .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
@@ -518,6 +525,8 @@ export const addStage = mutation({
     stage: newStageValidator,
   },
   handler: async (ctx, args) => {
+    // Appends a stage to the project.
+    await requireProjectMember(ctx, args.projectId);
     validateStageTemplateInput({ ...args.stage, legacyId: 1 });
 
     const existingStages = await ctx.db
@@ -905,6 +914,8 @@ export const setContractorPaymentMode = mutation({
 export const backfillStageContractors = mutation({
   args: { projectId: v.id('projects') },
   handler: async (ctx, args) => {
+    // A backfill with no client caller; owner-only so it cannot be driven externally.
+    await requireProjectOwner(ctx, args.projectId);
     const stages = await ctx.db
       .query('stages')
       .withIndex('by_project_sort', (q) => q.eq('projectId', args.projectId))

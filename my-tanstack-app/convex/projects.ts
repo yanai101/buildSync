@@ -3,7 +3,12 @@ import { getAuthUserId } from '@convex-dev/auth/server';
 import { v } from 'convex/values';
 import { performProjectDeletion } from './_lib/projectDeletion';
 import { deletePhotosForRooms } from './_lib/roomArchiveCleanup';
-import { canUserViewBudget, canUserViewSchedule } from './_lib/projectAccess';
+import {
+  canUserViewBudget,
+  canUserViewSchedule,
+  requireProjectMember,
+  requireProjectOwner,
+} from './_lib/projectAccess';
 import { getActiveTier, capabilitiesFor, PROJECT_LIMIT_ERROR } from './_lib/entitlements';
 
 export const listMine = query({
@@ -66,6 +71,7 @@ export const listMine = query({
 export const getWithDetails = query({
   args: { projectId: v.id('projects') },
   handler: async (ctx, args) => {
+    await requireProjectMember(ctx, args.projectId);
     const project = await ctx.db.get(args.projectId);
     if (!project) return null;
 
@@ -176,6 +182,8 @@ export const saveProjectSetup = mutation({
     rooms: v.array(v.any()),
   },
   handler: async (ctx, args) => {
+    // Owner-only: project setup rewrites budget, dates and team fields.
+    await requireProjectOwner(ctx, args.projectId);
     // Note: floorWastePct is intentionally NOT accepted here. It is set once
     // at project creation (see createProject) and locked thereafter.
     const projectPatch = {
@@ -248,6 +256,9 @@ export const updateBudgetTotal = mutation({
     budgetTotal: v.number(),
   },
   handler: async (ctx, args) => {
+    // Owner-only: the total budget is financial data, which AGENTS.md requires
+    // to be enforced here and not merely hidden in the UI.
+    await requireProjectOwner(ctx, args.projectId);
     if (args.budgetTotal < 0) {
       throw new Error('Budget total cannot be negative');
     }
@@ -299,6 +310,7 @@ export const setCoverPhoto = mutation({
 export const getOwnerSubscription = query({
   args: { projectId: v.id('projects') },
   handler: async (ctx, args) => {
+    await requireProjectMember(ctx, args.projectId);
     const project = await ctx.db.get(args.projectId);
     if (!project || !project.ownerUserId) {
       return { tier: 'free', isProOrPremium: false };
@@ -307,10 +319,10 @@ export const getOwnerSubscription = query({
     if (!owner) {
       return { tier: 'free', isProOrPremium: false };
     }
-    const now = Date.now();
-    const isExpired = owner.subscriptionExpiresAt ? now > owner.subscriptionExpiresAt : false;
-    const tier = owner.subscriptionTier || 'free';
-    const activeTier = owner.isSuperAdmin ? 'premium' : (isExpired ? 'free' : tier);
+    // getActiveTier, not an inline re-derivation: this duplicated its expiry
+    // and super-admin logic, which must live in one place only.
+    // getActiveTier already applies the super-admin and expiry rules.
+    const activeTier = getActiveTier(owner);
     const isProOrPremium = activeTier === 'pro' || activeTier === 'premium';
     return {
       tier: activeTier,

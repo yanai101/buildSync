@@ -1,10 +1,12 @@
 import { query, mutation } from './_generated/server';
 import { v } from 'convex/values';
 import { insertActivity } from './_lib/activity';
+import { requireProjectMember } from './_lib/projectAccess';
 
 export const list = query({
   args: { projectId: v.id('projects') },
   handler: async (ctx, args) => {
+    await requireProjectMember(ctx, args.projectId);
     const checklists = await ctx.db
       .query('checklists')
       .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
@@ -36,6 +38,7 @@ export const addChecklist = mutation({
     items: v.array(v.string()), // Initial items
   },
   handler: async (ctx, args) => {
+    await requireProjectMember(ctx, args.projectId);
     const existing = await ctx.db
       .query('checklists')
       .withIndex('by_project', (q) => q.eq('projectId', args.projectId))

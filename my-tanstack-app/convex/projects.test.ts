@@ -29,7 +29,7 @@ async function setupProject(t: ReturnType<typeof convexTest>) {
 describe('saveProjectSetup room reconciliation', () => {
   test('deletes rooms that are omitted from the submitted rooms list', async () => {
     const t = convexTest(schema, modules);
-    const { projectId } = await setupProject(t);
+    const { ownerId, projectId } = await setupProject(t);
 
     const keptRoomId = await t.run((ctx) =>
       ctx.db.insert('projectRooms', {
@@ -58,7 +58,9 @@ describe('saveProjectSetup room reconciliation', () => {
 
     // Simulates reducing the floor count from 3 to 1: the client only
     // resends the room the user can still see/edit.
-    await t.mutation(api.projects.saveProjectSetup, {
+    // As the owner: saveProjectSetup is owner-gated, so an unauthenticated
+    // call (which this test used to make) is now correctly refused.
+    await t.withIdentity({ subject: ownerId }).mutation(api.projects.saveProjectSetup, {
       projectId,
       name: 'בית לבדיקה',
       address: 'רחוב הבדיקה 1',

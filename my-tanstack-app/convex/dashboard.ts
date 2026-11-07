@@ -3,12 +3,17 @@ import { Id } from './_generated/dataModel';
 import { v } from 'convex/values';
 import { getFinancialSummary } from './_lib/financialSummary';
 import { getAuthUserId } from '@convex-dev/auth/server';
+import { canUserViewBudget, requireProjectMember } from './_lib/projectAccess';
 
 export const getOverview = query({
   args: {
     projectId: v.id('projects'),
   },
   handler: async (ctx, args) => {
+    // Was fully unauthenticated: any caller with a project id received the
+    // project, its full financial summary and its budget overruns.
+    await requireProjectMember(ctx, args.projectId);
+    const canViewBudget = await canUserViewBudget(ctx, args.projectId);
     const project = await ctx.db.get(args.projectId);
     if (!project) {
       return null;
@@ -265,18 +270,33 @@ export const getOverview = query({
       }
     }
 
+    // Server-side redaction, not UI hiding. A contractor defaults to NO budget
+    // access (canViewBudget is `=== true` for them, see projectAccess), so
+    // without this they would receive every financial figure on the dashboard.
+    // Values are zeroed rather than removed so the response shape stays stable
+    // for existing callers; `canViewBudget` lets the UI hide the panels.
+    const redactMoney = <T extends Record<string, unknown>>(obj: T, keys: (keyof T)[]): T =>
+      canViewBudget ? obj : { ...obj, ...Object.fromEntries(keys.map((k) => [k, 0])) };
+
     return {
-      project: {
-        ...project,
-        coverPhoto: resolvedCoverPhoto,
-        progressPhotosCount: progressPhotos.length,
-      },
-      stats: {
-        ...financialSummary,
-        stagePaidTotal,
-        doneStages,
-        totalStages: stages.length,
-      },
+      canViewBudget,
+      project: redactMoney(
+        {
+          ...project,
+          coverPhoto: resolvedCoverPhoto,
+          progressPhotosCount: progressPhotos.length,
+        },
+        ['budgetTotal', 'spent', 'committed'],
+      ),
+      stats: redactMoney(
+        {
+          ...financialSummary,
+          stagePaidTotal,
+          doneStages,
+          totalStages: stages.length,
+        },
+        ['totalBudget', 'projectBudget', 'categoryBudget', 'totalSpent', 'committed', 'remainingBudget', 'stagePaidTotal'],
+      ),
       stages: stages.map((stage) => ({
         id: stage._id,
         name: stage.name,
@@ -291,7 +311,7 @@ export const getOverview = query({
             status: activeStage.status,
           }
         : null,
-      topOverruns,
+      topOverruns: canViewBudget ? topOverruns : [],
       recentActivity: resolvedRecentActivity,
       alerts: [...dynamicAlerts, ...projectAlerts.map((alert) => ({
         id: alert._id,
@@ -313,6 +333,7 @@ import { mutation } from './_generated/server';
 export const seedAlert = mutation({
   args: { projectId: v.id('projects') },
   handler: async (ctx, args) => {
+    await requireProjectMember(ctx, args.projectId);
     await ctx.db.insert('projectAlerts', {
       projectId: args.projectId,
       type: 'warning',
@@ -334,6 +355,7 @@ export const deleteAlert = mutation({
 export const deleteAllAlerts = mutation({
   args: { projectId: v.id('projects') },
   handler: async (ctx, args) => {
+    await requireProjectMember(ctx, args.projectId);
     const alerts = await ctx.db
       .query('projectAlerts')
       .withIndex('by_project_read', (q) => q.eq('projectId', args.projectId))

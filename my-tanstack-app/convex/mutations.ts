@@ -4,7 +4,7 @@ import type { Id } from './_generated/dataModel';
 import { v, ConvexError } from 'convex/values';
 import { getAuthUserId } from '@convex-dev/auth/server';
 import { getSyncedPaymentReadiness, syncContractorStagePayments, deleteMilestoneCascade } from './_lib/contractorPaymentSync';
-import { requireProjectFeature } from './_lib/projectAccess';
+import { requireProjectFeature, requireProjectMember } from './_lib/projectAccess';
 import { resolveCurrentStageName } from './_lib/resolveCurrentStageName';
 import { scheduleUserNotifications } from './notifications';
 
@@ -513,6 +513,7 @@ export const createContractor = mutation({
     includesVat: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
+    await requireProjectMember(ctx, args.projectId);
     const contractorId = await ctx.db.insert('contractors', {
       projectId: args.projectId,
       name: args.name,
