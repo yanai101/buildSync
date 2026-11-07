@@ -81,7 +81,9 @@ await check('GET /login returns 2xx', async () => {
 });
 
 await check('asset chunks are reachable and cacheable', async () => {
-  const html = await (await get('/')).text();
+  // Look on /login, not /: the landing page at / is static HTML with no hashed
+  // module scripts, so checking it there always skipped and proved nothing.
+  const html = await (await get('/login')).text();
   const asset = html.match(/\/_build\/assets\/[A-Za-z0-9._-]+\.js|\/assets\/[A-Za-z0-9._-]+\.js/)?.[0];
   if (!asset) return { skip: 'no hashed asset reference in the HTML to follow' };
   const res = await get(asset);
