@@ -9,6 +9,7 @@ import { useRequireRole } from '../hooks/useRequireRole';
 import { useAppNotify } from '../hooks/useAppNotify';
 import { RoomArchivePermissionsCard } from '../components/roomArchive/RoomArchivePermissionsCard';
 import { useSubscription } from '../hooks/useSubscription';
+import { capabilitiesFor } from '../../convex/_lib/entitlements';
 
 type InviteRole = 'manager' | 'inspector' | 'contractor';
 
@@ -264,10 +265,17 @@ export const TeamScreen = () => {
 
   const openInvite = () => {
     const currentTeamSize = (members?.owner ? 1 : 0) + (members?.manager ? 1 : 0) + (members?.inspector ? 1 : 0) + (members?.contractors?.length || 0);
-    if (!isProOrPremium && currentTeamSize >= 5) {
+    // The cap comes from entitlements, not a literal: it used to be a hardcoded
+    // 5 here while TIER_CAPABILITIES claimed `team: false` for free — three
+    // places, none agreeing. One number, one source.
+    // Keyed off isProOrPremium rather than the tier string, because
+    // SubscriptionInfo.tier is typed `string` and the cap only differs between
+    // free and paid. The NUMBER still comes from entitlements.
+    const maxTeamMembers = capabilitiesFor(isProOrPremium ? 'pro' : 'free').maxTeamMembers;
+    if (currentTeamSize >= maxTeamMembers) {
       notify({
         title: 'הגבלת חשבון חינמי',
-        body: 'במסלול החינמי ניתן להוסיף עד 5 חברי צוות. שדרג ל-Pro כדי להוסיף חברים נוספים.',
+        body: `במסלול החינמי ניתן להוסיף עד ${maxTeamMembers} חברי צוות. שדרג ל-Pro כדי להוסיף חברים נוספים.`,
         kind: 'error',
       });
       return;

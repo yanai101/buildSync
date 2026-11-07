@@ -8,8 +8,23 @@ export type Tier = 'free' | 'pro' | 'premium';
 export interface Capabilities {
   /** Max projects a user may OWN. Number.POSITIVE_INFINITY means unlimited. */
   maxOwnedProjects: number;
+  /**
+   * Max members on a project's team, counting the owner.
+   *
+   * Replaces an earlier `team: boolean` that was set false for free, which
+   * contradicted the shipped behaviour — the free plan DOES get a team, capped
+   * at five ("במסלול החינמי ניתן להוסיף עד 5 חברי צוות"). Nothing ever read the
+   * boolean, so the contradiction never surfaced; wiring it up would have
+   * removed team access from every free user.
+   *
+   * Enforced in the UI only, deliberately: bypassing it requires the project's
+   * own OWNER to call the Convex mutation by hand to add a sixth member to
+   * their own project. That is revenue leakage, not a security issue, and the
+   * levers that actually drive upgrades (maxOwnedProjects, boq) ARE enforced
+   * server-side. Revisit if that ever stops being true.
+   */
+  maxTeamMembers: number;
   boq: boolean;
-  team: boolean;
   analytics: boolean;
   dailyLogs: boolean;
   orders: boolean;
@@ -23,8 +38,8 @@ export interface Capabilities {
 export const TIER_CAPABILITIES: Record<Tier, Capabilities> = {
   free: {
     maxOwnedProjects: 1,
+    maxTeamMembers: 5,
     boq: false,
-    team: false,
     analytics: false,
     dailyLogs: false,
     orders: false,
@@ -34,8 +49,8 @@ export const TIER_CAPABILITIES: Record<Tier, Capabilities> = {
   },
   pro: {
     maxOwnedProjects: Number.POSITIVE_INFINITY,
+    maxTeamMembers: Number.POSITIVE_INFINITY,
     boq: true,
-    team: true,
     analytics: true,
     dailyLogs: true,
     orders: true,
@@ -45,8 +60,8 @@ export const TIER_CAPABILITIES: Record<Tier, Capabilities> = {
   },
   premium: {
     maxOwnedProjects: Number.POSITIVE_INFINITY,
+    maxTeamMembers: Number.POSITIVE_INFINITY,
     boq: true,
-    team: true,
     analytics: true,
     dailyLogs: true,
     orders: true,
@@ -80,7 +95,14 @@ export function capabilitiesFor(tier: Tier): Capabilities {
   return TIER_CAPABILITIES[tier];
 }
 
-export function tierAllows(tier: Tier, feature: keyof Omit<Capabilities, 'maxOwnedProjects'>): boolean {
+/**
+ * The boolean, per-feature capabilities — everything except the numeric limits.
+ * Using this instead of `keyof Omit<Capabilities, 'maxOwnedProjects'>` means
+ * adding another numeric limit cannot silently make it passable to tierAllows.
+ */
+export type Feature = keyof Omit<Capabilities, 'maxOwnedProjects' | 'maxTeamMembers'>;
+
+export function tierAllows(tier: Tier, feature: Feature): boolean {
   return TIER_CAPABILITIES[tier][feature];
 }
 

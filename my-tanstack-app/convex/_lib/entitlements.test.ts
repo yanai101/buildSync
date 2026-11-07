@@ -13,21 +13,21 @@ import {
   capabilitiesFor,
   tierAllows,
   PROJECT_LIMIT_ERROR,
-  type Capabilities,
+  type Feature,
   type Tier,
 } from './entitlements';
 
 const TIERS: Tier[] = ['free', 'pro', 'premium'];
+const NUMERIC_LIMITS = ['maxOwnedProjects', 'maxTeamMembers'] as const;
 const BOOLEAN_CAPABILITIES = [
   'boq',
-  'team',
   'analytics',
   'dailyLogs',
   'orders',
   'aiAssistant',
   'projectExport',
   'roomArchive',
-] as const satisfies readonly (keyof Omit<Capabilities, 'maxOwnedProjects'>)[];
+] as const satisfies readonly Feature[];
 
 describe('TIER_CAPABILITIES', () => {
   test('defines every tier', () => {
@@ -39,21 +39,35 @@ describe('TIER_CAPABILITIES', () => {
     // must get a conscious decision for every tier, not inherit a default.
     for (const tier of TIERS) {
       expect(Object.keys(TIER_CAPABILITIES[tier]).sort()).toEqual(
-        ['maxOwnedProjects', ...BOOLEAN_CAPABILITIES].sort(),
+        [...NUMERIC_LIMITS, ...BOOLEAN_CAPABILITIES].sort(),
       );
     }
   });
 
-  test('free unlocks nothing and is capped at one owned project', () => {
+  test('free unlocks no paid FEATURE, but does get a capped team', () => {
     expect(TIER_CAPABILITIES.free.maxOwnedProjects).toBe(1);
+    // 5, not 0 and not a boolean: the free plan genuinely has a team, capped.
+    // The UI message says so ("עד 5 חברי צוות"). This replaced a `team: false`
+    // boolean that contradicted the shipped behaviour.
+    expect(TIER_CAPABILITIES.free.maxTeamMembers).toBe(5);
     for (const cap of BOOLEAN_CAPABILITIES) {
       expect(TIER_CAPABILITIES.free[cap], `free.${cap} must be false`).toBe(false);
     }
   });
 
-  test('paid tiers allow unlimited owned projects', () => {
-    expect(TIER_CAPABILITIES.pro.maxOwnedProjects).toBe(Number.POSITIVE_INFINITY);
-    expect(TIER_CAPABILITIES.premium.maxOwnedProjects).toBe(Number.POSITIVE_INFINITY);
+  test('paid tiers lift both numeric limits', () => {
+    for (const tier of ['pro', 'premium'] as const) {
+      for (const limit of NUMERIC_LIMITS) {
+        expect(TIER_CAPABILITIES[tier][limit], `${tier}.${limit}`).toBe(Number.POSITIVE_INFINITY);
+      }
+    }
+  });
+
+  test('every numeric limit is at least as generous on a paid tier', () => {
+    for (const limit of NUMERIC_LIMITS) {
+      expect(TIER_CAPABILITIES.pro[limit]).toBeGreaterThanOrEqual(TIER_CAPABILITIES.free[limit]);
+      expect(TIER_CAPABILITIES.premium[limit]).toBeGreaterThanOrEqual(TIER_CAPABILITIES.pro[limit]);
+    }
   });
 
   test('premium differs from pro ONLY in aiAssistant', () => {
@@ -215,7 +229,9 @@ describe('capability enforcement coverage', () => {
    * Remove an entry once it is enforced; the test then fails if it is still
    * listed, which keeps the list honest in both directions.
    */
-  const KNOWN_UNENFORCED = ['aiAssistant', 'analytics', 'team'] as const;
+  // maxTeamMembers is a NUMERIC limit, not a Feature, so it is not in scope
+  // here. It is UI-enforced on purpose — see its comment in entitlements.ts.
+  const KNOWN_UNENFORCED = ['aiAssistant', 'analytics'] as const;
 
   // Line-based, because the real calls nest parens —
   // `tierAllows(getActiveTier(owner), 'roomArchive')` — which a [^)]* regex

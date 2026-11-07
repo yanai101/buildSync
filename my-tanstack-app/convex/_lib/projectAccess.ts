@@ -1,7 +1,7 @@
 import { getAuthUserId } from '@convex-dev/auth/server';
 import type { Id } from '../_generated/dataModel';
 import type { MutationCtx, QueryCtx } from '../_generated/server';
-import { getActiveTier, tierAllows, Capabilities } from './entitlements';
+import { getActiveTier, tierAllows, type Feature } from './entitlements';
 
 type Ctx = QueryCtx | MutationCtx;
 
@@ -240,7 +240,7 @@ export const requireProjectScheduleView = async (ctx: Ctx, projectId: Id<'projec
 export const requireProjectFeature = async (
   ctx: Ctx,
   projectId: Id<'projects'>,
-  feature: keyof Omit<Capabilities, 'maxOwnedProjects'>
+  feature: Feature
 ) => {
   const project = await ctx.db.get(projectId);
   if (!project) {
