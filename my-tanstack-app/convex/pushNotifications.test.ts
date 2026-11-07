@@ -5,6 +5,7 @@ import webPush from 'web-push';
 import schema from './schema';
 import { api, internal } from './_generated/api';
 import { scheduleUserNotifications } from './notifications';
+import { makeContractor, makeProject } from './_test/factories';
 
 const modules = import.meta.glob('./**/*.ts');
 
@@ -101,14 +102,13 @@ describe('push notification system', () => {
     const ownerId = await t.run((ctx) => ctx.db.insert('users', { name: 'Owner', role: 'owner' }));
     const inspectorId = await t.run((ctx) => ctx.db.insert('users', { name: 'Inspector', role: 'inspector' }));
     const contractorUserId = await t.run((ctx) => ctx.db.insert('users', { name: 'Contractor', role: 'contractor' }));
-    const projectId = await t.run((ctx) => ctx.db.insert('projects', {
-      name: 'פרויקט בדיקה',
-      ownerUserId: ownerId,
-      inspectorUserId: inspectorId,
-    }));
-    await t.run((ctx) => ctx.db.insert('contractors', { projectId, name: 'קבלן מקושר', userId: contractorUserId }));
+    const projectId = await t.run((ctx) => ctx.db.insert(
+      'projects',
+      makeProject(ownerId, { name: 'פרויקט בדיקה', inspectorUserId: inspectorId }),
+    ));
+    await t.run((ctx) => ctx.db.insert('contractors', makeContractor(projectId, { name: 'קבלן מקושר', userId: contractorUserId })));
     // A contractor without a linked user account — should simply be skipped.
-    await t.run((ctx) => ctx.db.insert('contractors', { projectId, name: 'קבלן ללא חשבון' }));
+    await t.run((ctx) => ctx.db.insert('contractors', makeContractor(projectId, { name: 'קבלן ללא חשבון' })));
     await t.run((ctx) => ctx.db.insert('pushSubscriptions', { userId: contractorUserId, endpoint: 'https://push.example/contractor-device', p256dh: 'p', auth: 'a' }));
     await t.run((ctx) => ctx.db.insert('pushSubscriptions', { userId: inspectorId, endpoint: 'https://push.example/inspector-device', p256dh: 'p', auth: 'a' }));
 

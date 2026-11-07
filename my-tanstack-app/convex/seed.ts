@@ -6,7 +6,7 @@
 // to pull into Convex). A few values live inside React components — those
 // are inlined here with a source note.
 
-import { mutation } from './_generated/server';
+import { internalMutation, mutation } from './_generated/server';
 import type { MutationCtx } from './_generated/server';
 import type { Doc, Id } from './_generated/dataModel';
 import { getAuthUserId } from '@convex-dev/auth/server';
@@ -488,7 +488,12 @@ async function wipeDomain(ctx: MutationCtx) {
   }
 }
 
-export const resetDomain = mutation({
+// internalMutation, NOT mutation: this deletes every document in every table in
+// DOMAIN_TABLES. As a public mutation it was callable by anyone who knew the
+// deployment URL, with no authentication and no arguments. It has no caller in
+// the app — invoke it from the Convex dashboard or `npx convex run` when you
+// actually want to wipe a dev deployment.
+export const resetDomain = internalMutation({
   args: {},
   handler: async (ctx) => {
     await wipeDomain(ctx);

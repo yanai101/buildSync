@@ -1,0 +1,19 @@
+{
+  "//": "Sibling project for the Convex backend. The root tsconfig.json EXCLUDES convex/ because it configures jsx:react-jsx and DOM-first libs for the app; the Convex runtime wants different ones. Run via: npm run typecheck:convex",
+  "include": ["convex/**/*.ts"],
+  "exclude": ["convex/_generated"],
+  "compilerOptions": {
+    "strict": true,
+    "noEmit": true,
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM"],
+    "types": ["vite/client", "node"],
+    "skipLibCheck": true,
+    "isolatedModules": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "forceConsistentCasingInFileNames": true
+  }
+}

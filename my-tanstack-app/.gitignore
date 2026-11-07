@@ -1,29 +1,51 @@
 node_modules
-package-lock.json
-yarn.lock
 
 .DS_Store
 .cache
-.env
-.vercel
-.agents/
+
+# Build output
 .output
 .nitro
+.tanstack
+.vite
 /build/
 /api/
 /server/build
-/public/build# Sentry Config File
-.env.sentry-build-plugin
+/public/build
+
+# Logs and scratch dumps — never commit these
+*.log
+convex_*.txt
+prod_logs.txt
+logs.txt
+
+# Coverage
+/coverage/
+
+# Deploy / tooling state
+.vercel
+.playwright-mcp/
+
+# Agent skill mirrors (regenerate with: npx convex ai-files install)
+.agent/
+.agents/
+.codex/
+
+# Playwright artifacts
 /test-results/
 /playwright-report/
 /blob-report/
 /playwright/.cache/
-# Playwright login state (contains auth tokens) and test credentials
+# Playwright login state (contains auth tokens)
 /e2e/.auth/
+
+# Secrets. Examples are committed on purpose — see the root .gitignore negations.
+.env
+.env.local
 .env.e2e
 !.env.e2e.example
-.tanstack
+!.env.example
+.env.sentry-build-plugin
 
 # Local working notes — not pushed
 .notes/
-.env.local

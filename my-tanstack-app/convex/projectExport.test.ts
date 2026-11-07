@@ -3,6 +3,7 @@ import { convexTest } from 'convex-test';
 import { describe, expect, test } from 'vitest';
 import schema from './schema';
 import { api } from './_generated/api';
+import { makeContractor } from './_test/factories';
 
 const modules = import.meta.glob('./**/*.ts');
 
@@ -119,11 +120,10 @@ describe('projectExport.generateExportManifest authorization', () => {
           : {}),
     );
     if (role === 'contractor') {
-      await t.run((ctx) => ctx.db.insert('contractors', {
-        projectId,
-        name: 'קבלן בפרויקט',
-        userId: memberId,
-      }));
+      await t.run((ctx) => ctx.db.insert(
+        'contractors',
+        makeContractor(projectId, { name: 'קבלן בפרויקט', userId: memberId }),
+      ));
     }
 
     await expect(manifestFor(t, memberId, projectId)).rejects.toThrow(

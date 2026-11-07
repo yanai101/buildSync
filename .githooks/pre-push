@@ -1,0 +1,39 @@
+#!/bin/sh
+# BuildSync gate. There is no CI: this hook is what stands in front of production.
+#
+# Pushing master triggers the Vercel build. Once Convex deploys from that build,
+# a master push IS a production deploy — so master gets the full gate and
+# feature branches get the fast one.
+#
+# Enable once per clone:   git config core.hooksPath .githooks
+# Deliberate bypass:       git push --no-verify
+#
+# Note: this hook is intentionally NOT disabled by .claude/.factory-off. The
+# thing guarding production should not have an easy off switch.
+
+set -e
+
+APP_DIR="$(git rev-parse --show-toplevel)/my-tanstack-app"
+cd "$APP_DIR" || { echo "pre-push: cannot find my-tanstack-app" >&2; exit 1; }
+
+# git feeds pre-push one line per ref: <local ref> <local sha> <remote ref> <remote sha>
+pushing_default_branch=0
+while read -r _local_ref _local_sha remote_ref _remote_sha; do
+  case "$remote_ref" in
+    refs/heads/master|refs/heads/main) pushing_default_branch=1 ;;
+  esac
+done
+
+if [ "$pushing_default_branch" -eq 1 ]; then
+  echo "pre-push: pushing the default branch — running the full gate."
+  npm run gate
+  npm run build
+  if [ -f scripts/check-env.mjs ]; then
+    node scripts/check-env.mjs --remote --ci
+  fi
+  echo "pre-push: full gate passed."
+else
+  echo "pre-push: feature branch — running the fast gate."
+  npm run gate:fast
+  echo "pre-push: fast gate passed."
+fi

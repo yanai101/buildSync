@@ -12,8 +12,8 @@ communication.
 
 Stack: [TanStack Start](https://tanstack.com/start) (React 19 + TanStack
 Router) on the frontend, [Convex](https://convex.dev) as the backend
-(database, functions, auth via `@convex-dev/auth`), Tailwind CSS, deployed
-via Netlify/Vercel.
+(database, functions, auth via `@convex-dev/auth`), Tailwind CSS. The frontend
+deploys to Vercel; the Convex backend is deployed separately.
 
 ## Target audience
 

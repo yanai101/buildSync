@@ -1,5 +1,44 @@
+# OS / editor
+.DS_Store
+
+# Dependencies
+node_modules/
+
+# Build & tooling output
+coverage/
+*.log
+
+# Deploy / tooling state
 .vercel
-.env*.local
-.playwright-mcp
-obsidian-vault
+.playwright-mcp/
+
+# Local working notes
+obsidian-vault/
+
+# Agent skill mirrors (regenerate with: npx convex ai-files install)
+.agent/
+.codex/
+
+# Secrets. Ignore every .env, but keep the committed examples —
+# NOTE: a bare `.env*` silently swallows .env.example. Keep these negations.
 .env*
+!.env.example
+!**/.env.example
+!.env.e2e.example
+!**/.env.e2e.example
+
+# Dead scaffolds kept on disk only (stock create-vite output)
+/temp-app/
+/ui-pro-max/
+
+# One-off local scripts kept on disk only
+/my-tanstack-app/fix_*.py
+/my-tanstack-app/test-*.js
+/my-tanstack-app/test-*.mjs
+/my-tanstack-app/test_*.js
+/my-tanstack-app/queryUser.js
+/my-tanstack-app/scratch.ts
+/my-tanstack-app/generate.cjs
+
+# Factory ambient-hook switch (see /factory) — per-checkout, never committed
+.claude/.factory-off

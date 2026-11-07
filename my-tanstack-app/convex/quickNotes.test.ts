@@ -3,6 +3,7 @@ import { convexTest } from 'convex-test';
 import { describe, expect, test } from 'vitest';
 import schema from './schema';
 import { api } from './_generated/api';
+import { makeProject } from './_test/factories';
 
 const modules = import.meta.glob('./**/*.ts');
 
@@ -21,20 +22,16 @@ async function setup() {
   }));
 
   // Create a project owned by the free user
-  const freeProject = await t.run((ctx) => ctx.db.insert('projects', {
-    name: 'Free Project',
-    ownerUserId: freeUserId,
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
-  }));
+  const freeProject = await t.run((ctx) => ctx.db.insert(
+    'projects',
+    makeProject(freeUserId, { name: 'Free Project' }),
+  ));
 
   // Create a project owned by the pro user
-  const proProject = await t.run((ctx) => ctx.db.insert('projects', {
-    name: 'Pro Project',
-    ownerUserId: proUserId,
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
-  }));
+  const proProject = await t.run((ctx) => ctx.db.insert(
+    'projects',
+    makeProject(proUserId, { name: 'Pro Project' }),
+  ));
 
   return { t, freeUserId, proUserId, freeProject, proProject };
 }

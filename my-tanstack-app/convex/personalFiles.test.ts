@@ -57,7 +57,8 @@ describe('personal project archive scoping', () => {
       { projectId },
     );
 
-    expect(files.map((file) => file.originalName)).toEqual(['פרויקט-א.pdf']);
+    expect(files).not.toBeNull();
+    expect(files!.map((file) => file.originalName)).toEqual(['פרויקט-א.pdf']);
   });
 
   test('does not allow a user without permissions to read project archive', async () => {
@@ -100,7 +101,8 @@ describe('personal project archive scoping', () => {
       { projectId },
     );
     // Manager only has photos permission, so only photos are returned
-    expect(files.map((f) => f.originalName)).toEqual(['תמונה.jpg']);
+    expect(files).not.toBeNull();
+    expect(files!.map((f) => f.originalName)).toEqual(['תמונה.jpg']);
   });
 
   test('blocks manager when project owner has free subscription', async () => {
@@ -155,7 +157,8 @@ describe('personal project archive scoping', () => {
       api.personalFiles.listMyPersonalFiles,
       { projectId },
     );
-    expect(remainingFiles.map((f) => f.originalName)).toEqual(['תמונה3.jpg']);
+    expect(remainingFiles).not.toBeNull();
+    expect(remainingFiles!.map((f) => f.originalName)).toEqual(['תמונה3.jpg']);
   });
 
   test('non-owner cannot delete a section from archive', async () => {

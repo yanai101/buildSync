@@ -51,7 +51,13 @@ export const sendSupportEmail = internalAction({
     message: v.string(),
   },
   handler: async (ctx, args) => {
-    const apiKey = process.env.RESEND_API_KEY;
+    // Falls back to AUTH_RESEND_KEY: both are plain Resend API keys for the
+    // same Resend account and the same verified domain (buildsync.co.il), and
+    // only AUTH_RESEND_KEY was ever actually set — which meant every support
+    // ticket logged the warning below and sent no email at all. Setting
+    // RESEND_API_KEY still overrides, if you ever want a separate key to rotate
+    // or revoke independently.
+    const apiKey = process.env.RESEND_API_KEY || process.env.AUTH_RESEND_KEY;
     const adminEmail = process.env.ADMIN_EMAIL || 'support@buildsync.co.il';
     
     if (!apiKey) {
