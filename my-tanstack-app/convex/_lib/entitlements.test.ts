@@ -245,27 +245,40 @@ describe('capability enforcement coverage', () => {
     expect(allLines.some(({ line }) => line.includes('.maxOwnedProjects'))).toBe(true);
   });
 
-  test('the active tier is derived in one place, with known exceptions', () => {
-    // The smell is comparing `now` against subscriptionExpiresAt to decide a
-    // tier, which duplicates getActiveTier. convex/invitations.ts did exactly
-    // that and now calls getActiveTier instead.
-    //
-    // Exceptions, deliberately listed rather than matched loosely:
-    //   cleanup.ts — compares the date for DATA RETENTION, not entitlement
-    //   users.ts   — the `me` query derives an expired/not-expired tier for the
-    //                client WITHOUT the super-admin rule, so a super admin is
-    //                reported as having no tier while getActiveTier says
-    //                premium. A real divergence, left alone here because
-    //                changing `me`'s response shape is a behavioural change
-    //                for every client consumer, not a test-phase edit.
-    const ALLOWED = ['../cleanup.ts', '../users.ts'];
-    const derivesTier = files
-      .filter(
-        ([, code]) =>
-          /now\s*>\s*[\w?.]*subscriptionExpiresAt|subscriptionExpiresAt\s*<\s*now/.test(code) &&
-          !/getActiveTier/.test(code),
-      )
-      .map(([f]) => f);
-    expect([...derivesTier].sort()).toEqual([...ALLOWED].sort());
+  test('the active tier is derived in one place, per FUNCTION', () => {
+    // Scans each exported function separately, not whole files. A file-level
+    // check was used first and was too coarse: projects.ts imports
+    // getActiveTier for one function, which hid an inline re-derivation inside
+    // getOwnerSubscription until it was found by hand.
+    const smell = /now\s*>\s*[\w?.]*subscriptionExpiresAt|subscriptionExpiresAt\s*<\s*now/;
+    const offenders: string[] = [];
+    for (const [file, code] of files) {
+      for (const chunk of code.split(/\nexport const |\nexport function |\nexport async function /).slice(1)) {
+        const name = chunk.match(/^(\w+)/)?.[1] ?? '?';
+        if (smell.test(chunk) && !/getActiveTier/.test(chunk)) {
+          offenders.push(`${file.replace('../', '')}:${name}`);
+        }
+      }
+    }
+
+    /**
+     * Exceptions, each deliberate:
+     *   cleanup.ts (both) — compares the date for DATA RETENTION of inactive
+     *                 projects, which is not an entitlement decision.
+     *   users.ts:currentIdentity — derives an expired/not-expired tier for the
+     *                 client WITHOUT the super-admin rule, so a super admin is
+     *                 reported with no tier while getActiveTier says premium.
+     *                 A real divergence, left alone because changing this
+     *                 query's response shape affects every client consumer.
+     */
+    const ALLOWED = [
+      'cleanup.ts:getCleanupCandidates',
+      'cleanup.ts:performCleanupBatch',
+      'users.ts:currentIdentity',
+    ];
+    expect(
+      offenders.sort(),
+      'A function re-derives the active tier by hand instead of calling getActiveTier.',
+    ).toEqual([...ALLOWED].sort());
   });
 });

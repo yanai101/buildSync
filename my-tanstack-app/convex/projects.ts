@@ -326,9 +326,8 @@ export const getOwnerSubscription = query({
     if (!owner) {
       return { tier: 'free', isProOrPremium: false };
     }
-    // getActiveTier, not an inline re-derivation: this duplicated its expiry
-    // and super-admin logic, which must live in one place only.
-    // getActiveTier already applies the super-admin and expiry rules.
+    // getActiveTier, not an inline re-derivation: this used to duplicate the
+    // super-admin and expiry rules, which belong in one place only.
     const activeTier = getActiveTier(owner);
     const isProOrPremium = activeTier === 'pro' || activeTier === 'premium';
     return {
