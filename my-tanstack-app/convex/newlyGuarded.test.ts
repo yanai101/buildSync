@@ -15,34 +15,99 @@ import { seedProject } from './_test/factories';
 
 const modules = import.meta.glob('./**/*.ts');
 
-describe('owner-only writes reject members and outsiders', () => {
-  test('updateBudgetTotal: only the owner may rewrite the budget', async () => {
+describe('updateBudgetTotal follows the budget-view model, not owner-only', () => {
+  const setBudget = (t: any, who: string | null, s: any, budgetTotal: number) => {
+    const caller = who ? t.withIdentity({ subject: who }) : t;
+    return caller.mutation(api.projects.updateBudgetTotal, { projectId: s.projectId, budgetTotal });
+  };
+
+  test('the manager and inspector CAN edit it by default', async () => {
+    // /budget is reachable by useRequireRole(['owner','manager']) and
+    // canUserViewBudget allows manager and inspector unless the owner turns it
+    // off. An owner-only guard here would break the manager's budget screen —
+    // it did, before this test existed.
     const t = convexTest(schema, modules);
     const s = await seedProject(t, { budgetTotal: 100 });
 
-    for (const [who, id] of [
-      ['manager', s.managerId], ['inspector', s.inspectorId],
-      ['contractor', s.contractorUserId], ['outsider', s.outsiderId],
-    ] as const) {
-      await expect(
-        t.withIdentity({ subject: id }).mutation(api.projects.updateBudgetTotal, {
-          projectId: s.projectId, budgetTotal: 999_999,
-        }),
-        who,
-      ).rejects.toThrow();
-    }
-    await expect(
-      t.mutation(api.projects.updateBudgetTotal, { projectId: s.projectId, budgetTotal: 999_999 }),
-    ).rejects.toThrow(/Not authenticated/);
+    await setBudget(t, s.managerId, s, 200);
+    expect((await t.run((ctx) => ctx.db.get(s.projectId)))!.budgetTotal).toBe(200);
 
-    // Untouched by all of the above.
+    await setBudget(t, s.inspectorId, s, 300);
+    expect((await t.run((ctx) => ctx.db.get(s.projectId)))!.budgetTotal).toBe(300);
+  });
+
+  test('the owner can revoke the manager\'s budget access, and then it is refused', async () => {
+    const t = convexTest(schema, modules);
+    const s = await seedProject(t, { budgetTotal: 100 });
+    await t.run((ctx) => ctx.db.patch(s.projectId, { managerCanViewBudget: false }));
+
+    await expect(setBudget(t, s.managerId, s, 999_999)).rejects.toThrow();
     expect((await t.run((ctx) => ctx.db.get(s.projectId)))!.budgetTotal).toBe(100);
+  });
 
-    await t.withIdentity({ subject: s.ownerId }).mutation(api.projects.updateBudgetTotal, {
-      projectId: s.projectId, budgetTotal: 250_000,
-    });
+  test('a contractor and an outsider are always refused', async () => {
+    const t = convexTest(schema, modules);
+    const s = await seedProject(t, { budgetTotal: 100 });
+    await expect(setBudget(t, s.contractorUserId, s, 999_999)).rejects.toThrow();
+    await expect(setBudget(t, s.outsiderId, s, 999_999)).rejects.toThrow();
+    await expect(setBudget(t, null, s, 999_999)).rejects.toThrow();
+    expect((await t.run((ctx) => ctx.db.get(s.projectId)))!.budgetTotal).toBe(100);
+  });
+
+  test('the owner can always edit it', async () => {
+    const t = convexTest(schema, modules);
+    const s = await seedProject(t, { budgetTotal: 100 });
+    await setBudget(t, s.ownerId, s, 250_000);
     expect((await t.run((ctx) => ctx.db.get(s.projectId)))!.budgetTotal).toBe(250_000);
   });
+});
+
+describe('saveProjectSetup is owner-or-manager, and budget is separate', () => {
+  const setup = (t: any, who: string, s: any, extra: Record<string, unknown> = {}) =>
+    t.withIdentity({ subject: who }).mutation(api.projects.saveProjectSetup, {
+      projectId: s.projectId, name: 'שם', address: 'כתובת', floors: 1, rooms: [], ...extra,
+    });
+
+  test('the project manager CAN save setup', async () => {
+    // /setup is useRequireRole(['owner','manager']), so an owner-only guard
+    // broke the manager here too.
+    const t = convexTest(schema, modules);
+    const s = await seedProject(t);
+    await setup(t, s.managerId, s, { name: 'שונה בידי מנהל' });
+    expect((await t.run((ctx) => ctx.db.get(s.projectId)))!.name).toBe('שונה בידי מנהל');
+  });
+
+  test('the inspector and a contractor cannot', async () => {
+    const t = convexTest(schema, modules);
+    const s = await seedProject(t);
+    await expect(setup(t, s.inspectorId, s)).rejects.toThrow();
+    await expect(setup(t, s.contractorUserId, s)).rejects.toThrow();
+    await expect(setup(t, s.outsiderId, s)).rejects.toThrow();
+  });
+
+  test('a manager without budget access cannot slip budgetTotal through setup', async () => {
+    // setup accepts an optional budgetTotal. A manager whose budget access was
+    // revoked may still edit the rest of setup, but that field is dropped.
+    const t = convexTest(schema, modules);
+    const s = await seedProject(t, { budgetTotal: 1_000 });
+    await t.run((ctx) => ctx.db.patch(s.projectId, { managerCanViewBudget: false }));
+
+    await setup(t, s.managerId, s, { name: 'מותר', budgetTotal: 999_999 });
+
+    const project = await t.run((ctx) => ctx.db.get(s.projectId));
+    expect(project!.name).toBe('מותר');
+    expect(project!.budgetTotal).toBe(1_000);
+  });
+
+  test('a manager WITH budget access may set budgetTotal through setup', async () => {
+    const t = convexTest(schema, modules);
+    const s = await seedProject(t, { budgetTotal: 1_000 });
+    await setup(t, s.managerId, s, { budgetTotal: 7_500 });
+    expect((await t.run((ctx) => ctx.db.get(s.projectId)))!.budgetTotal).toBe(7_500);
+  });
+});
+
+describe('owner-only writes reject members and outsiders', () => {
 
   test('backfillStageContractors is owner-only', async () => {
     const t = convexTest(schema, modules);

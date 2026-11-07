@@ -14,6 +14,7 @@ import {
   requireProjectFileUser,
   requireProjectFileManager,
   requireProjectOwner,
+  requireProjectManager,
   canUserViewBudget,
   requireProjectBudgetView,
   canUserViewSchedule,
@@ -92,6 +93,31 @@ describe('requireProjectOwner', () => {
       expect(await asUser(t, id, requireProjectOwner, s.projectId)).toBe(false);
     }
     expect(await asUser(t, null, requireProjectOwner, s.projectId)).toBe(false);
+  });
+});
+
+describe('requireProjectManager', () => {
+  test('the project owner and the project manager pass; nobody else does', async () => {
+    const t = convexTest(schema, modules);
+    const s = await seedProject(t);
+    expect(await asUser(t, s.ownerId, requireProjectManager, s.projectId)).toBe(true);
+    expect(await asUser(t, s.managerId, requireProjectManager, s.projectId)).toBe(true);
+    expect(await asUser(t, s.superAdminId, requireProjectManager, s.projectId)).toBe(true);
+    for (const id of [s.inspectorId, s.contractorUserId, s.outsiderId]) {
+      expect(await asUser(t, id, requireProjectManager, s.projectId)).toBe(false);
+    }
+    expect(await asUser(t, null, requireProjectManager, s.projectId)).toBe(false);
+  });
+
+  test('does NOT widen on the caller\'s global role, unlike requireProjectFileManager', async () => {
+    // A user whose account role is 'manager' but who is only the INSPECTOR on
+    // this project must still be refused. requireProjectFileManager admits them;
+    // this guard deliberately does not.
+    const t = convexTest(schema, modules);
+    const s = await seedProject(t);
+    await t.run(async (ctx) => ctx.db.patch(s.inspectorId, { role: 'manager' }));
+    expect(await asUser(t, s.inspectorId, requireProjectManager, s.projectId)).toBe(false);
+    expect(await asUser(t, s.inspectorId, requireProjectFileManager, s.projectId)).toBe(true);
   });
 });
 

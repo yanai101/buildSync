@@ -6,8 +6,9 @@ import { deletePhotosForRooms } from './_lib/roomArchiveCleanup';
 import {
   canUserViewBudget,
   canUserViewSchedule,
+  requireProjectBudgetView,
+  requireProjectManager,
   requireProjectMember,
-  requireProjectOwner,
 } from './_lib/projectAccess';
 import { getActiveTier, capabilitiesFor, PROJECT_LIMIT_ERROR } from './_lib/entitlements';
 
@@ -182,8 +183,11 @@ export const saveProjectSetup = mutation({
     rooms: v.array(v.any()),
   },
   handler: async (ctx, args) => {
-    // Owner-only: project setup rewrites budget, dates and team fields.
-    await requireProjectOwner(ctx, args.projectId);
+    // Owner or project manager, matching /setup's useRequireRole(['owner',
+    // 'manager']). budgetTotal is handled separately below, because it is
+    // financial and a manager may have had budget access revoked.
+    await requireProjectManager(ctx, args.projectId);
+    const mayEditBudget = await canUserViewBudget(ctx, args.projectId);
     // Note: floorWastePct is intentionally NOT accepted here. It is set once
     // at project creation (see createProject) and locked thereafter.
     const projectPatch = {
@@ -194,7 +198,7 @@ export const saveProjectSetup = mutation({
       inspectorName: args.inspectorName ?? "טרם הוגדר",
       floors: args.floors ?? 1,
       areaSqm: args.areaSqm ?? 0,
-      ...(args.budgetTotal !== undefined ? { budgetTotal: args.budgetTotal } : {}),
+      ...(args.budgetTotal !== undefined && mayEditBudget ? { budgetTotal: args.budgetTotal } : {}),
       ...(args.hasBasement !== undefined ? { hasBasement: args.hasBasement } : {}),
       ...(args.hasYard !== undefined ? { hasYard: args.hasYard } : {}),
       ...(args.yardPavedArea !== undefined ? { yardPavedArea: args.yardPavedArea } : {}),
@@ -256,9 +260,12 @@ export const updateBudgetTotal = mutation({
     budgetTotal: v.number(),
   },
   handler: async (ctx, args) => {
-    // Owner-only: the total budget is financial data, which AGENTS.md requires
-    // to be enforced here and not merely hidden in the UI.
-    await requireProjectOwner(ctx, args.projectId);
+    // Budget-view holders only. NOT requireProjectOwner: /budget is reachable
+    // by the project manager (useRequireRole(['owner','manager'])), and
+    // canUserViewBudget is the app's actual model — owner and super admin
+    // always, manager and inspector unless the owner turned it off, contractors
+    // only if explicitly granted.
+    await requireProjectBudgetView(ctx, args.projectId);
     if (args.budgetTotal < 0) {
       throw new Error('Budget total cannot be negative');
     }

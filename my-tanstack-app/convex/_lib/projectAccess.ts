@@ -113,6 +113,28 @@ export const requireProjectOwner = async (ctx: Ctx, projectId: Id<'projects'>) =
   return { userId, user, project };
 };
 
+/**
+ * Asserts the caller is the project's OWNER or its MANAGER (or a super admin).
+ *
+ * This is the project-level counterpart to the UI's
+ * `useRequireRole(['owner', 'manager'])`, which several screens use — /setup
+ * and /budget among them. Unlike requireProjectFileManager it does NOT widen on
+ * the caller's GLOBAL role, so a user whose account role happens to be
+ * 'manager' cannot act on a project they merely inspect.
+ */
+export const requireProjectManager = async (ctx: Ctx, projectId: Id<'projects'>) => {
+  const { userId, user, project } = await requireProjectMember(ctx, projectId);
+
+  const isOwnerOrManager =
+    project.ownerUserId === userId || project.managerUserId === userId || user?.isSuperAdmin === true;
+
+  if (!isOwnerOrManager) {
+    throw new Error('רק בעל הפרויקט או מנהל הפרויקט יכולים לבצע פעולה זו');
+  }
+
+  return { userId, user, project };
+};
+
 export const canUserViewBudget = async (ctx: Ctx, projectId: Id<'projects'>): Promise<boolean> => {
   const userId = await getAuthUserId(ctx);
   if (!userId) {
