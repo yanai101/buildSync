@@ -22,6 +22,10 @@ type T = ReturnType<typeof convexTest>;
 type NewUser = WithoutSystemFields<Doc<'users'>>;
 type NewProject = WithoutSystemFields<Doc<'projects'>>;
 type NewContractor = WithoutSystemFields<Doc<'contractors'>>;
+type NewStage = WithoutSystemFields<Doc<'stages'>>;
+type NewExpense = WithoutSystemFields<Doc<'expenses'>>;
+type NewBudgetCategory = WithoutSystemFields<Doc<'budgetCategories'>>;
+type NewMilestone = WithoutSystemFields<Doc<'contractorPaymentMilestones'>>;
 
 export const makeUser = (over: Partial<NewUser> = {}): NewUser => ({
   name: 'בעלים',
@@ -116,3 +120,65 @@ export const seedProject = async (
       superAdminId,
     };
   });
+
+export const makeStage = (
+  projectId: Id<'projects'>,
+  over: Partial<NewStage> = {},
+): NewStage => ({
+  projectId,
+  sortOrder: 0,
+  name: 'שלב',
+  // Valid values only: zStageStatus is ['done','active','pending'] and
+  // payment.status is zPaymentStatus, a DIFFERENT union starting at 'draft'.
+  // Existing tests insert 'in_progress'/'pending' for these, which the
+  // generated types reject — convex-test's t.run ctx is loosely typed enough
+  // to let it through at runtime.
+  status: 'pending',
+  progressPct: 0,
+  startDate: '2026-01-01',
+  endDate: '2026-01-31',
+  payment: { amount: 0, status: 'draft' },
+  ...over,
+});
+
+export const makeExpense = (
+  projectId: Id<'projects'>,
+  over: Partial<NewExpense> = {},
+): NewExpense => ({
+  projectId,
+  expenseDate: '2026-01-15',
+  description: 'הוצאה',
+  amount: 1000,
+  // 'שולם' (paid) vs 'ממתין' (pending). getFinancialSummary counts ONLY the
+  // former, matching on this Hebrew string literal.
+  status: 'שולם',
+  ...over,
+});
+
+export const makeBudgetCategory = (
+  projectId: Id<'projects'>,
+  over: Partial<NewBudgetCategory> = {},
+): NewBudgetCategory => ({
+  projectId,
+  name: 'קטגוריה',
+  budget: 1000,
+  spent: 0,
+  color: '#E07A38',
+  sortOrder: 0,
+  ...over,
+});
+
+export const makeMilestone = (
+  contractorId: Id<'contractors'>,
+  over: Partial<NewMilestone> = {},
+): NewMilestone => ({
+  contractorId,
+  sortOrder: 0,
+  name: 'אבן דרך',
+  triggerText: 'בסיום',
+  pct: 100,
+  amount: 1000,
+  paid: false,
+  partialPayments: [],
+  ...over,
+});

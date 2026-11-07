@@ -5,6 +5,7 @@ import { internal } from './_generated/api';
 import { requireProjectOwner } from './_lib/projectAccess';
 import { scheduleUserNotifications } from './notifications';
 import type { Doc } from './_generated/dataModel';
+import { getActiveTier } from './_lib/entitlements';
 
 const INVITE_TTL_MS = 14 * 24 * 60 * 60 * 1000;
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no 0/O/1/I to avoid confusion
@@ -333,14 +334,14 @@ export const redeemInvitationExistingUser = mutation({
       const project = await ctx.db.get(inv.projectId);
       if (!project) throw new Error('הפרויקט לא נמצא');
       
+      // Use getActiveTier rather than re-deriving the tier inline: this block
+      // used to duplicate its expiry / super-admin / fallback logic, which is
+      // the one place that must not drift from convex/_lib/entitlements.ts.
       let isProOrPremium = false;
       if (project.ownerUserId) {
         const owner = await ctx.db.get(project.ownerUserId);
         if (owner) {
-          const now = Date.now();
-          const isExpired = owner.subscriptionExpiresAt ? now > owner.subscriptionExpiresAt : false;
-          const tier = owner.subscriptionTier || 'free';
-          const activeTier = owner.isSuperAdmin ? 'premium' : (isExpired ? 'free' : tier);
+          const activeTier = getActiveTier(owner);
           isProOrPremium = activeTier === 'pro' || activeTier === 'premium';
         }
       }

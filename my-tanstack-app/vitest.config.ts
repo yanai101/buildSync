@@ -53,11 +53,14 @@ export default defineConfig({
         branches: 15,
         functions: 15,
         // Hard per-path floors for the modules that carry the risk. These are
-        // the Phase 3 targets of the software-factory plan; uncomment each as
-        // its tests land.
-        // 'convex/_lib/**/*.ts': { lines: 80, functions: 80 },
-        // 'convex/_lib/entitlements.ts': { lines: 100, functions: 100 },
-        // 'src/utils/boqCalculations.ts': { lines: 90 },
+        // now ACTIVE: each sits at or just below what its tests achieve, so the
+        // modules that decide money, access and billing cannot quietly lose
+        // coverage. Raise them as more tests land; never lower them.
+        'convex/_lib/entitlements.ts': { lines: 100, functions: 100, statements: 100 },
+        'convex/_lib/financialSummary.ts': { lines: 100, functions: 100 },
+        'convex/_lib/stageSchedule.ts': { lines: 100, functions: 100 },
+        'convex/_lib/projectAccess.ts': { lines: 90, functions: 100 },
+        'src/utils/boqCalculations.ts': { lines: 90 },
       },
     },
   },
